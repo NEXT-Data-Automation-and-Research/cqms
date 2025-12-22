@@ -1,0 +1,298 @@
+/**
+ * Home Page Specific Styles
+ * Custom background (#100A28) and primary color (#635BFF) for the home page
+ */
+
+/* Home Page Color Overrides */
+:root {
+  /* Primary Colors - Based on #635BFF */
+  --home-primary-50: #f0efff;
+  --home-primary-100: #e0deff;
+  --home-primary-200: #c7c3ff;
+  --home-primary-300: #a59eff;
+  --home-primary-400: #8b7cff;
+  --home-primary-500: #635BFF;
+  --home-primary-600: #5a4fe8;
+  --home-primary-700: #4d42d1;
+  --home-primary-800: #4036b4;
+  --home-primary-900: #352d96;
+  
+  /* Home Page Background */
+  --home-background: #100A28;
+  
+  /* Contrast Color for Cards and White Elements */
+  --home-contrast: #28233E;
+}
+
+/* Apply to home page only */
+body.home-page,
+.home-page .main-content {
+  background-color: var(--home-background) !important;
+  color: var(--color-text-light, #ffffff);
+}
+
+/* Ensure text is readable on dark background */
+.home-page .main-content,
+.home-page .main-content h1,
+.home-page .main-content h2,
+.home-page .main-content h3,
+.home-page .main-content p {
+  color: var(--color-text-light, #ffffff);
+}
+
+/* Update card backgrounds for contrast - use #28233E instead of white */
+.home-page .bg-white,
+.home-page [class*="bg-white"] {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update action buttons background */
+.home-page .action-btn {
+  background-color: var(--home-contrast, #28233E) !important;
+  color: var(--color-text-light, #ffffff) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2rem !important;
+  min-height: 2rem !important;
+  line-height: 1 !important;
+}
+
+.home-page .action-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Ensure active buttons use primary color */
+.home-page .action-btn.active,
+.home-page #weekDisplay {
+  background-color: var(--home-primary-500, #635BFF) !important;
+  color: var(--color-text-inverse, white) !important;
+  border-color: var(--home-primary-500, #635BFF) !important;
+}
+
+.home-page .text-gray-900,
+.home-page .text-gray-800 {
+  color: var(--color-text-light, #ffffff) !important;
+}
+
+.home-page .text-gray-600,
+.home-page .text-gray-500 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Override primary color for home page */
+.home-page {
+  --color-primary-500: var(--home-primary-500);
+  --color-primary-600: var(--home-primary-600);
+  --color-primary-700: var(--home-primary-700);
+  --color-primary-800: var(--home-primary-800);
+  --color-primary-900: var(--home-primary-900);
+  
+  /* Override theme.css primary color for sidebar */
+  --primary-color: var(--home-primary-500);
+  --primary-dark: var(--home-primary-700);
+  
+  /* Override white/background colors with contrast color */
+  --color-background: var(--home-contrast);
+  --color-background-secondary: var(--home-contrast);
+}
+
+/* Update action buttons to use new primary color */
+.home-page .action-btn.active {
+  background-color: var(--home-primary-500) !important;
+  border-color: var(--home-primary-500) !important;
+}
+
+.home-page .action-btn:hover {
+  border-color: var(--home-primary-500);
+}
+
+.home-page .filter-input:focus,
+.home-page .filter-select:focus {
+  border-color: var(--home-primary-500);
+}
+
+/* Update cards and components */
+.home-page .bg-primary,
+.home-page [class*="bg-primary"] {
+  background-color: var(--home-primary-500) !important;
+}
+
+.home-page .text-primary,
+.home-page [class*="text-primary"] {
+  color: var(--home-primary-500) !important;
+}
+
+.home-page .border-primary,
+.home-page [class*="border-primary"] {
+  border-color: var(--home-primary-500) !important;
+}
+
+/* Update sidebar for home page - override sidebar.css with higher specificity */
+body.home-page .sidebar,
+body.home-page nav.sidebar {
+  background-color: var(--home-primary-500) !important;
+}
+
+/* Update sidebar hover states */
+body.home-page .sidebar .menu-item:hover,
+body.home-page .sidebar .menu-item.active {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.home-page .sidebar .menu-item.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Update sidebar search and other elements */
+body.home-page .sidebar .search-container,
+body.home-page .sidebar .profile-section {
+  background-color: transparent;
+}
+
+body.home-page .sidebar .search-input {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+body.home-page .sidebar .search-input:focus {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Update filter panel and inputs */
+.home-page .filter-panel {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.home-page .filter-input,
+.home-page .filter-select {
+  background-color: var(--home-contrast, #28233E) !important;
+  color: var(--color-text-light, #ffffff) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.home-page .date-dropdown-menu {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update modals and dropdowns */
+.home-page #notificationsModal,
+.home-page #calendarModal,
+.home-page #gridModal,
+.home-page #avatarLogoutMenu,
+.home-page #userProfileDropdown {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update profile dashboard card */
+.home-page #userProfileDashboard .bg-white {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update all sections with white backgrounds */
+.home-page .bg-white.rounded-xl,
+.home-page .bg-white.rounded-lg,
+.home-page .bg-white.rounded {
+  background-color: var(--home-contrast, #28233E) !important;
+}
+
+/* Update updates feed and audits list sections */
+.home-page .bg-white.rounded.border {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Ensure text in cards is readable */
+.home-page .bg-white .text-gray-900,
+.home-page .bg-white .text-gray-800,
+.home-page .bg-white h1,
+.home-page .bg-white h2,
+.home-page .bg-white h3 {
+  color: var(--color-text-light, #ffffff) !important;
+}
+
+.home-page .bg-white .text-gray-600,
+.home-page .bg-white .text-gray-500,
+.home-page .bg-white .text-gray-400 {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Update border colors for white elements */
+.home-page .bg-white.border-gray-200,
+.home-page .bg-white .border-gray-200,
+.home-page .border-gray-200 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update divide colors */
+.home-page .divide-gray-200 > * {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Update hover states for white elements */
+.home-page .bg-white:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Update header bar */
+.home-page .header-bar,
+.home-page header {
+  background-color: transparent;
+}
+
+/* Update sticky header */
+.home-page .sticky {
+  background-color: rgba(16, 10, 40, 0.8);
+  backdrop-filter: blur(10px);
+}
+
+/* Update sort menu */
+.home-page #sortMenu {
+  background-color: var(--home-contrast, #28233E) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.home-page #sortMenu select {
+  background-color: var(--home-contrast, #28233E) !important;
+  color: var(--color-text-light, #ffffff) !important;
+}
+
+/* Update all sections with white backgrounds - comprehensive override */
+.home-page div.bg-white,
+.home-page section.bg-white,
+.home-page article.bg-white {
+  background-color: var(--home-contrast, #28233E) !important;
+}
+
+/* Update hover states for gray backgrounds */
+.home-page .hover\:bg-gray-100:hover,
+.home-page .hover\:bg-gray-50:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.home-page .hover\:text-gray-900:hover {
+  color: var(--color-text-light, #ffffff) !important;
+}
+
+/* Dark mode adjustments for home page */
+[data-theme="dark"] .home-page .main-content {
+  background-color: var(--home-background) !important;
+}
+
+[data-theme="dark"] .home-page .action-btn.active {
+  background-color: var(--home-primary-500) !important;
+  color: var(--color-text-inverse) !important;
+  border-color: var(--home-primary-500) !important;
+}
+
+[data-theme="dark"] body.home-page .sidebar,
+[data-theme="dark"] body.home-page nav.sidebar {
+  background-color: var(--home-primary-500) !important;
+}
+

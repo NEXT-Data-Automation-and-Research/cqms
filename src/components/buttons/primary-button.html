@@ -1,0 +1,24 @@
+<!--
+  Primary Button Component
+  Reusable button component with customizable text and states
+  
+  Usage:
+  <button class="primary-button" data-text="Login">Login</button>
+  <button class="primary-button" data-text="Continue">Continue</button>
+  <button class="primary-button" data-text="Submit" disabled>Submit</button>
+  
+  Attributes:
+  - data-text: Button text (also can be set via innerHTML)
+  - disabled: Disabled state
+  - data-size: "sm" | "md" | "lg" (default: "md")
+  - data-full-width: "true" for full width button
+  - type: "button" | "submit" | "reset" (default: "button")
+-->
+<button 
+  type="button" 
+  class="primary-button primary-button--md"
+  data-text="Button">
+  <span class="primary-button__text">Button</span>
+  <span class="primary-button__loader" aria-hidden="true"></span>
+</button>
+

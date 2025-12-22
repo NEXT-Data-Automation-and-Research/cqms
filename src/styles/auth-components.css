@@ -1,0 +1,541 @@
+/**
+ * Authentication Page Components
+ * Reusable styles for login, signup, and password reset pages
+ */
+
+/* ============================================
+   AUTH PAGE LAYOUT
+   ============================================ */
+
+.auth-container {
+  display: flex;
+  height: 100vh;
+  min-height: 100vh;
+}
+
+/* Left Panel - Branding Section */
+.auth-left-panel {
+  background: linear-gradient(135deg, var(--color-background-dark) 0%, var(--color-primary-900) 50%, var(--color-primary-700) 100%);
+  flex: 0 0 70%;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-container) var(--spacing-container) 0 var(--spacing-container);
+  position: relative;
+}
+
+.auth-main-heading {
+  color: var(--color-text-light);
+  font-size: var(--font-size-12xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  letter-spacing: clamp(-0.0938rem, -0.1875vw, -0.1406rem);
+  text-align: left;
+}
+
+.auth-sub-heading {
+  color: var(--color-text-light);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  text-align: left;
+}
+
+.auth-branding {
+  position: absolute;
+  bottom: var(--spacing-xxl);
+  left: var(--spacing-container);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.auth-logo {
+  width: var(--logo-size);
+  height: auto;
+  object-fit: contain;
+  margin-left: 0;
+}
+
+.auth-brand-text {
+  color: var(--color-text-light);
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  margin-left: var(--spacing-xs);
+}
+
+/* Right Panel - Form Section */
+.auth-right-panel {
+  background-color: var(--color-background-auth, var(--color-background));
+  flex: 0 0 30%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-container);
+}
+
+/* ============================================
+   AUTH FORMS
+   ============================================ */
+
+.auth-form {
+  width: 100%;
+  max-width: var(--form-max-width);
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+.auth-form.hidden {
+  opacity: 0;
+  transform: translateY(-0.7031rem);
+  display: none;
+  pointer-events: none;
+  animation: slideOutUp 0.4s ease;
+}
+
+/* ============================================
+   TYPOGRAPHY COMPONENTS
+   ============================================ */
+
+/* Heading Components */
+.heading,
+.auth-form-heading {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  margin-bottom: 1.1719rem;
+}
+
+.heading-sm {
+  font-size: var(--font-size-3xl);
+}
+
+.heading-lg {
+  font-size: var(--font-size-5xl);
+}
+
+/* Text Components */
+.text,
+.reset-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin-bottom: 0.9375rem;
+  line-height: var(--line-height-normal);
+}
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* ============================================
+   FORM ELEMENTS - COMPONENTS
+   ============================================ */
+
+/* Form Group Component */
+.form-group {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Label Component */
+.form-label,
+.textfield-label {
+  display: block;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Text Field Component */
+.textfield,
+.form-input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-primary);
+  color: var(--color-text-primary);
+  background-color: var(--color-background);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base), transform 0.2s ease;
+}
+
+.textfield:focus,
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+  transform: translateY(-0.0352rem);
+}
+
+.textfield::placeholder,
+.form-input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.textfield:disabled,
+.form-input:disabled {
+  background-color: var(--color-background-secondary);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Text Field with Error State */
+.textfield-error,
+.form-input-error {
+  border-color: var(--color-error);
+}
+
+.textfield-error:focus,
+.form-input-error:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 3px var(--color-error-light);
+}
+
+/* ============================================
+   BUTTON COMPONENTS
+   ============================================ */
+
+/* Base Button Component */
+.button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-family-primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  line-height: 1.5;
+}
+
+/* Primary Button Component */
+.button-primary,
+.btn-primary {
+  width: 100%;
+  background-color: var(--color-primary-600);
+  color: var(--color-text-inverse);
+}
+
+.button-primary:hover,
+.btn-primary:hover {
+  background-color: var(--color-primary-700);
+}
+
+.button-primary:active,
+.btn-primary:active {
+  background-color: var(--color-primary-800);
+}
+
+.button-primary:disabled,
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.button-primary:disabled::after,
+.btn-primary:disabled::after {
+  content: '';
+  position: absolute;
+  width: 0.5625rem;
+  height: 0.5625rem;
+  top: 50%;
+  left: 50%;
+  margin-left: -0.2812rem;
+  margin-top: -0.2812rem;
+  border: 0.0703rem solid var(--color-text-inverse);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* Secondary Button Component */
+.button-secondary,
+.btn-secondary {
+  background-color: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.button-secondary:hover,
+.btn-secondary:hover {
+  background-color: var(--color-background-tertiary);
+}
+
+/* Outline Button Component */
+.button-outline,
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-primary-600);
+  border: 1px solid var(--color-primary-600);
+}
+
+.button-outline:hover,
+.btn-outline:hover {
+  background-color: var(--color-primary-50);
+}
+
+/* Button Sizes */
+.button-sm,
+.btn-sm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+}
+
+.button-lg,
+.btn-lg {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: var(--font-size-lg);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================
+   LINK COMPONENTS
+   ============================================ */
+
+/* Primary Link Component */
+.link,
+.link-primary {
+  display: inline-block;
+  color: var(--color-primary-600);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  transition: all var(--transition-base);
+  position: relative;
+  cursor: pointer;
+}
+
+.link::after,
+.link-primary::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 0.0703rem;
+  bottom: -0.0703rem;
+  left: 0;
+  background-color: var(--color-primary-600);
+  transition: width var(--transition-base);
+}
+
+.link:hover,
+.link-primary:hover {
+  color: var(--color-primary-700);
+  transform: translateX(0.1406rem);
+}
+
+.link:hover::after,
+.link-primary:hover::after {
+  width: 100%;
+}
+
+/* Secondary Link */
+.link-secondary {
+  color: var(--color-text-secondary);
+}
+
+.link-secondary:hover {
+  color: var(--color-primary-600);
+}
+
+/* ============================================
+   DIVIDER
+   ============================================ */
+
+.divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.divider span {
+  padding: 0 var(--spacing-md);
+}
+
+/* ============================================
+   GOOGLE SIGN-IN
+   ============================================ */
+
+.google-signin-container {
+  margin-bottom: var(--spacing-lg);
+  margin-top: var(--spacing-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.google-signin-container .g_id_signin {
+  margin: 0 auto;
+  display: block;
+}
+
+.google-signin-container #googleError {
+  width: 100%;
+  text-align: center;
+}
+
+/* ============================================
+   ERROR MESSAGES
+   ============================================ */
+
+.password-error {
+  opacity: 0;
+  transform: translateY(-0.3516rem);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+  max-height: 0;
+  overflow: hidden;
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.password-error:not(:empty) {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 3.5156rem;
+  animation: fadeInDown 0.3s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-0.3516rem);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 3.5156rem;
+  }
+}
+
+/* ============================================
+   SUCCESS/ERROR MESSAGES
+   ============================================ */
+
+.success-message,
+.error-message {
+  padding: 0.5625rem 0.75rem;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  font-size: 0.6562rem;
+  animation: slideInDown 0.3s ease;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.success-message {
+  background-color: var(--color-success-light);
+  color: var(--color-success-dark);
+  border: 0.0352rem solid var(--color-success);
+}
+
+.error-message {
+  background-color: var(--color-error-light);
+  color: var(--color-error-dark);
+  border: 0.0352rem solid var(--color-error);
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-0.7031rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   RESET PASSWORD FORM
+   ============================================ */
+
+.reset-form {
+  opacity: 0;
+  transform: translateY(0.7031rem);
+  transition: opacity var(--transition-base), transform var(--transition-base);
+  display: none;
+  pointer-events: none;
+}
+
+.reset-form.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  animation: slideInUp 0.4s ease;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(1.0546rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutUp {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-1.0546rem);
+  }
+}
+
+.reset-text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+  margin-bottom: 0.9375rem;
+  line-height: var(--line-height-normal);
+}
+

@@ -1,0 +1,372 @@
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import fs from 'fs';
+import { createLogger } from './utils/logger.js';
+import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
+import migrationRouter from './migration/migration-api.js';
+import supabaseMigrationRouter from './migration/supabase-migration-api.js';
+
+// Load environment variables
+dotenv.config();
+
+// Initialize logger
+const serverLogger = createLogger('Server');
+
+const app = express();
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load app version at startup
+let appVersion: string = getAppVersion();
+try {
+  const versionPath = path.join(__dirname, '../public/version.json');
+  if (fs.existsSync(versionPath)) {
+    const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
+    appVersion = versionData.hash || versionData.version || '1.0.0';
+    serverLogger.info(`App version: ${appVersion}`);
+  }
+} catch (error) {
+  serverLogger.warn('Version file not found, using default version');
+}
+
+// Define which env vars are safe to expose to client
+const SAFE_ENV_VARS: string[] = [
+  'NODE_ENV',
+  'APP_NAME',
+  'API_URL',
+  'SUPABASE_URL',      // Safe - public URL
+  'SUPABASE_ANON_KEY', // Safe - public anon key (designed to be exposed)
+  'VAPID_PUBLIC_KEY',  // Safe - VAPID public key (designed to be exposed to client)
+  // Add only non-sensitive variables here
+];
+
+// Blacklist of patterns that should NEVER be exposed
+const SENSITIVE_PATTERNS: RegExp[] = [
+  /password/i,
+  /secret/i,
+  /key/i,
+  /token/i,
+  /api[_-]?key/i,
+  /auth/i,
+  /credential/i,
+  /private/i,
+  /database[_-]?url/i,
+  /connection[_-]?string/i,
+  /jwt/i,
+  /session/i,
+  /cookie[_-]?secret/i,
+];
+
+/**
+ * Check if an environment variable name is safe to expose
+ */
+function isSafeEnvVar(varName: string): boolean {
+  // Must be explicitly whitelisted
+  if (!SAFE_ENV_VARS.includes(varName)) {
+    return false;
+  }
+  
+  // Whitelist takes precedence - if explicitly whitelisted, it's safe
+  // (This allows VAPID_PUBLIC_KEY even though it contains "key")
+  return true;
+}
+
+/**
+ * Get safe environment variables for client
+ */
+function getSafeEnvVars(): Record<string, string> {
+  const safeEnv: Record<string, string> = {};
+  
+  // Only include explicitly whitelisted and verified safe variables
+  SAFE_ENV_VARS.forEach(varName => {
+    if (isSafeEnvVar(varName) && process.env[varName]) {
+      safeEnv[varName] = process.env[varName];
+    }
+  });
+  
+  return safeEnv;
+}
+
+// Cache control middleware
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const url = req.path;
+  
+  // HTML files - never cache (always fresh)
+  if (url.endsWith('.html') || url === '/') {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('ETag', `"${appVersion}"`);
+  }
+  // Static assets (JS, CSS, images) - cache with version
+  else if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$/)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('ETag', `"${appVersion}"`);
+  }
+  // API endpoints - no cache
+  else if (url.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+  
+  next();
+});
+
+// ✅ SECURITY: Middleware to automatically inject auth-checker into HTML responses
+// This ensures all pages (except auth-page) are automatically protected
+// Runs after routes but before static file serving
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const url = req.path;
+  
+  // Only intercept HTML file requests
+  if (!url.endsWith('.html') && url !== '/') {
+    return next();
+  }
+  
+  // Skip auth-page.html and index.html (they're handled by specific routes)
+  if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
+    return next();
+  }
+  
+  // Intercept the response to inject auth-checker if not already present
+  const originalSend = res.send;
+  res.send = function(body: any) {
+    // Only process if it's HTML content
+    if (typeof body === 'string' && body.trim().startsWith('<!')) {
+      // Check if auth-checker is already present
+      if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
+        // Inject auth-checker before closing body tag
+        const authCheckerScript = '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
+        
+        if (body.includes('</body>')) {
+          body = body.replace('</body>', `${authCheckerScript}</body>`);
+        } else if (body.includes('</html>')) {
+          body = body.replace('</html>', `${authCheckerScript}</html>`);
+        } else {
+          body = body + '\n' + authCheckerScript;
+        }
+      }
+    }
+    return originalSend.call(this, body);
+  };
+  
+  next();
+});
+
+// ✅ SECURITY: Serve public HTML files with auth-checker injection
+// These routes MUST be BEFORE express.static to intercept requests
+app.get('/audit-reports.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('audit-reports.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing audit-reports.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'audit-reports.html'));
+  }
+});
+
+app.get('/event-management.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('event-management.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing event-management.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'event-management.html'));
+  }
+});
+
+app.get('/profile.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('profile.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing profile.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'profile.html'));
+  }
+});
+
+// Migration tools - these should NOT have auth-checker (admin/dev tools)
+// They are intentionally unprotected for development/admin use
+app.get('/migration-tool.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('migration-tool.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing migration-tool.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'migration-tool.html'));
+  }
+});
+
+app.get('/supabase-migration-tool.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('supabase-migration-tool.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing supabase-migration-tool.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'supabase-migration-tool.html'));
+  }
+});
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve static files from the src directory (for auth page and other assets)
+app.use('/src', express.static(path.join(__dirname, '../src')));
+
+// Serve auth-page.html with version injection
+app.get('/src/auth/presentation/auth-page.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('auth/presentation/auth-page.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing auth-page.html:', error);
+    res.sendFile(path.join(__dirname, '../src/auth/presentation/auth-page.html'));
+  }
+});
+
+// ✅ SECURITY: Serve all HTML files from src directory with version injection and auto auth-checker
+// This catches all feature pages automatically - route must be BEFORE express.static
+// Using a more specific pattern that Express supports
+app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void => {
+  const htmlPath = req.path.replace('/src/', 'src/');
+  
+  // Skip auth-page.html (handled separately, no auth-checker needed)
+  if (htmlPath.includes('auth-page.html')) {
+    try {
+      const html = injectVersionIntoHTML(htmlPath, appVersion);
+      res.send(html);
+    } catch (error) {
+      serverLogger.error(`Error processing ${htmlPath}:`, error);
+      res.sendFile(path.join(__dirname, '..', htmlPath));
+    }
+    return;
+  }
+  
+  try {
+    // This will automatically inject auth-checker via injectVersionIntoHTML
+    const html = injectVersionIntoHTML(htmlPath, appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error(`Error processing ${htmlPath}:`, error);
+    // Fallback: try to serve file directly (auth-checker middleware will inject it)
+    const filePath = path.join(__dirname, '..', htmlPath);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
+// Serve home-page.html with version injection (kept for backward compatibility)
+app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/home/presentation/home-page.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing home-page.html:', error);
+    res.sendFile(path.join(__dirname, '../src/features/home/presentation/home-page.html'));
+  }
+});
+
+// Keep dashboard.html route for backward compatibility (redirects to home)
+app.get('/dashboard.html', (req: express.Request, res: express.Response): void => {
+  res.redirect('/src/features/home/presentation/home-page.html');
+});
+
+// Parse JSON bodies
+app.use(express.json());
+
+// API Routes
+import usersRouter from './api/routes/users.routes.js';
+import notificationsRouter from './api/routes/notifications.routes.js';
+import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
+import { errorHandler } from './api/middleware/error-handler.middleware.js';
+
+app.use('/api/users', usersRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
+
+// Error handler (must be last)
+app.use(errorHandler);
+
+// Migration API routes
+app.use('/api/migration', migrationRouter);
+app.use('/api/supabase-migration', supabaseMigrationRouter);
+
+// Serve index.html for root route (with version injection)
+app.get('/', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('index.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing index.html:', error);
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+  }
+});
+
+// API endpoint to get environment variables (client-safe only)
+app.get('/api/env', (req: express.Request, res: express.Response): void => {
+  const safeEnv = getSafeEnvVars();
+  
+  // Add Supabase configuration (safe to expose - these are public keys)
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  const hasSupabaseUrl = !!supabaseUrl;
+  const hasSupabaseKey = !!supabaseKey;
+  
+  if (hasSupabaseUrl && supabaseUrl) {
+    safeEnv.SUPABASE_URL = supabaseUrl;
+  }
+  if (hasSupabaseKey && supabaseKey) {
+    safeEnv.SUPABASE_ANON_KEY = supabaseKey;
+  }
+  
+  // Log Supabase configuration status to terminal
+  if (hasSupabaseUrl && hasSupabaseKey) {
+    serverLogger.info('Supabase: Configuration available - Client can initialize');
+  } else {
+    serverLogger.warn('Supabase: Configuration incomplete - Missing URL or Anon Key');
+  }
+  
+  res.json(safeEnv);
+});
+
+// API endpoint to get app version
+app.get('/api/version', (req: express.Request, res: express.Response): void => {
+  try {
+    const versionPath = path.join(__dirname, '../public/version.json');
+    if (fs.existsSync(versionPath)) {
+      const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
+      res.json(versionData);
+    } else {
+      res.json({ 
+        version: appVersion, 
+        timestamp: Date.now(),
+        hash: appVersion,
+        buildTime: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    serverLogger.error('Error reading version:', error);
+    res.json({ 
+      version: appVersion, 
+      timestamp: Date.now(),
+      hash: appVersion
+    });
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  serverLogger.info(`Server running on http://localhost:${PORT}`);
+  serverLogger.info(`Serving files from: ${path.join(__dirname, '../public')}`);
+  serverLogger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+

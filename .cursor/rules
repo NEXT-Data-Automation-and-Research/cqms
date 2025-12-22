@@ -1,0 +1,587 @@
+# Cursor Rules for Project Standards
+
+## Feature Architecture (Clean Architecture)
+
+**CRITICAL: All features MUST follow the Clean Architecture pattern with strict layer separation.**
+
+### Feature Directory Structure
+
+Every feature in `src/features/` MUST follow this structure:
+
+```
+src/features/{feature-name}/
+├── domain/              # Business entities and types (NO dependencies on other layers)
+│   ├── entities.ts      # Domain entities/interfaces
+│   └── types.ts         # Domain-specific types
+├── infrastructure/      # External dependencies (database, APIs, etc.)
+│   └── {feature}-repository.ts
+├── application/         # Business logic and orchestration
+│   ├── {feature}-service.ts      # Business rules and calculations
+│   ├── {feature}-state.ts        # State management
+│   └── {feature}-controller.ts   # Main orchestrator (optional, for complex features)
+└── presentation/       # UI and user interaction
+    ├── {feature}.html            # HTML template
+    ├── {feature}-loader.ts       # Initialization logic
+    ├── {feature}-renderer.ts     # DOM manipulation (optional)
+    └── {feature}-events.ts       # Event handlers (optional)
+```
+
+### Layer Responsibilities
+
+#### Domain Layer (`domain/`)
+- **Purpose**: Pure business logic, no external dependencies
+- **Contains**: Entities, types, interfaces, domain constants
+- **Rules**:
+  - NO imports from infrastructure, application, or presentation
+  - NO database calls, API calls, or DOM manipulation
+  - Pure TypeScript types and interfaces
+  - Can import from other domain layers if needed
+
+#### Infrastructure Layer (`infrastructure/`)
+- **Purpose**: External data access (database, APIs, storage)
+- **Contains**: Repositories that interact with external systems
+- **Rules**:
+  - Can import from domain layer
+  - Uses `DatabaseFactory` to get database client
+  - Implements repository pattern
+  - NO business logic (only data access)
+  - NO UI code
+
+#### Application Layer (`application/`)
+- **Purpose**: Business logic, state management, orchestration
+- **Contains**: Services, state managers, controllers
+- **Rules**:
+  - Can import from domain and infrastructure
+  - Contains business rules and calculations
+  - Manages feature state
+  - NO direct DOM manipulation
+  - NO HTML/CSS
+
+#### Presentation Layer (`presentation/`)
+- **Purpose**: UI rendering, user interaction, event handling
+- **Contains**: HTML templates, loaders, renderers, event handlers
+- **Rules**:
+  - Can import from all other layers
+  - Handles DOM manipulation
+  - Manages user interactions
+  - Initializes feature on page load
+
+### Feature Naming Conventions
+
+- **Feature folder**: `kebab-case` (e.g., `audit-distribution`, `user-management`)
+- **Files**: `kebab-case.ts` (e.g., `audit-distribution-service.ts`)
+- **Classes**: `PascalCase` (e.g., `AuditDistributionService`)
+- **Interfaces/Types**: `PascalCase` (e.g., `AuditDistributionState`)
+
+### Creating a New Feature
+
+1. Create feature directory: `src/features/{feature-name}/`
+2. Create layer directories: `domain/`, `infrastructure/`, `application/`, `presentation/`
+3. Start with domain layer (entities and types)
+4. Create infrastructure layer (repository)
+5. Create application layer (service, state)
+6. Create presentation layer (HTML, loader)
+7. Follow dependency rule: Inner layers can't depend on outer layers
+
+### Example Feature Structure
+
+```typescript
+// domain/entities.ts
+export interface User {
+  id: string
+  name: string
+  email: string
+}
+
+// infrastructure/user-repository.ts
+import { IDatabaseClient } from '../../../core/database/database-client.interface.js'
+import type { User } from '../domain/entities.js'
+
+export class UserRepository {
+  constructor(private db: IDatabaseClient) {}
+  async getUser(id: string): Promise<User | null> { /* ... */ }
+}
+
+// application/user-service.ts
+import { UserRepository } from '../infrastructure/user-repository.js'
+import type { User } from '../domain/entities.js'
+
+export class UserService {
+  constructor(private repository: UserRepository) {}
+  async getUserWithValidation(id: string): Promise<User | null> { /* ... */ }
+}
+
+// presentation/user-loader.ts
+import { UserService } from '../application/user-service.js'
+// ... initialization code
+```
+
+## Theme Management Architecture
+
+**CRITICAL: All theme-related code MUST follow the centralized theme system.**
+
+### Theme File Structure
+
+```
+src/
+├── styles/
+│   └── theme.css              # Global theme variables (CSS custom properties)
+├── utils/
+│   └── theme-manager.ts        # Theme logic (light/dark/auto)
+└── ...
+
+public/
+└── theme.css                   # Compiled theme CSS (auto-generated)
+```
+
+### Theme System Rules
+
+#### 1. CSS Theme Variables (`src/styles/theme.css`)
+- **Location**: `src/styles/theme.css` (source) → `public/theme.css` (compiled)
+- **Purpose**: Define all theme variables (colors, fonts, spacing, etc.)
+- **Structure**:
+  ```css
+  :root {
+    /* Light theme variables */
+    --primary-color: #1a733e;
+    --background-color: #f8f7f2;
+    --text-color: #000000;
+    /* ... */
+  }
+  
+  [data-theme="dark"] {
+    /* Dark theme overrides */
+    --background-color: #1a1a1a;
+    --text-color: #e5e5e5;
+    /* ... */
+  }
+  ```
+- **Rules**:
+  - ALL colors must use CSS custom properties (variables)
+  - NEVER use hardcoded colors in component CSS
+  - Define both light and dark theme values
+  - Use semantic names (e.g., `--primary-color`, not `--green-500`)
+
+#### 2. Theme Manager (`src/utils/theme-manager.ts`)
+- **Purpose**: JavaScript/TypeScript theme logic
+- **Functions**:
+  - `getCurrentTheme()`: Get theme from localStorage
+  - `getEffectiveTheme()`: Resolve 'auto' to 'light' or 'dark'
+  - `applyTheme(theme)`: Apply theme to document
+  - `initTheme()`: Initialize theme on page load
+  - `toggleTheme()`: Toggle between light/dark
+  - `setTheme(theme)`: Set specific theme
+- **Rules**:
+  - Theme is stored in localStorage with key `app-theme`
+  - Theme attribute is set on `<html>` element: `data-theme="light|dark"`
+  - Supports 'auto' mode (follows system preference)
+
+#### 3. Using Theme in Components
+
+**CSS:**
+```css
+/* ✅ CORRECT - Use theme variables */
+.my-component {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-light);
+}
+
+/* ❌ WRONG - Hardcoded colors */
+.my-component {
+  background-color: #f8f7f2;  /* DON'T DO THIS */
+  color: #000000;              /* DON'T DO THIS */
+}
+```
+
+**TypeScript:**
+```typescript
+// ✅ CORRECT - Use theme manager
+import { getCurrentTheme, applyTheme, toggleTheme } from '/js/utils/theme-manager.js'
+
+const theme = getCurrentTheme()
+applyTheme('dark')
+toggleTheme()
+```
+
+#### 4. Theme Initialization
+
+**In HTML:**
+```html
+<head>
+  <link rel="stylesheet" href="/theme.css">
+  <script type="module">
+    import { initTheme } from './js/utils/theme-manager.js'
+    initTheme()
+  </script>
+</head>
+```
+
+### Theme Variable Categories
+
+1. **Colors**: `--primary-color`, `--background-color`, `--text-color`, etc.
+2. **Spacing**: `--spacing-xs`, `--spacing-sm`, `--spacing-md`, etc.
+3. **Typography**: `--font-family`, `--font-size-*`, `--font-weight-*`
+4. **Layout**: `--sidebar-width`, `--main-content-padding`, etc.
+5. **Shadows**: `--shadow-sm`, `--shadow-md`, `--shadow-lg`
+6. **Z-Index**: `--z-dropdown`, `--z-modal`, `--z-tooltip`
+
+### Adding New Theme Variables
+
+1. Add to `src/styles/theme.css` in `:root` (light theme)
+2. Add corresponding dark theme value in `[data-theme="dark"]`
+3. Use semantic naming (describe purpose, not color)
+4. Document in comments if needed
+
+## Global Architecture Patterns
+
+### Shared Infrastructure
+
+**Location**: `src/infrastructure/` and `src/core/`
+
+- **Database Factory**: `src/infrastructure/database-factory.ts`
+  - Creates database clients (Supabase, etc.)
+  - Used by all repositories
+  - Single source of truth for database connection
+
+- **Core Interfaces**: `src/core/database/`
+  - `database-client.interface.ts`: Database client interface
+  - `query-builder.interface.ts`: Query builder interface
+  - All repositories implement these interfaces
+
+### Shared Utilities
+
+**Location**: `src/utils/`
+
+- **Theme Manager**: `theme-manager.ts` - Theme switching logic
+- **Auth Utilities**: `auth.ts` - Authentication helpers
+- **Logger**: `logger.ts` - Logging utilities
+- **Device Info**: `device-info.ts` - Device detection
+- **Version**: `version.ts` - Version management
+
+### Global Styles
+
+**Location**: `src/styles/` and `public/`
+
+- **Theme CSS**: `src/styles/theme.css` → `public/theme.css`
+- **Component Styles**: Feature-specific styles in `src/features/{feature}/presentation/styles/`
+- **Global Styles**: Shared styles in `src/styles/`
+
+### Import Patterns
+
+**From Feature to Shared:**
+```typescript
+// ✅ CORRECT - Import from shared infrastructure
+import { DatabaseFactory } from '../../../infrastructure/database-factory.js'
+
+// ✅ CORRECT - Import from shared utils
+import { logger } from '../../../utils/logger.js'
+
+// ✅ CORRECT - Import from core interfaces
+import { IDatabaseClient } from '../../../core/database/database-client.interface.js'
+```
+
+**Within Feature:**
+```typescript
+// ✅ CORRECT - Import from domain
+import type { User } from '../domain/entities.js'
+
+// ✅ CORRECT - Import from infrastructure
+import { UserRepository } from '../infrastructure/user-repository.js'
+
+// ✅ CORRECT - Import from application
+import { UserService } from '../application/user-service.js'
+```
+
+## TypeScript-Only Policy
+
+**CRITICAL: This project uses TypeScript exclusively. JavaScript files are auto-generated from TypeScript source.**
+
+### Source Code Rules
+
+- **ALL source code must be written in TypeScript (`.ts` files)**
+- **NEVER create or edit `.js` files in the `src/` directory**
+- JavaScript files in `public/js/` are compiled outputs - DO NOT edit them directly
+- If you need to modify functionality, edit the corresponding `.ts` file in `src/` and rebuild
+- The build process (`npm run build:ts`) compiles TypeScript to JavaScript automatically
+
+### File Organization
+
+- **Source files**: `src/**/*.ts` (TypeScript only)
+- **Compiled files**: `public/js/**/*.js` (auto-generated, do not edit)
+- **Entry points**: Use TypeScript files that import from `src/`
+
+### Code Generation
+
+- TypeScript files in `src/` are compiled to `public/js/` with the same directory structure
+- Always work with TypeScript source files
+- Run `npm run build:ts` or `npm run watch:ts` to compile changes
+- Never manually create JavaScript files that should be TypeScript
+
+### Import Paths
+
+- Use TypeScript imports: `import { something } from './file.ts'` or `from './file.js'` (compiled output)
+- Import from source: `/js/features/...` (points to compiled JS from `src/features/...`)
+- Always use `.js` extension in import statements (even for TypeScript files) - this is for the compiled output
+
+### Error Prevention
+
+- If you see a `.js` file in `src/`, it's an error - convert it to `.ts`
+- If you need to create a new module, create it as `.ts` in `src/`
+- When fixing bugs, always check the TypeScript source first, not the compiled JS
+
+## Documentation File Organization
+
+- All documentation files (`.md`, `.mdx`, markdown files) should be saved in the `.doc` folder at the project root
+- When creating new documentation files, always place them in `.doc/` directory
+- When moving or organizing existing documentation, relocate them to `.doc/` folder
+- Maintain the same file structure within `.doc/` if documentation is organized by feature/module
+- README.md files can remain in their respective directories for local context, but project-wide documentation should be in `.doc/`
+
+## Documentation File Patterns
+
+- Documentation files include: `*.md`, `*.mdx`, `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, etc.
+- Architecture documentation, setup guides, migration notes, and similar project documentation belong in `.doc/`
+- Feature-specific README files can stay with their features, but general documentation goes to `.doc/`
+
+## File Naming
+
+- Use kebab-case for documentation file names (e.g., `architecture-implementation-summary.md`)
+- Keep descriptive names that clearly indicate the document's purpose
+
+## Performance Rules
+
+### Initialization Performance
+
+- **UI First, Data Second**: Always show UI immediately, fetch data asynchronously
+- **Cache First Strategy**: Load from cache (localStorage) immediately, refresh from database in background
+- **Non-Blocking Operations**: Never block UI rendering for data fetching
+- **Lazy Loading**: Load heavy features only when needed
+
+### Example Pattern:
+
+```typescript
+// ✅ CORRECT - Fast initialization
+async init(): Promise<void> {
+  // 1. Load UI immediately
+  await this.loadUI()
+  
+  // 2. Show cached data immediately
+  const cached = this.loadFromCache()
+  if (cached) this.showData(cached)
+  
+  // 3. Fetch fresh data in background (non-blocking)
+  this.fetchFreshData().catch(() => {
+    // Silently fail - cached data already shown
+  })
+}
+
+// ❌ WRONG - Blocking initialization
+async init(): Promise<void> {
+  // DON'T wait for data before showing UI
+  const data = await this.fetchData() // Blocks UI!
+  this.loadUI()
+  this.showData(data)
+}
+```
+
+### Database Query Performance
+
+- **Error Handling**: Handle missing tables/columns gracefully (return empty arrays, not errors)
+- **Caching**: Cache query results with timestamps (5-minute default)
+- **Background Refresh**: Update cache in background, don't block UI
+
+## Code Organization Rules
+
+### File Structure Standards
+
+1. **One Class Per File**: Each class should be in its own file
+2. **Co-location**: Related files should be in the same directory
+3. **Barrel Exports**: Use index files for clean imports (optional)
+4. **Clear Separation**: Keep layers separate, no mixing concerns
+
+### Naming Conventions
+
+- **Files**: `kebab-case.ts` (e.g., `user-profile-dashboard.ts`)
+- **Classes**: `PascalCase` (e.g., `UserProfileDashboard`)
+- **Interfaces/Types**: `PascalCase` (e.g., `UserInfo`, `Theme`)
+- **Functions**: `camelCase` (e.g., `getUserInfo()`)
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `MAX_RETRY_ATTEMPTS`)
+- **CSS Classes**: `kebab-case` (e.g., `user-profile-section`)
+
+### Import Organization
+
+```typescript
+// 1. External dependencies
+import { DatabaseFactory } from '../../../infrastructure/database-factory.js'
+
+// 2. Domain types (type-only imports)
+import type { UserInfo } from '../domain/entities.js'
+
+// 3. Infrastructure
+import { UserRepository } from '../infrastructure/user-repository.js'
+
+// 4. Application layer
+import { UserService } from '../application/user-service.js'
+
+// 5. Presentation layer (if needed)
+import { UserRenderer } from '../presentation/user-renderer.js'
+```
+
+## Error Handling Rules
+
+### Silent Error Handling
+
+- **Expected Errors**: Don't log errors for expected conditions (e.g., missing tables, unauthenticated users)
+- **User-Facing Errors**: Only show errors that users need to know about
+- **Debug Logging**: Use `console.debug()` for development-only logs
+- **Graceful Degradation**: Always provide fallbacks (cached data, default values)
+
+### Error Handling Pattern
+
+```typescript
+// ✅ CORRECT - Handle expected errors silently
+try {
+  const data = await this.repository.getData()
+  return data
+} catch (error: any) {
+  // Check if it's an expected error (table doesn't exist)
+  if (error?.code === 'PGRST205' || error?.code === 'PGRST116') {
+    return [] // Expected - table doesn't exist yet
+  }
+  // Only log unexpected errors
+  console.error('Unexpected error:', error)
+  return []
+}
+```
+
+## State Management Rules
+
+### State Location
+
+- **Feature State**: `src/features/{feature}/application/{feature}-state.ts`
+- **Global State**: `src/infrastructure/` or `src/core/`
+- **UI State**: Keep in presentation layer, don't mix with business state
+
+### State Management Pattern
+
+```typescript
+// ✅ CORRECT - Centralized state
+export class FeatureState {
+  private data: FeatureData | null = null
+  
+  getData(): FeatureData | null {
+    return this.data
+  }
+  
+  setData(data: FeatureData): void {
+    this.data = data
+    this.saveToCache(data)
+  }
+  
+  private saveToCache(data: FeatureData): void {
+    localStorage.setItem('featureData', JSON.stringify(data))
+  }
+}
+
+// Export singleton instance
+export const featureState = new FeatureState()
+```
+
+## HTML Template Rules
+
+### Template Structure
+
+- **Location**: `src/features/{feature}/presentation/{feature}.html`
+- **CSS Links**: Always include theme CSS: `<link rel="stylesheet" href="/theme.css">`
+- **Script Loading**: Use `type="module"` for ES6 modules
+- **Defer Loading**: Use `defer` attribute for non-critical scripts
+
+### HTML Template Pattern
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Name</title>
+  
+  <!-- Global Theme -->
+  <link rel="stylesheet" href="/theme.css">
+  
+  <!-- Feature-specific CSS -->
+  <link rel="stylesheet" href="/feature.css">
+</head>
+<body>
+  <main class="main-content">
+    <!-- Feature content -->
+  </main>
+  
+  <!-- Feature initialization -->
+  <script type="module" src="/js/features/{feature}/presentation/{feature}-loader.js" defer></script>
+</body>
+</html>
+```
+
+## CSS Organization Rules
+
+### CSS File Structure
+
+- **Global Theme**: `src/styles/theme.css` (compiled to `public/theme.css`)
+- **Feature Styles**: `src/features/{feature}/presentation/styles/{feature}.css`
+- **Component Styles**: Co-located with components when possible
+
+### CSS Rules
+
+- **Theme Variables**: ALWAYS use CSS custom properties from theme
+- **No Hardcoded Colors**: Never use hardcoded color values
+- **Responsive Design**: Use `clamp()` for responsive sizing
+- **Dark Mode**: Always provide dark mode styles using `[data-theme="dark"]`
+
+### CSS Pattern
+
+```css
+/* ✅ CORRECT - Use theme variables */
+.my-component {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  padding: var(--spacing-md);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-md);
+}
+
+/* Dark mode support */
+[data-theme="dark"] .my-component {
+  background-color: var(--background-dark);
+  border-color: var(--border-dark);
+}
+
+/* ❌ WRONG - Hardcoded values */
+.my-component {
+  background-color: #f8f7f2;  /* DON'T */
+  color: #000000;              /* DON'T */
+  padding: 16px;               /* Use variables */
+}
+```
+
+## Testing and Quality Rules
+
+### Code Quality
+
+- **TypeScript Strict Mode**: Always use strict type checking
+- **No `any` Types**: Avoid `any`, use proper types or `unknown`
+- **Error Types**: Define specific error types, don't use generic `Error`
+- **Documentation**: Add JSDoc comments for public APIs
+
+### Code Review Checklist
+
+- [ ] Follows Clean Architecture layers
+- [ ] Uses theme variables (no hardcoded colors)
+- [ ] Handles errors gracefully
+- [ ] Loads UI before data fetching
+- [ ] Uses TypeScript types properly
+- [ ] Follows naming conventions
+- [ ] No direct DOM manipulation in application layer
+- [ ] Proper error handling for missing resources
+

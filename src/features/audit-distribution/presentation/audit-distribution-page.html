@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audit Distribution | QMS</title>
+  <meta name="description" content="Quality Management System - Audit Distribution">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  
+  <!-- Global Styles (includes compiled Tailwind output) -->
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/audit-distribution-page.css">
+  <link rel="stylesheet" href="/src/features/audit-distribution/presentation/styles/audit-distribution-page.css">
+  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  
+  <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
+  
+  <!-- Import map for npm packages in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+    }
+  }
+  </script>
+</head>
+
+<body class="audit-distribution-page">
+  <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+  <main class="main-content" role="main">
+    <!-- Dot Background Pattern Component -->
+    <div id="dot-background-container"></div>
+    
+    <!-- Main Content will be rendered by audit-distribution-loader -->
+    <div id="audit-distribution-container" class="relative z-10"></div>
+  </main>
+
+  <!-- Authentication Guard -->
+  <script type="module" src="/js/auth-checker.js"></script>
+  
+  <!-- Sidebar Loader -->
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+  
+  <!-- Load Dot Background Component -->
+  <script type="module">
+    import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
+    
+    async function loadDotBackground() {
+      try {
+        await loadComponents([
+          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' }
+        ]);
+        console.log('✓ Dot background component loaded');
+      } catch (error) {
+        console.error('Error loading dot background component:', error);
+      }
+    }
+    
+    // Load dot background when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadDotBackground);
+    } else {
+      loadDotBackground();
+    }
+  </script>
+  
+  <!-- Audit Distribution Loader -->
+  <script type="module" src="/js/features/audit-distribution/presentation/audit-distribution-loader.js" defer></script>
+</body>
+</html>
+

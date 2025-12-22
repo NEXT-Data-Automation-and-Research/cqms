@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Dashboard | QMS</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Import map for npm packages in browser -->
+    <script type="importmap">
+    {
+        "imports": {
+            "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+            "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+        }
+    }
+    </script>
+    <script type="module">
+        // Initialize theme before page renders
+        import { initTheme } from './js/utils/theme-manager.js';
+        initTheme();
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo/Brand -->
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold text-gray-900">QMS Dashboard</h1>
+                </div>
+                
+                <!-- User Menu -->
+                <div class="flex items-center gap-4">
+                    <!-- User Info -->
+                    <div class="flex items-center gap-3" id="userInfoDisplay">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-medium text-gray-900" id="userName">Loading...</p>
+                            <p class="text-xs text-gray-500" id="userEmail">...</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-semibold" id="userAvatar">
+                            <span id="userInitials">U</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Sign Out Button -->
+                    <button 
+                        id="signOutButton"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                    >
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Welcome Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2" id="welcomeMessage">Welcome!</h2>
+            <p class="text-gray-600">You are successfully authenticated and ready to use the application.</p>
+        </div>
+
+        <!-- User Info Card -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Your Profile</h3>
+            <div class="space-y-4" id="userProfileInfo">
+                <div class="flex items-center gap-4">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-2xl font-bold" id="profileAvatar">
+                        <span id="profileInitials">U</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-500">Name</p>
+                        <p class="text-lg font-medium text-gray-900" id="profileName">Loading...</p>
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 pt-4">
+                    <p class="text-sm text-gray-500 mb-1">Email</p>
+                    <p class="text-base text-gray-900" id="profileEmail">Loading...</p>
+                </div>
+                <div class="border-t border-gray-200 pt-4">
+                    <p class="text-sm text-gray-500 mb-1">Authentication Method</p>
+                    <p class="text-base text-gray-900" id="profileProvider">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Placeholder for future actions -->
+                <div class="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <h4 class="font-medium text-gray-900 mb-2">Feature 1</h4>
+                    <p class="text-sm text-gray-600">Coming soon...</p>
+                </div>
+                <div class="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <h4 class="font-medium text-gray-900 mb-2">Feature 2</h4>
+                    <p class="text-sm text-gray-600">Coming soon...</p>
+                </div>
+                <div class="p-4 border border-gray-200 rounded-lg hover:border-primary transition-colors cursor-pointer">
+                    <h4 class="font-medium text-gray-900 mb-2">Feature 3</h4>
+                    <p class="text-sm text-gray-600">Coming soon...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Authentication Guard - Must be loaded first -->
+    <script type="module" src="js/auth-checker.js"></script>
+    <!-- Scripts -->
+    <script type="module">
+        import { getUserInfo } from './js/utils/auth.js';
+        import { signOut } from './js/utils/auth.js';
+        import { initSupabase } from './js/utils/supabase-init.js';
+
+        // Initialize Supabase
+        await initSupabase();
+
+        // Load user information
+        async function loadUserInfo() {
+            try {
+                const user = await getUserInfo();
+                
+                if (!user) {
+                    // No user found, redirect to login
+                    window.location.href = '/src/auth/presentation/auth-page.html';
+                    return;
+                }
+
+                // Display user information
+                const userName = user.name || user.email?.split('@')[0] || 'User';
+                const userEmail = user.email || 'No email';
+                const userProvider = user.provider === 'google' ? 'Google Sign-In' : 
+                                    user.provider === 'dev-bypass' ? 'Dev Bypass (Testing)' : 
+                                    'Unknown';
+
+                // Update welcome message
+                const welcomeMessage = document.getElementById('welcomeMessage');
+                if (welcomeMessage) {
+                    welcomeMessage.textContent = `Welcome, ${userName}!`;
+                }
+
+                // Update user info in header
+                const userNameEl = document.getElementById('userName');
+                const userEmailEl = document.getElementById('userEmail');
+                if (userNameEl) userNameEl.textContent = userName;
+                if (userEmailEl) userEmailEl.textContent = userEmail;
+
+                // Update avatar
+                const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                const userAvatar = document.getElementById('userAvatar');
+                const profileInitials = document.getElementById('profileInitials');
+                if (userAvatar) {
+                    const initialsEl = userAvatar.querySelector('#userInitials');
+                    if (initialsEl) initialsEl.textContent = userInitials;
+                    // If user has a picture, use it
+                    if (user.picture) {
+                        userAvatar.style.backgroundImage = `url(${user.picture})`;
+                        userAvatar.style.backgroundSize = 'cover';
+                        userAvatar.style.backgroundPosition = 'center';
+                        const initialsSpan = userAvatar.querySelector('#userInitials');
+                        if (initialsSpan) initialsSpan.style.display = 'none';
+                    }
+                }
+                if (profileInitials) profileInitials.textContent = userInitials;
+
+                // Update profile info
+                const profileName = document.getElementById('profileName');
+                const profileEmail = document.getElementById('profileEmail');
+                const profileProvider = document.getElementById('profileProvider');
+                const profileAvatar = document.getElementById('profileAvatar');
+                
+                if (profileName) profileName.textContent = userName;
+                if (profileEmail) profileEmail.textContent = userEmail;
+                if (profileProvider) profileProvider.textContent = userProvider;
+                
+                if (profileAvatar && user.picture) {
+                    profileAvatar.style.backgroundImage = `url(${user.picture})`;
+                    profileAvatar.style.backgroundSize = 'cover';
+                    profileAvatar.style.backgroundPosition = 'center';
+                    const initialsSpan = profileAvatar.querySelector('#profileInitials');
+                    if (initialsSpan) initialsSpan.style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                // Redirect to login on error
+                window.location.href = '/src/auth/presentation/auth-page.html';
+            }
+        }
+
+        // Sign out handler
+        const signOutButton = document.getElementById('signOutButton');
+        if (signOutButton) {
+            signOutButton.addEventListener('click', async () => {
+                try {
+                    // signOut() will handle redirect to auth-page.html
+                    await signOut();
+                    // No need to redirect here - signOut() handles it
+                } catch (error) {
+                    console.error('Error signing out:', error);
+                    // Fallback: redirect even if sign out fails
+                    window.location.href = '/src/auth/presentation/auth-page.html';
+                }
+            });
+        }
+
+        // Load user info when page loads
+        loadUserInfo();
+    </script>
+    <script type="module">
+        // Version check - detect updates and prompt reload
+        async function checkForUpdates() {
+            try {
+                const response = await fetch('/api/version');
+                const { version, hash } = await response.json();
+                const currentVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content');
+                
+                if (currentVersion && hash && hash !== currentVersion) {
+                    // New version available
+                    const shouldReload = confirm('A new version of the application is available. Would you like to reload to get the latest updates?');
+                    if (shouldReload) {
+                        window.location.reload();
+                    }
+                }
+            } catch (error) {
+                // Silent fail - don't interrupt user experience
+            }
+        }
+        
+        // Check for updates every 5 minutes
+        setInterval(checkForUpdates, 5 * 60 * 1000);
+        
+        // Also check when page becomes visible (user returns to tab)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                checkForUpdates();
+            }
+        });
+    </script>
+</body>
+</html>
+

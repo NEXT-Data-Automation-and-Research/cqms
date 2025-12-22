@@ -1,0 +1,74 @@
+/**
+ * Enhanced UI Components for Audit Distribution Page
+ */
+
+/* Enhanced Input Fields */
+.audit-distribution-page input,
+.audit-distribution-page select,
+.audit-distribution-page textarea {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.audit-distribution-page input:focus,
+.audit-distribution-page select:focus,
+.audit-distribution-page textarea:focus {
+  outline: none;
+  border-color: var(--home-primary-500);
+  box-shadow: 
+    0 0 0 3px rgba(99, 91, 255, 0.1),
+    0 4px 12px 0 rgba(99, 91, 255, 0.15);
+}
+
+/* Premium Scrollbar */
+.audit-distribution-page ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.audit-distribution-page ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.audit-distribution-page ::-webkit-scrollbar-thumb {
+  background: rgba(99, 91, 255, 0.3);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.audit-distribution-page ::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 91, 255, 0.5);
+  background-clip: padding-box;
+}
+
+/* Enhanced Tables */
+.audit-distribution-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.audit-distribution-page thead {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.audit-distribution-page tbody tr {
+  transition: all 0.2s ease;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.audit-distribution-page tbody tr:hover {
+  background: rgba(99, 91, 255, 0.08) !important;
+  transform: scale(1.001);
+}
+
+/* Premium Badges and Chips */
+.audit-distribution-page .badge {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2);
+}
+

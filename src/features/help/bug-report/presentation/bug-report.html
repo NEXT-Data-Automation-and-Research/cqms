@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Report a Bug | QMS</title>
+  <meta name="description" content="Quality Management System - Report a Bug">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  
+  <!-- Global Styles (includes compiled Tailwind output) -->
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  
+  <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: 'var(--home-primary-500, #635BFF)',
+            'primary-dark': 'var(--home-primary-700, #4d42d1)',
+            'dark-forest': 'var(--home-background, #100A28)',
+            'success': 'var(--color-success)',
+            'warning': 'var(--color-warning)',
+            'error': 'var(--color-error)',
+          },
+          fontFamily: {
+            sans: ['var(--font-family-primary)', 'sans-serif'],
+          },
+        },
+      },
+    }
+  </script>
+</head>
+
+<body class="home-page">
+  <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+  <main class="main-content" role="main">
+    <!-- Header Component -->
+    <div id="header-container"></div>
+
+    <!-- Main Content -->
+    <div class="px-4 py-4 max-w-7xl mx-auto w-full">
+      <h1 class="text-xl font-bold text-gray-900 mb-4">Report a Bug</h1>
+      
+      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
+        <p class="text-gray-600 text-center">This is the Report a Bug page. Content will be added here.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Authentication Guard -->
+  <script type="module" src="/js/auth-checker.js"></script>
+  
+  <!-- Sidebar Loader -->
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+</body>
+</html>
+

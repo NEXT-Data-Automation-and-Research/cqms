@@ -1,0 +1,91 @@
+<!-- Action Buttons Component -->
+<div class="header-actions">
+  <!-- Week Navigation -->
+  <div class="flex items-center gap-1.5">
+    <button class="action-btn" id="prevWeekBtn" title="Previous Week">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+    </button>
+    <button class="action-btn active" id="weekDisplay">
+      <span id="weekText">Week -</span>
+    </button>
+    <button class="action-btn" id="nextWeekBtn" title="Next Week">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Date Range Picker -->
+  <div class="date-picker-dropdown">
+    <button class="action-btn" id="dateBtn">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+      </svg>
+      <span id="dateBtnText">Date Range</span>
+      <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+      </svg>
+    </button>
+    <div class="date-dropdown-menu" id="dateDropdown">
+      <div class="filter-group">
+        <label class="filter-label">Start Date</label>
+        <input type="date" class="filter-input" id="startDate">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">End Date</label>
+        <input type="date" class="filter-input" id="endDate">
+      </div>
+      <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
+        <button class="action-btn" style="flex: 1;" onclick="applyDateFilter()">Apply</button>
+        <button class="action-btn" style="flex: 1;" onclick="clearDateFilter()">Clear</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Date Filters -->
+  <div class="flex items-center gap-1.5">
+    <button class="action-btn quick-date-btn" id="todayBtn" onclick="applyQuickDateFilter('today')">Today</button>
+    <button class="action-btn quick-date-btn" id="yesterdayBtn" onclick="applyQuickDateFilter('yesterday')">Yesterday</button>
+    <button class="action-btn quick-date-btn active" id="thisMonthBtn" onclick="applyQuickDateFilter('thisMonth')">This Month</button>
+    <button class="action-btn quick-date-btn" id="lastMonthBtn" onclick="applyQuickDateFilter('lastMonth')">Last Month</button>
+  </div>
+  
+  <!-- Filter Button -->
+  <button class="action-btn flex items-center gap-1.5" id="filterBtn">
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.875rem; height: 0.875rem;">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+    </svg>
+    <span>Filter</span>
+  </button>
+</div>
+
+<!-- Filter Panel -->
+<div class="filter-panel" id="filterPanel">
+  <div class="filter-group">
+    <label class="filter-label">Channel</label>
+    <select class="filter-select" id="filterChannel">
+      <option value="">All Channels</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Status</label>
+    <select class="filter-select" id="filterStatus">
+      <option value="">All Statuses</option>
+      <option value="pending">Pending</option>
+      <option value="in_progress">In Progress</option>
+      <option value="completed">Completed</option>
+    </select>
+  </div>
+  <div class="filter-group" id="filterAgentGroup" style="display: none;">
+    <label class="filter-label">Agent</label>
+    <select class="filter-select" id="filterAgent">
+      <option value="">All Agents</option>
+    </select>
+  </div>
+  <div class="filter-group" style="align-self: flex-end;">
+    <button class="action-btn" onclick="applyFilters()" style="margin-top: 1.125rem;">Apply Filters</button>
+  </div>
+</div>
+

@@ -1,0 +1,334 @@
+/**
+ * Auth Page Responsive Styles
+ * Modular responsive styles for authentication pages
+ * Optimized for mobile, tablet, and desktop experiences
+ */
+
+/* ============================================
+   BASE OVERRIDES FOR AUTH PAGES
+   ============================================ */
+
+.auth-page-override {
+    height: 100vh;
+    overflow: hidden;
+}
+
+.auth-left-panel .main-content {
+    min-height: auto;
+    margin-left: 0;
+    margin-top: 0;
+    flex: none;
+    display: block;
+    align-items: normal;
+    justify-content: normal;
+    padding: 0;
+    transition: none;
+    width: auto;
+    max-width: none;
+    margin-right: 0;
+    position: static;
+}
+
+/* ============================================
+   MOBILE: < 768px
+   ============================================ */
+
+@media screen and (max-width: 767px) {
+    .auth-page-override {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .auth-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    /* Compact left panel - show only essential branding */
+    .auth-left-panel {
+        flex: 0 0 auto;
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+        min-height: auto;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        background: linear-gradient(135deg, var(--color-background-dark) 0%, var(--color-primary-900) 100%);
+    }
+
+    /* Hide main heading and sub-heading on mobile */
+    .auth-left-panel .main-content {
+        display: none;
+    }
+
+    /* Compact branding - logo and text in a row */
+    .auth-branding {
+        position: static;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--spacing-sm);
+        margin: 0;
+        width: 100%;
+    }
+
+    .auth-logo {
+        width: 2rem;
+        height: 2rem;
+        margin: 0;
+        flex-shrink: 0;
+    }
+
+    .auth-brand-text {
+        font-size: var(--font-size-base);
+        font-weight: var(--font-weight-semibold);
+        margin: 0;
+        line-height: 1.2;
+        flex: 1;
+    }
+
+    /* Form section - full focus */
+    .auth-right-panel {
+        flex: 1 1 auto;
+        padding: var(--spacing-xl) var(--spacing-md) var(--spacing-2xl);
+        min-height: calc(100vh - 80px);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding-top: var(--spacing-2xl);
+    }
+
+    .auth-form,
+    .reset-form {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Typography adjustments */
+    .heading {
+        font-size: var(--font-size-2xl);
+        margin-bottom: var(--spacing-xl);
+        text-align: left;
+    }
+
+    .text {
+        font-size: var(--font-size-sm);
+        text-align: left;
+        margin-bottom: var(--spacing-lg);
+    }
+
+    /* Form elements - better touch targets */
+    .form-group {
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .textfield-label {
+        font-size: var(--font-size-sm);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .textfield {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: var(--spacing-md) var(--spacing-md);
+        min-height: 48px; /* Better touch target */
+        border-radius: var(--radius-md);
+    }
+
+    /* Buttons - larger touch targets */
+    .primary-button {
+        min-height: 48px;
+        padding: var(--spacing-md) var(--spacing-lg);
+        font-size: var(--font-size-base);
+    }
+
+    /* Google sign-in */
+    .google-signin-container {
+        margin-bottom: var(--spacing-lg);
+        margin-top: 0;
+    }
+
+    .google-signin-container .g_id_signin {
+        width: 100%;
+    }
+
+    /* Divider */
+    .divider {
+        margin: var(--spacing-lg) 0;
+        font-size: var(--font-size-xs);
+    }
+
+    /* Links */
+    .link-primary {
+        display: block;
+        text-align: center;
+        margin-top: var(--spacing-md);
+        font-size: var(--font-size-sm);
+        padding: var(--spacing-xs) 0;
+    }
+
+    /* Reset form adjustments */
+    .reset-form .text {
+        text-align: left;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE: < 480px
+   ============================================ */
+
+@media screen and (max-width: 479px) {
+    .auth-left-panel {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .auth-logo {
+        width: 1.75rem;
+        height: 1.75rem;
+    }
+
+    .auth-brand-text {
+        font-size: var(--font-size-sm);
+    }
+
+    .auth-right-panel {
+        padding: var(--spacing-lg) var(--spacing-md) var(--spacing-xl);
+        padding-top: var(--spacing-xl);
+    }
+
+    .heading {
+        font-size: var(--font-size-xl);
+        margin-bottom: var(--spacing-lg);
+    }
+
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+
+    .textfield {
+        padding: var(--spacing-sm) var(--spacing-md);
+        min-height: 44px;
+    }
+
+    .primary-button {
+        min-height: 44px;
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+}
+
+/* ============================================
+   LANDSCAPE MOBILE: < 768px and landscape
+   ============================================ */
+
+@media screen and (max-width: 767px) and (orientation: landscape) {
+    .auth-left-panel {
+        min-height: 60px;
+        padding: var(--spacing-xs) var(--spacing-md);
+    }
+
+    .auth-logo {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    .auth-brand-text {
+        font-size: var(--font-size-xs);
+    }
+
+    .auth-right-panel {
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-lg);
+        min-height: calc(100vh - 60px);
+        padding-top: var(--spacing-lg);
+    }
+
+    .heading {
+        font-size: var(--font-size-xl);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .form-group {
+        margin-bottom: var(--spacing-sm);
+    }
+
+    .textfield {
+        padding: var(--spacing-xs) var(--spacing-md);
+        min-height: 40px;
+    }
+
+    .primary-button {
+        min-height: 40px;
+        padding: var(--spacing-xs) var(--spacing-md);
+    }
+
+    .divider {
+        margin: var(--spacing-sm) 0;
+    }
+}
+
+/* ============================================
+   TABLET: 768px - 1024px
+   ============================================ */
+
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .auth-left-panel {
+        flex: 0 0 45%;
+        padding: var(--spacing-container) var(--spacing-lg);
+    }
+
+    .auth-main-heading {
+        font-size: var(--font-size-4xl);
+    }
+
+    .auth-sub-heading {
+        font-size: var(--font-size-base);
+    }
+
+    .auth-brand-text {
+        font-size: var(--font-size-2xl);
+    }
+
+    .auth-right-panel {
+        flex: 0 0 55%;
+        padding: var(--spacing-container) var(--spacing-lg);
+    }
+
+    .auth-form,
+    .reset-form {
+        max-width: 100%;
+    }
+
+    .heading {
+        font-size: var(--font-size-3xl);
+    }
+}
+
+/* ============================================
+   DESKTOP: > 1024px
+   ============================================ */
+
+@media screen and (min-width: 1025px) {
+    .auth-container {
+        flex-direction: row;
+    }
+
+    .auth-left-panel {
+        flex: 0 0 70%;
+    }
+
+    .auth-right-panel {
+        flex: 0 0 30%;
+    }
+}
+
+/* ============================================
+   LARGE DESKTOP: > 1440px
+   ============================================ */
+
+@media screen and (min-width: 1440px) {
+    .auth-form,
+    .reset-form {
+        max-width: var(--form-max-width);
+    }
+}
+

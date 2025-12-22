@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Home | QMS</title>
+  <meta name="description" content="Quality Management System Dashboard">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  
+  <!-- Global Styles (includes compiled Tailwind output) -->
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <link rel="stylesheet" href="/src/features/home/styles/home-page-inline.css">
+  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  
+  <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
+  
+  <!-- Import map for npm packages in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+    }
+  }
+  </script>
+</head>
+
+<body class="home-page">
+  <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+  <main class="main-content" role="main">
+    <!-- Dot Background Pattern Component -->
+    <div id="dot-background-container"></div>
+    
+    <!-- Header Component -->
+    <div id="header-container"></div>
+
+    <!-- Main Dashboard Content -->
+    <div class="px-4 py-6 max-w-7xl mx-auto w-full relative z-10">
+      <!-- User Profile Section -->
+      <div class="mb-6">
+        <div id="user-profile-dashboard-container"></div>
+      </div>
+
+      <!-- Date Range and Filter Controls -->
+      <div class="mb-6">
+        <div id="action-buttons-container"></div>
+      </div>
+
+      <!-- Stats Cards Grid -->
+      <div class="mb-6">
+        <div id="stats-cards-container"></div>
+      </div>
+
+      <!-- Updates and Audits Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Updates Feed Component -->
+        <div class="lg:col-span-1">
+          <div id="updates-feed-container"></div>
+        </div>
+
+        <!-- Assigned Audits Component -->
+        <div class="lg:col-span-2">
+          <div id="assigned-audits-container"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Authentication Guard - Must be loaded first -->
+  <script type="module" src="/js/auth-checker.js"></script>
+  
+  <!-- Component Loader - Must load before home-main.js -->
+  <script type="module">
+    import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
+    
+    // Load all components and then initialize home-main
+    async function initializeComponents() {
+      try {
+        // Use absolute paths from root for component files
+        await loadComponents([
+          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' },
+          { path: '/src/features/home/components/header/header.html', target: '#header-container' },
+          { path: '/src/features/home/components/user-profile-dashboard/user-profile-dashboard.html', target: '#user-profile-dashboard-container' },
+          { path: '/src/features/home/components/action-buttons/action-buttons.html', target: '#action-buttons-container' },
+          { path: '/src/features/home/components/stats-cards/stats-cards.html', target: '#stats-cards-container' },
+          { path: '/src/features/home/components/updates-feed/updates-feed.html', target: '#updates-feed-container' },
+          { path: '/src/features/home/components/assigned-audits/assigned-audits.html', target: '#assigned-audits-container' }
+        ]);
+        
+        // Load header JavaScript after component is loaded
+        const headerScript = document.createElement('script');
+        headerScript.type = 'module';
+        headerScript.src = '/js/features/home/presentation/header-handler.js';
+        document.body.appendChild(headerScript);
+        
+        // Load user profile dashboard component
+        // It will initialize itself and load data from Supabase
+        async function loadUserProfileDashboard() {
+          try {
+            // Import the component module from compiled location
+            // The component will handle waiting for Supabase internally
+            await import('/js/features/home/components/user-profile-dashboard/user-profile-dashboard.js');
+            // Load person profile enhancer that reads from secure RLS-protected people table
+            await import('/js/features/home/components/user-profile-dashboard/person-profile-loader.js');
+          } catch (error) {
+            console.error('UserProfileDashboard: Failed to load component module', error);
+            // Fallback: try to load user info directly
+            try {
+              const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+              const dashboardUserName = document.getElementById('dashboardUserName');
+              const dashboardAvatar = document.getElementById('dashboardAvatar');
+              const dashboardUserRole = document.getElementById('dashboardUserRole');
+              
+              if (dashboardUserName) dashboardUserName.textContent = userInfo.name || userInfo.email || 'Unknown User';
+              if (dashboardUserRole) dashboardUserRole.textContent = userInfo.role || 'User';
+              
+              if (dashboardAvatar && (userInfo.avatar || userInfo.picture || userInfo.avatar_url)) {
+                const img = document.createElement('img');
+                img.src = userInfo.avatar || userInfo.picture || userInfo.avatar_url;
+                img.className = 'w-full h-full rounded-full object-cover';
+                img.onerror = () => {
+                  if (userInfo.name) {
+                    const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
+                    dashboardAvatar.innerHTML = `<span class="text-sm font-bold text-white">${initials}</span>`;
+                  }
+                };
+                dashboardAvatar.innerHTML = '';
+                dashboardAvatar.appendChild(img);
+              }
+            } catch (fallbackError) {
+              console.error('UserProfileDashboard: Fallback also failed', fallbackError);
+            }
+          }
+        }
+        
+        // Load immediately after components are loaded (component will wait for Supabase internally)
+        loadUserProfileDashboard();
+        
+        // Signal that components are loaded
+        window.componentsLoaded = true;
+        window.dispatchEvent(new CustomEvent('componentsLoaded'));
+      } catch (error) {
+        console.error('Error loading components:', error);
+        // Show error message to user
+        const containers = document.querySelectorAll('[id$="-container"]');
+        containers.forEach(container => {
+          if (container.innerHTML.trim() === '') {
+            container.innerHTML = '<div class="p-4 text-red-500">Error loading component. Please refresh the page.</div>';
+          }
+        });
+      }
+    }
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeComponents);
+    } else {
+      // DOM is already ready
+      initializeComponents();
+    }
+  </script>
+  
+  <!-- Home Page JavaScript Module - Loads after components -->
+  <script type="module">
+    // Initialize secure Supabase client for window.supabaseClient
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+    
+    async function initSecureClient() {
+      try {
+        // Initialize base Supabase client
+        await initSupabase();
+        
+        // Set up secure client on window.supabaseClient
+        const secureClient = await getSecureSupabase(false); // Don't require auth initially (will check on each DB op)
+        window.supabaseClient = secureClient;
+      } catch (error) {
+        console.error('Error initializing secure Supabase client:', error);
+        // Fallback to regular client
+        const { getSupabase } = await import('/js/utils/supabase-init.js');
+        window.supabaseClient = getSupabase();
+      }
+    }
+    
+    // Ensure user profile is saved in database and localStorage is updated
+    async function ensureUserProfileSaved() {
+      try {
+        const { getCurrentSupabaseUser } = await import('/js/utils/auth.js');
+        const user = await getCurrentSupabaseUser();
+        
+        if (user) {
+          const { saveUserProfileToDatabase } = await import('/js/utils/auth.js');
+          
+          // Try to save user profile (will upsert if exists, create if new)
+          await saveUserProfileToDatabase(user);
+          
+          // After saving, fetch the full profile from database and update localStorage
+          try {
+            const { getSecureSupabase } = await import('/js/utils/secure-supabase.js');
+            const supabase = await getSecureSupabase(true);
+            
+            const { data: userData, error: dbError } = await supabase
+              .from('users')
+              .select('full_name, email, avatar_url')
+              .eq('id', user.id)
+              .single();
+            
+            if (!dbError && userData) {
+              // Update localStorage with complete data from database
+              const userInfo = {
+                id: user.id,
+                email: userData.email || user.email,
+                name: userData.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+                avatar: userData.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                picture: userData.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+                avatar_url: userData.avatar_url || null,
+              };
+              
+              localStorage.setItem('userInfo', JSON.stringify(userInfo));
+              
+              // Don't dispatch event - components will load their own data independently
+              // Dispatching causes infinite loops
+            }
+          } catch (fetchError) {
+            console.warn('⚠️ Could not fetch full profile after save:', fetchError);
+          }
+        }
+      } catch (error) {
+        console.error('⚠️ Error ensuring user profile saved:', error);
+        // Don't block page load if this fails
+      }
+    }
+    
+    // Wait for components to load before initializing home-main
+    async function loadHomeMain() {
+      // Initialize secure client first
+      await initSecureClient();
+      
+      // Ensure user profile is saved (fallback)
+      await ensureUserProfileSaved();
+      
+      if (window.componentsLoaded) {
+        // Components already loaded
+        await import('/js/features/home/infrastructure/home-main.js');
+      } else {
+        // Wait for components to load
+        await new Promise((resolve) => {
+          window.addEventListener('componentsLoaded', resolve, { once: true });
+        });
+        await import('/js/features/home/infrastructure/home-main.js');
+      }
+    }
+    
+    loadHomeMain().catch(error => {
+      console.error('Error loading home-main.js:', error);
+    });
+  </script>
+  
+  <!-- Sidebar Loader - Loads the navigation sidebar -->
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+</body>
+</html>

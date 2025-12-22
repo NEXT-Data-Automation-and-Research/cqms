@@ -1,0 +1,395 @@
+:root {
+  /* Primary Brand Colors */
+  --primary-color: #1a733e;
+  --primary-dark: #0d5e3a;
+  --primary-light: #e0ffb3;
+  --dark-forest: #032816;
+
+  /* Background Colors */
+  --background-color: #f8f7f2;
+  --background-dark: #1a733e;
+  --background-white: #ffffff;
+
+  /* Text Colors */
+  --text-color: #000000;
+  --text-secondary: #333333;
+  --text-light: #e0ffb3;
+  --text-muted: #a0a0a0;
+  --white: #ffffff;
+
+  /* Gray Scale */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Status Colors */
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --error-color: #ef4444;
+  --info-color: #3b82f6;
+
+  /* Border Colors */
+  --border-light: #d1d1d1;
+  --border-focus: #1a733e;
+
+  /* Interactive Colors */
+  --button-primary: #124f2a;
+  --button-primary-hover: #1a733e;
+  --link-color: #1a733e;
+  --link-hover: #124f2a;
+
+  /* Transitions */
+  --transition: all 0.3s ease;
+  --transition-fast: all 0.15s ease;
+  --transition-slow: all 0.5s ease;
+
+  /* Responsive Layout Units */
+  --sidebar-width: clamp(12rem, 15vw, 20rem);
+  --sidebar-collapsed: clamp(3rem, 4vw, 4rem);
+  --main-content-padding: clamp(1rem, 2vw, 3rem);
+  --button-padding: clamp(0.75rem, 1vw, 1rem) clamp(1.5rem, 2vw, 2rem);
+  --icon-size: clamp(1rem, 1.25vw, 1.25rem);
+  --avatar-size: clamp(2rem, 2.5vw, 2.5rem);
+
+  /* Content Max Widths for Large Screens */
+  --content-max-width: 100vw;
+  --form-max-width: 90vw;
+  --text-max-width: 90vw;
+
+  /* Font System */
+  --font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-xs: 0.625rem;
+  --font-sm: 0.75rem;
+  --font-base: 0.875rem;
+  --font-md: 0.9rem;
+  --font-lg: 1rem;
+  --font-xl: 1.125rem;
+  --font-2xl: 1.25rem;
+  --font-3xl: 1.375rem;
+  --font-4xl: 1.5rem;
+  --font-5xl: 1.625rem;
+  --font-6xl: 1.75rem;
+  --font-7xl: 2rem;
+  --font-8xl: 2.25rem;
+  --font-9xl: 2.5rem;
+  --font-10xl: 2.75rem;
+
+  /* Shadows */
+  --shadow-sm: 0 0.0625rem 0.125rem 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 0.25rem 0.375rem -0.0625rem rgba(0, 0, 0, 0.1), 0 0.125rem 0.25rem -0.0625rem rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 0.625rem 0.9375rem -0.1875rem rgba(0, 0, 0, 0.1), 0 0.25rem 0.375rem -0.125rem rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 1.25rem 1.5625rem -0.3125rem rgba(0, 0, 0, 0.1), 0 0.625rem 0.625rem -0.3125rem rgba(0, 0, 0, 0.04);
+
+  /* Z-Index Scale */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+}
+
+/* Dark Mode Variables */
+[data-theme="dark"] {
+  /* Background Colors */
+  --background-color: #1a1a1a;
+  --background-dark: #0d5e3a;
+  --background-white: #2d2d2d;
+
+  /* Text Colors */
+  --text-color: #e5e5e5;
+  --text-secondary: #b3b3b3;
+  --text-light: #e0ffb3;
+  --text-muted: #808080;
+
+  /* Gray Scale (inverted for dark mode) */
+  --gray-50: #1f2937;
+  --gray-100: #374151;
+  --gray-200: #4b5563;
+  --gray-300: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-500: #d1d5db;
+  --gray-600: #e5e7eb;
+  --gray-700: #f3f4f6;
+  --gray-800: #f9fafb;
+  --gray-900: #ffffff;
+
+  /* Border Colors */
+  --border-light: #404040;
+  --border-focus: #2d8650;
+
+  /* Interactive Colors */
+  --button-primary: #2d8650;
+  --button-primary-hover: #3a9d61;
+  --link-color: #4db374;
+  --link-hover: #5fc085;
+
+  /* Shadows (lighter for dark mode) */
+  --shadow-sm: 0 0.0625rem 0.125rem 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 0.25rem 0.375rem -0.0625rem rgba(0, 0, 0, 0.4), 0 0.125rem 0.25rem -0.0625rem rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 0.625rem 0.9375rem -0.1875rem rgba(0, 0, 0, 0.4), 0 0.25rem 0.375rem -0.125rem rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 1.25rem 1.5625rem -0.3125rem rgba(0, 0, 0, 0.4), 0 0.625rem 0.625rem -0.3125rem rgba(0, 0, 0, 0.3);
+}
+
+/* Global Scrollbar Hiding */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* WebKit browsers (Chrome, Safari, Edge) */
+}
+
+/* Ensure body and html don't show scrollbars */
+html, body {
+  overflow-x: hidden; /* Hide horizontal scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none; /* WebKit browsers */
+}
+
+:root {
+  /* Login-specific variables */
+  --spacing-xs: clamp(0.25rem, 0.5vw, 0.5rem);
+  --spacing-sm: clamp(0.5rem, 1vw, 1rem);
+  --spacing-md: clamp(0.75rem, 1.5vw, 1.5rem);
+  --spacing-lg: clamp(1rem, 2vw, 2rem);
+  --spacing-xxl: clamp(2rem, 4vw, 4rem);
+  
+  --radius-sm: clamp(0.125rem, 0.25vw, 0.375rem);
+  
+  --transition-normal: 0.3s ease;
+  
+  --container-padding: clamp(1rem, 3vw, 3.75rem);
+  --form-max-width: clamp(18rem, 25vw, 20rem);
+  --logo-size: clamp(4rem, 6vw, 6.25rem);
+  
+  /* Login-specific font sizes */
+  --font-xs-login: 0.7rem;
+  --font-sm-login: 0.8rem;
+  --font-base-login: 0.9rem;
+  --font-md-login: 1rem;
+  --font-lg-login: 1.1rem;
+  --font-xl-login: 1.2rem;
+  --font-4xl-login: 1.5rem;
+  --font-5xl-login: 1.6rem;
+  --font-12xl: 5rem;
+}
+
+/* Common Form Styles */
+.form-group { 
+  margin-bottom: 0.9375rem; 
+}
+
+.form-group:last-of-type {
+  margin-bottom: 0.5rem;
+}
+
+.form-label {
+  color: var(--text-color);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  margin-bottom: 0.375rem;
+  display: block;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background-color: var(--background-white);
+  border: 0.0625rem solid var(--border-light);
+  border-radius: var(--radius-sm);
+  color: var(--text-color);
+  font-size: var(--font-base);
+  transition: border-color var(--transition-normal);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+}
+
+.form-input::placeholder { 
+  color: var(--text-muted); 
+}
+
+/* Common Button Styles */
+.btn-primary {
+  width: 100%;
+  padding: 0.625rem 1.25rem;
+  background-color: var(--button-primary);
+  color: var(--white);
+  border: 0.0625rem solid transparent;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-family);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0.9375rem;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.375rem;
+}
+
+.btn-primary:hover { 
+  background-color: var(--button-primary-hover);
+}
+
+.btn-primary:active {
+  background-color: var(--button-primary);
+}
+
+.btn-primary:focus {
+  outline: 0.125rem solid var(--button-primary);
+  outline-offset: 0.125rem;
+}
+
+/* Common Link Styles */
+.link-primary {
+  color: var(--link-color);
+  text-decoration: none;
+  font-size: var(--font-xs);
+  text-align: center;
+  display: block;
+  transition: color var(--transition-normal);
+}
+
+.link-primary:hover { 
+  color: var(--link-hover); 
+}
+
+/* Message Styles */
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 0.0625rem solid #c3e6cb;
+  margin-bottom: 1.25rem;
+  font-size: var(--font-sm);
+}
+
+[data-theme="dark"] .success-message {
+  background-color: #1e4d2e;
+  color: #a3d9a3;
+  border-color: #2d5a3d;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 0.0625rem solid #f5c6cb;
+  margin-bottom: 1.25rem;
+  font-size: var(--font-sm);
+}
+
+[data-theme="dark"] .error-message {
+  background-color: #4d1e1e;
+  color: #f5a3a3;
+  border-color: #5a2d2d;
+}
+
+.password-error {
+  color: var(--error-color);
+  font-size: var(--font-sm);
+  margin-top: 0.25rem;
+  min-height: 1.25rem;
+}
+
+/* Divider Styles */
+.divider {
+  display: flex;
+  align-items: center;
+  margin: var(--spacing-lg) 0;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: clamp(0.03125rem, 0.0625vw, 0.0625rem);
+  background-color: var(--border-light);
+}
+
+.divider span {
+  padding: 0 var(--spacing-sm);
+  background-color: var(--background-color);
+}
+
+/* Dark Mode Specific Adjustments */
+[data-theme="dark"] .confirmation-dialog {
+  background: var(--background-white);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .confirmation-title {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .confirmation-message {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .confirmation-btn-cancel {
+  background-color: var(--gray-100);
+  color: var(--text-color);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] .confirmation-btn-cancel:hover {
+  background-color: var(--gray-200);
+  border-color: var(--gray-300);
+}
+
+[data-theme="dark"] .confirmation-do-not-show-again-label:hover {
+  background-color: var(--gray-100);
+}
+
+[data-theme="dark"] .confirmation-do-not-show-again-checkbox {
+  border-color: var(--border-light);
+  background-color: var(--background-white);
+}
+
+[data-theme="dark"] .confirmation-do-not-show-again-text {
+  color: var(--text-secondary);
+}
+
+/* Main Content - Defined in sidebar.css */
+
+/* Page Heading moves with Main Content */
+.page-heading {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.75em;
+  font-weight: 700;
+  margin: 0;
+  z-index: 1;
+}

@@ -1,0 +1,187 @@
+/**
+ * Primary Button Component Styles
+ * Reusable primary button with loading states and variants
+ */
+
+/* ============================================
+   PRIMARY BUTTON BASE
+   ============================================ */
+
+.primary-button {
+  /* Layout */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  
+  /* Typography */
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+  
+  /* Visual */
+  background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-500) 100%);
+  color: var(--color-text-inverse);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 4px rgba(100, 92, 254, 0.2);
+  
+  /* Spacing */
+  padding: var(--spacing-sm) var(--spacing-lg);
+  
+  /* Interaction */
+  cursor: pointer;
+  user-select: none;
+  transition: all var(--transition-fast);
+  
+  /* Positioning */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Button Text */
+.primary-button__text {
+  position: relative;
+  z-index: 1;
+  transition: opacity var(--transition-fast);
+}
+
+/* Loader (hidden by default) */
+.primary-button__loader {
+  display: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-text-inverse);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: primary-button-spin 0.6s linear infinite;
+}
+
+/* ============================================
+   BUTTON STATES
+   ============================================ */
+
+/* Hover State */
+.primary-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-700) 0%, var(--color-primary-600) 100%);
+  box-shadow: 0 4px 8px rgba(100, 92, 254, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Active State */
+.primary-button:active:not(:disabled) {
+  background: linear-gradient(135deg, var(--color-primary-800) 0%, var(--color-primary-700) 100%);
+  box-shadow: 0 2px 4px rgba(100, 92, 254, 0.2);
+  transform: translateY(0);
+}
+
+/* Focus State */
+.primary-button:focus-visible {
+  outline: 2px solid var(--color-primary-500);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--color-primary-100);
+}
+
+/* Disabled State */
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, var(--color-secondary-400) 0%, var(--color-secondary-500) 100%);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Loading State */
+.primary-button[data-loading="true"] {
+  pointer-events: none;
+}
+
+.primary-button[data-loading="true"] .primary-button__text {
+  opacity: 0;
+}
+
+.primary-button[data-loading="true"] .primary-button__loader {
+  display: block;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* ============================================
+   BUTTON SIZES
+   ============================================ */
+
+.primary-button--sm {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+}
+
+.primary-button--md {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-base);
+  border-radius: var(--radius-md);
+}
+
+.primary-button--lg {
+  padding: var(--spacing-md) var(--spacing-xl);
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius-lg);
+}
+
+/* ============================================
+   BUTTON VARIANTS
+   ============================================ */
+
+/* Full Width */
+.primary-button--full {
+  width: 100%;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes primary-button-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* Ripple Effect on Click */
+.primary-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.primary-button:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* ============================================
+   DARK MODE SUPPORT
+   ============================================ */
+
+[data-theme="dark"] .primary-button,
+.dark .primary-button {
+  box-shadow: 0 2px 4px rgba(100, 92, 254, 0.4);
+}
+
+[data-theme="dark"] .primary-button:hover:not(:disabled),
+.dark .primary-button:hover:not(:disabled) {
+  box-shadow: 0 4px 8px rgba(100, 92, 254, 0.5);
+}
+

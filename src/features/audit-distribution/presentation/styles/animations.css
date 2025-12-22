@@ -1,0 +1,35 @@
+/**
+ * Animations and Transitions for Audit Distribution Page
+ */
+
+/* Smooth Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.audit-distribution-page .glass-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.audit-distribution-page .glass-card:nth-child(1) { animation-delay: 0.1s; }
+.audit-distribution-page .glass-card:nth-child(2) { animation-delay: 0.2s; }
+.audit-distribution-page .glass-card:nth-child(3) { animation-delay: 0.3s; }
+
+/* Loading States */
+.audit-distribution-page .loading-spinner {
+  border: 3px solid rgba(99, 91, 255, 0.1);
+  border-top-color: var(--home-primary-500);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+

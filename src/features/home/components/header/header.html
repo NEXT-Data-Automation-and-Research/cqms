@@ -1,0 +1,184 @@
+<!-- Header Component -->
+<header class="sticky top-0 z-40">
+  <div class="flex items-center justify-between px-4 py-2">
+    <!-- Left: Page Title and Description -->
+    <div class="flex flex-col gap-0.5">
+      <h1 class="text-lg font-bold text-white">Home</h1>
+      <p class="text-xs text-white/70 font-medium">Your quality management dashboard</p>
+    </div>
+
+    <!-- Right: Action Icons -->
+    <div class="flex items-center gap-2">
+      <button id="createAuditBtn" onclick="window.location.href='/src/features/create-audit/presentation/create-audit.html'" class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded text-xs font-medium hover:bg-primary-dark transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        Create Audit
+      </button>
+      <button onclick="window.location.href='search.html'" class="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </button>
+      
+      <!-- Notifications Button -->
+      <div id="notificationBtn" class="relative group">
+        <button class="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors relative">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+          </svg>
+          <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-sm"></span>
+        </button>
+        
+        <!-- Notifications Modal -->
+        <div id="notificationsModal" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl w-80 max-h-[calc(100vh-5rem)] flex flex-col opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" onmouseleave="hideNotifications()">
+          <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
+            <button onclick="hideNotifications()" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div id="notificationsList" class="flex-1 overflow-y-auto divide-y divide-gray-200">
+            <div class="px-4 py-8 text-center text-gray-500 text-xs">
+              <div class="animate-pulse">Loading notifications...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Calendar Button -->
+      <div id="calendarBtn" class="relative group">
+        <button class="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors relative">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </button>
+        
+        <!-- Calendar Events Modal -->
+        <div id="calendarModal" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl w-80 max-h-[calc(100vh-5rem)] flex flex-col opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" onmouseleave="hideCalendar()">
+          <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900">Upcoming Events</h3>
+            <button onclick="hideCalendar()" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div id="eventsList" class="flex-1 overflow-y-auto divide-y divide-gray-200">
+            <div class="px-4 py-8 text-center text-gray-500 text-xs">
+              <div class="animate-pulse">Loading events...</div>
+            </div>
+          </div>
+          <div class="px-4 py-3 border-t border-gray-200">
+            <button onclick="window.location.href='/event-management.html'" class="w-full px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10 rounded transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+              </svg>
+              Manage Events
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Grid Quick Actions Button -->
+      <div id="gridBtn" class="relative group">
+        <button class="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded transition-colors relative">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+          </svg>
+        </button>
+        
+        <!-- Grid Quick Actions Modal -->
+        <div id="gridModal" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl w-64 max-h-[calc(100vh-5rem)] flex flex-col opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" onmouseleave="hideGrid()">
+          <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-900">Quick Actions</h3>
+            <button onclick="hideGrid()" class="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div id="quickActionsList" class="flex-1 overflow-y-auto divide-y divide-gray-200">
+            <div id="quickActionCreateAudit" class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.location.href='/src/features/create-audit/presentation/create-audit.html'">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-gray-900">Create Audit</p>
+                  <p class="text-[10px] text-gray-500">Start a new audit</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.location.href='/audit-reports.html'">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-success/10 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-gray-900">View Reports</p>
+                  <p class="text-[10px] text-gray-500">Browse audit reports</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.location.href='/event-management.html'">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-warning/10 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-gray-900">Events</p>
+                  <p class="text-[10px] text-gray-500">Manage events</p>
+                </div>
+              </div>
+            </div>
+            <div id="quickActionSettings" class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.location.href='settings.html'">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded bg-gray-100 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-gray-900">Settings</p>
+                  <p class="text-[10px] text-gray-500">System settings</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- User Avatar -->
+      <div class="relative group" id="userProfileContainer">
+        <div id="userAvatar" class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-medium cursor-pointer hover:bg-primary-dark transition-colors" onclick="window.location.href='/profile.html'">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z"/>
+          </svg>
+        </div>
+        
+        <!-- Logout Button -->
+        <div id="avatarLogoutMenu" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl w-48 border border-gray-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50" onmouseleave="hideAvatarLogout()">
+          <div class="p-2">
+            <button onclick="logout()" class="w-full px-3 py-2 text-xs font-medium text-error hover:bg-error/10 rounded transition-colors flex items-center justify-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+

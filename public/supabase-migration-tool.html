@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Migration Tool (URL & Anon Key)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .warning-badge {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            color: #856404;
+            padding: 12px;
+            margin: 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .warning-badge::before {
+            content: "⚠️";
+            font-size: 20px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #d32f2f;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .progress-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .status-connecting {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .status-migrating {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+
+        .table-selection {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+            display: none;
+        }
+
+        .table-selection.active {
+            display: block;
+        }
+
+        .table-selection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .table-selection-header h3 {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .table-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .table-controls button {
+            padding: 6px 12px;
+            font-size: 12px;
+            flex: none;
+        }
+
+        .table-grid {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr 100px;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+        }
+
+        .table-row:last-child {
+            border-bottom: none;
+        }
+
+        .table-row:hover {
+            background: #f5f5f5;
+        }
+
+        .table-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .table-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .table-rename {
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .table-rename:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .table-row-count {
+            font-size: 12px;
+            color: #888;
+            text-align: right;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔄 Supabase Migration Tool</h1>
+            <p>Migrate data using Supabase URL and Anon Key</p>
+        </div>
+
+        <div class="warning-badge">
+            <strong>Note:</strong> Using anon key has limitations. You can only access data that RLS policies allow. For full access, consider using service role key or database password.
+        </div>
+
+        <div class="content">
+            <div class="alert alert-info">
+                <strong>📋 Instructions:</strong><br>
+                1. Enter your source Supabase URL and anon key<br>
+                2. Enter your destination Supabase URL and anon key<br>
+                3. Enter table names (comma-separated) that you want to migrate<br>
+                4. Test connections to verify access<br>
+                5. Load tables to see row counts and configure renames<br>
+                6. Start migration and monitor progress
+            </div>
+
+            <form id="migrationForm">
+                <div class="form-section">
+                    <h2>📥 Source Database</h2>
+                    <div class="form-group">
+                        <label for="sourceUrl">Supabase URL *</label>
+                        <input type="text" id="sourceUrl" required 
+                               placeholder="https://your-project.supabase.co">
+                        <div class="help-text">Your source Supabase project URL</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="sourceAnonKey">Anon Key *</label>
+                        <input type="password" id="sourceAnonKey" required 
+                               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                        <div class="help-text">Find this in Supabase Dashboard → Settings → API → anon/public key</div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>📤 Destination Database</h2>
+                    <div class="form-group">
+                        <label for="destUrl">Supabase URL *</label>
+                        <input type="text" id="destUrl" required 
+                               placeholder="https://your-project.supabase.co">
+                        <div class="help-text">Your destination Supabase project URL</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="destAnonKey">Anon Key *</label>
+                        <input type="password" id="destAnonKey" required 
+                               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                        <div class="help-text">Find this in Supabase Dashboard → Settings → API → anon/public key</div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>📊 Tables Configuration</h2>
+                    <div class="form-group">
+                        <label for="tableNames">Table Names (comma-separated) *</label>
+                        <textarea id="tableNames" required 
+                                  placeholder="users, posts, comments&#10;Or one per line:&#10;users&#10;posts&#10;comments"></textarea>
+                        <div class="help-text">Enter table names separated by commas or newlines. These tables will be checked and can be migrated.</div>
+                    </div>
+                    <div class="form-group">
+                        <button type="button" class="btn-secondary" id="loadTablesBtn">
+                            📋 Load Tables Info
+                        </button>
+                        <div class="help-text">Load table information (row counts) and configure which tables to migrate and their new names</div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>⚙️ Options</h2>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="skipExisting" checked>
+                            Skip tables that already exist in destination
+                        </label>
+                    </div>
+                </div>
+
+                <div class="table-selection" id="tableSelection">
+                    <div class="table-selection-header">
+                        <h3>📊 Select Tables to Migrate</h3>
+                        <div class="table-controls">
+                            <button type="button" class="btn-secondary" id="selectAllBtn">Select All</button>
+                            <button type="button" class="btn-secondary" id="selectNoneBtn">Select None</button>
+                        </div>
+                    </div>
+                    <div class="table-grid" id="tableGrid">
+                        <!-- Tables will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" id="testBtn">
+                        🧪 Test Connections
+                    </button>
+                    <button type="button" class="btn-primary" id="startBtn">
+                        🚀 Start Migration
+                    </button>
+                    <button type="button" class="btn-danger" id="stopBtn" disabled>
+                        ⏹ Stop
+                    </button>
+                </div>
+            </form>
+
+            <div class="progress-section" id="progressSection">
+                <h2>📊 Migration Progress</h2>
+                
+                <div id="statusMessage" class="status-message"></div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                </div>
+
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTables">-</div>
+                        <div class="stat-label">Tables</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statRows">-</div>
+                        <div class="stat-label">Rows</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTime">-</div>
+                        <div class="stat-label">Time</div>
+                    </div>
+                </div>
+
+                <div id="currentTable" style="margin-top: 15px; font-size: 14px; color: #666;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:4000/api/supabase-migration';
+
+        const form = document.getElementById('migrationForm');
+        const testBtn = document.getElementById('testBtn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const loadTablesBtn = document.getElementById('loadTablesBtn');
+        const tableSelection = document.getElementById('tableSelection');
+        const tableGrid = document.getElementById('tableGrid');
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        const selectNoneBtn = document.getElementById('selectNoneBtn');
+        const progressSection = document.getElementById('progressSection');
+        const statusMessage = document.getElementById('statusMessage');
+        const progressFill = document.getElementById('progressFill');
+        const currentTable = document.getElementById('currentTable');
+
+        let progressInterval = null;
+        let tablesData = [];
+
+        // Test connections
+        testBtn.addEventListener('click', async () => {
+            const config = getConfig();
+            if (!config) return;
+
+            testBtn.disabled = true;
+            testBtn.innerHTML = '<span class="loading"></span> Testing...';
+
+            try {
+                const response = await fetch(`${API_URL}/test-connections`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config })
+                });
+
+                const result = await response.json();
+
+                if (result.source && result.destination) {
+                    alert('✅ Both connections successful!');
+                } else {
+                    alert(`❌ Connection test failed:\nSource: ${result.source ? '✅' : '❌'}\nDestination: ${result.destination ? '✅' : '❌'}`);
+                }
+            } catch (error) {
+                alert('❌ Error testing connections: ' + error.message);
+            } finally {
+                testBtn.disabled = false;
+                testBtn.innerHTML = '🧪 Test Connections';
+            }
+        });
+
+        // Load tables from source
+        loadTablesBtn.addEventListener('click', async () => {
+            const config = getConfig();
+            if (!config) return;
+
+            const tableNamesInput = document.getElementById('tableNames').value.trim();
+            if (!tableNamesInput) {
+                alert('Please enter table names first');
+                return;
+            }
+
+            // Parse table names (comma or newline separated)
+            const tableNames = tableNamesInput
+                .split(/[,\n]/)
+                .map(name => name.trim())
+                .filter(name => name.length > 0);
+
+            if (tableNames.length === 0) {
+                alert('Please enter at least one table name');
+                return;
+            }
+
+            loadTablesBtn.disabled = true;
+            loadTablesBtn.innerHTML = '<span class="loading"></span> Loading...';
+
+            try {
+                const response = await fetch(`${API_URL}/get-tables-info`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config, tableNames })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    alert('❌ Error loading tables: ' + result.error);
+                    return;
+                }
+
+                tablesData = result.tables || [];
+                renderTables();
+                tableSelection.classList.add('active');
+                
+            } catch (error) {
+                alert('❌ Error loading tables: ' + error.message);
+            } finally {
+                loadTablesBtn.disabled = false;
+                loadTablesBtn.innerHTML = '📋 Load Tables Info';
+            }
+        });
+
+        // Render tables with checkboxes and rename inputs
+        function renderTables() {
+            tableGrid.innerHTML = '';
+            
+            if (tablesData.length === 0) {
+                tableGrid.innerHTML = '<div style="padding: 20px; text-align: center; color: #888;">No accessible tables found. Check your table names and RLS policies.</div>';
+                return;
+            }
+            
+            tablesData.forEach((table) => {
+                const row = document.createElement('div');
+                row.className = 'table-row';
+                row.innerHTML = `
+                    <input type="checkbox" class="table-checkbox" data-table="${table.name}" checked>
+                    <div class="table-name">${table.name}</div>
+                    <input type="text" class="table-rename" data-table="${table.name}" 
+                           value="${table.name}" placeholder="New name (optional)">
+                    <div class="table-row-count">${table.rowCount.toLocaleString()} rows</div>
+                `;
+                tableGrid.appendChild(row);
+            });
+        }
+
+        // Select all tables
+        selectAllBtn.addEventListener('click', () => {
+            document.querySelectorAll('.table-checkbox').forEach(cb => {
+                cb.checked = true;
+            });
+        });
+
+        // Select none
+        selectNoneBtn.addEventListener('click', () => {
+            document.querySelectorAll('.table-checkbox').forEach(cb => {
+                cb.checked = false;
+            });
+        });
+
+        // Get selected tables and mappings
+        function getSelectedTablesAndMappings() {
+            const selectedTables = [];
+            const tableMappings = {};
+
+            document.querySelectorAll('.table-checkbox:checked').forEach(checkbox => {
+                const sourceTable = checkbox.dataset.table;
+                const renameInput = document.querySelector(`.table-rename[data-table="${sourceTable}"]`);
+                const destTable = renameInput.value.trim() || sourceTable;
+                
+                selectedTables.push(sourceTable);
+                if (destTable !== sourceTable) {
+                    tableMappings[sourceTable] = destTable;
+                }
+            });
+
+            return { selectedTables, tableMappings };
+        }
+
+        // Start migration
+        startBtn.addEventListener('click', async () => {
+            const config = getConfig();
+            if (!config) return;
+
+            // Get selected tables and mappings
+            const { selectedTables, tableMappings } = getSelectedTablesAndMappings();
+            
+            if (selectedTables.length === 0) {
+                alert('⚠️ Please select at least one table to migrate');
+                return;
+            }
+
+            const mappingInfo = Object.keys(tableMappings).length > 0 
+                ? `\n\nTable renames:\n${Object.entries(tableMappings).map(([src, dest]) => `  ${src} → ${dest}`).join('\n')}`
+                : '';
+
+            if (!confirm(`⚠️ Are you sure you want to start the migration?\n\nSelected tables: ${selectedTables.length}${mappingInfo}\n\nThis will copy data from the source to the destination database.`)) {
+                return;
+            }
+
+            const options = {
+                skipExisting: document.getElementById('skipExisting').checked,
+                selectedTables: selectedTables,
+                tableMappings: Object.keys(tableMappings).length > 0 ? tableMappings : undefined
+            };
+
+            startBtn.disabled = true;
+            testBtn.disabled = true;
+            stopBtn.disabled = false;
+            progressSection.classList.add('active');
+
+            try {
+                const response = await fetch(`${API_URL}/start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ config, options })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Start polling for progress
+                    startProgressPolling();
+                } else {
+                    alert('❌ Failed to start migration: ' + (result.error || 'Unknown error'));
+                    resetUI();
+                }
+            } catch (error) {
+                alert('❌ Error starting migration: ' + error.message);
+                resetUI();
+            }
+        });
+
+        // Stop migration
+        stopBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to stop the migration?')) {
+                return;
+            }
+
+            try {
+                await fetch(`${API_URL}/stop`, { method: 'POST' });
+                resetUI();
+            } catch (error) {
+                console.error('Error stopping migration:', error);
+            }
+        });
+
+        // Get form config
+        function getConfig() {
+            const sourceUrl = document.getElementById('sourceUrl').value.trim();
+            const sourceKey = document.getElementById('sourceAnonKey').value.trim();
+            const destUrl = document.getElementById('destUrl').value.trim();
+            const destKey = document.getElementById('destAnonKey').value.trim();
+
+            if (!sourceUrl || !sourceKey || !destUrl || !destKey) {
+                alert('Please fill in all required fields');
+                return null;
+            }
+
+            return {
+                source: {
+                    url: sourceUrl,
+                    anonKey: sourceKey
+                },
+                destination: {
+                    url: destUrl,
+                    anonKey: destKey
+                }
+            };
+        }
+
+        // Start polling for progress
+        function startProgressPolling() {
+            if (progressInterval) clearInterval(progressInterval);
+
+            progressInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_URL}/progress`);
+                    const progress = await response.json();
+                    updateProgress(progress);
+
+                    if (progress.status === 'completed' || progress.status === 'error') {
+                        clearInterval(progressInterval);
+                        startBtn.disabled = false;
+                        testBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    }
+                } catch (error) {
+                    console.error('Error fetching progress:', error);
+                }
+            }, 1000); // Poll every second
+        }
+
+        // Update progress UI
+        function updateProgress(progress) {
+            // Update status message
+            statusMessage.className = `status-message status-${progress.status}`;
+            statusMessage.textContent = progress.message || progress.status;
+
+            // Update progress bar
+            let percent = 0;
+            if (progress.totalTables && progress.completedTables !== undefined) {
+                percent = Math.round((progress.completedTables / progress.totalTables) * 100);
+            }
+            progressFill.style.width = percent + '%';
+            progressFill.textContent = percent + '%';
+
+            // Update stats
+            document.getElementById('statTables').textContent = 
+                progress.completedTables !== undefined && progress.totalTables 
+                    ? `${progress.completedTables}/${progress.totalTables}`
+                    : '-';
+            
+            document.getElementById('statRows').textContent = 
+                progress.completedRows !== undefined && progress.totalRows
+                    ? `${progress.completedRows.toLocaleString()}/${progress.totalRows.toLocaleString()}`
+                    : '-';
+
+            // Update time
+            if (progress.startTime) {
+                const start = new Date(progress.startTime);
+                const end = progress.endTime ? new Date(progress.endTime) : new Date();
+                const seconds = Math.round((end - start) / 1000);
+                document.getElementById('statTime').textContent = formatTime(seconds);
+            }
+
+            // Update current table
+            if (progress.currentTable) {
+                currentTable.textContent = `Current: ${progress.currentTable}`;
+            }
+        }
+
+        // Format time
+        function formatTime(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}m ${secs}s`;
+        }
+
+        // Reset UI
+        function resetUI() {
+            startBtn.disabled = false;
+            testBtn.disabled = false;
+            stopBtn.disabled = true;
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+        }
+    </script>
+</body>
+</html>
+
+
+
+

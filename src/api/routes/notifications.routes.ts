@@ -1,0 +1,175 @@
+/**
+ * Notifications API Routes
+ * Server-side API for notification operations
+ */
+
+import { Router, Response } from 'express';
+import { getServerSupabase } from '../../core/config/server-supabase.js';
+import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { createLogger } from '../../utils/logger.js';
+
+const router = Router();
+const logger = createLogger('NotificationsAPI');
+
+/**
+ * GET /api/notifications
+ * Get user's notifications
+ */
+router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+
+    const { status, limit = 50, offset = 0 } = req.query;
+
+    let query = supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
+
+    if (status) {
+      query = query.eq('status', status as string);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logger.error('Error fetching notifications:', error);
+      res.status(500).json({ error: 'Failed to fetch notifications' });
+      return;
+    }
+
+    res.json({ data: data || [] });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/notifications
+ * Create a notification
+ */
+router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+
+    const { title, body, icon_url, image_url, action_url, type, category, metadata } = req.body;
+
+    // Validate required fields
+    if (!title || !body) {
+      res.status(400).json({ error: 'Title and body are required' });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        title,
+        body,
+        icon_url: icon_url || null,
+        image_url: image_url || null,
+        action_url: action_url || null,
+        type: type || 'info',
+        category: category || null,
+        metadata: metadata || {},
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Error creating notification:', error);
+      res.status(500).json({ error: 'Failed to create notification' });
+      return;
+    }
+
+    logger.info(`Notification created for user ${userId}`);
+    res.status(201).json({ data });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * PATCH /api/notifications/:id
+ * Update a notification (e.g., mark as read)
+ */
+router.patch('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+    const notificationId = req.params.id;
+
+    const { status, read_at } = req.body;
+
+    // Build update object
+    const updates: any = {};
+    if (status !== undefined) updates.status = status;
+    if (read_at !== undefined) updates.read_at = read_at;
+
+    // Ensure user can only update their own notifications
+    const { data, error } = await supabase
+      .from('notifications')
+      .update(updates)
+      .eq('id', notificationId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Error updating notification:', error);
+      res.status(500).json({ error: 'Failed to update notification' });
+      return;
+    }
+
+    if (!data) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+
+    res.json({ data });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * DELETE /api/notifications/:id
+ * Delete a notification
+ */
+router.delete('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+    const notificationId = req.params.id;
+
+    // Ensure user can only delete their own notifications
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+
+    if (error) {
+      logger.error('Error deleting notification:', error);
+      res.status(500).json({ error: 'Failed to delete notification' });
+      return;
+    }
+
+    logger.info(`Notification ${notificationId} deleted by user ${userId}`);
+    res.status(204).send();
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;
+

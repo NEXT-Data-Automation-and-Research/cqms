@@ -1,0 +1,60 @@
+/**
+ * Dot Background Pattern Component
+ * Reusable dot grid background with radial gradient mask
+ */
+
+/* Container for dot background - must be positioned */
+#dot-background-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Dot Background Pattern */
+.dot-background {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 20px 20px;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.3) 1px,
+    transparent 1px
+  );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+/* Radial gradient mask for faded edges - creates vignette effect */
+.dot-background-mask {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 20%,
+    var(--home-background, #100A28) 60%
+  );
+  z-index: 1;
+}
+
+/* Ensure main content is positioned relative and has proper z-index */
+.main-content {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+}
+
+/* Ensure content containers are above background */
+.main-content > div:not(#dot-background-container) {
+  position: relative;
+  z-index: 10;
+}
+

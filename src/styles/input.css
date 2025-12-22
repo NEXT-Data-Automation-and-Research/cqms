@@ -1,0 +1,20 @@
+/* Import global theme configuration */
+@import './theme.css';
+
+/* Import auth components */
+@import './auth-components.css';
+
+/* Import auth responsive styles */
+@import './auth-responsive.css';
+
+/* Import reusable components */
+@import '../components/buttons/primary-button.css';
+
+/* Import page transition styles */
+@import './page-transition.css';
+
+/* Tailwind CSS Directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
