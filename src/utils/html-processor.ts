@@ -25,11 +25,6 @@ function shouldInjectAuthChecker(htmlPath: string): boolean {
     return false;
   }
   
-  // Don't inject into migration tools (admin/dev tools, intentionally unprotected)
-  if (htmlPath.includes('migration-tool.html') || htmlPath.includes('supabase-migration-tool.html')) {
-    return false;
-  }
-  
   // Inject into all other HTML pages
   return true;
 }

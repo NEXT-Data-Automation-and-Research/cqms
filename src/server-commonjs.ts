@@ -7,8 +7,6 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { createLogger } from './utils/logger.js';
 import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
-import migrationRouter from './migration/migration-api.js';
-import supabaseMigrationRouter from './migration/supabase-migration-api.js';
 
 // Load environment variables
 dotenv.config();
@@ -254,27 +252,6 @@ app.get('/profile.html', (req: express.Request, res: express.Response): void => 
   }
 });
 
-// Migration tools - these should NOT have auth-checker (admin/dev tools)
-// They are intentionally unprotected for development/admin use
-app.get('/migration-tool.html', (req: express.Request, res: express.Response): void => {
-  try {
-    const html = injectVersionIntoHTML('migration-tool.html', appVersion);
-    res.send(html);
-  } catch (error) {
-    serverLogger.error('Error processing migration-tool.html:', error);
-    res.sendFile(path.join(__dirname, '../public', 'migration-tool.html'));
-  }
-});
-
-app.get('/supabase-migration-tool.html', (req: express.Request, res: express.Response): void => {
-  try {
-    const html = injectVersionIntoHTML('supabase-migration-tool.html', appVersion);
-    res.send(html);
-  } catch (error) {
-    serverLogger.error('Error processing supabase-migration-tool.html:', error);
-    res.sendFile(path.join(__dirname, '../public', 'supabase-migration-tool.html'));
-  }
-});
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, '../public')));
@@ -359,20 +336,15 @@ app.use('/api', csrfProtection);
 import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
-import sandboxRouter from './api/routes/sandbox.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
-app.use('/api', sandboxRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Migration API routes
-app.use('/api/migration', migrationRouter);
-app.use('/api/supabase-migration', supabaseMigrationRouter);
 
 // Serve index.html for root route (with version injection)
 app.get('/', (req: express.Request, res: express.Response): void => {
