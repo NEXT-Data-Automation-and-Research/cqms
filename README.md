@@ -225,15 +225,6 @@ When contributing to this project:
 
 ISC
 
-## 👥 Authors
-
-- **Aminul Islam** - Design & Development
-- **Saif Alam** - Design & Development
-
-## 🙏 Acknowledgments
-
-Built as a replacement for Scorebuddy, providing complete data ownership and cost savings while delivering superior functionality tailored to internal quality management needs.
-
 ---
 
 For detailed documentation, see the [docs](docs/) directory.

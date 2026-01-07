@@ -1,12 +1,12 @@
 # CQMS Project Description
 
-In a major step forward for audit speed, data ownership, and long term cost control, Aminul Islam and Saif Alam designed and built an internal CQMS (Communication Quality Management System) to support QC led communication audits for the CEx department.
+In a major step forward for audit speed, data ownership, and long term cost control, an internal CQMS (Communication Quality Management System) was designed and built to support QC led communication audits for the CEx department.
 
 While CQMS is currently used for CEx, it was built with a bigger goal in mind. The system is flexible by design. Audit rules, scoring, and workflows can be adjusted. This allows CQMS to support communication audits across other departments in the future without rebuilding anything. Built on Clean Architecture principles with modular design, the platform features 15+ core modules including audit creation, distribution, performance tracking, coaching, reversals, and comprehensive analytics, all designed to scale with organizational growth.
 
 CQMS runs on an internal database powered by Supabase, which means all audit data, scores, and feedback stay fully in house. The platform implements strong security measures with database-level protection, authentication controls, and comprehensive audit logging to keep all quality information safe and secure. With 9 database migrations establishing a robust schema and complete data isolation, CQMS is built as a strong potential replacement for the paid tool Scorebuddy, helping the company reduce long term vendor costs while using a system designed exactly for internal quality needs.
 
-By integrating Intercom directly into CQMS, Aminul and Saif removed the need to switch between tools. The full audit journey from chat review to scoring, feedback, acknowledgment, and reversals now happens in one place. This streamlined workflow, combined with AI-powered audit assistance and intelligent conversation filtering, significantly reduced audit time, allowing the QC team to complete more audits in the same time and substantially increase overall audit capacity.
+By integrating Intercom directly into CQMS, the need to switch between tools was removed. The full audit journey from chat review to scoring, feedback, acknowledgment, and reversals now happens in one place. This streamlined workflow, combined with AI-powered audit assistance and intelligent conversation filtering, significantly reduced audit time, allowing the QC team to complete more audits in the same time and substantially increase overall audit capacity.
 
 ## Key Contributions
 
@@ -58,10 +58,10 @@ By integrating Intercom directly into CQMS, Aminul and Saif removed the need to 
 
 ## Impact
 
-Aminul Islam and Saif Alam did not just build a tool. They changed how communication quality works. CQMS made audits faster, clearer, and fully owned by the company. It strengthened data control, helped QC teams scale their work, supported CEx users with clear feedback, and created a system that can grow beyond CEx to support communication audits across the organization. The system's modular architecture and flexible design ensure it can evolve with the company's needs, making it a true long-term investment in quality excellence.
+CQMS changed how communication quality works. It made audits faster, clearer, and fully owned by the company. It strengthened data control, helped QC teams scale their work, supported CEx users with clear feedback, and created a system that can grow beyond CEx to support communication audits across the organization. The system's modular architecture and flexible design ensure it can evolve with the company's needs, making it a true long-term investment in quality excellence.
 
 With strong security measures protecting all data, comprehensive Intercom integration eliminating tool-switching friction, and AI-powered assistance accelerating workflows, CQMS represents a transformative platform that positions the company to eliminate $3,600+ in annual vendor costs while establishing a robust foundation for organization-wide quality management expansion. 
 
 ## One-Liner
 
-Aminul Islam and Saif Alam built CQMS, a fully company-owned, AI-powered quality platform that streamlines QC-led CEx audits through seamless Intercom integration, intelligent automation, and unified workflows, delivering faster audits, complete data ownership, increased audit capacity, and potential annual savings of $3,600+ by replacing Scorebuddy, all while establishing a scalable foundation for organization-wide quality management.
+CQMS is a fully company-owned, AI-powered quality platform that streamlines QC-led CEx audits through seamless Intercom integration, intelligent automation, and unified workflows, delivering faster audits, complete data ownership, increased audit capacity, and potential annual savings of $3,600+ by replacing Scorebuddy, all while establishing a scalable foundation for organization-wide quality management.
