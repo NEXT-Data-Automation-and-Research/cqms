@@ -4,6 +4,8 @@
  */
 
 import { IDatabaseClient } from '../../../core/database/database-client.interface.js';
+import { AUDIT_ASSIGNMENT_FIELDS } from '../../../core/constants/field-whitelists.js';
+import { logInfo, logError, logWarn } from '../../../utils/logging-helper.js';
 import type {
   Assignment,
   Auditor,
@@ -19,9 +21,14 @@ import type {
 export class AuditorDashboardRepository {
   constructor(private db: IDatabaseClient) {}
   /**
-   * Load all users from database
+   * Load all users (auditors) from database
+   * Gets auditors from audit_assignments and enriches with people table data
    */
   async loadAllUsers(): Promise<Auditor[]> {
+    // #region agent log
+    logInfo('[DEBUG] loadAllUsers entry - hypothesis A');
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:25',message:'loadAllUsers entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+    // #endregion
     try {
       // Check cache first
       const cachedUsers = sessionStorage.getItem('cachedUsers');
@@ -29,23 +36,79 @@ export class AuditorDashboardRepository {
       const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
 
       if (cachedUsers && cacheAge < 300000) { // 5 minutes cache
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:33',message:'loadAllUsers cache hit',data:{count:JSON.parse(cachedUsers).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         return JSON.parse(cachedUsers);
       }
 
-      const { data, error } = await this.db
-        .from('users')
-        .select(['email', 'name', 'role', 'channel', 'quality_mentor'])
-        .eq('is_active', true)
-        .execute<Auditor[]>();
+      // Get distinct auditor emails from audit_assignments
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:37',message:'loadAllUsers querying audit_assignments',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const { data: assignmentsData, error: assignmentsError } = await this.db
+        .from('audit_assignments')
+        .select('auditor_email')
+        .not('auditor_email', 'is', null)
+        .execute<{ auditor_email: string }[]>();
 
-      if (error) throw error;
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:43',message:'loadAllUsers assignments query result',data:{hasError:!!assignmentsError,error:assignmentsError?.message,dataCount:assignmentsData?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
 
-      const users = (data || []).map((u: any) => ({
-        email: u.email,
-        name: u.name || u.email,
-        role: u.role || 'Unknown',
-        channel: u.channel
-      }));
+      if (assignmentsError) throw assignmentsError;
+
+      const auditorEmails = [...new Set(
+        (assignmentsData || [])
+          .map(a => a.auditor_email)
+          .filter(Boolean)
+      )];
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:50',message:'loadAllUsers unique auditor emails',data:{count:auditorEmails.length,emails:auditorEmails.slice(0,5)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      if (auditorEmails.length === 0) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:52',message:'loadAllUsers no auditors found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        return [];
+      }
+
+      // Load people data for these auditors
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:56',message:'loadAllUsers querying people',data:{emailCount:auditorEmails.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      const { data: peopleData, error: peopleError } = await this.db
+        .from('people')
+        .select('email, name, role, channel')
+        .in('email', auditorEmails)
+        .execute<{ email: string; name: string; role: string; channel: string }[]>();
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:60',message:'loadAllUsers people query result',data:{hasError:!!peopleError,error:peopleError?.message,peopleCount:peopleData?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+
+      // Create a map of email -> person data
+      const peopleMap = new Map(
+        (peopleData || []).map(p => [p.email.toLowerCase(), p])
+      );
+
+      // Build auditor list, using people data when available
+      const users: Auditor[] = auditorEmails.map(email => {
+        const person = peopleMap.get(email.toLowerCase());
+        return {
+          email,
+          name: person?.name || email.split('@')[0] || email,
+          role: person?.role || 'Unknown',
+          channel: person?.channel || undefined
+        };
+      });
+
+      // #region agent log
+      logInfo('[DEBUG] loadAllUsers returning', { count: users.length });
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:82',message:'loadAllUsers returning users',data:{count:users.length,users:users.slice(0,3).map(u=>({email:u.email,name:u.name}))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+      // #endregion
 
       // Cache users
       sessionStorage.setItem('cachedUsers', JSON.stringify(users));
@@ -53,7 +116,10 @@ export class AuditorDashboardRepository {
 
       return users;
     } catch (error) {
-      console.error('Error loading users:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:84',message:'loadAllUsers error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      logError('Error loading users:', error);
       return [];
     }
   }
@@ -79,7 +145,7 @@ export class AuditorDashboardRepository {
         is_active: true
       }));
     } catch (error) {
-      console.error('Error loading scorecards:', error);
+      logError('Error loading scorecards:', error);
       return [];
     }
   }
@@ -94,7 +160,7 @@ export class AuditorDashboardRepository {
     try {
       let query = this.db
         .from('audit_assignments')
-        .select('*')
+        .select(AUDIT_ASSIGNMENT_FIELDS)
         .eq('auditor_email', auditorEmail);
 
       // Apply date filters
@@ -113,7 +179,7 @@ export class AuditorDashboardRepository {
 
       return (data || []) as Assignment[];
     } catch (error) {
-      console.error('Error loading assignments:', error);
+      logError('Error loading assignments:', error);
       return [];
     }
   }
@@ -125,13 +191,23 @@ export class AuditorDashboardRepository {
     scheduled: Assignment[];
     completed: Assignment[];
   }> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:124',message:'loadTeamAssignments entry',data:{periodStart:period.start?.toISOString(),periodEnd:period.end?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     try {
       // Load scheduled assignments
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:130',message:'loadTeamAssignments querying scheduled',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const { data: scheduledData, error: scheduledError } = await this.db
         .from('audit_assignments')
-        .select('*')
+        .select(AUDIT_ASSIGNMENT_FIELDS)
         .order('created_at', { ascending: false })
         .execute<Assignment[]>();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:136',message:'loadTeamAssignments scheduled result',data:{hasError:!!scheduledError,error:scheduledError?.message,count:scheduledData?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
       if (scheduledError) throw scheduledError;
 
@@ -145,7 +221,7 @@ export class AuditorDashboardRepository {
       // Load completed assignments
       let completedQuery = this.db
         .from('audit_assignments')
-        .select('*')
+        .select(AUDIT_ASSIGNMENT_FIELDS)
         .eq('status', 'completed')
         .not('completed_at', 'is', null);
 
@@ -160,14 +236,25 @@ export class AuditorDashboardRepository {
         .order('completed_at', { ascending: false })
         .execute<Assignment[]>();
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:159',message:'loadTeamAssignments completed result',data:{hasError:!!completedError,error:completedError?.message,completedCount:completedData?.length,scheduledCount:scheduled.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      
       if (completedError) throw completedError;
+
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:165',message:'loadTeamAssignments returning',data:{scheduledCount:scheduled.length,completedCount:completedData?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
 
       return {
         scheduled: scheduled as Assignment[],
         completed: (completedData || []) as Assignment[]
       };
     } catch (error) {
-      console.error('Error loading team assignments:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-repository.ts:170',message:'loadTeamAssignments error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      logError('Error loading team assignments:', error);
       return { scheduled: [], completed: [] };
     }
   }
@@ -267,7 +354,7 @@ export class AuditorDashboardRepository {
               reversals: queryResults[2]?.data || []
             };
           } catch (err) {
-            console.warn(`Error querying ${tableName}:`, err);
+            logWarn(`Error querying ${tableName}:`, err);
             return { durations: [], passing: [], reversals: [] };
           }
         })
@@ -280,7 +367,7 @@ export class AuditorDashboardRepository {
         reversals: results.flatMap(r => r.reversals)
       };
     } catch (error) {
-      console.error('Error loading audit data:', error);
+      logError('Error loading audit data:', error);
       return { durations: [], passing: [], reversals: [] };
     }
   }
@@ -324,7 +411,7 @@ export class AuditorDashboardRepository {
             allAudits.push(...(data as AuditData[]));
           }
         } catch (err) {
-          console.warn(`Error querying ${tableName} for hourly breakdown:`, err);
+          logWarn(`Error querying ${tableName} for hourly breakdown:`, err);
         }
       }
 
@@ -373,7 +460,7 @@ export class AuditorDashboardRepository {
         isLunchBreak: hour === '14:30'
       }));
     } catch (error) {
-      console.error('Error loading hourly breakdown:', error);
+      logError('Error loading hourly breakdown:', error);
       return [];
     }
   }
@@ -396,14 +483,14 @@ export class AuditorDashboardRepository {
           }
         }
       } catch (rpcError) {
-        console.warn('RPC get_audit_tables failed, using scorecard-based loading:', rpcError);
+        logWarn('RPC get_audit_tables failed, using scorecard-based loading:', rpcError);
       }
 
       // Fallback to scorecards
       const scorecards = await this.loadScorecards();
       return scorecards.map(s => s.table_name).filter(Boolean);
     } catch (error) {
-      console.error('Error getting audit tables:', error);
+      logError('Error getting audit tables:', error);
       return [];
     }
   }

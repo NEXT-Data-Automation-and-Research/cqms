@@ -1751,8 +1751,8 @@ async function loadAssignedAudits() {
                     <td style="padding: 0.2812rem; text-align: center;">
                             ${isDeletable && isSuperAdmin() ? `
                                 <div style="display: flex; gap: 0.1875rem; justify-content: center;">
-                                    <button onclick="deleteAssignment('${assignment.id}')" 
-                                        class="btn-action btn-action-danger"
+                                    <button data-action="delete-assignment" data-assignment-id="${escapeHtml(assignment.id)}" 
+                                        class="btn-action btn-action-danger delete-assignment-btn"
                                         title="Delete">
                                         <svg style="width: 0.6562rem; height: 0.6562rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <polyline points="3 6 5 6 21 6"/>
@@ -1770,11 +1770,31 @@ async function loadAssignedAudits() {
             `;
         }).join('');
         
+        // ✅ SECURITY: Set up event listeners for delete buttons (prevents XSS)
+        setupDeleteAssignmentListeners();
+        
     } catch (error) {
         console.error('Error loading assigned audits:', error);
         const tbody = document.getElementById('assignedAuditsTableBody');
         tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading assignments: ${error.message || 'Unknown error'}</td></tr>`;
     }
+}
+
+// ✅ SECURITY: Set up event listeners for delete assignment buttons
+// This replaces inline onclick handlers to prevent XSS
+function setupDeleteAssignmentListeners() {
+    document.querySelectorAll('.delete-assignment-btn').forEach(button => {
+        if (button.hasAttribute('data-listener-attached')) return;
+        button.setAttribute('data-listener-attached', 'true');
+        
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const assignmentId = this.getAttribute('data-assignment-id');
+            if (assignmentId) {
+                deleteAssignment(assignmentId);
+            }
+        });
+    });
 }
 
 async function refreshAssignedAudits() {

@@ -3,6 +3,8 @@
  * Reusable collapsible section card with header
  */
 
+import { safeSetHTML, escapeHtml, sanitizeHTML } from '../../../../utils/html-sanitizer.js';
+
 export interface SectionCardConfig {
   number?: string;
   title: string;
@@ -33,7 +35,7 @@ export class SectionCard {
     const { number, title, subtitle, collapsible } = this.config;
     const iconRotation = this.isExpanded ? 'rotate-180' : '';
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="glass-card rounded-xl p-4">
         <div
           class="glass-header section-header flex items-center gap-2.5 mb-3 pb-3 border-b border-white/10 ${collapsible ? 'cursor-pointer transition-all rounded-t-xl -mx-4 -mt-4 px-4 pt-4' : ''}"
@@ -41,8 +43,8 @@ export class SectionCard {
         >
           ${number ? `<div class="section-number w-6 h-6 bg-gradient-to-br from-primary to-primary-dark text-white rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-md">${number}</div>` : ''}
           <div class="flex-1 min-w-0">
-            <h2 class="section-title text-base font-bold text-white m-0 tracking-tight leading-tight">${title}</h2>
-            ${subtitle ? `<p class="section-subtitle text-xs text-white/75 mt-0.5 mb-0 leading-snug line-clamp-1" title="${this.escapeHtml(subtitle)}">${subtitle}</p>` : ''}
+            <h2 class="section-title text-base font-bold text-white m-0 tracking-tight leading-tight">${escapeHtml(title)}</h2>
+            ${subtitle ? `<p class="section-subtitle text-xs text-white/75 mt-0.5 mb-0 leading-snug line-clamp-1" title="${escapeHtml(subtitle)}">${escapeHtml(subtitle)}</p>` : ''}
           </div>
           ${collapsible ? `
             <svg class="w-5 h-5 text-white/60 transition-all duration-300 ${iconRotation} flex-shrink-0 hover:text-white" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -54,7 +56,7 @@ export class SectionCard {
           <!-- Content will be inserted here -->
         </div>
       </div>
-    `;
+    `);
 
     this.contentElement = this.container.querySelector('.section-content');
     
@@ -94,7 +96,7 @@ export class SectionCard {
 
   setContent(html: string): void {
     if (this.contentElement) {
-      this.contentElement.innerHTML = html;
+      safeSetHTML(this.contentElement, sanitizeHTML(html));
     }
   }
 

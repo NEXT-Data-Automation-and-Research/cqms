@@ -236,7 +236,7 @@ function setupListener(supabase: any): void {
         clearAuthCache();
         logger.debug('Token refreshed - cleared auth cache for fresh verification');
       } else {
-        console.error('Token refresh failed - No session returned');
+        logger.error('Token refresh failed - No session returned');
       }
     } else if (event === 'SIGNED_OUT') {
       clearAuthCache();

@@ -3,8 +3,10 @@
  * Handles all UI rendering operations
  */
 
+import { safeSetHTML } from '../../../utils/html-sanitizer.js';
 import type { AuditorDashboardState } from '../application/auditor-dashboard-state.js';
-import type { TeamStats, StandupViewData, Scorecard } from '../domain/entities.js';
+import type { TeamStats, StandupViewData, Scorecard, Auditor } from '../domain/entities.js';
+import { logInfo, logWarn } from '../../../utils/logging-helper.js';
 
 export class AuditorDashboardRenderer {
   constructor(private state: AuditorDashboardState) {}
@@ -41,8 +43,15 @@ export class AuditorDashboardRenderer {
    * Render team stats
    */
   renderTeamStats(stats: TeamStats): void {
+    // #region agent log
+    logInfo('[DEBUG] renderTeamStats entry', { auditorStats: stats.auditorStats.length, totalAssigned: stats.totalAssigned });
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-renderer.ts:30',message:'renderTeamStats entry',data:{auditorStatsCount:stats.auditorStats.length,totalAssigned:stats.totalAssigned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+    // #endregion
     this.updateStatCards(stats);
     this.renderTeamStatsTable(stats);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-renderer.ts:33',message:'renderTeamStats completed',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
   }
 
   /**
@@ -154,19 +163,28 @@ export class AuditorDashboardRenderer {
    * Render team stats table
    */
   private renderTeamStatsTable(stats: TeamStats): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-renderer.ts:156',message:'renderTeamStatsTable entry',data:{auditorStatsCount:stats.auditorStats.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     const tableBody = document.getElementById('performanceTableBody');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-renderer.ts:158',message:'renderTeamStatsTable tableBody check',data:{tableBodyExists:!!tableBody},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
     if (!tableBody) return;
 
     if (stats.auditorStats.length === 0) {
-      tableBody.innerHTML = `
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-renderer.ts:160',message:'renderTeamStatsTable no auditors',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
+      safeSetHTML(tableBody, `
         <div class="loading-indicator">
           No auditors found with assignments in the selected date range.
         </div>
-      `;
+      `);
       return;
     }
 
-    tableBody.innerHTML = stats.auditorStats.map(auditor => {
+    const htmlContent = stats.auditorStats.map(auditor => {
       const backlogTooltip = auditor.backlogCovered > 0 && auditor.backlogDates.length > 0
         ? `${auditor.backlogCovered} backlog covered from ${auditor.backlogDates.join(', ')}`
         : '';
@@ -250,12 +268,12 @@ export class AuditorDashboardRenderer {
     if (!tableBody) return;
 
     if (!data.channelStats || Object.keys(data.channelStats).length === 0) {
-      tableBody.innerHTML = '<div class="loading-indicator">No channel data available</div>';
+      safeSetHTML(tableBody, '<div class="loading-indicator">No channel data available</div>');
       return;
     }
 
     const sortedChannels = Object.keys(data.channelStats).sort();
-    tableBody.innerHTML = sortedChannels.map(channel => {
+    const htmlContent = sortedChannels.map(channel => {
       const stats = data.channelStats[channel];
       return `
         <div class="performance-table-row">
@@ -284,7 +302,7 @@ export class AuditorDashboardRenderer {
     if (!scorecardFilter) return;
 
     const existingValue = (scorecardFilter as HTMLSelectElement).value;
-    scorecardFilter.innerHTML = '<option value="">All Scorecards</option>';
+    safeSetHTML(scorecardFilter, '<option value="">All Scorecards</option>');
 
     scorecards.forEach(scorecard => {
       const option = document.createElement('option');
@@ -299,6 +317,91 @@ export class AuditorDashboardRenderer {
   }
 
   /**
+   * Populate auditor filter
+   */
+  populateAuditorFilter(auditors: Auditor[]): void {
+    const auditorFilter = document.getElementById('auditorFilter');
+    if (!auditorFilter) return;
+
+    const existingValue = (auditorFilter as HTMLSelectElement).value;
+    safeSetHTML(auditorFilter, '<option value="">All Auditors</option>');
+
+    // Get unique auditors from the list
+    const uniqueAuditors = Array.from(
+      new Map(auditors.map(a => [a.email, a])).values()
+    ).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+
+    uniqueAuditors.forEach(auditor => {
+      const option = document.createElement('option');
+      option.value = auditor.email;
+      option.textContent = auditor.name || auditor.email;
+      auditorFilter.appendChild(option);
+    });
+
+    if (existingValue) {
+      (auditorFilter as HTMLSelectElement).value = existingValue;
+    }
+  }
+
+  /**
+   * Populate channel filter
+   */
+  populateChannelFilter(users: Auditor[]): void {
+    const channelFilter = document.getElementById('channelFilter');
+    if (!channelFilter) return;
+
+    const existingValue = (channelFilter as HTMLSelectElement).value;
+    safeSetHTML(channelFilter, '<option value="">All Channels</option>');
+
+    // Get unique channels from users
+    const channels = Array.from(
+      new Set(users.map(u => u.channel).filter(Boolean))
+    ).sort();
+
+    channels.forEach(channel => {
+      const option = document.createElement('option');
+      option.value = channel!;
+      option.textContent = channel!;
+      channelFilter.appendChild(option);
+    });
+
+    if (existingValue) {
+      (channelFilter as HTMLSelectElement).value = existingValue;
+    }
+  }
+
+  /**
+   * Populate employee filter (from assignments)
+   */
+  populateEmployeeFilter(assignments: any[]): void {
+    const employeeFilter = document.getElementById('employeeFilter');
+    if (!employeeFilter) return;
+
+    const existingValue = (employeeFilter as HTMLSelectElement).value;
+    safeSetHTML(employeeFilter, '<option value="">All Employees</option>');
+
+    // Get unique employees from assignments
+    const employees = Array.from(
+      new Map(
+        assignments
+          .filter(a => a.employee_email)
+          .map(a => [a.employee_email, { email: a.employee_email, name: a.employee_name || a.employee_email }])
+      ).values()
+    ).sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email));
+
+    employees.forEach(emp => {
+      const option = document.createElement('option');
+      option.value = emp.email;
+      option.textContent = emp.name || emp.email;
+      employeeFilter.appendChild(option);
+    });
+
+    if (existingValue) {
+      (employeeFilter as HTMLSelectElement).value = existingValue;
+    }
+  }
+
+  /**
    * Show loading state
    */
   showLoadingState(): void {
@@ -306,11 +409,11 @@ export class AuditorDashboardRenderer {
     if (tableBody && !tableBody.querySelector('.loading-indicator')) {
       const loadingDiv = document.createElement('div');
       loadingDiv.className = 'loading-indicator';
-      loadingDiv.innerHTML = `
+      safeSetHTML(loadingDiv, `
         <div class="loading-spinner"></div>
         <div style="margin-top: var(--spacing-md); font-size: var(--font-xs);">Loading...</div>
-      `;
-      tableBody.innerHTML = '';
+      `);
+      safeSetHTML(tableBody, '');
       tableBody.appendChild(loadingDiv);
     }
 

@@ -3,6 +3,8 @@
  * Matches the screenshot style with button, icon, and categorized dropdown menu
  */
 
+import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
+
 export interface DropdownOption {
   id: string;
   label: string;
@@ -48,7 +50,7 @@ export class CustomDropdown {
     const selectedOption = this.findOptionByValue(selectedValue);
     const displayText = selectedOption?.label || placeholder || label;
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="custom-dropdown-wrapper relative ${className || ''}" data-dropdown-id="${this.config.id}">
         <button
           type="button"
@@ -57,27 +59,51 @@ export class CustomDropdown {
           aria-expanded="false"
           title="${label}"
         >
-          <span class="custom-dropdown-label flex-1 text-left truncate">${displayText}</span>
+            <span class="custom-dropdown-label flex-1 text-left truncate">${escapeHtml(displayText)}</span>
           <svg class="custom-dropdown-chevron w-4 h-4 flex-shrink-0 transition-transform text-white/60" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M4 6L8 10L12 6"/>
           </svg>
         </button>
         <div class="custom-dropdown-menu hidden absolute top-full left-0 mt-1.5 rounded-xl shadow-2xl border min-w-[220px] z-[100] max-h-[400px] overflow-y-auto glass-card border-white/20">
           <div class="px-3 py-2 border-b border-white/10 bg-white/5">
-            <div class="text-xs font-semibold text-white/80 uppercase tracking-wide">${label}</div>
+            <div class="text-xs font-semibold text-white/80 uppercase tracking-wide">${escapeHtml(label)}</div>
           </div>
           ${this.renderMenuContent(sections)}
         </div>
       </div>
-    `;
+    `);
 
+    // Attach image error handlers (onerror is stripped by DOMPurify for security)
+    this.attachImageErrorHandlers();
     this.attachEventListeners();
+  }
+
+  /**
+   * Attach error handlers to images (onerror is stripped by DOMPurify for security)
+   */
+  private attachImageErrorHandlers(): void {
+    this.container.querySelectorAll('img').forEach(img => {
+      if (img.hasAttribute('data-error-handler-attached')) return;
+      img.setAttribute('data-error-handler-attached', 'true');
+      
+      img.addEventListener('error', function() {
+        // Hide the image and show the fallback (initials)
+        this.style.display = 'none';
+        const fallback = this.nextElementSibling as HTMLElement;
+        if (fallback) {
+          fallback.style.display = 'flex';
+        }
+      });
+    });
   }
 
   private renderMenuContent(sections: DropdownSection[]): string {
     return sections.map((section, sectionIndex) => {
       const sectionHtml = section.options.map(option => {
-        const isSelected = option.value === this.config.selectedValue;
+        // Handle empty string comparison for "All" options
+        const selectedValue = this.config.selectedValue ?? '';
+        const optionValue = option.value ?? '';
+        const isSelected = optionValue === selectedValue;
         const dangerClass = option.danger ? 'text-red-600' : '';
         
         return `
@@ -88,7 +114,7 @@ export class CustomDropdown {
             ${option.disabled ? 'disabled' : ''}
           >
             ${option.icon ? `<span class="flex-shrink-0 w-5 h-5 flex items-center justify-center text-white/70">${option.icon}</span>` : ''}
-            <span class="flex-1 text-left font-medium">${option.label}</span>
+            <span class="flex-1 text-left font-medium">${escapeHtml(option.label)}</span>
             ${isSelected ? `
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-primary flex-shrink-0">
                 <polyline points="20 6 9 17 4 12"/>
@@ -100,7 +126,7 @@ export class CustomDropdown {
 
       const sectionTitle = section.title ? `
         <div class="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wide">
-          ${section.title}
+          ${escapeHtml(section.title)}
         </div>
       ` : '';
 
@@ -113,7 +139,8 @@ export class CustomDropdown {
   }
 
   private findOptionByValue(value?: string): DropdownOption | null {
-    if (!value) return null;
+    // Allow empty string as a valid value (for "All" options)
+    if (value === undefined || value === null) return null;
     
     for (const section of this.config.sections) {
       const option = section.options.find(opt => opt.value === value);
@@ -227,11 +254,58 @@ export class CustomDropdown {
     this.render();
   }
 
+  getValue(): string | undefined {
+    return this.config.selectedValue;
+  }
+
   setValue(value: string): void {
+    // Allow empty string as a valid value (for "All" options)
     const option = this.findOptionByValue(value);
     if (option) {
+      this.config.selectedValue = value;
       this.updateButtonText(option.label);
+      // Update the selected state in the dropdown menu
+      this.updateSelectedState();
+    } else {
+      // If value not found, reset to placeholder
+      this.config.selectedValue = undefined;
+      const labelElement = this.buttonElement?.querySelector('.custom-dropdown-label');
+      if (labelElement) {
+        labelElement.textContent = this.config.placeholder || this.config.label;
+      }
+      this.updateSelectedState();
     }
+  }
+
+  private updateSelectedState(): void {
+    if (!this.dropdownElement) return;
+    
+    // Update all option buttons to reflect selected state
+    const options = this.dropdownElement.querySelectorAll('.custom-dropdown-option');
+    options.forEach(optionEl => {
+      const value = (optionEl as HTMLElement).dataset.value || '';
+      // Handle both empty string and undefined for "All" options
+      const isSelected = value === (this.config.selectedValue ?? '');
+      
+      // Remove existing selected classes
+      optionEl.classList.remove('bg-primary/20', 'text-primary', 'border-l-2', 'border-primary', 'font-semibold');
+      
+      // Add selected classes if this is the selected option
+      if (isSelected) {
+        optionEl.classList.add('bg-primary/20', 'text-primary', 'border-l-2', 'border-primary', 'font-semibold');
+      }
+      
+      // Update checkmark visibility
+      const checkmark = optionEl.querySelector('svg');
+      const spacer = optionEl.querySelector('.w-4');
+      if (isSelected) {
+        if (checkmark) checkmark.style.display = 'block';
+        if (spacer) (spacer as HTMLElement).style.display = 'none';
+      } else {
+        if (checkmark) checkmark.style.display = 'none';
+        if (spacer) (spacer as HTMLElement).style.display = 'block';
+      }
+    });
   }
 }
 

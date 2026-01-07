@@ -9,42 +9,62 @@
   <!-- Global Styles (includes compiled Tailwind output) -->
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/home-page.css">
   <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  <link rel="stylesheet" href="/src/features/create-audit/presentation/styles/create-audit.css">
+  <link rel="stylesheet" href="/src/features/create-audit/presentation/components/assigned-audits-sidebar/assigned-audits-sidebar.css">
+  <link rel="stylesheet" href="/src/features/create-audit/presentation/components/conversations-panel/conversations-panel.css">
   
   <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: 'var(--home-primary-500, #635BFF)',
-            'primary-dark': 'var(--home-primary-700, #4d42d1)',
-            'dark-forest': 'var(--home-background, #100A28)',
-            'success': 'var(--color-success)',
-            'warning': 'var(--color-warning)',
-            'error': 'var(--color-error)',
-          },
-          fontFamily: {
-            sans: ['var(--font-family-primary)', 'sans-serif'],
-          },
-        },
-      },
+  
+  <!-- Import map for npm packages in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
     }
+  }
   </script>
 </head>
 
 <body class="home-page">
   <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
   <main class="main-content" role="main">
+    <!-- Dot Background Pattern Component -->
+    <div id="dot-background-container"></div>
+    
     <!-- Header Component -->
     <div id="header-container"></div>
 
     <!-- Main Content -->
-    <div class="px-4 py-4 max-w-7xl mx-auto w-full">
-      <h1 class="text-xl font-bold text-gray-900 mb-4">Create Audit</h1>
+    <div class="w-full relative z-10 flex flex-col flex-1 min-h-0 h-full">
+      <!-- Top Section: Separated Header & Stats (Like Intercom) -->
+      <div class="px-6 py-4 border-b border-white/10 bg-black/30 backdrop-blur-sm flex-shrink-0">
+        <div class="max-w-full">
+          <h1 class="text-xl font-bold text-white mb-4">Create Audit</h1>
+          
+          <!-- Optional Stats Section (Collapsible) -->
+          <div id="stats-section-container"></div>
+        </div>
+      </div>
       
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-        <p class="text-gray-600 text-center">This is the Create Audit page. Content will be added here.</p>
+      <!-- Main Content Layout: Left Sidebar + Right Panel -->
+      <div class="flex-1 flex px-6 py-4 overflow-hidden min-h-0 h-full">
+        <!-- Left Sidebar: Assigned Audits List (Compact) -->
+        <div class="w-80 flex-shrink-0 pr-6 h-full flex flex-col min-h-0">
+          <div id="assigned-audits-sidebar-container" class="h-full flex-1 min-h-0"></div>
+        </div>
+        
+        <!-- Vertical Divider (Like Audit Distribution Page) -->
+        <div class="panel-divider flex-shrink-0"></div>
+        
+        <!-- Right Panel: Conversations & Filters -->
+        <div class="flex-1 min-w-0 pl-6 h-full flex flex-col min-h-0">
+          <div id="conversations-panel-container" class="h-full flex-1 min-h-0"></div>
+        </div>
       </div>
     </div>
   </main>
@@ -52,8 +72,34 @@
   <!-- Authentication Guard -->
   <script type="module" src="/js/auth-checker.js"></script>
   
+  <!-- Load Dot Background Component -->
+  <script type="module">
+    import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
+    
+    async function loadDotBackground() {
+      try {
+        await loadComponents([
+          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' }
+        ]);
+        console.log('✓ Dot background component loaded');
+      } catch (error) {
+        console.error('Error loading dot background component:', error);
+      }
+    }
+    
+    // Load dot background when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadDotBackground);
+    } else {
+      loadDotBackground();
+    }
+  </script>
+  
   <!-- Sidebar Loader -->
   <script type="module" src="/js/load-sidebar.js" defer></script>
+  
+  <!-- Create Audit Controller -->
+  <script type="module" src="/js/features/create-audit/presentation/create-audit-controller.js" defer></script>
 </body>
 </html>
 

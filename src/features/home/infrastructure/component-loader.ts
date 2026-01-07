@@ -3,6 +3,9 @@
  * This file loads HTML components into the page
  */
 
+import { safeSetHTML, sanitizeHTML, escapeHtml } from '../../../utils/html-sanitizer.js'
+import { logInfo, logError } from '../../../utils/logging-helper.js'
+
 /**
  * Information about a component to load
  */
@@ -20,7 +23,7 @@ export class ComponentLoader {
    */
   async loadComponent(componentPath: string, targetSelector: string): Promise<void> {
     try {
-      console.log(`Loading component: ${componentPath} into ${targetSelector}`)
+      logInfo(`Loading component: ${componentPath} into ${targetSelector}`)
       const response = await fetch(componentPath)
       
       if (!response.ok) {
@@ -39,14 +42,15 @@ export class ComponentLoader {
         throw new Error(`Target element not found: ${targetSelector}`)
       }
       
-      targetElement.innerHTML = html
-      console.log(`✓ Component loaded: ${componentPath}`)
+      safeSetHTML(targetElement as HTMLElement, sanitizeHTML(html))
+      logInfo(`✓ Component loaded: ${componentPath}`)
     } catch (error: any) {
-      console.error(`✗ Error loading component ${componentPath}:`, error)
+      logError(`✗ Error loading component ${componentPath}:`, error)
       // Don't throw - allow other components to load
       const targetElement = document.querySelector(targetSelector)
       if (targetElement) {
-        targetElement.innerHTML = `<div class="p-2 text-red-500 text-xs">Failed to load component: ${error.message}</div>`
+        const errorMessage = escapeHtml(error.message)
+        safeSetHTML(targetElement as HTMLElement, `<div class="p-2 text-red-500 text-xs">Failed to load component: ${errorMessage}</div>`)
       }
     }
   }
@@ -65,7 +69,7 @@ export class ComponentLoader {
     window.componentsLoaded = true
     document.dispatchEvent(new CustomEvent('componentsLoaded'))
     
-    console.log('All components loaded successfully')
+    logInfo('All components loaded successfully')
   }
 }
 

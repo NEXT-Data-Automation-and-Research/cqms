@@ -3,6 +3,8 @@
  * Placeholder view for scheduled audit functionality
  */
 
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+
 export class ScheduleAuditView {
   private container: HTMLElement;
 
@@ -12,7 +14,7 @@ export class ScheduleAuditView {
   }
 
   private render(): void {
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="px-4 py-6 max-w-7xl mx-auto w-full">
         <div class="flex flex-col items-center justify-center min-h-[60vh]">
           <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8 max-w-md w-full text-center">
@@ -36,7 +38,7 @@ export class ScheduleAuditView {
           </div>
         </div>
       </div>
-    `;
+    `);
   }
 
   update(): void {

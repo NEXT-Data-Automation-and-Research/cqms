@@ -4,6 +4,7 @@
  */
 
 import type { AuditAssignment, Auditor, Scorecard } from '../../domain/types.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
 export interface AssignedAuditsTableConfig {
   assignments: AuditAssignment[];
@@ -44,7 +45,7 @@ export class AssignedAuditsTable {
 
     const rows = assignments.map(assignment => this.renderAssignmentRow(assignment, selectedAssignments)).join('');
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="glass-card rounded-xl p-5">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-4 border-b border-white/10">
           <div class="flex items-center gap-2.5">
@@ -204,7 +205,7 @@ export class AssignedAuditsTable {
           </table>
         </div>
       </div>
-    `;
+    `);
 
     this.attachEventListeners();
   }

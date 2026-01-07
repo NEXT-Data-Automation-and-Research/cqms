@@ -5,6 +5,7 @@
 
 import { getSecureSupabase } from './secure-supabase.js';
 import { getDeviceInfo } from './device-info.js';
+import { logError, logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Save or update a web push notification subscription
@@ -21,7 +22,7 @@ export async function saveNotificationSubscription(
     // ✅ Verify userId matches authenticated user
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser || authUser.id !== userId) {
-      console.error('❌ Security violation - user ID mismatch in notification subscription');
+      logError('❌ Security violation - user ID mismatch in notification subscription');
       return false;
     }
 
@@ -33,7 +34,7 @@ export async function saveNotificationSubscription(
     const keys = subscriptionData.keys;
     
     if (!keys || !keys.p256dh || !keys.auth) {
-      console.error('Invalid subscription: missing keys');
+      logError('Invalid subscription: missing keys');
       return false;
     }
 
@@ -67,17 +68,17 @@ export async function saveNotificationSubscription(
       });
 
     if (error) {
-      console.error('Error saving notification subscription:', error);
+      logError('Error saving notification subscription:', error);
       return false;
     }
 
-    console.log('Notification subscription saved successfully');
+    logInfo('Notification subscription saved successfully');
     return true;
   } catch (error: any) {
     if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-      console.error('❌ Authentication required for notification subscription:', error.message);
+      logError('❌ Authentication required for notification subscription:', error.message);
     } else {
-      console.error('Error in saveNotificationSubscription:', error);
+      logError('Error in saveNotificationSubscription:', error);
     }
     return false;
   }
@@ -94,7 +95,7 @@ export async function getUserNotificationSubscriptions(userId: string): Promise<
     // ✅ Verify userId matches authenticated user
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser || authUser.id !== userId) {
-      console.error('❌ Security violation - user ID mismatch');
+      logError('❌ Security violation - user ID mismatch');
       return [];
     }
     const { data, error } = await supabase
@@ -105,16 +106,16 @@ export async function getUserNotificationSubscriptions(userId: string): Promise<
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching notification subscriptions:', error);
+      logError('Error fetching notification subscriptions:', error);
       return [];
     }
 
     return data || [];
   } catch (error: any) {
     if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-      console.error('❌ Authentication required:', error.message);
+      logError('❌ Authentication required:', error.message);
     } else {
-      console.error('Error in getUserNotificationSubscriptions:', error);
+      logError('Error in getUserNotificationSubscriptions:', error);
     }
     return [];
   }
@@ -134,7 +135,7 @@ export async function deactivateNotificationSubscription(
     // ✅ Verify userId matches authenticated user
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser || authUser.id !== userId) {
-      console.error('❌ Security violation - user ID mismatch');
+      logError('❌ Security violation - user ID mismatch');
       return false;
     }
     const { error } = await supabase
@@ -147,17 +148,17 @@ export async function deactivateNotificationSubscription(
       .eq('user_id', userId);
 
     if (error) {
-      console.error('Error deactivating notification subscription:', error);
+      logError('Error deactivating notification subscription:', error);
       return false;
     }
 
-    console.log('Notification subscription deactivated');
+    logInfo('Notification subscription deactivated');
     return true;
   } catch (error: any) {
     if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-      console.error('❌ Authentication required:', error.message);
+      logError('❌ Authentication required:', error.message);
     } else {
-      console.error('Error in deactivateNotificationSubscription:', error);
+      logError('Error in deactivateNotificationSubscription:', error);
     }
     return false;
   }
@@ -179,13 +180,13 @@ export async function updateSubscriptionLastUsed(endpoint: string): Promise<bool
       .eq('endpoint', endpoint);
 
     if (error) {
-      console.error('Error updating subscription last used:', error);
+      logError('Error updating subscription last used:', error);
       return false;
     }
 
     return true;
   } catch (error) {
-    console.error('Error in updateSubscriptionLastUsed:', error);
+    logError('Error in updateSubscriptionLastUsed:', error);
     return false;
   }
 }
@@ -196,7 +197,7 @@ export async function updateSubscriptionLastUsed(endpoint: string): Promise<bool
  */
 export async function subscribeToPushNotifications(userId: string): Promise<PushSubscription | null> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn('Push notifications are not supported in this browser');
+    logWarn('Push notifications are not supported in this browser');
     return null;
   }
 
@@ -204,7 +205,7 @@ export async function subscribeToPushNotifications(userId: string): Promise<Push
     // Request permission
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      console.warn('Notification permission denied');
+      logWarn('Notification permission denied');
       return null;
     }
 
@@ -226,7 +227,7 @@ export async function subscribeToPushNotifications(userId: string): Promise<Push
 
     return subscription;
   } catch (error) {
-    console.error('Error subscribing to push notifications:', error);
+    logError('Error subscribing to push notifications:', error);
     return null;
   }
 }
@@ -241,7 +242,7 @@ function getVapidPublicKey(): string {
   const publicKey = env.VAPID_PUBLIC_KEY || '';
   
   if (!publicKey) {
-    console.warn('VAPID_PUBLIC_KEY not found in environment variables. Push notifications may not work.');
+    logWarn('VAPID_PUBLIC_KEY not found in environment variables. Push notifications may not work.');
   }
   
   return publicKey;

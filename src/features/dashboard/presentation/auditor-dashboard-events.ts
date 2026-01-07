@@ -6,6 +6,7 @@
 import type { AuditorDashboardState } from '../application/auditor-dashboard-state.js';
 import type { AuditorDashboardService } from '../application/auditor-dashboard-service.js';
 import type { AuditorDashboardRenderer } from './auditor-dashboard-renderer.js';
+import { logInfo, logError, logWarn } from '../../../utils/logging-helper.js';
 
 export class AuditorDashboardEventHandlers {
   constructor(
@@ -220,11 +221,17 @@ export class AuditorDashboardEventHandlers {
    * Refresh data based on current tab
    */
   private async refreshData(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:222',message:'refreshData entry',data:{currentTab:this.state.currentTab,filters:this.state.currentFilters},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
     this.renderer.showLoadingState();
     
     try {
       if (this.state.currentTab === 'team-stats') {
         const stats = await this.service.calculateTeamStats();
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:227',message:'refreshData stats calculated',data:{auditorStatsCount:stats.auditorStats.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+        // #endregion
         this.state.teamStats = stats;
         this.renderer.renderTeamStats(stats);
       } else {
@@ -233,7 +240,10 @@ export class AuditorDashboardEventHandlers {
         this.renderer.renderStandupView(data);
       }
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:236',message:'refreshData error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+      // #endregion
+      logError('Error refreshing data:', error);
     } finally {
       this.renderer.hideLoadingState();
     }
@@ -260,27 +270,56 @@ export class AuditorDashboardEventHandlers {
 };
 
 (window as any).applyFilters = function() {
+  // #region agent log
+  logInfo('[DEBUG] applyFilters global function called');
+  fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:262',message:'applyFilters global function called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+  // #endregion
   const statusEl = document.getElementById('statusFilter') as HTMLSelectElement;
   const channelEl = document.getElementById('channelFilter') as HTMLSelectElement;
   const auditorEl = document.getElementById('auditorFilter') as HTMLSelectElement;
   const employeeEl = document.getElementById('employeeFilter') as HTMLSelectElement;
   const scorecardEl = document.getElementById('scorecardFilter') as HTMLSelectElement;
 
+  const filterValues = {
+    status: statusEl?.value || '',
+    channel: channelEl?.value || '',
+    auditor: auditorEl?.value || '',
+    employee: employeeEl?.value || '',
+    scorecard: scorecardEl?.value || ''
+  };
+  
+  // #region agent log
+  logInfo('[DEBUG] applyFilters filter values:', filterValues);
+  fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:270',message:'applyFilters filter values',data:{...filterValues,hasState:!!(window as any).auditorDashboardState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+  // #endregion
+
   if ((window as any).auditorDashboardState) {
-    (window as any).auditorDashboardState.currentFilters = {
-      status: statusEl?.value || '',
-      channel: channelEl?.value || '',
-      auditor: auditorEl?.value || '',
-      employee: employeeEl?.value || '',
-      scorecard: scorecardEl?.value || ''
-    };
+    (window as any).auditorDashboardState.currentFilters = filterValues;
+    logInfo('[DEBUG] applyFilters - state filters updated:', { filters: (window as any).auditorDashboardState.currentFilters });
     (window as any).auditorDashboardState.applyFilters();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-events.ts:277',message:'applyFilters state updated, should refresh',data:{hasController:!!(window as any).auditorDashboardController},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+    // #endregion
+    // Trigger data refresh with new filters
+    if ((window as any).auditorDashboardController) {
+      logInfo('[DEBUG] applyFilters calling loadTeamStats to refresh data');
+      (window as any).auditorDashboardController.loadTeamStats();
+    } else {
+      logWarn('[DEBUG] applyFilters - controller not available');
+    }
+  } else {
+    logWarn('[DEBUG] applyFilters - state not available');
   }
 };
 
 (window as any).clearFilters = function() {
+  logInfo('[DEBUG] clearFilters called');
   if ((window as any).auditorDashboardState) {
     (window as any).auditorDashboardState.clearFilters();
+    // Trigger refresh after clearing filters
+    if ((window as any).auditorDashboardController) {
+      (window as any).auditorDashboardController.loadTeamStats();
+    }
   }
 };
 

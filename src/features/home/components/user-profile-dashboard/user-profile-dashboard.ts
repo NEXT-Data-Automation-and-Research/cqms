@@ -4,6 +4,9 @@
  * Uses authenticated Supabase calls via getSecureSupabase
  */
 
+import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
+import { logInfo, logError } from '../../../../utils/logging-helper.js';
+
 // Logger that always logs to console
 const logger = {
   trace: (...args: any[]) => console.trace('[UserProfileDashboard]', ...args),
@@ -29,7 +32,7 @@ class UserProfileDashboard {
    * Initialize the user profile dashboard
    */
   async init(): Promise<void> {
-    console.log('[UserProfileDashboard] ===== INITIALIZATION STARTED =====');
+    logInfo('[UserProfileDashboard] ===== INITIALIZATION STARTED =====');
     logger.info('Initializing UserProfileDashboard component...');
     this.setState('loading');
 
@@ -58,11 +61,11 @@ class UserProfileDashboard {
       }
 
       this.setState('loaded');
-      console.log('[UserProfileDashboard] ===== INITIALIZATION COMPLETE =====');
+      logInfo('[UserProfileDashboard] ===== INITIALIZATION COMPLETE =====');
       logger.info('Successfully loaded and displayed user profile');
     } catch (error: any) {
       this.setState('error');
-      console.error('[UserProfileDashboard] ===== INITIALIZATION FAILED =====', error);
+      logError('[UserProfileDashboard] ===== INITIALIZATION FAILED =====', error);
       logger.error('Failed to initialize', {
         error: error?.message || String(error),
         stack: error?.stack,
@@ -314,7 +317,7 @@ class UserProfileDashboard {
         });
       };
 
-      container.innerHTML = '';
+      safeSetHTML(container, '');
       container.appendChild(img);
     } else {
       logger.debug('UserProfileDashboard: No avatar URL available, using initials');
@@ -333,9 +336,9 @@ class UserProfileDashboard {
         .join('')
         .toUpperCase()
         .slice(0, 2);
-      container.innerHTML = `<span class="text-sm font-bold text-white">${initials}</span>`;
+      safeSetHTML(container, `<span class="text-sm font-bold text-white">${escapeHtml(initials)}</span>`);
     } else {
-      container.innerHTML = `<span class="text-sm font-bold text-white">U</span>`;
+      safeSetHTML(container, `<span class="text-sm font-bold text-white">U</span>`);
     }
   }
 
@@ -398,7 +401,7 @@ class UserProfileDashboard {
           img.onload = () => {
             logger.info('UserProfileDashboard: localStorage avatar loaded successfully');
           };
-          dashboardAvatar.innerHTML = '';
+          safeSetHTML(dashboardAvatar, '');
           dashboardAvatar.appendChild(img);
         } else {
           logger.debug('UserProfileDashboard: No avatar in localStorage, using initials');
@@ -429,7 +432,7 @@ class UserProfileDashboard {
     this.state = state;
     
     // Always log state changes
-    console.log(`[UserProfileDashboard] STATE CHANGE: ${previousState} → ${state}`);
+    logInfo(`[UserProfileDashboard] STATE CHANGE: ${previousState} → ${state}`);
     logger.info(`State changed from "${previousState}" to "${state}"`);
     
     // Log state-specific information

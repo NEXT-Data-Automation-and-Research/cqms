@@ -14,6 +14,7 @@
 
 import { getSupabase } from './supabase-init.js';
 import { getSecureSupabase } from './secure-supabase.js';
+import { logError, logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Initialize secure Supabase client on window.supabaseClient
@@ -37,14 +38,14 @@ export async function initSecureWindowSupabase(): Promise<void> {
     // The secure wrapper will verify auth before any database operation
     (window as any).supabaseClient = secureClient;
     
-    console.log('✅ Secure window.supabaseClient initialized');
+    logInfo('✅ Secure window.supabaseClient initialized');
   } catch (error: any) {
-    console.error('❌ Error initializing secure window.supabaseClient:', error);
+    logError('❌ Error initializing secure window.supabaseClient:', error);
     // Fallback to regular client if secure init fails
     const baseClient = getSupabase();
     if (baseClient) {
       (window as any).supabaseClient = baseClient;
-      console.warn('⚠️ Using unsecured client as fallback');
+      logWarn('⚠️ Using unsecured client as fallback');
     }
   }
 }

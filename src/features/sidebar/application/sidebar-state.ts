@@ -5,6 +5,7 @@
 
 import type { UserInfo, NotificationCounts } from '../domain/entities.js'
 import type { SidebarState } from '../domain/types.js'
+import { logError } from '../../../utils/logging-helper.js'
 
 /**
  * This class remembers sidebar information
@@ -33,7 +34,7 @@ export class SidebarStateManager {
     try {
       localStorage.setItem('sidebarState', state)
     } catch (error) {
-      console.error('Error saving sidebar state:', error)
+      logError('Error saving sidebar state:', error)
     }
   }
 
@@ -44,7 +45,7 @@ export class SidebarStateManager {
     try {
       return (localStorage.getItem('sidebarState') || 'collapsed') as SidebarState
     } catch (error) {
-      console.error('Error loading sidebar state:', error)
+      logError('Error loading sidebar state:', error)
       return 'collapsed'
     }
   }
@@ -57,7 +58,7 @@ export class SidebarStateManager {
       localStorage.setItem('userInfo', JSON.stringify(user))
       localStorage.setItem('userProfileLastFetch', Date.now().toString())
     } catch (error) {
-      console.error('Error saving user info:', error)
+      logError('Error saving user info:', error)
     }
   }
 
@@ -79,7 +80,7 @@ export class SidebarStateManager {
       
       return parsedUserInfo
     } catch (error) {
-      console.error('Error loading user info:', error)
+      logError('Error loading user info:', error)
       return null
     }
   }
@@ -112,7 +113,7 @@ export class SidebarStateManager {
 
       return parseInt(cachedData, 10)
     } catch (error) {
-      console.error(`Error reading notification count cache for ${type}:`, error)
+      logError(`Error reading notification count cache for ${type}:`, error)
       return null
     }
   }
@@ -127,7 +128,7 @@ export class SidebarStateManager {
       localStorage.setItem(cacheKey, count.toString())
       localStorage.setItem(timestampKey, Date.now().toString())
     } catch (error) {
-      console.error(`Error writing notification count cache for ${type}:`, error)
+      logError(`Error writing notification count cache for ${type}:`, error)
     }
   }
 

@@ -21,7 +21,8 @@
   {
     "imports": {
       "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
-      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
     }
   }
   </script>
@@ -68,15 +69,56 @@
     </div>
   </main>
 
+  <!-- Notification Consent Modal Container -->
+  <div id="notification-consent-modal-container"></div>
+
   <!-- Authentication Guard - Must be loaded first -->
   <script type="module" src="/js/auth-checker.js"></script>
   
-  <!-- Component Loader - Must load before home-main.js -->
+  <!-- Initialize Supabase FIRST before any components load -->
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    
+    // Initialize Supabase immediately when page loads
+    (async function initSupabaseFirst() {
+      try {
+        await initSupabase();
+        console.log('✓ Supabase initialized before components');
+        // Signal that Supabase is ready
+        window.supabaseReady = true;
+        window.dispatchEvent(new CustomEvent('supabaseReady'));
+      } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+      }
+    })();
+  </script>
+  
+  <!-- Component Loader - Must load after Supabase is initialized -->
   <script type="module">
     import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
+    import { isSupabaseInitialized } from '/js/utils/supabase-init.js';
+    
+    // Wait for Supabase to be initialized before loading components
+    async function waitForSupabase() {
+      // Check if already initialized
+      if (isSupabaseInitialized() || window.supabaseReady) {
+        return;
+      }
+      
+      // Wait for supabaseReady event
+      return new Promise((resolve) => {
+        if (window.supabaseReady) {
+          resolve();
+          return;
+        }
+        window.addEventListener('supabaseReady', resolve, { once: true });
+      });
+    }
     
     // Load all components and then initialize home-main
     async function initializeComponents() {
+      // Wait for Supabase to be initialized first
+      await waitForSupabase();
       try {
         // Use absolute paths from root for component files
         await loadComponents([
@@ -86,7 +128,8 @@
           { path: '/src/features/home/components/action-buttons/action-buttons.html', target: '#action-buttons-container' },
           { path: '/src/features/home/components/stats-cards/stats-cards.html', target: '#stats-cards-container' },
           { path: '/src/features/home/components/updates-feed/updates-feed.html', target: '#updates-feed-container' },
-          { path: '/src/features/home/components/assigned-audits/assigned-audits.html', target: '#assigned-audits-container' }
+          { path: '/src/features/home/components/assigned-audits/assigned-audits.html', target: '#assigned-audits-container' },
+          { path: '/src/features/notifications/presentation/notification-consent-modal.html', target: '#notification-consent-modal-container' }
         ]);
         
         // Load header JavaScript after component is loaded
@@ -141,6 +184,8 @@
         // Signal that components are loaded
         window.componentsLoaded = true;
         window.dispatchEvent(new CustomEvent('componentsLoaded'));
+        
+        // Note: initializeNotificationConsent is called in its own script block below
       } catch (error) {
         console.error('Error loading components:', error);
         // Show error message to user
@@ -166,21 +211,43 @@
   <script type="module">
     // Initialize secure Supabase client for window.supabaseClient
     import { initSupabase } from '/js/utils/supabase-init.js';
-    import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+    import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
     
     async function initSecureClient() {
       try {
-        // Initialize base Supabase client
-        await initSupabase();
+        // Initialize base Supabase client first (this sets up the API key)
+        const baseClient = await initSupabase();
+        if (!baseClient) {
+          throw new Error('Failed to initialize Supabase client - check that SUPABASE_URL and SUPABASE_ANON_KEY are configured');
+        }
         
-        // Set up secure client on window.supabaseClient
-        const secureClient = await getSecureSupabase(false); // Don't require auth initially (will check on each DB op)
-        window.supabaseClient = secureClient;
+        // Store base client for auth operations (auth methods don't need the wrapper)
+        // The base client has the API key and can be used for auth.getUser(), etc.
+        window.supabaseClient = baseClient;
+        
+        // For database operations, use getAuthenticatedSupabase() which will verify auth
+        // But we keep the base client on window for compatibility with existing code
+        // that uses window.supabaseClient.auth.* methods
+        try {
+          await getAuthenticatedSupabase();
+          console.log('Authenticated Supabase client verified');
+        } catch (authError) {
+          // If not authenticated, redirect to login
+          if (authError?.code === 'AUTH_REQUIRED') {
+            console.log('User not authenticated, redirecting to login...');
+            window.location.href = '/src/auth/presentation/auth-page.html';
+            return;
+          }
+          // For other auth errors, log but don't block (base client is still available)
+          console.warn('Auth verification failed, but base client is available:', authError);
+        }
       } catch (error) {
-        console.error('Error initializing secure Supabase client:', error);
-        // Fallback to regular client
-        const { getSupabase } = await import('/js/utils/supabase-init.js');
-        window.supabaseClient = getSupabase();
+        console.error('Error initializing Supabase client:', error);
+        // Check if it's an API key error
+        if (error?.message?.includes('API key') || error?.message?.includes('apikey')) {
+          console.error('Supabase API key not found. Please check your .env file and ensure SUPABASE_ANON_KEY is set.');
+        }
+        throw error;
       }
     }
     
@@ -194,7 +261,12 @@
           const { saveUserProfileToDatabase } = await import('/js/utils/auth.js');
           
           // Try to save user profile (will upsert if exists, create if new)
-          await saveUserProfileToDatabase(user);
+          const { isNewDevice } = await saveUserProfileToDatabase(user);
+          
+          // Store new device flag for notification consent check
+          if (isNewDevice) {
+            sessionStorage.setItem('isNewDeviceLogin', 'true');
+          }
           
           // After saving, fetch the full profile from database and update localStorage
           try {
@@ -256,6 +328,52 @@
     loadHomeMain().catch(error => {
       console.error('Error loading home-main.js:', error);
     });
+  </script>
+  
+  <!-- Notification Consent Manager - Initialize after user profile is saved -->
+  <script type="module">
+    async function initializeNotificationConsent() {
+      try {
+        // Wait for user profile to be saved
+        await new Promise(resolve => {
+          if (window.componentsLoaded) {
+            resolve();
+          } else {
+            window.addEventListener('componentsLoaded', resolve, { once: true });
+          }
+        });
+        
+        // Wait a bit more for user profile save to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check if this is a new device login
+        const isNewDevice = sessionStorage.getItem('isNewDeviceLogin') === 'true';
+        
+        if (isNewDevice) {
+          // Get current user
+          const { getCurrentSupabaseUser } = await import('/js/utils/auth.js');
+          const user = await getCurrentSupabaseUser();
+          
+          if (user) {
+            // Import and initialize notification consent manager
+            const { NotificationConsentManager } = await import('/js/features/notifications/presentation/notification-consent-manager.js');
+            const manager = new NotificationConsentManager();
+            
+            // Check and show consent if needed
+            await manager.checkAndShowConsent(user.id, isNewDevice);
+          }
+        }
+      } catch (error) {
+        console.error('Error initializing notification consent:', error);
+      }
+    }
+    
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeNotificationConsent);
+    } else {
+      initializeNotificationConsent();
+    }
   </script>
   
   <!-- Sidebar Loader - Loads the navigation sidebar -->

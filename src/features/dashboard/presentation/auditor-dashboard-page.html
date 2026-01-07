@@ -44,7 +44,8 @@
   {
     "imports": {
       "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
-      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
     }
   }
   </script>
@@ -102,15 +103,20 @@
         showPage();
         
         // Set up auth state listener for real-time token expiration
-        const { getSupabase } = await import('/js/utils/supabase-init.js');
-        const supabase = getSupabase();
-        if (supabase) {
-          supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-              console.log('Auth state changed: User signed out or token expired');
-              window.location.href = '/src/auth/presentation/auth-page.html';
-            }
-          });
+        // ✅ SECURITY: Use authenticated helper to get Supabase client for auth operations
+        try {
+          const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+          const supabase = await getAuthenticatedSupabase();
+          if (supabase && supabase.auth) {
+            supabase.auth.onAuthStateChange((event, session) => {
+              if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+                console.log('Auth state changed: User signed out or token expired');
+                window.location.href = '/src/auth/presentation/auth-page.html';
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Failed to set up auth state listener:', error);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
@@ -292,9 +298,9 @@
         window.supabaseClient = secureClient;
       } catch (error) {
         console.error('Error initializing secure Supabase client:', error);
-        // Fallback to regular client
-        const { getSupabase } = await import('/js/utils/supabase-init.js');
-        window.supabaseClient = getSupabase();
+        // ✅ SECURITY: Don't fallback to unauthenticated client - require authentication
+        console.error('Cannot proceed without authenticated Supabase client');
+        throw error;
       }
     }
     
@@ -335,7 +341,9 @@
 
         // Import and initialize controller
         try {
-          const controllerModule = await import('/js/features/dashboard/application/auditor-dashboard-controller.js');
+          // Cache busting - force fresh load
+          const cacheBuster = '?v=' + Date.now();
+          const controllerModule = await import('/js/features/dashboard/application/auditor-dashboard-controller.js' + cacheBuster);
           console.log('[Dashboard Page] Controller module loaded:', controllerModule);
           
           if (!controllerModule.auditorDashboardController) {
@@ -354,10 +362,29 @@
           window.auditorDashboardState = auditorDashboardController.state;
           
           console.log('[Dashboard Page] Controller instance ready, initializing...');
+          console.log('[Dashboard Page] Controller type:', typeof auditorDashboardController);
+          console.log('[Dashboard Page] Initialize method type:', typeof auditorDashboardController.initialize);
+          console.log('[Dashboard Page] Controller instance:', auditorDashboardController);
+          console.log('[Dashboard Page] Initialize method:', auditorDashboardController.initialize);
+          console.log('[Dashboard Page] Initialize toString:', auditorDashboardController.initialize.toString().substring(0, 200));
 
           // Initialize dashboard
           try {
-            await auditorDashboardController.initialize();
+            console.log('[Dashboard Page] About to call initialize()...');
+            // Call directly and log the result
+            const result = auditorDashboardController.initialize();
+            console.log('[Dashboard Page] Initialize returned:', result);
+            console.log('[Dashboard Page] Is promise?', result instanceof Promise);
+            if (result instanceof Promise) {
+              result.then(
+                (value) => console.log('[Dashboard Page] Initialize promise resolved with:', value),
+                (error) => console.error('[Dashboard Page] Initialize promise rejected:', error)
+              );
+              await result;
+              console.log('[Dashboard Page] Initialize promise awaited');
+            } else {
+              console.warn('[Dashboard Page] Initialize did not return a promise!');
+            }
           } catch (initError) {
             console.error('[Dashboard Page] Error in controller.initialize():', initError);
             console.error('[Dashboard Page] Error name:', initError?.name);

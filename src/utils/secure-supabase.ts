@@ -142,11 +142,111 @@ export function clearAuthCache(): void {
  * @param requireAuth - If true, throws error if not authenticated (default: true)
  * @returns Secure Supabase client wrapper
  */
+/**
+ * Wait for Supabase to be initialized
+ * This helps with race conditions where components load before Supabase is ready
+ */
+async function waitForSupabaseInit(maxWait: number = 10000): Promise<any> {
+  // First check if already initialized
+  let supabase = getSupabase();
+  if (supabase) {
+    return supabase;
+  }
+  
+  // Check if already ready via window flag
+  if (typeof window !== 'undefined' && (window as any).supabaseReady) {
+    supabase = getSupabase();
+    if (supabase) return supabase;
+  }
+  
+  // Try to trigger initialization if not already in progress
+  if (typeof window !== 'undefined') {
+    try {
+      const { initSupabase } = await import('./supabase-init.js');
+      // Check if initialization is already in progress
+      const { isSupabaseInitialized } = await import('./supabase-init.js');
+      if (!isSupabaseInitialized()) {
+        // Start initialization if not already started
+        await initSupabase();
+        supabase = getSupabase();
+        if (supabase) return supabase;
+      }
+    } catch (error) {
+      supabaseLogger.debug('Could not auto-initialize Supabase, waiting for event...', error);
+    }
+  }
+  
+  // Wait for supabaseReady event
+  if (typeof window !== 'undefined') {
+    const startTime = Date.now();
+    
+    // Wait for event with timeout
+    const eventPromise = new Promise<any>((resolve) => {
+      const handler = () => {
+        const client = getSupabase();
+        if (client) {
+          resolve(client);
+        } else {
+          // If event fired but client still not ready, wait a bit more
+          setTimeout(() => {
+            const client = getSupabase();
+            resolve(client || null);
+          }, 200);
+        }
+      };
+      
+      if ((window as any).supabaseReady) {
+        handler();
+      } else {
+        window.addEventListener('supabaseReady', handler, { once: true });
+        
+        // Timeout fallback
+        setTimeout(() => {
+          window.removeEventListener('supabaseReady', handler);
+          const client = getSupabase();
+          resolve(client || null);
+        }, maxWait);
+      }
+    });
+    
+    const result = await eventPromise;
+    if (result) return result;
+    
+    // Fallback: poll for a short time
+    while (Date.now() - startTime < maxWait) {
+      supabase = getSupabase();
+      if (supabase) {
+        return supabase;
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  return null;
+}
+
 export async function getSecureSupabase(requireAuth: boolean = true): Promise<any> {
-  const supabase = getSupabase();
+  let supabase = getSupabase();
+  
+  // If not initialized, try to wait for it (helps with race conditions)
+  if (!supabase) {
+    supabaseLogger.debug('Supabase not initialized yet, waiting for initialization...');
+    supabase = await waitForSupabaseInit();
+  }
   
   if (!supabase) {
-    throw new Error('Supabase client not initialized. Call initSupabase() first.');
+    // Try one more time to initialize if it's still not ready
+    try {
+      const { initSupabase } = await import('./supabase-init.js');
+      await initSupabase();
+      supabase = getSupabase();
+    } catch (initError) {
+      supabaseLogger.error('Failed to initialize Supabase:', initError);
+    }
+  }
+  
+  if (!supabase) {
+    throw new Error('Supabase client not initialized. Call initSupabase() first. Make sure Supabase is initialized before using getSecureSupabase().');
   }
 
   // Verify authentication

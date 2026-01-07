@@ -7,6 +7,8 @@ import { getSupabase } from './supabase-init.js';
 import { getSecureSupabase } from './secure-supabase.js';
 import { getDeviceInfo } from './device-info.js';
 import { isNewDeviceLogin } from './auth-device.js';
+import { USER_PRIVATE_FIELDS } from '../core/constants/field-whitelists.js';
+import { logError, logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Check if user information has changed and needs updating
@@ -36,8 +38,10 @@ function hasInformationChanged(
  * - Comprehensive device/browser information for analytics
  * - Notification preferences (for future web push notifications)
  * - Activity tracking (last sign in, sign in count, first sign in, etc.)
+ * 
+ * @returns Object with isNewDevice flag indicating if this is a new device login
  */
-export async function saveUserProfileToDatabase(user: any): Promise<void> {
+export async function saveUserProfileToDatabase(user: any): Promise<{ isNewDevice: boolean }> {
   try {
     // ✅ Get secure Supabase client (automatically verifies auth)
     // Use requireAuth=false initially to avoid blocking on first sign-in
@@ -45,13 +49,13 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
     try {
       supabase = await getSecureSupabase(true);
     } catch (authError: any) {
-      console.error('❌ Failed to get secure Supabase client:', authError);
-      console.error('Auth error code:', authError.code);
-      console.error('Auth error message:', authError.message);
+      logError('❌ Failed to get secure Supabase client:', authError);
+      logError('Auth error code:', authError.code);
+      logError('Auth error message:', authError.message);
       
       // If auth is required but not available, try with regular client as fallback
       // This can happen on first sign-in when session is still propagating
-      console.log('⚠️ Attempting fallback to regular client...');
+      logInfo('⚠️ Attempting fallback to regular client...');
       const baseSupabase = getSupabase();
       if (!baseSupabase) {
         throw new Error('Supabase client not initialized');
@@ -70,12 +74,12 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !authUser) {
-      console.error('❌ Authentication verification failed:', authError?.message);
+      logError('❌ Authentication verification failed:', authError?.message);
       throw new Error(`Authentication verification failed: ${authError?.message || 'Unknown error'}`);
     }
     
     if (authUser.id !== user.id) {
-      console.error('❌ Security violation - user ID mismatch', {
+      logError('❌ Security violation - user ID mismatch', {
         authenticatedUserId: authUser.id,
         providedUserId: user.id,
       });
@@ -89,13 +93,13 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
     // Always check if user exists (use maybeSingle to avoid errors when user doesn't exist)
     const { data: existingUser, error: fetchError } = await supabase
       .from('users')
-      .select('*')
+      .select(USER_PRIVATE_FIELDS)
       .eq('id', user.id)
       .maybeSingle(); // Returns null if no rows found instead of throwing error
     
     // Handle fetch errors (but continue if user just doesn't exist)
     if (fetchError && fetchError.code !== 'PGRST116') {
-      console.warn('⚠️ Error checking for existing user:', fetchError.message);
+      logWarn('⚠️ Error checking for existing user:', fetchError.message);
       // Continue anyway - will try to create new user
     }
 
@@ -126,7 +130,7 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
 
       // Log only significant changes (new device)
       if (isNewDevice) {
-        console.log('🆕 New device login detected for:', user.email);
+        logInfo('🆕 New device login detected for:', { email: user.email });
       }
     }
 
@@ -183,7 +187,7 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
 
     if (error) {
       // Log detailed error information
-      console.error('❌ Error saving user profile to database:', {
+      logError('❌ Error saving user profile to database:', {
         code: error.code,
         message: error.message,
         details: error.details,
@@ -195,27 +199,31 @@ export async function saveUserProfileToDatabase(user: any): Promise<void> {
       
       // Handle specific error codes
       if (error.code === '42P01') {
-        console.warn('⚠️ users table not found. Please create it using the migration files.');
+        logWarn('⚠️ users table not found. Please create it using the migration files.');
       } else if (error.code === '23503') {
-        console.error('❌ Foreign key constraint error - user might not exist in auth.users yet');
+        logError('❌ Foreign key constraint error - user might not exist in auth.users yet');
       } else if (error.code === '23505') {
-        console.error('❌ Unique constraint violation - email might already exist');
+        logError('❌ Unique constraint violation - email might already exist');
       } else if (error.code === '42501') {
-        console.error('❌ Permission denied - RLS policy might be blocking the operation');
-        console.error('⚠️ Check RLS policies on users table. User must be authenticated.');
+        logError('❌ Permission denied - RLS policy might be blocking the operation');
+        logError('⚠️ Check RLS policies on users table. User must be authenticated.');
       } else if (error.code === 'PGRST301') {
-        console.error('❌ JWT expired - session might have expired');
+        logError('❌ JWT expired - session might have expired');
       }
       
       // Re-throw error so caller can handle it
       throw error;
     } else {
       // Success - user profile saved (only log errors, not success)
+      // Return new device flag (true for new users, false for existing same device)
+      return { isNewDevice: isNewUser || isNewDevice };
     }
   } catch (error: any) {
-    console.error('❌ Error in saveUserProfileToDatabase:', error);
-    console.error('Error stack:', error.stack);
+    logError('❌ Error in saveUserProfileToDatabase:', error);
+    logError('Error stack:', error.stack);
     // Don't throw - allow auth to continue even if profile save fails
+    // Return false for new device on error (conservative approach)
+    return { isNewDevice: false };
   }
 }
 

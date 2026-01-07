@@ -4,6 +4,8 @@
  * ✅ SECURITY: Disabled in production mode
  */
 
+import { logWarn, logInfo } from './logging-helper.js';
+
 /**
  * Dev bypass - Create a fake authenticated session for testing
  * ✅ SECURITY: Only works in development mode (NODE_ENV !== 'production')
@@ -15,14 +17,14 @@ export function enableDevBypassAuthentication(userEmail: string = 'dev@test.com'
     (window as any).env?.NODE_ENV === 'production';
   
   if (isProduction) {
-    console.warn('Dev bypass is disabled in production mode');
+    logWarn('Dev bypass is disabled in production mode');
     return;
   }
   
   const isDev = localStorage.getItem('isDev') === 'true';
   
   if (!isDev) {
-    console.warn('Dev bypass only works when isDev=true in localStorage');
+    logWarn('Dev bypass only works when isDev=true in localStorage');
     return;
   }
 
@@ -37,7 +39,7 @@ export function enableDevBypassAuthentication(userEmail: string = 'dev@test.com'
   };
 
   localStorage.setItem('userInfo', JSON.stringify(fakeUser));
-  console.log('Dev bypass enabled for:', userEmail);
+  logInfo('Dev bypass enabled for:', { email: userEmail });
 }
 
 /**

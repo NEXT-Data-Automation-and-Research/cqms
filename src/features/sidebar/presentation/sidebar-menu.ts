@@ -4,6 +4,7 @@
  */
 
 import { sidebarState } from '../application/sidebar-state.js'
+import { router } from '../../../core/routing/router.js'
 
 /**
  * This class handles menu interactions
@@ -17,6 +18,7 @@ export class SidebarMenu {
     this.setupSearchMenuHandler()
     this.setupAccessControlMenuItem()
     this.setupActiveMenuItem()
+    this.setupNavigationHandlers()
   }
 
   /**
@@ -118,17 +120,54 @@ export class SidebarMenu {
    * Highlight the active menu item based on current page
    */
   private setupActiveMenuItem(): void {
-    const currentPath = window.location.pathname
+    const currentPath = router.getCurrentPath()
     const menuItems = document.querySelectorAll('.menu-item, .submenu-item')
     
     menuItems.forEach(item => {
       const link = item as HTMLAnchorElement
       if (link.href) {
         const linkPath = new URL(link.href).pathname
-        if (currentPath === linkPath || currentPath.includes(linkPath)) {
+        const isActive = router.isRouteActive(linkPath)
+        
+        if (isActive) {
           item.classList.add('active')
+          // Also mark parent submenu as active if it's a submenu item
+          const submenuItem = item.closest('.menu-item-with-submenu')
+          if (submenuItem) {
+            submenuItem.classList.add('expanded')
+            const submenu = submenuItem.querySelector('.submenu')
+            if (submenu) {
+              submenu.classList.add('open')
+            }
+            const button = submenuItem.querySelector('.has-submenu')
+            if (button) {
+              button.setAttribute('aria-expanded', 'true')
+            }
+          }
         } else {
           item.classList.remove('active')
+        }
+      }
+    })
+  }
+
+  /**
+   * Set up navigation handlers using router
+   */
+  private setupNavigationHandlers(): void {
+    // Handle menu item clicks
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement
+      const link = target.closest('a.menu-item, a.submenu-item') as HTMLAnchorElement
+      
+      if (link && link.href && !link.classList.contains('logout-link')) {
+        const url = new URL(link.href)
+        const currentUrl = new URL(window.location.href)
+        
+        // Only handle internal navigation
+        if (url.origin === currentUrl.origin && url.pathname !== currentUrl.pathname) {
+          e.preventDefault()
+          router.navigate(url.pathname)
         }
       }
     })

@@ -5,45 +5,66 @@
  */
 
 import type { AuditDistributionStateManager } from '../application/audit-distribution-state.js';
+import { AuditDistributionService } from '../application/audit-distribution-service.js';
 import { AuditDistributionSidebar, type AuditDistributionView } from './components/audit-distribution-sidebar.js';
 import { ScheduleAuditView } from './components/schedule-audit-view.js';
 import { AIAuditView } from './components/ai-audit-view.js';
 import { ManualAuditViewRenderer } from './renderers/manual-audit-view-renderer.js';
+import { logInfo, logError } from '../../../utils/logging-helper.js';
 
 export class AuditDistributionRenderer {
   private stateManager: AuditDistributionStateManager;
+  private service: AuditDistributionService | null = null;
   private currentView: AuditDistributionView = 'manual';
   private sidebar: AuditDistributionSidebar | null = null;
   private manualAuditViewRenderer: ManualAuditViewRenderer | null = null;
   private scheduleAuditView: ScheduleAuditView | null = null;
   private aiAuditView: AIAuditView | null = null;
 
-  constructor(stateManager: AuditDistributionStateManager) {
+  constructor(stateManager: AuditDistributionStateManager, service?: AuditDistributionService) {
     this.stateManager = stateManager;
+    this.service = service || null;
+  }
+
+  setService(service: AuditDistributionService): void {
+    this.service = service;
+    // Re-render current view if it requires the service (e.g., manual audit view)
+    if (this.currentView === 'manual') {
+      logInfo('[Renderer] Service set, re-rendering manual audit view...');
+      this.renderCurrentView();
+    }
   }
 
   /**
    * Initialize and render all components
    */
   initialize(container: HTMLElement): void {
-    console.log('[Renderer] Initializing with container:', container);
+    logInfo('[Renderer] Initializing with container:', { containerId: container.id });
     
-    container.innerHTML = `
-      <div class="flex w-full items-start">
-        <!-- Sidebar -->
-        <div id="auditDistributionSidebar" class="flex-shrink-0"></div>
-        
-        <!-- Main Content -->
-        <div class="flex-1 min-w-0 overflow-x-hidden pr-4">
-          <div id="auditDistributionContent" class="w-full"></div>
-        </div>
-      </div>
-    `;
+    container.textContent = '';
+    const wrapperDiv = document.createElement('div');
+    wrapperDiv.className = 'flex w-full items-start';
+    
+    const sidebarDiv = document.createElement('div');
+    sidebarDiv.id = 'auditDistributionSidebar';
+    sidebarDiv.className = 'flex-shrink-0';
+    
+    const contentWrapperDiv = document.createElement('div');
+    contentWrapperDiv.className = 'flex-1 min-w-0 overflow-x-hidden pr-4';
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.id = 'auditDistributionContent';
+    contentDiv.className = 'w-full';
+    
+    contentWrapperDiv.appendChild(contentDiv);
+    wrapperDiv.appendChild(sidebarDiv);
+    wrapperDiv.appendChild(contentWrapperDiv);
+    container.appendChild(wrapperDiv);
 
     // Initialize sidebar
     const sidebarContainer = container.querySelector('#auditDistributionSidebar') as HTMLElement;
     if (sidebarContainer) {
-      console.log('[Renderer] Initializing sidebar...');
+      logInfo('[Renderer] Initializing sidebar...');
       this.sidebar = new AuditDistributionSidebar(sidebarContainer, {
         currentView: this.currentView,
         onViewChange: (view) => {
@@ -51,12 +72,13 @@ export class AuditDistributionRenderer {
         }
       });
     } else {
-      console.error('[Renderer] Sidebar container not found!');
+      logError('[Renderer] Sidebar container not found!');
     }
 
     // Render initial view - use setTimeout to ensure DOM is ready
+    // If service is not available yet, it will be rendered when service is set
     setTimeout(() => {
-      console.log('[Renderer] Rendering current view...');
+      logInfo('[Renderer] Rendering current view...', { serviceAvailable: !!this.service });
       this.renderCurrentView();
     }, 0);
   }
@@ -82,36 +104,41 @@ export class AuditDistributionRenderer {
   private renderCurrentView(): void {
     const contentContainer = document.getElementById('auditDistributionContent');
     if (!contentContainer) {
-      console.error('[Renderer] Content container not found: auditDistributionContent');
+      logError('[Renderer] Content container not found: auditDistributionContent');
       return;
     }
 
-    console.log('[Renderer] Rendering view:', this.currentView, 'Container:', contentContainer);
+    logInfo('[Renderer] Rendering view:', { view: this.currentView });
 
     switch (this.currentView) {
       case 'manual':
-        console.log('[Renderer] Rendering manual audit view...');
+        logInfo('[Renderer] Rendering manual audit view...');
         this.renderManualAuditView(contentContainer);
         break;
       case 'schedule':
-        console.log('[Renderer] Rendering schedule audit view...');
+        logInfo('[Renderer] Rendering schedule audit view...');
         this.renderScheduleAuditView(contentContainer);
         break;
       case 'ai':
-        console.log('[Renderer] Rendering AI audit view...');
+        logInfo('[Renderer] Rendering AI audit view...');
         this.renderAIAuditView(contentContainer);
         break;
     }
     
-    console.log('[Renderer] View rendered, container innerHTML length:', contentContainer.innerHTML.length);
+    logInfo('[Renderer] View rendered', { innerHTMLLength: contentContainer.innerHTML.length });
   }
 
   /**
    * Render manual audit view
    */
   private renderManualAuditView(container: HTMLElement): void {
+    if (!this.service) {
+      logError('[Renderer] Service not available for manual audit view');
+      return;
+    }
     this.manualAuditViewRenderer = new ManualAuditViewRenderer({
-      stateManager: this.stateManager
+      stateManager: this.stateManager,
+      service: this.service
     });
     this.manualAuditViewRenderer.render(container);
   }
@@ -120,8 +147,10 @@ export class AuditDistributionRenderer {
    * Render schedule audit view
    */
   private renderScheduleAuditView(container: HTMLElement): void {
-    container.innerHTML = `<div id="scheduleAuditViewContainer"></div>`;
-    const viewContainer = container.querySelector('#scheduleAuditViewContainer') as HTMLElement;
+    container.textContent = '';
+    const viewContainer = document.createElement('div');
+    viewContainer.id = 'scheduleAuditViewContainer';
+    container.appendChild(viewContainer);
     if (viewContainer) {
       this.scheduleAuditView = new ScheduleAuditView(viewContainer);
     }
@@ -131,8 +160,10 @@ export class AuditDistributionRenderer {
    * Render AI audit view
    */
   private renderAIAuditView(container: HTMLElement): void {
-    container.innerHTML = `<div id="aiAuditViewContainer"></div>`;
-    const viewContainer = container.querySelector('#aiAuditViewContainer') as HTMLElement;
+    container.textContent = '';
+    const viewContainer = document.createElement('div');
+    viewContainer.id = 'aiAuditViewContainer';
+    container.appendChild(viewContainer);
     if (viewContainer) {
       this.aiAuditView = new AIAuditView(viewContainer);
     }
@@ -144,8 +175,15 @@ export class AuditDistributionRenderer {
    * Refresh all components
    */
   refresh(): void {
-    if (this.currentView === 'manual' && this.manualAuditViewRenderer) {
-      this.manualAuditViewRenderer.refresh();
+    // If service is available but view isn't rendered yet, render it now
+    if (this.currentView === 'manual' && this.service) {
+      const contentContainer = document.getElementById('auditDistributionContent');
+      if (contentContainer && (!this.manualAuditViewRenderer || contentContainer.children.length === 0)) {
+        logInfo('[Renderer] Refreshing: Re-rendering manual audit view...');
+        this.renderCurrentView();
+      } else if (this.manualAuditViewRenderer) {
+        this.manualAuditViewRenderer.refresh();
+      }
     }
   }
 }

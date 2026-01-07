@@ -121,7 +121,8 @@ router.post('/start', async (req, res) => {
 
     // Start migration in background
     currentMigrator.migrate(options || {}).catch((error) => {
-      console.error('Migration error:', error);
+      // Migration errors are logged by the migrator itself
+      // This catch is just to prevent unhandled promise rejection
     });
 
     res.json({ 

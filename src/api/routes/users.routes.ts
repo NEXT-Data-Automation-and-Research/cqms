@@ -7,6 +7,7 @@ import { Router, Response } from 'express';
 import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
+import { USER_PRIVATE_FIELDS } from '../../core/constants/field-whitelists.js';
 
 const router = Router();
 const logger = createLogger('UsersAPI');
@@ -22,7 +23,7 @@ router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): 
 
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select(USER_PRIVATE_FIELDS)
       .eq('id', userId)
       .single();
 

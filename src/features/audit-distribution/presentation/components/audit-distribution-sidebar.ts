@@ -3,6 +3,8 @@
  * Left sidebar navigation for audit distribution feature
  */
 
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+
 export type AuditDistributionView = 'manual' | 'schedule' | 'ai';
 
 export interface AuditDistributionSidebarConfig {
@@ -79,7 +81,7 @@ export class AuditDistributionSidebar {
       `;
     }).join('');
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="audit-distribution-sidebar bg-dark-forest border-r border-white/10 w-64 flex flex-col h-full">
         <div class="p-4 border-b border-white/10 flex-shrink-0">
           <h2 class="text-lg font-bold text-white">Audit Distribution</h2>
@@ -89,7 +91,7 @@ export class AuditDistributionSidebar {
           ${menuItemsHtml}
         </nav>
       </div>
-    `;
+    `);
 
     this.attachEventListeners();
   }

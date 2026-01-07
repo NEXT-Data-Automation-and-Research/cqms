@@ -3,13 +3,15 @@
  * Simple controller for help page
  */
 
+import { logInfo } from '../../../utils/logging-helper.js';
+
 export class HelpController {
   /**
    * Initialize help page
    */
   async initialize(): Promise<void> {
     // Simple initialization
-    console.log('Help page initialized');
+    logInfo('Help page initialized');
   }
 }
 

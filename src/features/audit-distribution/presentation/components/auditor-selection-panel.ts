@@ -5,6 +5,7 @@
 
 import type { Auditor } from '../../domain/types.js';
 import { CounterInput } from './counter-input.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
 export interface AuditorSelectionPanelConfig {
   auditors: Auditor[];
@@ -57,7 +58,7 @@ export class AuditorSelectionPanel {
 
     const iconRotation = this.isExpanded ? 'rotate-180' : '';
     
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="glass-card rounded-xl flex flex-col h-full w-full overflow-hidden">
         <!-- Enhanced Header -->
         <div class="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-b border-white/10 px-5 py-4 flex-shrink-0">
@@ -223,7 +224,7 @@ export class AuditorSelectionPanel {
           </button>
         </div>
       </div>
-    `;
+    `);
 
     this.initializeCounterInput();
     this.attachEventListeners();
@@ -301,15 +302,16 @@ export class AuditorSelectionPanel {
         <div
           class="flex items-center gap-3 p-3.5 bg-white/5 backdrop-blur-sm border rounded-xl transition-all cursor-pointer group ${isSelected ? 'bg-primary/15 border-primary/40 shadow-sm shadow-primary/20' : 'border-white/10 hover:bg-white/10 hover:border-primary/30'} ${!canSelect ? 'opacity-50 cursor-not-allowed' : ''}"
           data-email="${this.escapeHtml(auditor.email)}"
-          onclick="${canSelect ? `this.dispatchEvent(new CustomEvent('auditorClick', { detail: '${this.escapeHtml(auditor.email)}' }))` : ''}"
+          data-action="auditor-click"
+          ${canSelect ? '' : 'data-disabled="true"'}
         >
           <div class="relative flex-shrink-0">
             <input
               type="checkbox"
-              class="w-5 h-5 cursor-pointer accent-primary flex-shrink-0"
+              class="w-5 h-5 cursor-pointer accent-primary flex-shrink-0 auditor-checkbox"
+              data-email="${this.escapeHtml(auditor.email)}"
               ${isSelected ? 'checked' : ''}
               ${!canSelect ? 'disabled' : ''}
-              onclick="event.stopPropagation(); this.dispatchEvent(new CustomEvent('auditorSelect', { detail: { email: '${this.escapeHtml(auditor.email)}', checked: this.checked } }))"
             />
             ${isSelected ? `
               <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -386,6 +388,35 @@ export class AuditorSelectionPanel {
   }
 
   private attachEventListeners(): void {
+    // ✅ SECURITY: Set up event listeners for auditor clicks (prevents XSS)
+    this.container.querySelectorAll('[data-action="auditor-click"]').forEach(element => {
+      if (element.hasAttribute('data-listener-attached')) return;
+      element.setAttribute('data-listener-attached', 'true');
+      
+      element.addEventListener('click', (e) => {
+        const email = element.getAttribute('data-email');
+        const disabled = element.getAttribute('data-disabled') === 'true';
+        if (email && !disabled) {
+          element.dispatchEvent(new CustomEvent('auditorClick', { detail: email }));
+        }
+      });
+    });
+    
+    // ✅ SECURITY: Set up event listeners for auditor checkboxes (prevents XSS)
+    this.container.querySelectorAll('.auditor-checkbox').forEach(checkbox => {
+      if (checkbox.hasAttribute('data-listener-attached')) return;
+      checkbox.setAttribute('data-listener-attached', 'true');
+      
+      checkbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const email = checkbox.getAttribute('data-email');
+        const checked = (checkbox as HTMLInputElement).checked;
+        if (email) {
+          checkbox.dispatchEvent(new CustomEvent('auditorSelect', { detail: { email, checked } }));
+        }
+      });
+    });
+    
     // Panel expand/collapse button
     const expandButton = this.container.querySelector('#panelExpandButton');
     expandButton?.addEventListener('togglePanel', () => {
@@ -397,6 +428,7 @@ export class AuditorSelectionPanel {
       this.config.onToggleIncludeOthers();
     });
 
+    // Keep existing event listeners for CustomEvents
     const auditorSelects = this.container.querySelectorAll('[data-email]');
     auditorSelects.forEach(el => {
       el.addEventListener('auditorSelect', ((e: CustomEvent) => {

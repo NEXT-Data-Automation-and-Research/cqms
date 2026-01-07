@@ -189,6 +189,9 @@ export class AuditorDashboardState {
    * Apply filters to assignments
    */
   applyFilters(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-state.ts:191',message:'applyFilters entry',data:{filters:this.currentFilters,unfilteredCount:this.unfilteredAssignments.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
     this.allAssignments = [...this.unfilteredAssignments];
 
     if (this.currentFilters.status) {
@@ -213,6 +216,9 @@ export class AuditorDashboardState {
     if (this.currentFilters.scorecard) {
       this.allAssignments = this.allAssignments.filter(a => a.scorecard_id === this.currentFilters.scorecard);
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-state.ts:216',message:'applyFilters completed',data:{filteredCount:this.allAssignments.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
   }
 
   /**

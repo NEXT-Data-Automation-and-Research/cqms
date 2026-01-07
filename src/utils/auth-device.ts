@@ -4,6 +4,7 @@
  */
 
 import { getDeviceInfo } from './device-info.js';
+import { logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Generate a device fingerprint for the current browser/device
@@ -63,8 +64,8 @@ export function validateDeviceFingerprint(sessionToken: string, userId?: string)
   
   // Compare fingerprints
   if (storedFingerprint !== currentFingerprint) {
-    console.warn('🚨 SECURITY ALERT: Device fingerprint mismatch detected!');
-    console.warn('This may indicate token copying or device change.');
+    logWarn('🚨 SECURITY ALERT: Device fingerprint mismatch detected!');
+    logWarn('This may indicate token copying or device change.');
     return false;
   }
   
@@ -78,7 +79,7 @@ export function storeDeviceFingerprint(accessToken: string): void {
   const fingerprint = generateDeviceFingerprint();
   const storedFingerprintKey = `device_fingerprint_${accessToken.substring(0, 20)}`;
   localStorage.setItem(storedFingerprintKey, fingerprint);
-  console.log('✅ Device fingerprint stored for session security');
+  logInfo('✅ Device fingerprint stored for session security');
 }
 
 /**

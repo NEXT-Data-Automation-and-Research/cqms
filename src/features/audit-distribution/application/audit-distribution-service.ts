@@ -3,7 +3,12 @@
  * Business logic for audit distribution feature
  */
 
+import { BaseService } from '../../../core/service/base-service.js';
+import { createValidationError } from '../../../core/errors/app-error.js';
+import { PeopleRepository } from '../infrastructure/people-repository.js';
+import { AuditAssignmentRepository } from '../infrastructure/audit-assignment-repository.js';
 import { AuditDistributionDummyData } from '../infrastructure/audit-distribution-dummy-data.js';
+import { logWarn } from '../../../utils/logging-helper.js';
 import type {
   Employee,
   Auditor,
@@ -13,31 +18,56 @@ import type {
   EmployeeAuditStats
 } from '../domain/types.js';
 
-export class AuditDistributionService {
+export interface BulkAssignmentRequest {
+  employeeEmails: string[];
+  auditorEmails: string[];
+  auditsPerEmployee: number;
+  scorecardId: string | null;
+  scheduledDate: Date | null;
+  assignedBy: string;
+}
+
+export class AuditDistributionService extends BaseService {
+  constructor(
+    private peopleRepository: PeopleRepository,
+    private assignmentRepository: AuditAssignmentRepository
+  ) {
+    super();
+  }
+
   /**
-   * Load all employees
+   * Load all employees (team members excluding Quality Analysts)
    */
   async loadEmployees(): Promise<Employee[]> {
-    // TODO: Replace with actual repository call
-    return AuditDistributionDummyData.getDummyEmployees();
+    return this.executeBusinessLogic(
+      async () => {
+        return await this.peopleRepository.findTeamMembers();
+      },
+      'Failed to load employees'
+    );
   }
 
   /**
    * Load quality analysts
    */
   async loadQualityAnalysts(): Promise<Auditor[]> {
-    // TODO: Replace with actual repository call
-    return AuditDistributionDummyData.getDummyAuditors()
-      .filter(a => a.role === 'Quality Analyst');
+    return this.executeBusinessLogic(
+      async () => {
+        return await this.peopleRepository.findQualityAnalysts();
+      },
+      'Failed to load quality analysts'
+    );
   }
 
   /**
    * Load other auditors (Admin, Super Admin, Quality Supervisor)
+   * Note: Currently returns empty array as we only show Quality Analysts as auditors
+   * and team members separately. This can be extended if needed.
    */
   async loadOtherAuditors(): Promise<Auditor[]> {
-    // TODO: Replace with actual repository call
-    return AuditDistributionDummyData.getDummyAuditors()
-      .filter(a => ['Admin', 'Super Admin', 'Quality Supervisor'].includes(a.role));
+    // Return empty array - we only use Quality Analysts as auditors
+    // Team members are shown separately
+    return [];
   }
 
   /**
@@ -52,8 +82,12 @@ export class AuditDistributionService {
    * Load audit assignments
    */
   async loadAssignments(): Promise<AuditAssignment[]> {
-    // TODO: Replace with actual repository call
-    return AuditDistributionDummyData.getDummyAssignments();
+    return this.executeBusinessLogic(
+      async () => {
+        return await this.assignmentRepository.findAll();
+      },
+      'Failed to load audit assignments'
+    );
   }
 
   /**
@@ -133,5 +167,94 @@ export class AuditDistributionService {
     );
 
     return Math.floor(daysSinceWeek1 / 7) + 1;
+  }
+
+  /**
+   * Create bulk audit assignments
+   * Distributes audits evenly among selected auditors using round-robin
+   */
+  async createBulkAssignments(request: BulkAssignmentRequest): Promise<AuditAssignment[]> {
+    return this.executeBusinessLogic(
+      async () => {
+        const { employeeEmails, auditorEmails, auditsPerEmployee, scorecardId, scheduledDate, assignedBy } = request;
+
+        if (employeeEmails.length === 0) {
+          throw createValidationError('At least one employee must be selected');
+        }
+
+        if (auditorEmails.length === 0) {
+          throw createValidationError('At least one auditor must be selected');
+        }
+
+        if (auditsPerEmployee <= 0) {
+          throw createValidationError('Audits per employee must be greater than 0');
+        }
+
+        // Get employee details
+        const employees = await this.loadEmployees();
+        const employeeMap = new Map(employees.map(e => [e.email, e]));
+
+        // Create all audit assignments
+        const assignmentsToCreate: Array<{
+          employee_email: string;
+          employee_name: string;
+          auditor_email: string;
+          scorecard_id: string | null;
+          status: 'pending';
+          scheduled_date: string | null;
+          week: number | null;
+          assigned_by: string;
+        }> = [];
+
+        // Determine scheduled date and week
+        const scheduledDateStr = scheduledDate 
+          ? scheduledDate.toISOString().split('T')[0] 
+          : new Date().toISOString().split('T')[0];
+        const dateForWeek = scheduledDate || new Date();
+        const week = this.getWeekNumber(dateForWeek);
+
+        // Create assignments for each employee
+        employeeEmails.forEach(employeeEmail => {
+          const employee = employeeMap.get(employeeEmail);
+          if (!employee) {
+            logWarn(`Employee not found: ${employeeEmail}`);
+            return;
+          }
+
+          // Create auditsPerEmployee assignments for this employee
+          for (let i = 0; i < auditsPerEmployee; i++) {
+            // Round-robin: cycle through auditors
+            const auditorIndex = assignmentsToCreate.length % auditorEmails.length;
+            const auditorEmail = auditorEmails[auditorIndex];
+
+            assignmentsToCreate.push({
+              employee_email: employee.email,
+              employee_name: employee.name,
+              auditor_email: auditorEmail,
+              scorecard_id: scorecardId,
+              status: 'pending',
+              scheduled_date: scheduledDateStr,
+              week: week,
+              assigned_by: assignedBy
+            });
+          }
+        });
+
+        // Create assignments in database
+        const createdAssignments = await this.assignmentRepository.createAssignments(assignmentsToCreate);
+
+        // Invalidate caches
+        employeeEmails.forEach(email => {
+          this.assignmentRepository.invalidateEmployeeCache(email);
+        });
+        auditorEmails.forEach(email => {
+          this.assignmentRepository.invalidateAuditorCache(email);
+        });
+        this.assignmentRepository.invalidateAssignmentsCache();
+
+        return createdAssignments;
+      },
+      'Failed to create bulk audit assignments'
+    );
   }
 }

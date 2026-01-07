@@ -1,0 +1,24 @@
+<!-- Pull Conversations Component -->
+<div class="glass-card rounded-xl p-4">
+  <h3 class="text-base font-bold text-white mb-4">Pull Conversations from Intercom</h3>
+  <div class="space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-white/80 mb-2">Start Date</label>
+        <input type="date" id="conversationStartDate" class="form-input w-full" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-white/80 mb-2">End Date</label>
+        <input type="date" id="conversationEndDate" class="form-input w-full" />
+      </div>
+    </div>
+    <button type="button" id="pullConversationsBtn" 
+            class="w-full px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity">
+      Pull Conversations
+    </button>
+    <div id="conversationsList" class="hidden mt-4 max-h-96 overflow-y-auto space-y-2">
+      <!-- Conversations will be loaded here -->
+    </div>
+  </div>
+</div>
+

@@ -7,6 +7,7 @@ import { Router, Response } from 'express';
 import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
+import { NOTIFICATION_SUBSCRIPTION_FIELDS } from '../../core/constants/field-whitelists.js';
 
 const router = Router();
 const logger = createLogger('NotificationSubscriptionsAPI');
@@ -24,7 +25,7 @@ router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Pr
 
     let query = supabase
       .from('notification_subscriptions')
-      .select('*')
+      .select(NOTIFICATION_SUBSCRIPTION_FIELDS)
       .eq('user_id', userId);
 
     if (is_active !== undefined) {

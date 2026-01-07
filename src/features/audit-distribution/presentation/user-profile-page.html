@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Profile - CQMS</title>
+  <!-- Global Styles (includes compiled Tailwind output) -->
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  
+  <!-- Import map for npm packages in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+    }
+  }
+  </script>
+</head>
+
+<body class="home-page">
+  <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+  <main class="main-content" role="main">
+    <!-- Dot Background Pattern Component -->
+    <div id="dot-background-container"></div>
+    
+    <!-- Main Content Container (matches homepage structure) -->
+    <div class="px-4 py-6 max-w-7xl mx-auto w-full relative z-10">
+      <div id="user-profile-container">
+        <!-- Content will be loaded by user-profile-loader -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Authentication Guard -->
+  <script type="module" src="/js/auth-checker.js"></script>
+  
+  <!-- Initialize Supabase FIRST before any components load -->
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    
+    // Initialize Supabase immediately when page loads
+    (async function initSupabaseFirst() {
+      try {
+        await initSupabase();
+        console.log('✓ Supabase initialized before components');
+        // Signal that Supabase is ready
+        window.supabaseReady = true;
+        window.dispatchEvent(new CustomEvent('supabaseReady'));
+      } catch (error) {
+        console.error('Failed to initialize Supabase:', error);
+      }
+    })();
+  </script>
+  
+  <!-- Component Loader - Must load after Supabase is initialized -->
+  <script type="module">
+    import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
+    import { isSupabaseInitialized } from '/js/utils/supabase-init.js';
+    
+    // Wait for Supabase to be initialized before loading components
+    async function waitForSupabase() {
+      // Check if already initialized
+      if (isSupabaseInitialized() || window.supabaseReady) {
+        return;
+      }
+      
+      // Wait for supabaseReady event
+      return new Promise((resolve) => {
+        if (window.supabaseReady) {
+          resolve();
+          return;
+        }
+        window.addEventListener('supabaseReady', resolve, { once: true });
+      });
+    }
+    
+    // Load all components
+    async function initializeComponents() {
+      // Wait for Supabase to be initialized first
+      await waitForSupabase();
+      try {
+        // Load dot background component
+        await loadComponents([
+          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' }
+        ]);
+        console.log('✓ Dot background component loaded');
+      } catch (error) {
+        console.error('Error loading components:', error);
+      }
+    }
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeComponents);
+    } else {
+      // DOM is already ready
+      initializeComponents();
+    }
+  </script>
+  
+  <!-- Sidebar Loader -->
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+  
+  <!-- Initialize Supabase Client for DatabaseFactory (like homepage) - MUST run before loader -->
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
+    
+    async function initSecureClient() {
+      try {
+        // Initialize base Supabase client first (this sets up the API key)
+        const baseClient = await initSupabase();
+        if (!baseClient) {
+          throw new Error('Failed to initialize Supabase client - check that SUPABASE_URL and SUPABASE_ANON_KEY are configured');
+        }
+        
+        // Store base client for DatabaseFactory (required by DatabaseFactory.createClient())
+        window.supabaseClient = baseClient;
+        
+        // Signal that supabaseClient is ready
+        window.supabaseClientReady = true;
+        window.dispatchEvent(new CustomEvent('supabaseClientReady'));
+        
+        // For database operations, use getAuthenticatedSupabase() which will verify auth
+        try {
+          await getAuthenticatedSupabase();
+          console.log('Authenticated Supabase client verified');
+        } catch (authError) {
+          // If not authenticated, redirect to login
+          if (authError?.code === 'AUTH_REQUIRED') {
+            console.log('User not authenticated, redirecting to login...');
+            window.location.href = '/src/auth/presentation/auth-page.html';
+            return;
+          }
+          console.warn('Auth verification failed, but base client is available:', authError);
+        }
+      } catch (error) {
+        console.error('Error initializing Supabase client:', error);
+        throw error;
+      }
+    }
+    
+    // Initialize immediately (no DOMContentLoaded wait - needs to run ASAP)
+    initSecureClient().catch(error => {
+      console.error('Failed to initialize secure client:', error);
+    });
+  </script>
+  
+  <!-- User Profile Loader - Waits for supabaseClientReady -->
+  <script type="module">
+    // Wait for supabaseClient to be set before loading
+    async function waitForSupabaseClient() {
+      if (window.supabaseClientReady && window.supabaseClient) {
+        return;
+      }
+      
+      return new Promise((resolve) => {
+        if (window.supabaseClientReady && window.supabaseClient) {
+          resolve();
+          return;
+        }
+        window.addEventListener('supabaseClientReady', resolve, { once: true });
+      });
+    }
+    
+    // Wait for supabaseClient, then load the profile loader
+    waitForSupabaseClient().then(() => {
+      import('/js/features/audit-distribution/presentation/user-profile-loader.js').then(module => {
+        const loader = new module.UserProfileLoader();
+        loader.init();
+      });
+    });
+  </script>
+  
+</body>
+</html>
+

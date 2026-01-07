@@ -4,6 +4,7 @@
  */
 
 import type { AgentSummary } from '../../domain/types.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
 export interface AgentSummaryTableConfig {
   summaries: AgentSummary[];
@@ -29,7 +30,7 @@ export class AgentSummaryTable {
 
     const rows = summaries.map(summary => this.renderSummaryRow(summary)).join('');
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="glass-card rounded-xl p-5">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-4 border-b border-white/10">
           <div class="flex items-center gap-2.5">
@@ -103,7 +104,7 @@ export class AgentSummaryTable {
           </table>
         </div>
       </div>
-    `;
+    `);
 
     this.attachEventListeners();
   }
@@ -155,8 +156,9 @@ export class AgentSummaryTable {
         </td>
         <td class="p-2.5 text-sm">
           <button
-            class="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg cursor-pointer text-xs text-white hover:bg-white/20 hover:border-primary/50 transition-all font-medium"
-            onclick="this.dispatchEvent(new CustomEvent('toggleBreakdown', { detail: '${this.escapeHtml(summary.email)}' }))"
+            class="flex items-center gap-1.5 px-2.5 py-1 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg cursor-pointer text-xs text-white hover:bg-white/20 hover:border-primary/50 transition-all font-medium toggle-breakdown-btn"
+            data-email="${this.escapeHtml(summary.email)}"
+            data-action="toggle-breakdown"
           >
             <svg
               id="breakdown-icon-${sanitizedEmail}"
@@ -197,7 +199,21 @@ export class AgentSummaryTable {
       });
     });
 
-    const toggleBreakdowns = this.container.querySelectorAll('[onclick*="toggleBreakdown"]');
+    // ✅ SECURITY: Set up event listeners for toggle breakdown buttons (prevents XSS)
+    this.container.querySelectorAll('.toggle-breakdown-btn').forEach(btn => {
+      if (btn.hasAttribute('data-listener-attached')) return;
+      btn.setAttribute('data-listener-attached', 'true');
+      
+      btn.addEventListener('click', (e) => {
+        const email = btn.getAttribute('data-email');
+        if (email) {
+          btn.dispatchEvent(new CustomEvent('toggleBreakdown', { detail: email }));
+        }
+      });
+    });
+    
+    // Keep existing event listeners for CustomEvents
+    const toggleBreakdowns = this.container.querySelectorAll('[data-action="toggle-breakdown"]');
     toggleBreakdowns.forEach(btn => {
       btn.addEventListener('toggleBreakdown', ((e: CustomEvent) => {
         const email = e.detail;

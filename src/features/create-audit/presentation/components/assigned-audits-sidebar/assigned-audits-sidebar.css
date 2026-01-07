@@ -1,0 +1,230 @@
+.assigned-audits-sidebar {
+  background: var(--glass-card-background);
+  border: var(--glass-card-border);
+  box-shadow: var(--glass-card-shadow);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+  border-right: none !important;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+}
+
+/* Search and Filter Inputs */
+.audit-search-input,
+.audit-filter-select {
+  font-size: 0.8125rem;
+}
+
+.audit-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.audit-filter-select option {
+  background: #1a1a2e;
+  color: white;
+}
+
+/* Assigned Audits List Container */
+.assigned-audits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  max-height: 100%;
+}
+
+.assigned-audits-list > * {
+  margin-bottom: 0 !important;
+  flex-shrink: 0;
+}
+
+/* Ensure list fills remaining space */
+.assigned-audits-sidebar {
+  min-height: 0;
+}
+
+.assigned-audits-sidebar > #assigned-audits-list {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Employee Item - List Tile - Matching Design System */
+.assigned-audits-sidebar .employee-item {
+  background: rgba(40, 35, 62, 0.3) !important;
+  backdrop-filter: blur(10px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 0.875rem !important;
+  cursor: pointer !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  margin-bottom: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  box-shadow: 
+    0 2px 8px 0 rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+
+.assigned-audits-sidebar .employee-item::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  ) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+  opacity: 0 !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.assigned-audits-sidebar .employee-item:hover {
+  background: rgba(40, 35, 62, 0.45) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 
+    0 4px 12px 0 rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.assigned-audits-sidebar .employee-item:hover::before {
+  opacity: 1 !important;
+}
+
+.assigned-audits-sidebar .employee-item.active {
+  background: rgba(99, 91, 255, 0.15) !important;
+  border-color: rgba(99, 91, 255, 0.5) !important;
+  box-shadow: 
+    0 4px 16px 0 rgba(99, 91, 255, 0.2),
+    0 0 0 1px rgba(99, 91, 255, 0.3),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+.assigned-audits-sidebar .employee-item.active::before {
+  opacity: 1 !important;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(99, 91, 255, 0.4),
+    transparent
+  ) !important;
+}
+
+.assigned-audits-sidebar .employee-item.active::after {
+  content: '' !important;
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  width: 3px !important;
+  background: var(--home-primary-500, #635BFF) !important;
+  border-radius: 0.5rem 0 0 0.5rem !important;
+  z-index: 2 !important;
+  box-shadow: 0 0 8px rgba(99, 91, 255, 0.5) !important;
+}
+
+/* Employee Content - List Tile Layout */
+.assigned-audits-sidebar .employee-item-content {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.375rem !important;
+  position: relative !important;
+  z-index: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.assigned-audits-sidebar .employee-primary {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  flex-wrap: nowrap !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.assigned-audits-sidebar .employee-name {
+  font-weight: 600 !important;
+  color: #ffffff !important;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  letter-spacing: -0.01em !important;
+}
+
+.assigned-audits-sidebar .employee-item.active .employee-name {
+  color: #ffffff !important;
+}
+
+.assigned-audits-sidebar .employee-alias {
+  font-size: 0.8125rem !important;
+  color: rgba(255, 255, 255, 0.65) !important;
+  line-height: 1.4 !important;
+  font-weight: 400 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.assigned-audits-sidebar .employee-item.active .employee-alias {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.assigned-audits-sidebar .employee-secondary {
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0.25rem !important;
+}
+
+.assigned-audits-sidebar .audit-count-label {
+  font-size: 0.75rem !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 500 !important;
+}
+
+.assigned-audits-sidebar .employee-item.active .audit-count-label {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Scrollbar Styling */
+.assigned-audits-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.assigned-audits-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.assigned-audits-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.assigned-audits-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+

@@ -4,8 +4,7 @@
  */
 
 import type { AuditDistributionStateManager } from '../../application/audit-distribution-state.js';
-import { AgentSummaryTable } from '../components/agent-summary-table.js';
-import { AssignedAuditsTable } from '../components/assigned-audits-table.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
 export interface StatisticsTabRendererConfig {
   stateManager: AuditDistributionStateManager;
@@ -13,110 +12,40 @@ export interface StatisticsTabRendererConfig {
 
 export class StatisticsTabRenderer {
   private stateManager: AuditDistributionStateManager;
-  private agentSummaryTable: AgentSummaryTable | null = null;
-  private assignedAuditsTable: AssignedAuditsTable | null = null;
 
   constructor(config: StatisticsTabRendererConfig) {
     this.stateManager = config.stateManager;
   }
 
   render(): void {
-    this.renderAgentSummarySection();
-    this.renderAssignedAuditsSection();
+    this.renderComingSoon();
   }
 
-  private renderAgentSummarySection(): void {
-    const container = document.getElementById('agentSummarySection');
+  private renderComingSoon(): void {
+    const container = document.getElementById('statisticsContent');
     if (!container) return;
 
-    const state = this.stateManager.getState();
+    const html = `
+      <div class="flex flex-col items-center justify-center min-h-[500px] py-20">
+        <div class="text-center">
+          <div class="mb-6">
+            <svg class="mx-auto w-24 h-24 text-primary/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+          <h2 class="text-3xl font-bold text-white mb-3">Coming Soon</h2>
+          <p class="text-lg text-white/70 max-w-md mx-auto">
+            Statistics and analytics features are under development. Check back soon!
+          </p>
+        </div>
+      </div>
+    `;
 
-    this.agentSummaryTable = new AgentSummaryTable(container, {
-      summaries: state.agentSummaries,
-      onTargetUpdate: (email, target) => {
-        // TODO: Update target in state
-        console.log('Update target', email, target);
-      },
-      dateFilter: state.dateFilter,
-      onDateFilterChange: (period) => {
-        // TODO: Update date filter
-        console.log('Date filter change', period);
-      },
-      onRefresh: () => {
-        // TODO: Refresh summaries
-        console.log('Refresh summaries');
-      }
-    });
-  }
-
-  private renderAssignedAuditsSection(): void {
-    const container = document.getElementById('assignedAuditsSection');
-    if (!container) return;
-
-    const state = this.stateManager.getState();
-    const selectedAssignments = new Set<string>();
-
-    this.assignedAuditsTable = new AssignedAuditsTable(container, {
-      assignments: state.assignments,
-      auditors: [...state.auditors, ...state.otherAuditors],
-      scorecards: state.scorecards,
-      selectedAssignments,
-      columnFilters: state.columnFilters,
-      onAssignmentSelect: (id, selected) => {
-        if (selected) {
-          selectedAssignments.add(id);
-        } else {
-          selectedAssignments.delete(id);
-        }
-        this.updateAssignedAuditsTable();
-      },
-      onSelectAll: (selected) => {
-        if (selected) {
-          state.assignments.forEach(a => {
-            if (a.status !== 'completed') {
-              selectedAssignments.add(a.id);
-            }
-          });
-        } else {
-          selectedAssignments.clear();
-        }
-        this.updateAssignedAuditsTable();
-      },
-      onBulkEdit: (updates) => {
-        // TODO: Implement bulk edit
-        console.log('Bulk edit', updates);
-      },
-      onBulkDelete: () => {
-        // TODO: Implement bulk delete
-        console.log('Bulk delete');
-      },
-      onRefresh: () => {
-        // TODO: Refresh assignments
-        console.log('Refresh assignments');
-      }
-    });
-  }
-
-  private updateAssignedAuditsTable(): void {
-    if (this.assignedAuditsTable) {
-      const state = this.stateManager.getState();
-      const selectedAssignments = new Set<string>();
-      
-      this.assignedAuditsTable.update({
-        assignments: state.assignments,
-        selectedAssignments
-      });
-    }
+    safeSetHTML(container, html);
   }
 
   refresh(): void {
-    if (this.agentSummaryTable) {
-      const state = this.stateManager.getState();
-      this.agentSummaryTable.update({
-        summaries: state.agentSummaries
-      });
-    }
-    this.updateAssignedAuditsTable();
+    this.render();
   }
 }
 

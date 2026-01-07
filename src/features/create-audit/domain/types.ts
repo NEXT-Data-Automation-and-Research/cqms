@@ -4,6 +4,13 @@
 
 export interface CreateAudit {
   id: string;
-  // Add audit creation fields here
+  employeeId: string;
+  interactionId: string;
+  scorecardId: string;
+  transcript: string;
+  recommendations: string;
+  parameters: Record<string, any>;
+  createdAt: string;
+  updatedAt: string;
 }
 

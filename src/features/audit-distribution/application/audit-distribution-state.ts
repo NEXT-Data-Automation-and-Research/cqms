@@ -12,6 +12,7 @@ import type {
   PaginationState,
   AgentSummary
 } from '../domain/types.js';
+import { mergeFilters, cleanFilters } from './filter-utils.js';
 
 export interface AuditDistributionState {
   employees: Employee[];
@@ -106,7 +107,12 @@ export class AuditDistributionStateManager {
   }
 
   setFilters(filters: Partial<FilterOptions>): void {
-    this.state.filters = { ...this.state.filters, ...filters };
+    this.state.filters = mergeFilters(this.state.filters, filters);
+    this.applyFilters();
+  }
+
+  replaceFilters(filters: FilterOptions): void {
+    this.state.filters = cleanFilters(filters);
     this.applyFilters();
   }
 
@@ -154,9 +160,16 @@ export class AuditDistributionStateManager {
 
   toggleEmployeeSelection(email: string, selected: boolean, auditCount: number = 1): void {
     if (selected) {
-      const employee = this.state.employees.find(e => e.email === email);
+      // Try to find employee in employees first, then in filteredEmployees as fallback
+      let employee = this.state.employees.find(e => e.email === email);
+      if (!employee) {
+        employee = this.state.filteredEmployees.find(e => e.email === email);
+      }
+      
       if (employee) {
         this.state.selectedEmployees.set(email, { employee, auditCount });
+      } else {
+        console.warn(`[AuditDistributionState] Employee not found: ${email}`);
       }
     } else {
       this.state.selectedEmployees.delete(email);

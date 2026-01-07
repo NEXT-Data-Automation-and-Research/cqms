@@ -4,6 +4,7 @@
  */
 
 import type { Employee, EmployeeAuditStats } from '../../domain/types.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
 export interface EmployeeListConfig {
   employees: Employee[];
@@ -28,7 +29,7 @@ export class EmployeeList {
     const { employees, selectedEmployees, auditStats, groupBy = 'none' } = this.config;
 
     if (employees.length === 0) {
-      this.container.innerHTML = `
+      safeSetHTML(this.container, `
         <div class="text-center py-12 px-4">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
             <svg class="w-8 h-8 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -41,7 +42,7 @@ export class EmployeeList {
           <p class="text-base font-bold text-white mb-2">No employees found</p>
           <p class="text-sm text-white/60">Try adjusting your filters to see more results</p>
         </div>
-      `;
+      `);
       return;
     }
 
@@ -68,12 +69,14 @@ export class EmployeeList {
 
     const items = sortedEmployees.map(emp => this.renderEmployeeItem(emp, selectedEmployees, auditStats)).join('');
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="flex flex-col w-full gap-2.5">
         ${items}
       </div>
-    `;
+    `);
 
+    // Attach image error handlers (onerror is stripped by DOMPurify for security)
+    this.attachImageErrorHandlers();
     this.attachEventListeners();
   }
 
@@ -117,7 +120,8 @@ export class EmployeeList {
                   type="checkbox"
                   class="w-4 h-4 cursor-pointer accent-primary rounded border-2 border-white/30 bg-white/10 checked:bg-primary checked:border-primary transition-all"
                   ${allSelected ? 'checked' : ''}
-                  onclick="event.stopPropagation(); this.dispatchEvent(new CustomEvent('toggleGroupSelection', { detail: { group: '${groupName}', checked: this.checked } }))"
+                  data-action="toggle-group-selection"
+                  data-group-name="${this.escapeHtml(groupName)}"
                 />
                 ${allSelected ? `
                   <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -143,12 +147,14 @@ export class EmployeeList {
       `;
     }).join('');
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="flex flex-col w-full gap-2">
         ${groupElements}
       </div>
-    `;
+    `);
 
+    // Attach image error handlers (onerror is stripped by DOMPurify for security)
+    this.attachImageErrorHandlers();
     this.attachEventListeners();
   }
 
@@ -178,7 +184,7 @@ export class EmployeeList {
             : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/30'
         }"
         data-email="${this.escapeHtml(employee.email)}"
-        onclick="this.dispatchEvent(new CustomEvent('employeeClick', { detail: '${this.escapeHtml(employee.email)}' }))"
+        data-action="employee-click"
       >
         <!-- Checkbox -->
         <div class="relative flex-shrink-0">
@@ -187,7 +193,6 @@ export class EmployeeList {
             class="employee-checkbox w-5 h-5 cursor-pointer accent-primary flex-shrink-0 rounded border-2 border-white/30 bg-white/10 checked:bg-primary checked:border-primary transition-all"
             data-email="${this.escapeHtml(employee.email)}"
             ${isSelected ? 'checked' : ''}
-            onclick="event.stopPropagation(); this.dispatchEvent(new CustomEvent('employeeSelect', { detail: { email: '${this.escapeHtml(employee.email)}', checked: this.checked } }))"
           />
           ${isSelected ? `
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -199,8 +204,14 @@ export class EmployeeList {
         </div>
 
         <!-- Avatar -->
-        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-transparent' : ''}">
-          ${initials}
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-transparent' : ''}">
+          ${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined'
+            ? `<img src="${this.escapeHtml(employee.avatar_url)}" alt="${this.escapeHtml(employee.name)}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />`
+            : ''
+          }
+          <div class="${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined' ? 'hidden' : 'flex'} items-center justify-center w-full h-full">
+            ${initials}
+          </div>
         </div>
 
         <!-- Employee Info -->
@@ -283,6 +294,35 @@ export class EmployeeList {
   }
 
   private attachEventListeners(): void {
+    // ✅ SECURITY: Set up event listeners for employee clicks (prevents XSS)
+    this.container.querySelectorAll('[data-action="employee-click"]').forEach(element => {
+      if (element.hasAttribute('data-listener-attached')) return;
+      element.setAttribute('data-listener-attached', 'true');
+      
+      element.addEventListener('click', (e) => {
+        const email = element.getAttribute('data-email');
+        if (email) {
+          element.dispatchEvent(new CustomEvent('employeeClick', { detail: email }));
+        }
+      });
+    });
+    
+    // ✅ SECURITY: Set up event listeners for employee checkboxes (prevents XSS)
+    this.container.querySelectorAll('.employee-checkbox').forEach(checkbox => {
+      if (checkbox.hasAttribute('data-listener-attached')) return;
+      checkbox.setAttribute('data-listener-attached', 'true');
+      
+      checkbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const email = checkbox.getAttribute('data-email');
+        const checked = (checkbox as HTMLInputElement).checked;
+        if (email) {
+          checkbox.dispatchEvent(new CustomEvent('employeeSelect', { detail: { email, checked } }));
+        }
+      });
+    });
+    
+    // Keep existing event listeners for CustomEvents
     const employeeSelects = this.container.querySelectorAll('[data-email]');
     employeeSelects.forEach(el => {
       el.addEventListener('employeeSelect', ((e: CustomEvent) => {
@@ -301,7 +341,36 @@ export class EmployeeList {
       }) as EventListener);
     });
 
-    const toggleGroups = this.container.querySelectorAll('[onclick*="toggleGroup"]');
+    // ✅ SECURITY: Set up event listeners for toggle group (prevents XSS)
+    this.container.querySelectorAll('[data-action="toggle-group"]').forEach(el => {
+      if (el.hasAttribute('data-listener-attached')) return;
+      el.setAttribute('data-listener-attached', 'true');
+      
+      el.addEventListener('click', (e) => {
+        const groupName = el.getAttribute('data-group-name');
+        if (groupName) {
+          el.dispatchEvent(new CustomEvent('toggleGroup', { detail: groupName }));
+        }
+      });
+    });
+    
+    // ✅ SECURITY: Set up event listeners for toggle group selection (prevents XSS)
+    this.container.querySelectorAll('[data-action="toggle-group-selection"]').forEach(checkbox => {
+      if (checkbox.hasAttribute('data-listener-attached')) return;
+      checkbox.setAttribute('data-listener-attached', 'true');
+      
+      checkbox.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const groupName = checkbox.getAttribute('data-group-name');
+        const checked = (checkbox as HTMLInputElement).checked;
+        if (groupName) {
+          checkbox.dispatchEvent(new CustomEvent('toggleGroupSelection', { detail: { group: groupName, checked } }));
+        }
+      });
+    });
+    
+    // Keep existing event listeners for CustomEvents
+    const toggleGroups = this.container.querySelectorAll('[data-action="toggle-group"]');
     toggleGroups.forEach(el => {
       el.addEventListener('toggleGroup', ((e: CustomEvent) => {
         const groupName = e.detail;
@@ -315,6 +384,25 @@ export class EmployeeList {
           }
         }
       }) as EventListener);
+    });
+  }
+
+  /**
+   * Attach error handlers to images (onerror is stripped by DOMPurify for security)
+   */
+  private attachImageErrorHandlers(): void {
+    this.container.querySelectorAll('img').forEach(img => {
+      if (img.hasAttribute('data-error-handler-attached')) return;
+      img.setAttribute('data-error-handler-attached', 'true');
+      
+      img.addEventListener('error', function() {
+        // Hide the image and show the fallback (initials)
+        this.style.display = 'none';
+        const fallback = this.nextElementSibling as HTMLElement;
+        if (fallback) {
+          fallback.style.display = 'flex';
+        }
+      });
     });
   }
 

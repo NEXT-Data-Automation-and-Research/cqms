@@ -4,41 +4,44 @@
  */
 
 import type { AuditDistributionStateManager } from '../../application/audit-distribution-state.js';
+import { AuditDistributionService } from '../../application/audit-distribution-service.js';
 import { TabManager, type TabType } from '../managers/tab-manager.js';
-import { PanelManager } from '../managers/panel-manager.js';
 import { AssignmentTabRenderer } from './assignment-tab-renderer.js';
 import { StatisticsTabRenderer } from './statistics-tab-renderer.js';
+import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
+import { logInfo, logError } from '../../../../utils/logging-helper.js';
 
 export interface ManualAuditViewRendererConfig {
   stateManager: AuditDistributionStateManager;
+  service: AuditDistributionService;
 }
 
 export class ManualAuditViewRenderer {
   private stateManager: AuditDistributionStateManager;
+  private service: AuditDistributionService;
   private tabManager: TabManager | null = null;
-  private panelManager: PanelManager;
   private assignmentTabRenderer: AssignmentTabRenderer | null = null;
   private statisticsTabRenderer: StatisticsTabRenderer | null = null;
 
   constructor(config: ManualAuditViewRendererConfig) {
     this.stateManager = config.stateManager;
-    this.panelManager = new PanelManager();
+    this.service = config.service;
   }
 
   render(container: HTMLElement): void {
     try {
       const state = this.stateManager.getState();
-      console.log('[ManualAuditView] Rendering, state:', state);
+      logInfo('[ManualAuditView] Rendering', { hasState: !!state });
       
-      container.innerHTML = this.getViewHTML();
+      safeSetHTML(container, this.getViewHTML());
 
       this.initializeTabs();
       this.initializeTabRenderers();
       
-      console.log('[ManualAuditView] Rendering complete');
+      logInfo('[ManualAuditView] Rendering complete');
     } catch (error) {
-      console.error('[ManualAuditView] Error rendering:', error);
-      container.innerHTML = this.getErrorHTML(error);
+      logError('[ManualAuditView] Error rendering:', error);
+      safeSetHTML(container, this.getErrorHTML(error));
     }
   }
 
@@ -65,36 +68,32 @@ export class ManualAuditViewRenderer {
             <!-- Filter Bar -->
             <div id="filterBarContainer" class="mb-4"></div>
             
-            <!-- Main Content Grid -->
-            <div class="flex gap-4 min-h-[500px] max-h-[calc(100vh-200px)] items-start overflow-visible pr-2">
-              <!-- Left Panel: Employee List -->
-              <div class="flex flex-col flex-1 min-w-0 overflow-visible">
-                <div id="employeeListContainer" class="flex-1 min-h-[500px] max-h-[calc(100vh-200px)] glass-card rounded-xl flex flex-col overflow-visible">
-                  <!-- Header -->
-                  <div class="px-4 pt-4 pb-3 border-b border-white/10 flex-shrink-0">
-                    <h2 class="text-lg font-bold text-white m-0 mb-0.5">Team Members</h2>
+            <!-- Main Content -->
+            <div class="flex flex-col gap-4 min-h-[500px] max-h-[calc(100vh-200px)]">
+              <!-- Employee List -->
+              <div class="flex flex-col flex-1 min-w-0 glass-card rounded-xl flex flex-col overflow-visible">
+                <!-- Header -->
+                <div class="px-4 pt-4 pb-3 border-b border-white/10 flex-shrink-0 flex items-center justify-between">
+                  <div>
+                    <h2 class="text-lg font-bold text-white m-0 mb-0.5">NEXT People</h2>
                     <p class="text-xs text-white/60 m-0 font-medium">Select team members for audit assignment</p>
                   </div>
-                  <div class="px-4 py-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-                    <div id="employeeListContent" class="flex-1 min-h-0 overflow-y-auto overflow-x-visible"></div>
-                    <div id="paginationBottomContainer" class="flex-shrink-0 mt-3 pt-3 border-t border-white/10"></div>
-                  </div>
+                  <button 
+                    id="assignAuditsButton" 
+                    class="px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg text-sm font-bold hover:from-primary-dark hover:to-primary transition-all flex items-center gap-2 shadow-lg disabled:from-gray-700 disabled:to-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed hidden"
+                    title="Create audit"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span>Create audit</span>
+                  </button>
+                </div>
+                <div class="px-4 py-3 flex-1 min-h-0 flex flex-col overflow-hidden">
+                  <div id="employeeListContent" class="flex-1 min-h-0 overflow-y-auto overflow-x-visible"></div>
+                  <div id="paginationBottomContainer" class="flex-shrink-0 mt-3 pt-3 border-t border-white/10"></div>
                 </div>
               </div>
-              
-              <!-- Right Panel: Auditor Selection -->
-              <div id="auditorPanelContainer" class="flex-shrink-0 w-0 transition-all duration-300 ease-in-out overflow-visible h-full max-h-[calc(100vh-200px)]"></div>
-              
-              <!-- Toggle Button (Always Visible) -->
-              <button 
-                id="auditorPanelToggle" 
-                class="flex-shrink-0 w-10 h-10 rounded-lg glass-card flex items-center justify-center text-white hover:bg-white/20 transition-all z-10 relative"
-                title="Select Auditors"
-              >
-                <svg id="toggleChevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="transition-transform duration-300" style="transform: rotate(0deg);">
-                  <polyline points="15 18 9 12 15 6"/>
-                </svg>
-              </button>
             </div>
           </div>
 
@@ -139,7 +138,7 @@ export class ManualAuditViewRenderer {
   private initializeTabRenderers(): void {
     this.assignmentTabRenderer = new AssignmentTabRenderer({
       stateManager: this.stateManager,
-      panelManager: this.panelManager
+      service: this.service
     });
     this.assignmentTabRenderer.render();
 

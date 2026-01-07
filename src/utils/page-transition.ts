@@ -3,6 +3,8 @@
  * Provides smooth page transitions with loading indicators
  */
 
+import { safeSetHTML } from './html-sanitizer.js';
+
 /**
  * Show page transition overlay
  */
@@ -13,12 +15,12 @@ function showTransitionOverlay(): void {
     overlay = document.createElement('div');
     overlay.id = 'page-transition-overlay';
     overlay.className = 'page-transition-overlay';
-    overlay.innerHTML = `
+    safeSetHTML(overlay, `
       <div class="page-transition-content">
         <div class="page-transition-spinner"></div>
         <p class="page-transition-text">Loading...</p>
       </div>
-    `;
+    `);
     document.body.appendChild(overlay);
   }
   

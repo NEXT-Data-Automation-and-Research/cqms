@@ -17,6 +17,8 @@ import type {
 } from './types.js';
 import { homeState, HomeState } from './state.js';
 import type { DateFilterManager } from './date-filter.js';
+import { safeSetHTML, setTextContent } from '../../../utils/html-sanitizer.js';
+import { logError, logWarn, logInfo } from '../../../utils/logging-helper.js';
 
 export class DataService {
   /**
@@ -37,12 +39,12 @@ export class DataService {
       // Fetch user data from database
       const { data: userData, error } = await window.supabaseClient
         .from('users')
-        .select('*')
+        .select('id, email, full_name, avatar_url, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias, created_at, last_sign_in_at')
         .eq('id', authUser.id)
         .single();
 
       if (error) {
-        console.error('Error loading user profile:', error);
+        logError('Error loading user profile:', error);
         throw error;
       }
 
@@ -79,7 +81,7 @@ export class DataService {
 
       return null;
     } catch (error) {
-      console.error('Error in loadCurrentUserProfile:', error);
+      logError('Error in loadCurrentUserProfile:', error);
       // Fallback to localStorage
       const userInfoStr = localStorage.getItem('userInfo');
       if (userInfoStr) {
@@ -92,7 +94,7 @@ export class DataService {
           }, 1000);
           return userInfo as User;
         } catch (e) {
-          console.error('Error parsing userInfo from localStorage:', e);
+          logError('Error parsing userInfo from localStorage:', e);
         }
       }
       return null;
@@ -120,11 +122,11 @@ export class DataService {
 
       const { data, error } = await window.supabaseClient
         .from('users')
-        .select('*')
+        .select('id, email, full_name, avatar_url, role, channel, team, created_at')
         .order('full_name', { ascending: true });
 
       if (error) {
-        console.error('Error loading users:', error);
+        logError('Error loading users:', error);
         throw error;
       }
 
@@ -134,7 +136,7 @@ export class DataService {
       sessionStorage.setItem('cachedUsers', JSON.stringify(state.allUsers));
       sessionStorage.setItem('cachedUsersTime', Date.now().toString());
     } catch (error) {
-      console.error('Error in loadAllUsers:', error);
+      logError('Error in loadAllUsers:', error);
       throw error;
     }
   }
@@ -166,7 +168,7 @@ export class DataService {
         .eq('is_active', true);
 
       if (scorecardsError) {
-        console.error('Error loading scorecards:', scorecardsError);
+        logError('Error loading scorecards:', scorecardsError);
         throw scorecardsError;
       }
 
@@ -180,14 +182,14 @@ export class DataService {
           try {
             const { data: audits, error: auditError } = await window.supabaseClient
               .from(scorecard.table_name)
-              .select('*')
+              .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
               .gte('created_at', startDate)
               .lte('created_at', endDate)
               .order('created_at', { ascending: false })
               .limit(50);
 
             if (auditError) {
-              console.warn(`Error loading audits from ${scorecard.table_name}:`, auditError);
+              logWarn(`Error loading audits from ${scorecard.table_name}:`, auditError);
               continue;
             }
 
@@ -209,7 +211,7 @@ export class DataService {
               }
             }
           } catch (error) {
-            console.warn(`Error processing scorecard ${scorecard.name}:`, error);
+            logWarn(`Error processing scorecard ${scorecard.name}:`, error);
             continue;
           }
         }
@@ -228,7 +230,7 @@ export class DataService {
       // Update UI with recent updates
       this.renderRecentUpdates(recentUpdates);
     } catch (error) {
-      console.error('Error in loadRecentUpdates:', error);
+      logError('Error in loadRecentUpdates:', error);
       throw error;
     }
   }
@@ -260,7 +262,7 @@ export class DataService {
         .eq('is_active', true);
 
       if (scorecardsError) {
-        console.error('Error loading scorecards:', scorecardsError);
+        logError('Error loading scorecards:', scorecardsError);
         throw scorecardsError;
       }
 
@@ -295,8 +297,8 @@ export class DataService {
           try {
             // Get assignments for this scorecard
             const { data: assignments, error: assignError } = await window.supabaseClient
-              .from('assignments')
-              .select('*')
+              .from('audit_assignments')
+              .select('id, employee_email, auditor_email, scorecard_id, status, scheduled_date, created_at, completed_at')
               .eq('scorecard_id', scorecard.id)
               .gte('scheduled_date', startDate)
               .lte('scheduled_date', endDate);
@@ -311,7 +313,7 @@ export class DataService {
             // Get audits for this scorecard
             const { data: audits, error: auditError } = await window.supabaseClient
               .from(scorecard.table_name)
-              .select('*')
+              .select('id, employee_email, auditor_email, created_at, submitted_at, status, passing_status')
               .gte('created_at', startDate)
               .lte('created_at', endDate);
 
@@ -375,7 +377,7 @@ export class DataService {
               stats.notPassingCount += notPassingCount;
             }
           } catch (error) {
-            console.warn(`Error processing stats for ${scorecard.name}:`, error);
+            logWarn(`Error processing stats for ${scorecard.name}:`, error);
             continue;
           }
         }
@@ -411,7 +413,7 @@ export class DataService {
       // Update UI with stats
       this.renderStats(stats, state.isAgent);
     } catch (error) {
-      console.error('Error in updateYourStats:', error);
+      logError('Error in updateYourStats:', error);
       throw error;
     }
   }
@@ -446,7 +448,7 @@ export class DataService {
         .order('scheduled_date', { ascending: false });
 
       if (assignError) {
-        console.error('Error loading assignments:', assignError);
+        logError('Error loading assignments:', assignError);
         throw assignError;
       }
 
@@ -462,12 +464,12 @@ export class DataService {
             // Try to find the audit for this assignment
             const { data: auditData, error: auditError } = await window.supabaseClient
               .from(scorecard.table_name)
-              .select('*')
+              .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
               .eq('interaction_id', assignment.interaction_id || '')
               .maybeSingle();
 
             if (auditError && auditError.code !== 'PGRST116') {
-              console.warn(`Error loading audit for assignment ${assignment.id}:`, auditError);
+              logWarn(`Error loading audit for assignment ${assignment.id}:`, auditError);
             }
 
             const audit: Audit = {
@@ -492,7 +494,7 @@ export class DataService {
 
             audits.push(audit);
           } catch (error) {
-            console.warn(`Error processing assignment ${assignment.id}:`, error);
+            logWarn(`Error processing assignment ${assignment.id}:`, error);
             continue;
           }
         }
@@ -510,7 +512,7 @@ export class DataService {
       // Update UI with assigned audits
       this.renderAssignedAudits(audits, state.isAgent);
     } catch (error) {
-      console.error('Error in loadAssignedAudits:', error);
+      logError('Error in loadAssignedAudits:', error);
       throw error;
     }
   }
@@ -532,13 +534,13 @@ export class DataService {
 
       const { data: notifications, error } = await window.supabaseClient
         .from('notifications')
-        .select('*')
+        .select('id, title, body, type, status, created_at, updated_at, read_at')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
 
       if (error) {
-        console.error('Error loading notifications:', error);
+        logError('Error loading notifications:', error);
         throw error;
       }
 
@@ -550,7 +552,7 @@ export class DataService {
       // Update UI with notifications
       this.renderNotifications(state.notifications, state.unreadNotificationCount);
     } catch (error) {
-      console.error('Error in loadNotifications:', error);
+      logError('Error in loadNotifications:', error);
       throw error;
     }
   }
@@ -570,7 +572,7 @@ export class DataService {
 
       const { data: events, error } = await window.supabaseClient
         .from('events')
-        .select('*')
+        .select('id, title, description, date, start_time, end_time, type, created_at, updated_at')
         .gte('date', now.toISOString().split('T')[0])
         .lte('date', futureDate.toISOString().split('T')[0])
         .order('date', { ascending: true })
@@ -578,13 +580,13 @@ export class DataService {
         .limit(20);
 
       if (error) {
-        console.error('Error loading events:', error);
+        logError('Error loading events:', error);
         throw error;
       }
 
       return (events || []) as Event[];
     } catch (error) {
-      console.error('Error in loadUpcomingEvents:', error);
+      logError('Error in loadUpcomingEvents:', error);
       return [];
     }
   }
@@ -625,7 +627,7 @@ export class DataService {
 
       return filters;
     } catch (error) {
-      console.error('Error in populateFilters:', error);
+      logError('Error in populateFilters:', error);
       throw error;
     }
   }
@@ -639,7 +641,7 @@ export class DataService {
 
     // This would typically call a UI renderer component
     // For now, we'll just log that updates are ready
-    console.log('Recent updates loaded:', updates.length);
+    logInfo('Recent updates loaded:', { count: updates.length });
   }
 
   /**
@@ -679,7 +681,7 @@ export class DataService {
 
     // This would typically call a UI renderer component
     // For now, we'll just log that audits are ready
-    console.log('Assigned audits loaded:', audits.length);
+    logInfo('Assigned audits loaded:', { count: audits.length });
   }
 
   /**
@@ -732,18 +734,18 @@ export class DataService {
           // Fallback to initials if image fails to load
           if (userInfo.name) {
             const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
-            dashboardAvatar.innerHTML = `<span class="text-sm font-bold text-white">${initials}</span>`;
+            safeSetHTML(dashboardAvatar, `<span class="text-sm font-bold text-white">${initials}</span>`);
           } else {
-            dashboardAvatar.innerHTML = `<span class="text-sm font-bold text-white">U</span>`;
+            safeSetHTML(dashboardAvatar, `<span class="text-sm font-bold text-white">U</span>`);
           }
         };
-        dashboardAvatar.innerHTML = '';
+        safeSetHTML(dashboardAvatar, '');
         dashboardAvatar.appendChild(img);
       } else if (userInfo.name) {
         const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
-        dashboardAvatar.innerHTML = `<span class="text-sm font-bold text-white">${initials}</span>`;
+        safeSetHTML(dashboardAvatar, `<span class="text-sm font-bold text-white">${initials}</span>`);
       } else {
-        dashboardAvatar.innerHTML = `<span class="text-sm font-bold text-white">U</span>`;
+        safeSetHTML(dashboardAvatar, `<span class="text-sm font-bold text-white">U</span>`);
       }
     }
 
@@ -776,7 +778,7 @@ export class DataService {
     const channelSelect = document.getElementById('channelFilter') as HTMLSelectElement | null;
     if (channelSelect) {
       const currentValue = channelSelect.value;
-      channelSelect.innerHTML = '<option value="">All Channels</option>';
+      safeSetHTML(channelSelect, '<option value="">All Channels</option>');
       filters.channels.forEach(channel => {
         const option = document.createElement('option');
         option.value = channel;
@@ -792,7 +794,7 @@ export class DataService {
     const agentSelect = document.getElementById('agentFilter') as HTMLSelectElement | null;
     if (agentSelect) {
       const currentValue = agentSelect.value;
-      agentSelect.innerHTML = '<option value="">All Agents</option>';
+      safeSetHTML(agentSelect, '<option value="">All Agents</option>');
       filters.agents.forEach(agent => {
         const option = document.createElement('option');
         option.value = agent;

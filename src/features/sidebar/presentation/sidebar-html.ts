@@ -1,10 +1,15 @@
 /**
  * Sidebar HTML Template
- * This file has the sidebar HTML code
+ * 
+ * @deprecated This file is deprecated. The sidebar now uses route-based generation.
+ * See sidebar-html-generator.ts for the new implementation.
+ * 
+ * This file is kept for backward compatibility but is no longer used.
  */
 
 /**
  * The HTML code for the sidebar
+ * @deprecated Use SidebarHTMLGenerator instead
  */
 export const SIDEBAR_HTML_TEMPLATE = `<!-- Sidebar Component -->
 <nav class="sidebar collapsed" role="navigation" aria-label="Main navigation">
@@ -157,11 +162,13 @@ export const SIDEBAR_HTML_TEMPLATE = `<!-- Sidebar Component -->
                 </svg>
             </button>
             <ul class="submenu" role="menu">
+                <!-- DISABLED - Scorecard functionality temporarily removed
                 <li role="none">
                     <a class="submenu-item" href="/src/features/settings/scorecards/presentation/scorecards.html" role="menuitem" tabindex="-1">
                         <span>Scorecards</span>
                     </a>
                 </li>
+                -->
                 <li role="none">
                     <a class="submenu-item" href="/src/features/settings/user-management/presentation/user-management.html" role="menuitem" tabindex="-1">
                         <span>User Management</span>

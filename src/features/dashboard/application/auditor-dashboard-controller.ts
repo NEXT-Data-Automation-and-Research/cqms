@@ -12,26 +12,26 @@ declare global {
   }
 }
 
-import { DatabaseFactory } from '../../../infrastructure/database-factory.js';
+import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js';
+import { SupabaseClientAdapter } from '../../../infrastructure/database/supabase/supabase-client.adapter.js';
 import { AuditorDashboardRepository } from '../infrastructure/auditor-dashboard-repository.js';
 import { AuditorDashboardState, auditorDashboardState } from './auditor-dashboard-state.js';
 import { AuditorDashboardService } from './auditor-dashboard-service.js';
 import { AuditorDashboardRenderer } from '../presentation/auditor-dashboard-renderer.js';
 import { AuditorDashboardEventHandlers } from '../presentation/auditor-dashboard-events.js';
+import { logInfo, logError, logWarn } from '../../../utils/logging-helper.js';
 
 export class AuditorDashboardController {
-  private repository: AuditorDashboardRepository;
+  private repository: AuditorDashboardRepository | null = null;
   private state: AuditorDashboardState;
   private service: AuditorDashboardService;
   private renderer: AuditorDashboardRenderer;
   private eventHandlers: AuditorDashboardEventHandlers;
-
+  
   constructor() {
-    // Create database client using factory (easy to switch databases!)
-    const db = DatabaseFactory.createClient('supabase');
-    this.repository = new AuditorDashboardRepository(db);
+    // Don't create repository in constructor - wait until authenticated
     this.state = auditorDashboardState;
-    this.service = new AuditorDashboardService(this.repository, this.state);
+    this.service = new AuditorDashboardService(null as any, this.state); // Will be set in initialize
     this.renderer = new AuditorDashboardRenderer(this.state);
     this.eventHandlers = new AuditorDashboardEventHandlers(
       this.state,
@@ -41,23 +41,55 @@ export class AuditorDashboardController {
   }
 
   /**
+   * Get or create the repository (lazy initialization with authentication)
+   * ✅ SECURITY: Verifies authentication before creating repository
+   */
+  private async getRepository(): Promise<AuditorDashboardRepository> {
+    if (!this.repository) {
+      // ✅ SECURITY: Verify authentication first
+      await getAuthenticatedSupabase(); // This will throw if not authenticated
+      
+      // Get base Supabase client (authentication already verified above)
+      const { getSupabase } = await import('../../../utils/supabase-init.js');
+      const baseClient = getSupabase();
+      if (!baseClient) {
+        throw new Error('Supabase client not initialized');
+      }
+      
+      // Create adapter from base client (auth already verified)
+      const db = new SupabaseClientAdapter(baseClient);
+      this.repository = new AuditorDashboardRepository(db);
+      // Update service with repository
+      this.service = new AuditorDashboardService(this.repository, this.state);
+    }
+    return this.repository;
+  }
+
+  /**
    * Initialize the dashboard
    */
   async initialize(): Promise<void> {
+    logInfo('[AuditorDashboard] ===== INITIALIZE METHOD CALLED - Entry point =====');
+    logInfo('[AuditorDashboard] Timestamp:', { timestamp: new Date().toISOString() });
     try {
-      console.log('[AuditorDashboard] Initializing dashboard controller...');
+      logInfo('[AuditorDashboard] Initializing dashboard controller...');
       
       // Check page access (support both old and new filename)
       // If accessControl exists, use it; otherwise skip the check
+      logInfo('[AuditorDashboard] Checking accessControl', { exists: !!window.accessControl });
       if (window.accessControl) {
         const currentPage = window.location.pathname.split('/').pop() || '';
         const pageName = currentPage === 'auditor-dashboard-page.html' ? 'auditor-dashboard-page.html' : 'auditor-dashboard.html';
-        if (!window.accessControl.enforcePageAccess(pageName)) {
-          console.warn('[AuditorDashboard] Page access denied by accessControl');
+        logInfo('[AuditorDashboard] Checking page access for:', { pageName });
+        const hasAccess = window.accessControl.enforcePageAccess(pageName);
+        logInfo('[AuditorDashboard] Access result:', { hasAccess });
+        if (!hasAccess) {
+          logWarn('[AuditorDashboard] Page access denied by accessControl');
           return;
         }
+        logInfo('[AuditorDashboard] Page access granted');
       } else {
-        console.log('[AuditorDashboard] accessControl not found, skipping access check');
+        logInfo('[AuditorDashboard] accessControl not found, skipping access check');
       }
 
       // Get current user - try localStorage first, then Supabase session
@@ -68,7 +100,7 @@ export class AuditorDashboardController {
       if (userInfo.email) {
         userEmail = userInfo.email;
         userRole = userInfo.role || '';
-        console.log('[AuditorDashboard] Got user from localStorage:', userEmail);
+        logInfo('[AuditorDashboard] Got user from localStorage:', { email: userEmail });
       } else if (window.supabaseClient) {
         // Try to get from Supabase session if not in localStorage
         try {
@@ -76,21 +108,21 @@ export class AuditorDashboardController {
           if (user && !error) {
             userEmail = user.email || '';
             userRole = user.user_metadata?.role || '';
-            console.log('[AuditorDashboard] Got user from Supabase session:', userEmail);
+            logInfo('[AuditorDashboard] Got user from Supabase session:', { email: userEmail });
           }
         } catch (error) {
-          console.warn('[AuditorDashboard] Failed to get user from Supabase:', error);
+          logWarn('[AuditorDashboard] Failed to get user from Supabase:', error);
         }
       }
       
       this.state.initialize(userEmail, userRole);
 
       if (!this.state.currentUserEmail) {
-        console.error('[AuditorDashboard] No user logged in - email is empty');
+        logError('[AuditorDashboard] No user logged in - email is empty');
         return;
       }
       
-      console.log('[AuditorDashboard] User:', this.state.currentUserEmail);
+      logInfo('[AuditorDashboard] User:', { email: this.state.currentUserEmail });
 
       // Wait for Supabase
       let attempts = 0;
@@ -100,28 +132,57 @@ export class AuditorDashboardController {
       }
 
       if (!window.supabaseClient) {
-        console.error('[AuditorDashboard] Supabase client not initialized');
+        logError('[AuditorDashboard] Supabase client not initialized');
         return;
       }
       
-      console.log('[AuditorDashboard] Supabase client ready');
+      logInfo('[AuditorDashboard] Supabase client ready');
 
       // Initialize UI
-      console.log('[AuditorDashboard] Initializing UI...');
+      logInfo('[AuditorDashboard] Initializing UI...');
       this.renderer.initializeUI();
       this.state.initializeTodayFilter();
       this.eventHandlers.setupEventListeners();
 
-      // Load data in parallel
-      console.log('[AuditorDashboard] Loading data...');
+      // Load data - repository must be initialized first
+      logInfo('[AuditorDashboard] Loading data...');
+      // #region agent log
+      logInfo('[DEBUG] Controller loading data - hypothesis D');
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:140',message:'controller loading data',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+      // #endregion
+      
+      // Initialize repository first (needed by service)
+      await this.getRepository();
+      logInfo('[AuditorDashboard] Repository initialized');
+      
+      // Load users and scorecards first, then initial data (which needs repository)
       await Promise.all([
         this.loadAllUsers(),
-        this.loadScorecards(),
-        this.loadInitialData()
+        this.loadScorecards()
       ]);
+      
+      // Now load initial data (which uses service that needs repository)
+      await this.loadInitialData();
+      
+      // Populate employee filter after assignments are loaded
+      try {
+        const period = this.state.getCurrentPeriodDates();
+        const { scheduled, completed } = await (await this.getRepository()).loadTeamAssignments(period);
+        if (typeof this.renderer.populateEmployeeFilter === 'function') {
+          this.renderer.populateEmployeeFilter([...scheduled, ...completed]);
+        } else {
+          logWarn('[DEBUG] populateEmployeeFilter not available, skipping');
+        }
+      } catch (error) {
+        logWarn('[DEBUG] Error loading assignments for employee filter:', error);
+      }
+      // #region agent log
+      logInfo('[DEBUG] Controller data loaded', { users: this.state.allUsers.length, scorecards: this.state.allScorecards.length });
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:145',message:'controller data loaded',data:{usersCount:this.state.allUsers.length,scorecardsCount:this.state.allScorecards.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+      // #endregion
 
       // Setup presence tracking
-      console.log('[AuditorDashboard] Setting up presence tracking...');
+      logInfo('[AuditorDashboard] Setting up presence tracking...');
       await this.setupPresenceTracking();
 
       // Mark initial load as complete
@@ -129,10 +190,10 @@ export class AuditorDashboardController {
         this.state.loading.isInitialLoad = false;
       }, 500);
       
-      console.log('[AuditorDashboard] Dashboard initialized successfully');
+      logInfo('[AuditorDashboard] Dashboard initialized successfully');
 
     } catch (error) {
-      console.error('[AuditorDashboard] Error initializing dashboard:', error);
+      logError('[AuditorDashboard] Error initializing dashboard:', error);
       throw error; // Re-throw to be caught by the page's error handler
     }
   }
@@ -141,14 +202,31 @@ export class AuditorDashboardController {
    * Load all users
    */
   private async loadAllUsers(): Promise<void> {
-    this.state.allUsers = await this.repository.loadAllUsers();
+    this.state.allUsers = await (await this.getRepository()).loadAllUsers();
+    // Populate filter dropdowns after users are loaded
+    logInfo('[DEBUG] loadAllUsers - users loaded:', { count: this.state.allUsers.length });
+    logInfo('[DEBUG] loadAllUsers - renderer methods:', {
+      populateAuditorFilter: typeof this.renderer.populateAuditorFilter,
+      populateChannelFilter: typeof this.renderer.populateChannelFilter,
+      populateEmployeeFilter: typeof this.renderer.populateEmployeeFilter
+    });
+    if (typeof this.renderer.populateAuditorFilter === 'function') {
+      this.renderer.populateAuditorFilter(this.state.allUsers);
+    } else {
+      logWarn('[DEBUG] populateAuditorFilter not available, skipping');
+    }
+    if (typeof this.renderer.populateChannelFilter === 'function') {
+      this.renderer.populateChannelFilter(this.state.allUsers);
+    } else {
+      logWarn('[DEBUG] populateChannelFilter not available, skipping');
+    }
   }
 
   /**
    * Load scorecards
    */
   private async loadScorecards(): Promise<void> {
-    const scorecards = await this.repository.loadScorecards();
+    const scorecards = await (await this.getRepository()).loadScorecards();
     this.state.allScorecards = scorecards;
     this.state.cachedScorecardTables = scorecards.map(s => s.table_name).filter(Boolean);
     this.renderer.populateScorecardFilter(scorecards);
@@ -171,14 +249,26 @@ export class AuditorDashboardController {
    * Load team stats
    */
   async loadTeamStats(): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:197',message:'loadTeamStats entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    // #endregion
     try {
       this.state.loading.isLoading = true;
       const stats = await this.service.calculateTeamStats();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:200',message:'loadTeamStats stats calculated',data:{auditorStatsCount:stats.auditorStats.length,totalAssigned:stats.totalAssigned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       this.state.teamStats = stats;
       this.renderer.renderTeamStats(stats);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:203',message:'loadTeamStats rendered',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       this.renderer.hideLoadingState();
     } catch (error) {
-      console.error('Error loading team stats:', error);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:206',message:'loadTeamStats error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      logError('Error loading team stats:', error);
       this.renderer.hideLoadingState();
     }
   }
@@ -194,7 +284,7 @@ export class AuditorDashboardController {
       this.renderer.renderStandupView(data);
       this.renderer.hideLoadingState();
     } catch (error) {
-      console.error('Error loading standup view:', error);
+      logError('Error loading standup view:', error);
       this.renderer.hideLoadingState();
     }
   }
@@ -238,7 +328,7 @@ export class AuditorDashboardController {
           }
         });
     } catch (error) {
-      console.error('Error setting up presence tracking:', error);
+      logError('Error setting up presence tracking:', error);
     }
   }
 
@@ -260,7 +350,7 @@ export class AuditorDashboardController {
         page: 'auditor-dashboard'
       });
     } catch (error) {
-      console.error('Error tracking presence:', error);
+      logError('Error tracking presence:', error);
     }
   }
 
@@ -298,7 +388,7 @@ export class AuditorDashboardController {
       this.state.onlineAuditors = newOnlineAuditors;
       this.renderer.updateOnlineStatusIndicators();
     } catch (error) {
-      console.error('Error updating online auditors:', error);
+      logError('Error updating online auditors:', error);
     }
   }
 

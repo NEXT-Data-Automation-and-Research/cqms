@@ -12,6 +12,7 @@ import type {
   StandupViewData,
   HourlyBreakdown
 } from '../domain/entities.js';
+import { logInfo, logError, logWarn } from '../../../utils/logging-helper.js';
 
 export class AuditorDashboardService {
   private repository: AuditorDashboardRepository;
@@ -29,22 +30,93 @@ export class AuditorDashboardService {
    * Calculate team stats from assignments and audit data
    */
   async calculateTeamStats(): Promise<TeamStats> {
+    // #region agent log
+    logInfo('[DEBUG] calculateTeamStats entry', { allUsers: this.state.allUsers.length, hasRepository: !!this.repository });
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:31',message:'calculateTeamStats entry',data:{allUsersCount:this.state.allUsers.length,hasRepository:!!this.repository},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch((e)=>logWarn('[DEBUG] Fetch failed:',e));
+    // #endregion
+    
+    if (!this.repository) {
+      logError('[AuditorDashboardService] Repository is null! Cannot calculate team stats.');
+      return this.getEmptyTeamStats();
+    }
+    
     const period = this.state.getCurrentPeriodDates();
-    const { scheduled, completed } = await this.repository.loadTeamAssignments(period);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:33',message:'calculateTeamStats period',data:{start:period.start?.toISOString(),end:period.end?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+    const { scheduled: allScheduled, completed: allCompleted } = await this.repository.loadTeamAssignments(period);
+    // #region agent log
+    logInfo('[DEBUG] calculateTeamStats assignments loaded', { scheduled: allScheduled.length, completed: allCompleted.length, filters: this.state.currentFilters });
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:34',message:'calculateTeamStats assignments loaded',data:{scheduledCount:allScheduled.length,completedCount:allCompleted.length,filters:this.state.currentFilters},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
+
+    // Apply filters to assignments
+    let scheduled = [...allScheduled];
+    let completed = [...allCompleted];
+    const filters = this.state.currentFilters;
+    
+    if (filters.status) {
+      scheduled = scheduled.filter(a => a.status === filters.status);
+      if (filters.status === 'completed') {
+        completed = completed.filter(a => a.status === filters.status);
+      } else {
+        completed = []; // Only show completed if status filter is 'completed'
+      }
+    }
+    
+    if (filters.auditor) {
+      scheduled = scheduled.filter(a => a.auditor_email === filters.auditor);
+      completed = completed.filter(a => a.auditor_email === filters.auditor);
+    }
+    
+    if (filters.employee) {
+      scheduled = scheduled.filter(a => a.employee_email === filters.employee);
+      completed = completed.filter(a => a.employee_email === filters.employee);
+    }
+    
+    if (filters.scorecard) {
+      scheduled = scheduled.filter(a => a.scorecard_id === filters.scorecard);
+      completed = completed.filter(a => a.scorecard_id === filters.scorecard);
+    }
+    
+    if (filters.channel) {
+      scheduled = scheduled.filter(a => {
+        const emp = this.state.allUsers.find(u => u.email === a.employee_email);
+        return emp && emp.channel === filters.channel;
+      });
+      completed = completed.filter(a => {
+        const emp = this.state.allUsers.find(u => u.email === a.employee_email);
+        return emp && emp.channel === filters.channel;
+      });
+    }
+    
+    // #region agent log
+    logInfo('[DEBUG] calculateTeamStats after filtering', { scheduled: scheduled.length, completed: completed.length });
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:75',message:'calculateTeamStats after filtering',data:{scheduledCount:scheduled.length,completedCount:completed.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
 
     // Get unique auditor emails
     const auditorEmails = [...new Set([
       ...scheduled.map(a => a.auditor_email),
       ...completed.map(a => a.auditor_email)
     ].filter(Boolean))];
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:42',message:'calculateTeamStats unique auditors',data:{count:auditorEmails.length,emails:auditorEmails.slice(0,3)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
 
     // Get auditor info
     const auditors = auditorEmails.map(email => {
       const user = this.state.allUsers.find(u => u.email === email);
       return user || { email, name: email, role: 'Unknown' };
     });
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:47',message:'calculateTeamStats auditors mapped',data:{count:auditors.length,foundInState:auditors.filter(a=>this.state.allUsers.some(u=>u.email===a.email)).length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
 
     if (auditors.length === 0) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:48',message:'calculateTeamStats no auditors returning empty',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      // #endregion
       return this.getEmptyTeamStats();
     }
 
@@ -95,6 +167,10 @@ export class AuditorDashboardService {
     const totalEarlyCount = auditorStats.reduce((sum, auditor) => sum + (auditor.earlyCovered || 0), 0);
 
     const percentage = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 0;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-service.ts:98',message:'calculateTeamStats returning stats',data:{totalAssigned,completed:completedCount,auditorStatsCount:auditorStats.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
 
     return {
       totalAssigned,

@@ -5,6 +5,7 @@
 
 import { checkSupabaseAuthentication, getUserInfo, isDevBypassActive } from './utils/auth.js';
 import { initSupabase, getSupabase } from './utils/supabase-init.js';
+import { logInfo, logError } from './utils/logging-helper.js';
 
 interface UserInfo {
   id: string;
@@ -37,7 +38,7 @@ async function isAuthenticated(): Promise<boolean> {
     const isAuth = await checkSupabaseAuthentication();
     return isAuth;
   } catch (error) {
-    console.error('Error checking authentication:', error);
+    logError('Error checking authentication:', error);
     return false;
   }
 }
@@ -51,7 +52,7 @@ async function getCurrentUser(): Promise<UserInfo | null> {
     const userInfo = await getUserInfo();
     return userInfo as UserInfo | null;
   } catch (error) {
-    console.error('Error getting user info:', error);
+    logError('Error getting user info:', error);
     return null;
   }
 }
@@ -101,7 +102,7 @@ async function initAuthCheck(): Promise<void> {
       try {
         await initSupabase();
       } catch (error) {
-        console.error('Failed to initialize Supabase:', error);
+        logError('Failed to initialize Supabase:', error);
         // If Supabase init fails, redirect to auth page
         redirectToLogin();
         return;
@@ -115,17 +116,17 @@ async function initAuthCheck(): Promise<void> {
         // Double-check by getting user info (ensures token is still valid)
         const user = await getCurrentUser();
         if (user) {
-          console.log('User authenticated, redirecting to home page...');
+          logInfo('User authenticated, redirecting to home page...');
           // Use replace to prevent back button issues
           window.location.replace('/src/features/home/presentation/home-page.html');
         } else {
           // Token appeared valid but user fetch failed - redirect to login
-          console.log('Token validation failed, redirecting to auth page...');
+          logInfo('Token validation failed, redirecting to auth page...');
           redirectToLogin();
         }
       } else {
         // User not authenticated, redirect to auth page
-        console.log('User not authenticated, redirecting to auth page...');
+        logInfo('User not authenticated, redirecting to auth page...');
         redirectToLogin();
       }
     }
@@ -138,7 +139,7 @@ async function initAuthCheck(): Promise<void> {
   try {
     await initSupabase();
   } catch (error) {
-    console.error('Failed to initialize Supabase:', error);
+    logError('Failed to initialize Supabase:', error);
     // If Supabase init fails, redirect to auth page
     redirectToLogin();
     return;
@@ -149,7 +150,7 @@ async function initAuthCheck(): Promise<void> {
   const authenticated = await isAuthenticated();
   
   if (!authenticated) {
-    console.log('User not authenticated, redirecting to auth page...');
+    logInfo('User not authenticated, redirecting to auth page...');
     redirectToLogin();
     return;
   }
@@ -158,7 +159,7 @@ async function initAuthCheck(): Promise<void> {
   const user = await getCurrentUser();
   if (!user) {
     // Token appeared valid but user fetch failed - redirect to login
-    console.log('Token validation failed, redirecting to auth page...');
+    logInfo('Token validation failed, redirecting to auth page...');
     redirectToLogin();
     return;
   }
@@ -173,7 +174,7 @@ async function initAuthCheck(): Promise<void> {
         redirectToLogin();
       } else if (event === 'TOKEN_REFRESHED') {
         if (!session) {
-          console.error('Auth Checker: Token refresh failed - redirecting to login');
+          logError('Auth Checker: Token refresh failed - redirecting to login');
           redirectToLogin();
         } else {
           // Clear auth cache to get fresh verification with new token
@@ -188,7 +189,7 @@ async function initAuthCheck(): Promise<void> {
       }
     });
   } else {
-    console.error('Auth Checker: Supabase client not available');
+    logError('Auth Checker: Supabase client not available');
   }
 }
 

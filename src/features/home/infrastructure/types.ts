@@ -1,29 +1,6 @@
 /**
- * Type definitions for home page
+ * Type definitions for home dashboard
  */
-
-export {};
-
-declare global {
-  interface Window {
-    supabaseClient?: any;
-    applyQuickDateFilter?: (period: string, options?: any) => void;
-    logout?: () => Promise<void>;
-    getDhakaNow?: () => Date;
-    getDhakaWeekNumber?: (date: Date) => number;
-    getDhakaWeekDates?: (weekNumber: number, year: number) => { start: Date; end: Date };
-    getDhakaStartOfDay?: (date?: Date) => Date;
-    getDhakaEndOfDay?: (date?: Date) => Date;
-    getDhakaFirstDayOfMonth?: (date: Date) => Date;
-    getDhakaLastDayOfMonth?: (date: Date) => Date;
-    formatDhakaDateForInput?: (date: Date) => string;
-    formatDhakaDate?: (date: Date, options?: any) => string;
-    parseDhakaDate?: (dateString: string) => Date;
-    dhakaDateToUTCISO?: (date: Date) => string;
-    toDhakaTime?: (utcString: string) => Date;
-    componentsLoaded?: boolean;
-  }
-}
 
 export interface User {
   email?: string;
@@ -35,9 +12,6 @@ export interface User {
   quality_mentor?: boolean;
   employee_id?: string;
   intercom_admin_alias?: string;
-  avatar?: string | null;
-  picture?: string | null;
-  avatar_url?: string | null;
   [key: string]: unknown;
 }
 
@@ -193,4 +167,3 @@ export interface Event {
   participants?: string[] | string;
   [key: string]: unknown;
 }
-

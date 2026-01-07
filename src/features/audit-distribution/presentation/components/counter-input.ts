@@ -3,6 +3,8 @@
  * Reusable counter input with increment/decrement buttons
  */
 
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+
 export interface CounterInputConfig {
   min?: number;
   max?: number;
@@ -29,7 +31,7 @@ export class CounterInput {
   private render(): void {
     const { value, min = 0, max = 10, disabled = false, className = '' } = this.config;
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="flex items-center gap-1 ${className}">
         <button
           type="button"
@@ -56,7 +58,7 @@ export class CounterInput {
           +
         </button>
       </div>
-    `;
+    `);
 
     this.attachEventListeners();
   }

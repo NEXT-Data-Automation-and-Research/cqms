@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { createLogger } from './utils/logger.js';
 import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
 import migrationRouter from './migration/migration-api.js';
@@ -91,6 +93,67 @@ function getSafeEnvVars(): Record<string, string> {
   
   return safeEnv;
 }
+
+// ✅ SECURITY: Security headers middleware (helmet)
+// Must be early in middleware chain
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Allow inline styles for Tailwind
+        "https://fonts.googleapis.com" // Allow Google Fonts
+      ],
+      scriptSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Allow inline scripts for ES modules
+        "'unsafe-eval'", // Required for some ES module features
+        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for loglevel and other libraries
+      ],
+      imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
+      connectSrc: [
+        "'self'", 
+        "https://*.supabase.co", 
+        "https://*.supabase.in",
+        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for source maps and module loading
+      ], // Allow Supabase connections and CDN
+      fontSrc: [
+        "'self'", 
+        "data:",
+        "https://fonts.gstatic.com" // Allow Google Fonts
+      ],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: [],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Allow Supabase iframe embeds if needed
+}));
+
+// ✅ SECURITY: Rate limiting for API endpoints
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
+
+// ✅ SECURITY: Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs for auth
+  message: 'Too many authentication attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful requests
+});
+
+// Apply stricter rate limiting to auth-related endpoints
+app.use('/api/users', authLimiter);
 
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -283,15 +346,26 @@ app.get('/dashboard.html', (req: express.Request, res: express.Response): void =
 // Parse JSON bodies
 app.use(express.json());
 
+// ✅ SECURITY: CSRF Protection
+import { csrfProtection, csrfToken } from './api/middleware/csrf.middleware.js';
+
+// Add CSRF token to all responses
+app.use('/api', csrfToken);
+
+// Apply CSRF protection to state-changing API routes
+app.use('/api', csrfProtection);
+
 // API Routes
 import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
+import sandboxRouter from './api/routes/sandbox.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
+app.use('/api', sandboxRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

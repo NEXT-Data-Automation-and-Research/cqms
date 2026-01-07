@@ -4,6 +4,7 @@
  */
 
 import { logger } from './utils/logger.js';
+import { safeSetHTML, escapeHtml } from './utils/html-sanitizer.js';
 
 interface EnvVariables {
   NODE_ENV?: string;
@@ -52,7 +53,7 @@ async function loadEnvironmentVariables(): Promise<void> {
     logger.error('Error loading environment variables:', error);
     const envVarsContainer = document.getElementById('env-vars');
     if (envVarsContainer) {
-      envVarsContainer.innerHTML = '<p class="error">Error loading environment variables</p>';
+      safeSetHTML(envVarsContainer, '<p class="error">Error loading environment variables</p>');
     }
   }
 }
@@ -77,14 +78,14 @@ function displayEnvironmentVariables(env: EnvVariables): void {
       
       return `
         <div class="env-item">
-          <span class="env-key">${key}:</span>
-          <span class="env-value">${displayValue}</span>
+          <span class="env-key">${escapeHtml(key)}:</span>
+          <span class="env-value">${escapeHtml(displayValue)}</span>
         </div>
       `;
     })
     .join('');
   
-  envVarsContainer.innerHTML = envList || '<p>No environment variables found</p>';
+  safeSetHTML(envVarsContainer, envList || '<p>No environment variables found</p>');
 }
 
 /**

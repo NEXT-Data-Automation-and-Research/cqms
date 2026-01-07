@@ -7,6 +7,7 @@ import { getSupabase } from './supabase-init.js';
 import { getSecureSupabase } from './secure-supabase.js';
 import { validateDeviceFingerprint, clearDeviceFingerprints } from './auth-device.js';
 import { isDevBypassActive } from './auth-dev-bypass.js';
+import { logError, logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Get current authenticated user from Supabase
@@ -44,7 +45,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
-      console.error('Error getting session:', sessionError);
+      logError('Error getting session:', sessionError);
       return false;
     }
 
@@ -61,7 +62,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     
     if (expiresAt > 0 && expiresAt < (now + bufferTime)) {
       // Token is expiring soon or expired - try to refresh BEFORE verifying with getUser()
-      console.log('Token expiring soon, refreshing before verification...');
+      logInfo('Token expiring soon, refreshing before verification...');
       
       const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
       
@@ -72,7 +73,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
                                        refreshError?.message?.includes('invalid_grant');
         
         if (isRefreshTokenExpired) {
-          console.warn('Refresh token expired - user needs to re-login:', refreshError?.message);
+          logWarn('Refresh token expired - user needs to re-login:', refreshError?.message);
           // Only logout if refresh token is expired (user needs to re-login)
           try {
             await supabase.auth.signOut();
@@ -86,14 +87,14 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
           }
         } else {
           // Network or temporary error - don't logout, just return false
-          console.warn('Token refresh failed (non-expiration error):', refreshError?.message);
+          logWarn('Token refresh failed (non-expiration error):', refreshError?.message);
         }
         return false;
       }
       
       // Use refreshed session
       currentSession = refreshedSession;
-      console.log('Token refreshed successfully');
+      logInfo('Token refreshed successfully');
     }
 
     // ✅ SECURITY FIX: Verify token with server AFTER ensuring it's not expired/refreshed
@@ -103,7 +104,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     
     // If getUser() fails, token is invalid - clear everything immediately
     if (userError || !user) {
-      console.warn('Token verification failed - invalid or expired token:', userError?.message);
+      logWarn('Token verification failed - invalid or expired token:', userError?.message);
       // Clear invalid session data
       try {
         await supabase.auth.signOut();
@@ -121,7 +122,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
 
     // Check if session exists and matches verified user
     if (!currentSession || !currentSession.user || currentSession.user.id !== user.id) {
-      console.warn('Session mismatch with verified user - clearing session');
+      logWarn('Session mismatch with verified user - clearing session');
       try {
         await supabase.auth.signOut();
       } catch (signOutError) {
@@ -139,8 +140,8 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     
     if (accessToken && userId) {
       if (!validateDeviceFingerprint(accessToken, userId)) {
-        console.error('🚨 SECURITY VIOLATION: Token appears to be copied to different device!');
-        console.error('Invalidating session for security.');
+        logError('🚨 SECURITY VIOLATION: Token appears to be copied to different device!');
+        logError('Invalidating session for security.');
         
         // Clear session and redirect to login
         try {
@@ -164,7 +165,7 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     // Session is valid and verified with server
     return true;
   } catch (error) {
-    console.error('Error checking Supabase authentication:', error);
+    logError('Error checking Supabase authentication:', error);
     return false;
   }
 }
@@ -199,9 +200,9 @@ export async function signOut(): Promise<void> {
         } catch (error: any) {
           // Don't block logout if update fails
           if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-            console.warn('⚠️ Authentication required for logout update - continuing with logout anyway');
+            logWarn('⚠️ Authentication required for logout update - continuing with logout anyway');
           } else {
-            console.error('Error updating logout time:', error);
+            logError('Error updating logout time:', error);
           }
         }
       }
@@ -209,7 +210,7 @@ export async function signOut(): Promise<void> {
       // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (error) {
-      console.error('Error signing out from Supabase:', error);
+      logError('Error signing out from Supabase:', error);
       // Continue with cleanup even if Supabase signOut fails
     }
   }
@@ -223,7 +224,7 @@ export async function signOut(): Promise<void> {
   // ✅ SECURITY: Clear all device fingerprints on logout
   clearDeviceFingerprints();
   
-  console.log('User signed out successfully');
+  logInfo('User signed out successfully');
   
   // Redirect to auth page after logout
   window.location.href = '/src/auth/presentation/auth-page.html';

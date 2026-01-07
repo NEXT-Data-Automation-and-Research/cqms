@@ -3,6 +3,8 @@
  * Reusable pagination controls
  */
 
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+
 export interface PaginationConfig {
   currentPage: number;
   itemsPerPage: number;
@@ -32,14 +34,14 @@ export class Pagination {
     const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
 
     if (totalPages <= 1) {
-      this.container.innerHTML = '';
+      safeSetHTML(this.container, '');
       return;
     }
 
     const pageButtons = this.renderPageButtons(totalPages);
     const itemsPerPageSelect = showItemsPerPage ? this.renderItemsPerPageSelect() : '';
 
-    this.container.innerHTML = `
+    safeSetHTML(this.container, `
       <div class="flex justify-between items-center flex-wrap gap-1.5 py-1.5">
         ${showItemsPerPage ? `
           <div class="flex items-center gap-1.5">
@@ -52,7 +54,7 @@ export class Pagination {
           ${pageButtons}
         </div>
       </div>
-    `;
+    `);
 
     this.attachEventListeners();
   }

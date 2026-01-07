@@ -6,18 +6,36 @@
 import { supabaseLogger } from './logger.js';
 
 let supabaseInstance: any = null;
+let initializationPromise: Promise<any> | null = null;
 
 /**
  * Initialize Supabase client from server environment
  * This fetches the config from /api/env endpoint
+ * Prevents multiple simultaneous initializations
  */
 export async function initSupabase(): Promise<any> {
+  // If already initialized, return immediately
   if (supabaseInstance) {
     supabaseLogger.debug('Client already initialized, returning existing instance');
     return supabaseInstance;
   }
 
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    supabaseLogger.debug('Initialization in progress, waiting for existing promise...');
+    try {
+      return await initializationPromise;
+    } catch (error) {
+      // If previous initialization failed, allow retry
+      supabaseLogger.debug('Previous initialization failed, retrying...');
+      initializationPromise = null;
+    }
+  }
+
   supabaseLogger.info('Starting initialization...');
+  
+  // Create initialization promise (atomic assignment to prevent race conditions)
+  initializationPromise = (async () => {
 
   try {
     // Fetch environment variables from server
@@ -75,6 +93,13 @@ export async function initSupabase(): Promise<any> {
     }
 
     supabaseLogger.info('Initialization completed successfully');
+    
+    // Signal that Supabase is ready
+    if (typeof window !== 'undefined') {
+      (window as any).supabaseReady = true;
+      window.dispatchEvent(new CustomEvent('supabaseReady'));
+    }
+    
     return supabaseInstance;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -82,8 +107,13 @@ export async function initSupabase(): Promise<any> {
     if (error instanceof Error && error.stack) {
       supabaseLogger.debug('Stack trace:', error.stack);
     }
+    // Clear promise on error so retry is possible
+    initializationPromise = null;
     return null;
   }
+  })();
+  
+  return initializationPromise;
 }
 
 /**

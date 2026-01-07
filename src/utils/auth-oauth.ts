@@ -7,6 +7,7 @@ import { getSupabase } from './supabase-init.js';
 import { clearAuthCache } from './secure-supabase.js';
 import { saveUserProfileToDatabase } from './auth-user-profile.js';
 import { storeDeviceFingerprint } from './auth-device.js';
+import { logError, logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Sign in with Google using Supabase OAuth
@@ -39,7 +40,7 @@ export async function signInWithGoogle(): Promise<void> {
 export async function handleGoogleOAuthCallback(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) {
-    console.error('Supabase not initialized');
+    logError('Supabase not initialized');
     return;
   }
 
@@ -54,7 +55,7 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       const { data: { session: currentSession }, error } = await supabase.auth.getSession();
       
       if (error) {
-        console.error('Auth callback error:', error);
+        logError('Auth callback error:', error);
         if (attempts === maxAttempts - 1) {
           return; // Give up after max attempts
         }
@@ -73,8 +74,8 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     }
     
     if (!session || !session.user) {
-      console.error('❌ No session found after OAuth callback - user may not be authenticated yet');
-      console.log('Attempted to get session', maxAttempts, 'times');
+      logError('❌ No session found after OAuth callback - user may not be authenticated yet');
+      logInfo('Attempted to get session', { maxAttempts });
       return;
     }
 
@@ -87,11 +88,13 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 300));
     
     // Save user profile to Supabase database (for notifications and future features)
+    let isNewDevice = false;
     try {
-      await saveUserProfileToDatabase(user);
+      const result = await saveUserProfileToDatabase(user);
+      isNewDevice = result.isNewDevice;
     } catch (saveError: any) {
-      console.error('❌ Error saving user profile:', saveError);
-      console.error('Error details:', {
+      logError('❌ Error saving user profile:', saveError);
+      logError('Error details:', {
         message: saveError.message,
         code: saveError.code,
         stack: saveError.stack,
@@ -100,11 +103,17 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       // Retry once after a short delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       try {
-        await saveUserProfileToDatabase(user);
+        const result = await saveUserProfileToDatabase(user);
+        isNewDevice = result.isNewDevice;
       } catch (retryError: any) {
-        console.error('❌ User profile save failed on retry:', retryError);
+        logError('❌ User profile save failed on retry:', retryError);
         // Don't block redirect - user is authenticated even if profile save fails
       }
+    }
+    
+    // Store new device flag for notification consent check
+    if (isNewDevice) {
+      sessionStorage.setItem('isNewDeviceLogin', 'true');
     }
     
     // Fetch full user profile from database to get latest avatar_url and other data
@@ -118,10 +127,10 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       
       if (!dbError && dbUser) {
         fullUserData = dbUser;
-        console.log('✅ Loaded full user profile from database after login');
+        logInfo('✅ Loaded full user profile from database after login');
       }
     } catch (error) {
-      console.warn('⚠️ Could not fetch full user profile from database, using metadata:', error);
+      logWarn('⚠️ Could not fetch full user profile from database, using metadata:', error);
     }
 
     // Save user info to localStorage with database data if available
@@ -136,7 +145,7 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     };
 
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    console.log('✅ Updated localStorage with full user profile data');
+    logInfo('✅ Updated localStorage with full user profile data');
 
     // ✅ SECURITY: Store device fingerprint for this session to prevent token copying
     if (session?.access_token) {
@@ -152,7 +161,7 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     // Redirect to home page (wrapper page for authenticated users)
     window.location.href = '/src/features/home/presentation/home-page.html';
   } catch (error) {
-    console.error('Error in handleGoogleOAuthCallback:', error);
+    logError('Error in handleGoogleOAuthCallback:', error);
   }
 }
 

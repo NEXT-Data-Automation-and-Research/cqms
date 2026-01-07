@@ -7,10 +7,13 @@
  */
 
 import { getSecureSupabase } from './secure-supabase.js';
+import { NOTIFICATION_SUBSCRIPTION_FIELDS } from '../core/constants/field-whitelists.js';
+import { logError, logWarn } from './logging-helper.js';
 
 /**
  * Save web push notification subscription
  * Call this when user grants notification permission
+ * Also updates browser_permission_granted flag in user preferences
  * 
  * @param subscription - PushSubscription object from browser
  */
@@ -23,6 +26,9 @@ export async function saveNotificationSubscription(subscription: PushSubscriptio
     throw new Error('User not authenticated');
   }
 
+  // Check if browser permission is granted
+  const browserPermissionGranted = 'Notification' in window && Notification.permission === 'granted';
+
   const subscriptionData = {
     user_id: user.id,
     endpoint: subscription.endpoint,
@@ -34,15 +40,57 @@ export async function saveNotificationSubscription(subscription: PushSubscriptio
     is_active: true,
   };
 
-  const { error } = await supabase
+  const { error: subscriptionError } = await supabase
     .from('notification_subscriptions')
     .upsert(subscriptionData, {
       onConflict: 'endpoint',
       ignoreDuplicates: false,
     });
 
-  if (error) {
-    throw error;
+  if (subscriptionError) {
+    throw subscriptionError;
+  }
+
+  // Update browser_permission_granted flag in user preferences
+  if (browserPermissionGranted) {
+    try {
+      // Get current preferences
+      const { data: userData, error: fetchError } = await supabase
+        .from('users')
+        .select('notification_preferences')
+        .eq('id', user.id)
+        .single();
+
+      if (!fetchError && userData?.notification_preferences) {
+        const preferences = userData.notification_preferences;
+        
+        // Update preferences with browser permission status
+        const updatedPreferences = {
+          ...preferences,
+          browser_permission_granted: true,
+          push: true,
+          channels: {
+            ...(preferences.channels || {}),
+            web: true,
+          },
+        };
+
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            notification_preferences: updatedPreferences,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', user.id);
+
+        if (updateError) {
+          logWarn('Failed to update browser permission flag:', updateError);
+        }
+      }
+    } catch (error) {
+      logWarn('Error updating browser permission flag:', error);
+      // Don't throw - subscription was saved successfully
+    }
   }
 }
 
@@ -99,7 +147,7 @@ export async function getNotificationPreferences(): Promise<any> {
     return data.notification_preferences;
   } catch (error: any) {
     if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-      console.error('❌ Authentication required:', error.message);
+      logError('❌ Authentication required:', error.message);
     }
     return null;
   }
@@ -120,7 +168,7 @@ export async function getUserNotificationSubscriptions(): Promise<any[]> {
 
   const { data, error } = await supabase
     .from('notification_subscriptions')
-    .select('*')
+    .select(NOTIFICATION_SUBSCRIPTION_FIELDS)
     .eq('user_id', user.id)
     .eq('is_active', true);
 
@@ -131,7 +179,7 @@ export async function getUserNotificationSubscriptions(): Promise<any[]> {
     return data || [];
   } catch (error: any) {
     if (error.code === 'AUTH_REQUIRED' || error.code === 'AUTH_FAILED') {
-      console.error('❌ Authentication required:', error.message);
+      logError('❌ Authentication required:', error.message);
     }
     return [];
   }

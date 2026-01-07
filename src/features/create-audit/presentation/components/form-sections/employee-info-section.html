@@ -1,0 +1,37 @@
+<!-- Employee Info Section -->
+<div class="accordion-section" data-section="employee-info">
+  <div class="accordion-header" data-toggle="employee-info">
+    <h3>
+      <span>1</span>
+      Employee Information
+    </h3>
+    <svg class="accordion-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="6 9 12 15 18 9"></polyline>
+    </svg>
+  </div>
+  <div class="accordion-content">
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-white/80 mb-2">Employee Name</label>
+        <select id="employeeName" name="employeeName" required class="form-input w-full">
+          <option value="">Select employee...</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-white/80 mb-2">Email</label>
+        <input type="email" id="employeeEmail" name="employeeEmail" readonly class="form-input w-full bg-white/5" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-white/80 mb-2">Type</label>
+          <input type="text" id="employeeType" name="employeeType" readonly class="form-input w-full bg-white/5" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-white/80 mb-2">Department</label>
+          <input type="text" id="employeeDepartment" name="employeeDepartment" readonly class="form-input w-full bg-white/5" />
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

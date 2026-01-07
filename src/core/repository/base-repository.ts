@@ -45,8 +45,10 @@ export abstract class BaseRepository {
         );
       }
 
+      // Return empty array if data is null (for array queries)
+      // This is valid for queries that return arrays - empty result is not an error
       if (data === null) {
-        throw createDatabaseError(`${errorMessage}: No data returned`);
+        return [] as T;
       }
 
       return data;

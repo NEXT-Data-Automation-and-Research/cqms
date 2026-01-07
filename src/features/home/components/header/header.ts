@@ -50,10 +50,10 @@ export function hideAvatarLogout(): void {
 // Make functions globally available for inline event handlers
 declare global {
   interface Window {
-    hideNotifications: typeof hideNotifications;
-    hideCalendar: typeof hideCalendar;
-    hideGrid: typeof hideGrid;
-    hideAvatarLogout: typeof hideAvatarLogout;
+    hideNotifications?: typeof hideNotifications;
+    hideCalendar?: typeof hideCalendar;
+    hideGrid?: typeof hideGrid;
+    hideAvatarLogout?: typeof hideAvatarLogout;
   }
 }
 

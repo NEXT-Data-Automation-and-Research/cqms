@@ -3,12 +3,14 @@
  * This is the main file that loads the sidebar and makes everything work
  */
 
-import { SIDEBAR_HTML_TEMPLATE } from './sidebar-html.js'
 import { SidebarUserProfile } from './sidebar-user-profile.js'
 import { SidebarNotifications } from './sidebar-notifications.js'
 import { SidebarMenu } from './sidebar-menu.js'
 import { SidebarService } from '../application/sidebar-service.js'
 import { sidebarState } from '../application/sidebar-state.js'
+import { SidebarHTMLGenerator } from './sidebar-html-generator.js'
+import { safeSetHTML, sanitizeHTML } from '../../../utils/html-sanitizer.js'
+import { logError } from '../../../utils/logging-helper.js'
 
 /**
  * This class loads the sidebar and makes it work
@@ -18,12 +20,14 @@ export class SidebarLoader {
   private notifications: SidebarNotifications
   private menu: SidebarMenu
   private service: SidebarService
+  private htmlGenerator: SidebarHTMLGenerator
 
   constructor() {
     this.userProfile = new SidebarUserProfile()
     this.notifications = new SidebarNotifications()
     this.menu = new SidebarMenu()
     this.service = new SidebarService()
+    this.htmlGenerator = new SidebarHTMLGenerator()
   }
 
   /**
@@ -66,6 +70,39 @@ export class SidebarLoader {
     this.initializeSidebarFeaturesAsync().catch(error => {
       // Silently handle errors - UI is already shown with cached data
       console.debug('[Sidebar] Background initialization error:', error)
+    })
+
+    // Update sidebar when user info changes (for role-based menu updates)
+    this.setupUserInfoWatcher()
+  }
+
+  /**
+   * Watch for user info changes and update sidebar if needed
+   */
+  private setupUserInfoWatcher(): void {
+    // Listen for user info updates
+    document.addEventListener('userInfoUpdated', () => {
+      // Reload sidebar with updated user info
+      if (sidebarState.isSidebarLoaded) {
+        const userInfo = sidebarState.loadUserInfo()
+        const newHTML = this.htmlGenerator.generate(userInfo)
+        const sidebarNav = document.querySelector('nav.sidebar')
+        if (sidebarNav) {
+          const tempDiv = document.createElement('div')
+          tempDiv.innerHTML = newHTML
+          const newNav = tempDiv.querySelector('nav.sidebar')
+          if (newNav) {
+            // Preserve collapsed state
+            const isCollapsed = sidebarNav.classList.contains('collapsed')
+            if (isCollapsed) {
+              newNav.classList.add('collapsed')
+            }
+            sidebarNav.replaceWith(newNav)
+            // Re-setup handlers
+            this.menu.setupMenuHandlers()
+          }
+        }
+      }
     })
   }
 
@@ -112,35 +149,22 @@ export class SidebarLoader {
         return
       }
 
-      let sidebarHTML = ''
-      let usingFallback = false
-
-      // Check if we're running from file:// protocol (local files)
-      const isFileProtocol = window.location.protocol === 'file:'
+      // Get user info for route-based menu generation
+      const userInfo = sidebarState.loadUserInfo()
       
-      if (isFileProtocol) {
-        // Skip fetch for file:// protocol and use embedded fallback directly
-        sidebarHTML = SIDEBAR_HTML_TEMPLATE
-        usingFallback = true
-      } else {
-        try {
-          // Try to fetch the sidebar HTML (use absolute path to avoid relative path issues)
-          const response = await fetch('/sidebar.html')
-          
-          if (!response.ok) {
-            throw new Error(`Failed to load sidebar: ${response.status} ${response.statusText}`)
-          }
-          sidebarHTML = await response.text()
-        } catch (fetchError) {
-          // Failed to fetch sidebar.html, using embedded fallback
-          sidebarHTML = SIDEBAR_HTML_TEMPLATE
-          usingFallback = true
-        }
-      }
+      // Generate sidebar HTML from route configuration
+      const sidebarHTML = this.htmlGenerator.generate(userInfo)
 
       // Create a temporary container to parse the HTML
       const tempDiv = document.createElement('div')
-      tempDiv.innerHTML = sidebarHTML
+      try {
+        const sanitized = sanitizeHTML(sidebarHTML, true)
+        safeSetHTML(tempDiv, sanitized)
+      } catch (error) {
+        // If sanitization fails, use innerHTML directly for trusted template
+        // This is safe because sidebarHTML is generated from route config, not user-generated
+        tempDiv.innerHTML = sidebarHTML
+      }
 
       // Extract the sidebar nav element
       const sidebarNav = tempDiv.querySelector('nav.sidebar')
@@ -167,7 +191,7 @@ export class SidebarLoader {
       
       // Dispatch custom event when sidebar is loaded
       const sidebarLoadedEvent = new CustomEvent('sidebarLoaded', {
-        detail: { usingFallback }
+        detail: { usingRouteConfig: true }
       })
       document.dispatchEvent(sidebarLoadedEvent)
 
@@ -178,7 +202,15 @@ export class SidebarLoader {
         })
       })
     } catch (error) {
-      console.error('Error loading sidebar:', error)
+      // Log detailed error information
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      logError('Error loading sidebar:', error);
+      console.error('[Sidebar] Detailed error:', {
+        message: errorMessage,
+        stack: errorStack,
+        error: error
+      });
       this.showSidebarError()
     }
   }
@@ -225,11 +257,11 @@ export class SidebarLoader {
       toggleButton = document.createElement('button')
       toggleButton.className = 'sidebar-toggle'
       toggleButton.setAttribute('aria-label', 'Toggle sidebar')
-      toggleButton.innerHTML = `
+      safeSetHTML(toggleButton as HTMLElement, `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
         </svg>
-      `
+      `)
       document.body.appendChild(toggleButton)
     }
 
@@ -269,6 +301,7 @@ export class SidebarLoader {
 
   /**
    * Hide menu items that employees shouldn't see
+   * This matches the old behavior - show all routes, then hide based on role
    */
   private hideEmployeeMenuItems(): void {
     const userInfo = sidebarState.loadUserInfo()
@@ -280,8 +313,7 @@ export class SidebarLoader {
     const itemsToHide = [
       'auditor-dashboard-page.html',
       'audit-distribution-page.html',
-      'create-audit.html',
-      'reversal.html'
+      'create-audit.html'
     ]
 
     const menuItems = document.querySelectorAll('.menu-item')
@@ -290,6 +322,22 @@ export class SidebarLoader {
       if (link.href) {
         const href = link.href.toLowerCase()
         if (itemsToHide.some(itemToHide => href.includes(itemToHide.toLowerCase()))) {
+          const listItem = item.closest('li')
+          if (listItem) {
+            listItem.style.display = 'none'
+          }
+        }
+      }
+    })
+
+    // Also hide submenu items that employees shouldn't see
+    const submenuItems = document.querySelectorAll('.submenu-item')
+    submenuItems.forEach(item => {
+      const link = item as HTMLAnchorElement
+      if (link.href) {
+        const href = link.href.toLowerCase()
+        // Hide User Management and Access Control for employees
+        if (href.includes('user-management') || href.includes('access-control')) {
           const listItem = item.closest('li')
           if (listItem) {
             listItem.style.display = 'none'
@@ -307,11 +355,14 @@ export class SidebarLoader {
     if (!accessControlMenuItem) return
 
     // Check if user has access control permission
-    if ((window as any).accessControl && (window as any).accessControl.hasAccessControlPermission) {
-      accessControlMenuItem.style.display = 'block'
-    } else {
-      accessControlMenuItem.style.display = 'none'
-    }
+    // Wait a bit for accessControl to be available
+    setTimeout(() => {
+      if ((window as any).accessControl && (window as any).accessControl.hasAccessControlPermission) {
+        accessControlMenuItem.style.display = 'block'
+      } else {
+        accessControlMenuItem.style.display = 'none'
+      }
+    }, 100)
   }
 
   /**
@@ -340,13 +391,13 @@ export const sidebarLoader = new SidebarLoader()
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     sidebarLoader.init().catch(error => {
-      console.error('Error initializing sidebar:', error)
+      logError('Error initializing sidebar:', error)
     })
   })
 } else {
   // DOM is already ready
   sidebarLoader.init().catch(error => {
-    console.error('Error initializing sidebar:', error)
+    logError('Error initializing sidebar:', error)
   })
 }
 

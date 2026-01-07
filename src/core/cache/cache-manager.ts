@@ -5,6 +5,8 @@
  * Supports different storage backends (sessionStorage, localStorage, memory).
  */
 
+import { logWarn } from '../../utils/logging-helper.js';
+
 export type CacheStorage = 'session' | 'local' | 'memory';
 
 export interface CacheOptions {
@@ -56,7 +58,7 @@ export class CacheManager {
 
       return entry.data;
     } catch (error) {
-      console.warn('Cache get error:', error);
+      logWarn('Cache get error:', error);
       return null;
     }
   }
@@ -77,7 +79,7 @@ export class CacheManager {
     try {
       this.setEntry(fullKey, entry, opts.storage);
     } catch (error) {
-      console.warn('Cache set error:', error);
+      logWarn('Cache set error:', error);
     }
   }
 
@@ -91,7 +93,7 @@ export class CacheManager {
     try {
       this.deleteEntry(fullKey, opts.storage);
     } catch (error) {
-      console.warn('Cache delete error:', error);
+      logWarn('Cache delete error:', error);
     }
   }
 
@@ -110,7 +112,7 @@ export class CacheManager {
         this.clearStorage(localStorage, opts.keyPrefix);
       }
     } catch (error) {
-      console.warn('Cache clear error:', error);
+      logWarn('Cache clear error:', error);
     }
   }
 
@@ -158,7 +160,7 @@ export class CacheManager {
       storageObj.setItem(key, JSON.stringify(entry));
     } catch (error) {
       // Storage might be full
-      console.warn('Storage set error:', error);
+      logWarn('Storage set error:', error);
     }
   }
 

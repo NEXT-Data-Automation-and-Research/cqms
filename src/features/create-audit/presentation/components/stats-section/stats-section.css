@@ -1,0 +1,54 @@
+/**
+ * Stats Section Component Styles
+ */
+
+.stats-section-container {
+  margin-bottom: 0;
+}
+
+.stats-section-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.stats-section-toggle:hover {
+  opacity: 0.8;
+}
+
+.stats-section-toggle h2 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+.stats-toggle-icon {
+  transition: transform 0.3s ease;
+  color: rgba(255, 255, 255, 0.6);
+  width: 1rem;
+  height: 1rem;
+}
+
+.stats-section-toggle.expanded .stats-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.stats-section-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  opacity: 0;
+  margin-top: 0;
+}
+
+.stats-section-content.expanded {
+  max-height: 500px;
+  opacity: 1;
+  margin-top: 1rem;
+}
+

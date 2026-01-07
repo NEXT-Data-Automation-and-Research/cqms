@@ -54,6 +54,9 @@ When working on this codebase:
 - **Proactively suggest refactoring** if a file is approaching the limit (e.g., >200 lines)
 - **Break down large implementations** into smaller, focused modules
 - **Suggest appropriate file structure** when creating new features
+- **For existing large files**: Immediately refactor into modules when discovered
+- **Modular structure**: Each module should have a single, clear responsibility
+- **Import/Export pattern**: Use ES modules with clear exports for reusability
 
 ### Example Refactoring Pattern
 
@@ -488,4 +491,57 @@ src/
 ---
 
 **Remember: Architecture decisions prioritize scalability, reusability, and database portability. Follow these patterns consistently.**
+
+## Security Rules & Best Practices
+
+**CRITICAL: All security rules MUST be followed. See `SECURITY_RULES.md` for comprehensive security guidelines.**
+
+### Quick Security Checklist
+
+Before committing any code, verify:
+- [ ] No `innerHTML` usage - Use `safeSetHTML()` from `src/utils/html-sanitizer.js`
+- [ ] No `select('*')` queries - Use field whitelists from `src/core/constants/field-whitelists.ts`
+- [ ] All user input is sanitized - Use `sanitizeString()` from `src/api/utils/validation.ts`
+- [ ] CSRF tokens in POST/PUT/DELETE requests - Middleware applied automatically
+- [ ] No `console.log` - Use `logInfo/logError/logWarn` from `src/utils/logging-helper.js`
+- [ ] All database access uses `getAuthenticatedSupabase()` - Never use `getSupabase()` directly
+- [ ] Error messages are generic (no sensitive data) - Use `AppError` from `src/core/errors/app-error.ts`
+- [ ] HTML content is sanitized - Use DOMPurify via `safeSetHTML()`
+- [ ] Only safe environment variables exposed to client - Check `getSafeEnvVars()` in server
+
+### Security Rules Reference
+
+**See `SECURITY_RULES.md` for:**
+- Detailed security rules for each vulnerability type
+- Code examples (correct vs wrong usage)
+- Implementation details and file locations
+- Enforcement guidelines
+- Security violation examples
+- Quick reference checklist
+
+### Key Security Files
+
+- **HTML Sanitization**: `src/utils/html-sanitizer.ts`
+- **Field Whitelists**: `src/core/constants/field-whitelists.ts`
+- **Input Validation**: `src/api/utils/validation.ts`
+- **CSRF Protection**: `src/api/middleware/csrf.middleware.ts`
+- **Error Handling**: `src/api/middleware/error-handler.middleware.ts`
+- **Structured Logging**: `src/utils/logging-helper.js`
+- **Authenticated Supabase**: `src/utils/authenticated-supabase.ts`
+
+### Security Rating Goals
+
+Target security ratings (all 9.0+/10):
+- XSS Prevention: 9.5/10
+- Data Protection: 9.5/10
+- Input Validation: 9.0/10
+- CSRF Protection: 9.0/10
+- Error Handling: 9.0/10
+- Logging Security: 9.5/10
+- Authentication: 9.5/10
+- **Overall Security: 9.3/10+**
+
+---
+
+**Remember: Security is not optional. Every line of code should follow the security rules in `SECURITY_RULES.md`.**
 

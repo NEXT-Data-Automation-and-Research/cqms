@@ -4,10 +4,13 @@
  */
 
 import type { UserInfo } from '../domain/entities.js'
-import { DatabaseFactory } from '../../../infrastructure/database-factory.js'
+import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js'
+import { SupabaseClientAdapter } from '../../../infrastructure/database/supabase/supabase-client.adapter.js'
 import { SidebarRepository } from '../infrastructure/sidebar-repository.js'
 import { sidebarState } from '../application/sidebar-state.js'
 import { SidebarService } from '../application/sidebar-service.js'
+import { safeSetHTML, escapeHtml } from '../../../utils/html-sanitizer.js'
+import { logInfo, logError, logWarn } from '../../../utils/logging-helper.js'
 
 /**
  * This class shows user information on the sidebar
@@ -23,14 +26,22 @@ export class SidebarUserProfile {
 
   /**
    * Get or create the repository (lazy initialization)
+   * ✅ SECURITY: Verifies authentication before creating repository
    */
-  private getRepository(): SidebarRepository {
+  private async getRepository(): Promise<SidebarRepository> {
     if (!this.repository) {
-      // Wait for supabase client to be available
-      if (typeof window === 'undefined' || !(window as any).supabaseClient) {
-        throw new Error('Supabase client not initialized. Please wait for initialization.')
+      // ✅ SECURITY: Verify authentication first
+      await getAuthenticatedSupabase() // This will throw if not authenticated
+      
+      // Get base Supabase client (authentication already verified above)
+      const { getSupabase } = await import('../../../utils/supabase-init.js')
+      const baseClient = getSupabase()
+      if (!baseClient) {
+        throw new Error('Supabase client not initialized')
       }
-      const db = DatabaseFactory.createClient('supabase')
+      
+      // Create adapter from base client (auth already verified)
+      const db = new SupabaseClientAdapter(baseClient)
       this.repository = new SidebarRepository(db)
     }
     return this.repository
@@ -69,7 +80,7 @@ export class SidebarUserProfile {
     if (!userAvatarElement) return
 
     // Clear existing content
-    userAvatarElement.innerHTML = ''
+    safeSetHTML(userAvatarElement as HTMLElement, '')
 
     // Check if we have a profile picture
     const profilePicture = user.avatar || user.picture || user.avatar_url
@@ -84,13 +95,13 @@ export class SidebarUserProfile {
       
       // Handle image loading errors - fallback to initials
       img.onerror = () => {
-        console.log('[Sidebar] Avatar image failed to load, using initials:', profilePicture.substring(0, 50))
+        logInfo('[Sidebar] Avatar image failed to load, using initials', { profilePicture: profilePicture.substring(0, 50) })
         this.showUserInitials(user.name, userAvatarElement)
       }
       
       // Handle successful image load
       img.onload = () => {
-        console.log('[Sidebar] Avatar image loaded successfully')
+        logInfo('[Sidebar] Avatar image loaded successfully')
       }
       
       userAvatarElement.appendChild(img)
@@ -108,18 +119,18 @@ export class SidebarUserProfile {
    */
   private showUserInitials(name: string, container: Element): void {
     const initials = name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2)
-    container.innerHTML = `<div class="profile-initials">${initials}</div>`
+    safeSetHTML(container as HTMLElement, `<div class="profile-initials">${escapeHtml(initials)}</div>`)
   }
 
   /**
    * Show default user icon
    */
   private showDefaultIcon(container: Element): void {
-    container.innerHTML = `
+    safeSetHTML(container as HTMLElement, `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
       </svg>
-    `
+    `)
   }
 
   /**
@@ -159,7 +170,7 @@ export class SidebarUserProfile {
   async loadUserInfoFromDatabase(isBackgroundRefresh: boolean = false): Promise<UserInfo | null> {
     try {
       if (!isBackgroundRefresh) {
-        console.log('[Sidebar] Loading user profile from database...')
+        logInfo('[Sidebar] Loading user profile from database...')
       }
       
       // Wait for supabase client to be available
@@ -172,7 +183,7 @@ export class SidebarUserProfile {
           }
         } catch (importError) {
           // Module might not exist, continue anyway
-          console.warn('Could not import secure-window-supabase:', importError)
+          logWarn('Could not import secure-window-supabase:', importError)
         }
       }
 
@@ -187,19 +198,19 @@ export class SidebarUserProfile {
       }
 
       if (!isBackgroundRefresh) {
-        console.log('[Sidebar] User authenticated, fetching from database...', { userId: authUser.id })
+        logInfo('[Sidebar] User authenticated, fetching from database...', { userId: authUser.id })
       }
 
       // Get user info from database
-      const userInfo = await this.getRepository().getUserInfoFromDatabase(authUser.id)
+      const userInfo = await (await this.getRepository()).getUserInfoFromDatabase(authUser.id)
       
       if (!userInfo) {
-        console.warn('[Sidebar] No user data returned from database')
+        logWarn('[Sidebar] No user data returned from database')
         return null
       }
 
       if (!isBackgroundRefresh) {
-        console.log('[Sidebar] User data loaded from database:', {
+        logInfo('[Sidebar] User data loaded from database', {
           email: userInfo.email,
           full_name: userInfo.name,
           has_avatar: !!userInfo.avatar_url,
@@ -221,21 +232,21 @@ export class SidebarUserProfile {
       sidebarState.saveUserInfo(userInfo)
       
       if (!isBackgroundRefresh) {
-        console.log('[Sidebar] Updated localStorage with user profile')
+        logInfo('[Sidebar] Updated localStorage with user profile')
       }
       
       // Update UI
       this.showUserInfo(userInfo)
       
       if (!isBackgroundRefresh) {
-        console.log('[Sidebar] UI updated with user profile')
+        logInfo('[Sidebar] UI updated with user profile')
       } else {
-        console.log('[Sidebar] User profile refreshed in background')
+        logInfo('[Sidebar] User profile refreshed in background')
       }
 
       return userInfo
     } catch (error) {
-      console.error('[Sidebar] Error loading user profile from database:', error)
+      logError('[Sidebar] Error loading user profile from database:', error)
       throw error
     }
   }
@@ -249,7 +260,7 @@ export class SidebarUserProfile {
     if (cachedUserInfo && cachedUserInfo.email && cachedUserInfo.name) {
       // Update UI immediately with cached data
       this.showUserInfo(cachedUserInfo)
-      console.log('[Sidebar] User profile loaded from cache (localStorage)')
+      logInfo('[Sidebar] User profile loaded from cache (localStorage)')
       
       // Refresh from database in background (silently, without UI update if same)
       // Only fetch if we haven't fetched recently (within last 5 minutes)
@@ -257,7 +268,7 @@ export class SidebarUserProfile {
         // Fetch in background without blocking or showing loading state
         this.loadUserInfoFromDatabase(true).catch(error => {
           // Silently fail - we already have cached data displayed
-          console.log('[Sidebar] Background profile refresh failed (using cached data):', error.message)
+          logInfo('[Sidebar] Background profile refresh failed (using cached data)', { error: error.message })
         })
       }
     } else {
@@ -265,7 +276,7 @@ export class SidebarUserProfile {
       try {
         await this.loadUserInfoFromDatabase(false)
       } catch (error) {
-        console.warn('Failed to load user profile from database:', error)
+        logWarn('Failed to load user profile from database:', error)
         // If we have partial data, still show it
         if (cachedUserInfo) {
           this.showUserInfo(cachedUserInfo)
@@ -336,14 +347,14 @@ export class SidebarUserProfile {
               }
             } catch (importError) {
               // Fallback: clear localStorage and redirect even if signOut fails
-              console.error('Error importing auth module:', importError)
+              logError('Error importing auth module:', importError)
               localStorage.removeItem('userInfo')
               localStorage.removeItem('supabase.auth.token')
               window.location.href = '/src/auth/presentation/auth-page.html'
             }
             // No need to redirect here - signOut() handles it
           } catch (error) {
-            console.error('Error during logout:', error)
+            logError('Error during logout:', error)
             // Fallback: clear localStorage and redirect even if signOut fails
             localStorage.removeItem('userInfo')
             localStorage.removeItem('supabase.auth.token')

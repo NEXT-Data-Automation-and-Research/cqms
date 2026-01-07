@@ -4,7 +4,8 @@
  */
 
 import type { NotificationType } from '../domain/types.js'
-import { DatabaseFactory } from '../../../infrastructure/database-factory.js'
+import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js'
+import { SupabaseClientAdapter } from '../../../infrastructure/database/supabase/supabase-client.adapter.js'
 import { SidebarRepository } from '../infrastructure/sidebar-repository.js'
 import { sidebarState } from '../application/sidebar-state.js'
 import { SidebarService } from '../application/sidebar-service.js'
@@ -33,14 +34,22 @@ export class SidebarNotifications {
 
   /**
    * Get or create the repository (lazy initialization)
+   * ✅ SECURITY: Verifies authentication before creating repository
    */
-  private getRepository(): SidebarRepository {
+  private async getRepository(): Promise<SidebarRepository> {
     if (!this.repository) {
-      // Wait for supabase client to be available
-      if (typeof window === 'undefined' || !(window as any).supabaseClient) {
-        throw new Error('Supabase client not initialized. Please wait for initialization.')
+      // ✅ SECURITY: Verify authentication first
+      await getAuthenticatedSupabase() // This will throw if not authenticated
+      
+      // Get base Supabase client (authentication already verified above)
+      const { getSupabase } = await import('../../../utils/supabase-init.js')
+      const baseClient = getSupabase()
+      if (!baseClient) {
+        throw new Error('Supabase client not initialized')
       }
-      const db = DatabaseFactory.createClient('supabase')
+      
+      // Create adapter from base client (auth already verified)
+      const db = new SupabaseClientAdapter(baseClient)
       this.repository = new SidebarRepository(db)
     }
     return this.repository
@@ -137,8 +146,14 @@ export class SidebarNotifications {
 
   /**
    * Update reversal count from database
+   * ✅ DISABLED: Scorecard functionality temporarily removed
    */
   async updateReversalCount(): Promise<void> {
+    // Scorecard functionality disabled - return 0
+    this.showReversalCount(0)
+    return
+    
+    /* DISABLED - Scorecard functionality
     try {
       // Only show for non-employees (auditors, quality analysts, etc.)
       const userInfo = sidebarState.loadUserInfo()
@@ -155,7 +170,7 @@ export class SidebarNotifications {
       }
 
       // Get all scorecard table names
-      const tableNames = await this.getRepository().getAllScorecardTableNames()
+      const tableNames = await (await this.getRepository()).getAllScorecardTableNames()
 
       if (tableNames.length === 0) {
         this.showReversalCount(0)
@@ -166,7 +181,7 @@ export class SidebarNotifications {
       const counts: number[] = []
       for (const tableName of tableNames) {
         try {
-          const count = await this.getRepository().countPendingReversals(tableName)
+          const count = await (await this.getRepository()).countPendingReversals(tableName)
           counts.push(count)
         } catch (err: any) {
           // Silently skip tables that don't exist or have errors
@@ -208,12 +223,19 @@ export class SidebarNotifications {
         this.showReversalCount(0)
       }
     }
+    */
   }
 
   /**
    * Update employee reversal count from database
+   * ✅ DISABLED: Scorecard functionality temporarily removed
    */
   async updateEmployeeReversalCount(): Promise<void> {
+    // Scorecard functionality disabled - return 0
+    this.showEmployeeReversalCount(0)
+    return
+    
+    /* DISABLED - Scorecard functionality
     try {
       // Only show for employees
       const userInfo = sidebarState.loadUserInfo()
@@ -235,7 +257,7 @@ export class SidebarNotifications {
       }
 
       // Get all scorecard table names
-      const tableNames = await this.getRepository().getAllScorecardTableNames()
+      const tableNames = await (await this.getRepository()).getAllScorecardTableNames()
 
       if (tableNames.length === 0) {
         this.showEmployeeReversalCount(0)
@@ -246,7 +268,7 @@ export class SidebarNotifications {
       const counts: number[] = []
       for (const tableName of tableNames) {
         try {
-          const count = await this.getRepository().countEmployeeReversals(tableName, employeeEmail, employeeName)
+          const count = await (await this.getRepository()).countEmployeeReversals(tableName, employeeEmail, employeeName)
           counts.push(count)
         } catch (err: any) {
           // Silently skip tables that don't exist or have errors
@@ -287,12 +309,19 @@ export class SidebarNotifications {
         this.showEmployeeReversalCount(0)
       }
     }
+    */
   }
 
   /**
    * Update acknowledgment count from database
+   * ✅ DISABLED: Scorecard functionality temporarily removed
    */
   async updateAcknowledgmentCount(): Promise<void> {
+    // Scorecard functionality disabled - return 0
+    this.showAcknowledgmentCount(0)
+    return
+    
+    /* DISABLED - Scorecard functionality
     try {
       if (!window.supabaseClient) {
         // Supabase not initialized yet, try again after a delay
@@ -306,7 +335,7 @@ export class SidebarNotifications {
       const currentUserEmail = userInfo ? (userInfo.email || '').toLowerCase().trim() : ''
 
       // Get all scorecard table names
-      const tableNames = await this.getRepository().getAllScorecardTableNames()
+      const tableNames = await (await this.getRepository()).getAllScorecardTableNames()
 
       if (tableNames.length === 0) {
         this.showAcknowledgmentCount(0)
@@ -317,7 +346,7 @@ export class SidebarNotifications {
       const counts: number[] = []
       for (const tableName of tableNames) {
         try {
-          const count = await this.getRepository().countPendingAcknowledgments(
+          const count = await (await this.getRepository()).countPendingAcknowledgments(
             tableName,
             isAgent ? currentUserEmail : undefined
           )
@@ -364,6 +393,7 @@ export class SidebarNotifications {
         this.showAcknowledgmentCount(0)
       }
     }
+    */
   }
 
   /**

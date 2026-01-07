@@ -1,0 +1,131 @@
+<div class="conversations-panel glass-card rounded-xl p-4 h-full flex flex-col overflow-hidden">
+  <div id="conversations-panel-empty" class="flex-1 flex items-center justify-center">
+    <div class="text-center">
+      <svg class="w-16 h-16 mx-auto mb-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+      </svg>
+      <p class="text-white/60 text-lg font-semibold mb-2">Select an audit to view conversations</p>
+      <p class="text-white/40 text-sm">Choose an assigned audit from the left sidebar to pull and view conversations</p>
+    </div>
+  </div>
+
+  <div id="conversations-panel-content" class="hidden flex-1 flex flex-col min-h-0">
+    <!-- Selected Audit Info - Compact Header -->
+    <div class="mb-3 pb-2 border-b border-white/10 flex-shrink-0">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-md bg-gradient-to-br from-purple-500/20 to-blue-500/20 flex items-center justify-center border border-white/10">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="text-sm font-semibold text-white leading-tight" id="selected-audit-employee-name">-</h2>
+            <p class="text-xs text-white/60 mt-0.5 leading-tight flex items-center gap-2" id="selected-audit-meta">-</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters - Compact Layout -->
+    <div class="mb-3 flex items-end gap-2 flex-shrink-0">
+      <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div>
+          <label class="form-label text-xs text-white/70 mb-1.5 block font-medium flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            Start Date
+          </label>
+          <input type="date" id="conversation-start-date" class="conversation-filter-input w-full text-xs px-3 py-2 h-8" />
+        </div>
+        <div>
+          <label class="form-label text-xs text-white/70 mb-1.5 block font-medium flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            End Date
+          </label>
+          <input type="date" id="conversation-end-date" class="conversation-filter-input w-full text-xs px-3 py-2 h-8" />
+        </div>
+        <div>
+          <label class="form-label text-xs text-white/70 mb-1.5 block font-medium flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+            </svg>
+            Channel
+          </label>
+          <div id="channel-dropdown-container" class="conversation-channel-dropdown-wrapper"></div>
+        </div>
+        <div>
+          <label class="form-label text-xs text-white/70 mb-1.5 block font-medium flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Search
+          </label>
+          <input type="text" id="conversation-search" placeholder="Search conversations..." class="conversation-filter-input w-full text-xs px-3 py-2 h-8" />
+        </div>
+      </div>
+      <!-- Filter Button -->
+      <div class="flex-shrink-0">
+        <button id="conversation-filter-button" class="conversation-filter-button h-8 px-4 text-xs font-medium flex items-center gap-2" title="Advanced Filters">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+          </svg>
+          Filters
+        </button>
+      </div>
+    </div>
+
+    <!-- Conversations Table - Compact and Scrollable -->
+    <div class="overflow-x-auto overflow-y-auto rounded-lg border border-white/10 bg-white/5" style="max-height: calc(100vh - 300px);">
+      <table class="min-w-full divide-y divide-white/10">
+        <thead class="bg-white/5 sticky top-0 z-10 backdrop-blur-sm">
+          <tr>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">
+              <input type="checkbox" id="select-all-conversations" class="form-checkbox conversation-checkbox w-3.5 h-3.5" />
+            </th>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">ID</th>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">Client</th>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">Subject</th>
+            <th class="px-2 py-2 text-center text-xs font-semibold text-white/80 uppercase tracking-wider">CSAT</th>
+            <th class="px-2 py-2 text-center text-xs font-semibold text-white/80 uppercase tracking-wider">CX</th>
+            <th class="px-2 py-2 text-center text-xs font-semibold text-white/80 uppercase tracking-wider">Length</th>
+            <th class="px-2 py-2 text-center text-xs font-semibold text-white/80 uppercase tracking-wider">Errors</th>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">Tags</th>
+            <th class="px-2 py-2 text-left text-xs font-semibold text-white/80 uppercase tracking-wider">Created</th>
+            <th class="px-2 py-2 text-center text-xs font-semibold text-white/80 uppercase tracking-wider">Status</th>
+          </tr>
+        </thead>
+        <tbody id="conversations-table-body" class="divide-y divide-white/5 bg-transparent">
+          <tr>
+            <td colspan="11" class="px-4 py-12 text-center">
+              <div class="flex flex-col items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                  <svg class="w-6 h-6 text-white/40 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                </div>
+                <p class="text-white/60 text-sm font-medium">Loading conversations...</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Selected Conversations Actions -->
+    <div id="selected-conversations-actions" class="mt-2 pt-2 border-t border-white/10 hidden flex-shrink-0">
+      <div class="flex items-center justify-between">
+        <span class="text-xs text-white/70">
+          <span id="selected-count">0</span> conversation(s) selected
+        </span>
+        <button id="use-selected-conversations" class="btn-primary text-xs px-3 py-1.5 h-7">
+          Use Selected Conversations
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+

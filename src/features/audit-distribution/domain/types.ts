@@ -6,6 +6,7 @@ export interface Employee {
   id: string;
   email: string;
   name: string;
+  avatar_url: string | null;
   channel: string | null;
   team: string | null;
   department: string | null;

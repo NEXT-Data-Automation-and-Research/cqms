@@ -42,11 +42,21 @@ export function validateRequired(
 
 /**
  * Sanitize string input (remove dangerous characters)
+ * Enhanced to handle all XSS vectors
  */
 export function sanitizeString(input: string, maxLength: number = 1000): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+  
   return input
     .trim()
-    .slice(0, maxLength)
-    .replace(/[<>]/g, ''); // Remove potential HTML tags
+    .replace(/[<>]/g, '')           // Remove HTML tags
+    .replace(/javascript:/gi, '')    // Remove javascript: URLs
+    .replace(/on\w+\s*=/gi, '')     // Remove event handlers (onclick=, onerror=, etc.)
+    .replace(/data:/gi, '')         // Remove data URIs (if not needed)
+    .replace(/vbscript:/gi, '')     // Remove vbscript: URLs
+    .replace(/expression\s*\(/gi, '') // Remove CSS expressions
+    .slice(0, maxLength);
 }
 
