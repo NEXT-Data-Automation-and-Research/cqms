@@ -3,15 +3,32 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Lock files (keep package-lock.json, ignore others if not used)
+yarn.lock
+pnpm-lock.yaml
 
 # Environment variables
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
+.env.test
+.env.staging
 
 # OS files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # IDE files
 .vscode/
@@ -19,14 +36,29 @@ Thumbs.db
 *.swp
 *.swo
 *~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.cursor/
 
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # Build files
 dist/
 build/
+out/
+.next/
+.nuxt/
+.cache/
 
 # Compiled TypeScript (auto-generated from src/)
 # All JavaScript files in public/js/ are compiled from TypeScript source
@@ -34,12 +66,97 @@ build/
 public/js/**/*.js
 public/js/**/*.js.map
 
-# Server build output
-dist/
+# TypeScript source maps (server builds)
+*.map
+!tsconfig.json.map
 
 # Compiled CSS (keep source)
 public/styles.css
 
 # Generated version file (regenerated on each build)
 public/version.json
+
+# Python (for supabase-migration-cli.py)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Supabase CLI local files
+supabase/.temp/
+supabase/.branches/
+.supabase/
+
+# Database migration data (may contain sensitive data)
+db-migration-data/
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+*.bak
+*.backup
+*.old
+
+# Tailwind CSS
+.tailwindcss-cache/
+
+# Nodemon
+nodemon.json.bak
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.parcel-cache
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
 
