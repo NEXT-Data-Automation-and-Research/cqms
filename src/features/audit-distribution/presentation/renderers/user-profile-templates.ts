@@ -3,6 +3,8 @@
  * HTML templates for user profile rendering
  */
 
+import { PROFILE_PAGE_COLORS, PROFILE_PAGE_STYLES } from '../../../../core/constants/color-whitelists.js';
+
 export interface PersonData {
   email: string | null;
   name: string | null;
@@ -31,67 +33,63 @@ export function getProfileHTML(person: PersonData, escapeHtml: (text: string | n
     ? person.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
     : 'U';
 
-  return `
+  const html = `
     <!-- Header with Back Button -->
-    <div class="mb-6">
+    <div style="margin-bottom: 1.125rem;">
       <button 
+        type="button"
         id="profileBackButton"
         data-action="go-back"
-        class="mb-4 flex items-center gap-2 px-3 py-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all group"
+        style="display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.75rem; border-radius: 0.375rem; background: ${PROFILE_PAGE_COLORS.BUTTON_BACK_BG}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.BUTTON_BACK_BORDER}; color: ${PROFILE_PAGE_COLORS.BUTTON_BACK_TEXT}; font-size: 0.5625rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s ease; margin-bottom: 1rem;"
+        onmouseover="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_BACK_HOVER_BG}'; this.style.borderColor='${PROFILE_PAGE_COLORS.BUTTON_BACK_HOVER_BORDER}';"
+        onmouseout="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_BACK_BG}'; this.style.borderColor='${PROFILE_PAGE_COLORS.BUTTON_BACK_BORDER}';"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="group-hover:-translate-x-1 transition-transform">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
-        <span class="font-medium">Back</span>
+        <span>Back</span>
       </button>
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-white mb-2">User Profile</h1>
-          <p class="text-sm text-white/60">View detailed information about this team member</p>
-        </div>
-      </div>
-      <div class="h-px bg-white/10 mt-4"></div>
     </div>
 
     <!-- Profile Card -->
-    <div class="glass-card rounded-xl p-6">
+    <div style="background: ${PROFILE_PAGE_COLORS.CARD_BACKGROUND}; border-radius: ${PROFILE_PAGE_STYLES.CARD.borderRadius}; padding: ${PROFILE_PAGE_STYLES.CARD.padding}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER}; box-shadow: ${PROFILE_PAGE_COLORS.CARD_SHADOW};">
       <!-- Profile Header -->
-      <div class="flex flex-col md:flex-row items-start md:items-center gap-6 mb-8 pb-6 border-b border-white/10">
+      <div style="display: flex; flex-direction: column; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER};">
         <!-- Avatar -->
-        <div class="w-28 h-28 rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-bold text-2xl flex-shrink-0 shadow-lg overflow-hidden ring-2 ring-primary/30">
+        <div style="width: 7rem; height: 7rem; border-radius: 0.75rem; background: linear-gradient(to bottom right, ${PROFILE_PAGE_COLORS.AVATAR_BG_START}, ${PROFILE_PAGE_COLORS.AVATAR_BG_END}); color: ${PROFILE_PAGE_COLORS.AVATAR_TEXT}; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.5rem; flex-shrink: 0; box-shadow: 0 0.625rem 0.9375rem -0.1875rem rgba(0, 0, 0, 0.1); overflow: hidden; border: 0.125rem solid ${PROFILE_PAGE_COLORS.AVATAR_BORDER}; position: relative;">
           ${person.avatar_url && person.avatar_url.trim() !== '' && person.avatar_url !== 'null' && person.avatar_url !== 'undefined'
-            ? `<img src="${escapeHtml(person.avatar_url)}" alt="${escapeHtml(person.name || '')}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />`
+            ? `<img src="${escapeHtml(person.avatar_url)}" alt="${escapeHtml(person.name || '')}" style="width: 100%; height: 100%; object-fit: cover;" referrerPolicy="no-referrer" />`
             : ''
           }
-          <div class="${person.avatar_url && person.avatar_url.trim() !== '' && person.avatar_url !== 'null' && person.avatar_url !== 'undefined' ? 'hidden' : 'flex'} items-center justify-center w-full h-full">
+          <div style="display: ${person.avatar_url && person.avatar_url.trim() !== '' && person.avatar_url !== 'null' && person.avatar_url !== 'undefined' ? 'none' : 'flex'}; align-items: center; justify-content: center; width: 100%; height: 100%; position: ${person.avatar_url && person.avatar_url.trim() !== '' && person.avatar_url !== 'null' && person.avatar_url !== 'undefined' ? 'absolute' : 'relative'}; top: 0; left: 0;">
             ${initials}
           </div>
         </div>
 
         <!-- Basic Info -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-start justify-between gap-4 mb-3">
-            <div class="flex-1 min-w-0">
-              <h2 class="text-2xl font-bold text-white mb-2">${escapeHtml(person.name || 'Unknown')}</h2>
-              <div class="flex flex-wrap items-center gap-3 text-sm">
+        <div style="flex: 1; min-width: 0;">
+          <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem;">
+            <div style="flex: 1; min-width: 0;">
+              <h2 style="font-size: ${PROFILE_PAGE_STYLES.TEXT_HEADING.fontSize}; font-weight: ${PROFILE_PAGE_STYLES.TEXT_HEADING.fontWeight}; color: ${PROFILE_PAGE_COLORS.TEXT_HEADING}; margin-bottom: 0.5rem;">${escapeHtml(person.name || 'Unknown')}</h2>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.875rem;">
                 ${person.email ? `
-                  <div class="flex items-center gap-2 text-white/70">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; color: ${PROFILE_PAGE_COLORS.TEXT_SECONDARY};">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                       <polyline points="22,6 12,13 2,6"/>
                     </svg>
-                    <span class="truncate max-w-[200px]">${escapeHtml(person.email)}</span>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px;">${escapeHtml(person.email)}</span>
                   </div>
                 ` : ''}
                 ${person.role ? `
-                  <div class="px-3 py-1 bg-primary/20 border border-primary/30 rounded-full text-primary font-semibold text-xs">
+                  <div style="padding: 0.25rem 0.75rem; background-color: ${PROFILE_PAGE_COLORS.ROLE_BADGE_BG}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.ROLE_BADGE_BORDER}; border-radius: 9999px; color: ${PROFILE_PAGE_COLORS.ROLE_BADGE_TEXT}; font-weight: 600; font-size: 0.75rem;">
                     ${escapeHtml(person.role)}
                   </div>
                 ` : ''}
                 ${person.is_active !== null ? `
-                  <div class="flex items-center gap-2 px-3 py-1 rounded-full ${person.is_active ? 'bg-success/20 border border-success/30' : 'bg-gray-500/20 border border-gray-500/30'}">
-                    <div class="w-2 h-2 rounded-full ${person.is_active ? 'bg-success' : 'bg-gray-500'}"></div>
-                    <span class="text-xs font-medium ${person.is_active ? 'text-success' : 'text-gray-400'}">${person.is_active ? 'Active' : 'Inactive'}</span>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.75rem; border-radius: 9999px; ${person.is_active ? `background-color: ${PROFILE_PAGE_COLORS.STATUS_ACTIVE_BG}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.STATUS_ACTIVE_BORDER};` : `background-color: ${PROFILE_PAGE_COLORS.STATUS_INACTIVE_BG}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.STATUS_INACTIVE_BORDER};`}">
+                    <div style="width: 0.5rem; height: 0.5rem; border-radius: 9999px; ${person.is_active ? `background-color: ${PROFILE_PAGE_COLORS.STATUS_ACTIVE_DOT};` : `background-color: ${PROFILE_PAGE_COLORS.STATUS_INACTIVE_DOT};`}"></div>
+                    <span style="font-size: 0.75rem; font-weight: 500; ${person.is_active ? `color: ${PROFILE_PAGE_COLORS.STATUS_ACTIVE_TEXT};` : `color: ${PROFILE_PAGE_COLORS.STATUS_INACTIVE_TEXT};`}">${person.is_active ? 'Active' : 'Inactive'}</span>
                   </div>
                 ` : ''}
               </div>
@@ -101,7 +99,7 @@ export function getProfileHTML(person: PersonData, escapeHtml: (text: string | n
       </div>
 
       <!-- Profile Details Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); gap: 1.5rem;">
         ${renderDetailSection('Personal Information', [
           { label: 'Name', value: person.name },
           { label: 'Email', value: person.email },
@@ -133,6 +131,8 @@ export function getProfileHTML(person: PersonData, escapeHtml: (text: string | n
       </div>
     </div>
   `;
+  
+  return html;
 }
 
 export function getDetailSectionHTML(title: string, items: Array<{ label: string; value: string | null }>, escapeHtml: (text: string | null) => string): string {
@@ -166,19 +166,19 @@ export function getDetailSectionHTML(title: string, items: Array<{ label: string
   };
 
   return `
-    <div class="bg-white/5 rounded-lg p-5 border border-white/10 hover:bg-white/10 transition-all">
-      <h3 class="text-base font-bold text-white mb-4 flex items-center gap-2">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
+    <div style="background: ${PROFILE_PAGE_COLORS.CARD_BACKGROUND}; border-radius: ${PROFILE_PAGE_STYLES.DETAIL_SECTION_CARD.borderRadius}; padding: ${PROFILE_PAGE_STYLES.DETAIL_SECTION_CARD.padding}; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER}; transition: all 0.2s ease; box-shadow: ${PROFILE_PAGE_COLORS.CARD_SHADOW};" onmouseover="this.style.backgroundColor='${PROFILE_PAGE_COLORS.CARD_BACKGROUND}';" onmouseout="this.style.backgroundColor='${PROFILE_PAGE_COLORS.CARD_BACKGROUND}';">
+      <h3 style="font-size: ${PROFILE_PAGE_STYLES.SECTION_TITLE.fontSize}; font-weight: ${PROFILE_PAGE_STYLES.SECTION_TITLE.fontWeight}; color: ${PROFILE_PAGE_COLORS.SECTION_TITLE}; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; text-transform: ${PROFILE_PAGE_STYLES.SECTION_TITLE.textTransform}; letter-spacing: ${PROFILE_PAGE_STYLES.SECTION_TITLE.letterSpacing}; padding-bottom: ${PROFILE_PAGE_STYLES.SECTION_TITLE.paddingBottom}; border-bottom: ${PROFILE_PAGE_STYLES.SECTION_TITLE.borderBottom};">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: ${PROFILE_PAGE_COLORS.SECTION_TITLE};">
           ${getIcon(title)}
         </svg>
         ${escapeHtml(title)}
       </h3>
-      <div class="space-y-3.5">
+      <div style="display: flex; flex-direction: column; gap: 0.875rem;">
         ${filteredItems.map(item => `
-          <div class="flex items-start gap-3">
-            <div class="flex-1 min-w-0">
-              <div class="text-xs font-semibold text-white/60 mb-1.5 uppercase tracking-wide">${escapeHtml(item.label)}</div>
-              <div class="text-sm font-medium text-white break-words">${escapeHtml(item.value || 'N/A')}</div>
+          <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-size: ${PROFILE_PAGE_STYLES.TEXT_LABEL.fontSize}; font-weight: ${PROFILE_PAGE_STYLES.TEXT_LABEL.fontWeight}; color: ${PROFILE_PAGE_COLORS.TEXT_LABEL}; margin-bottom: 0.375rem; text-transform: ${PROFILE_PAGE_STYLES.TEXT_LABEL.textTransform}; letter-spacing: ${PROFILE_PAGE_STYLES.TEXT_LABEL.letterSpacing};">${escapeHtml(item.label)}</div>
+              <div style="font-size: ${PROFILE_PAGE_STYLES.TEXT_PRIMARY.fontSize}; font-weight: ${PROFILE_PAGE_STYLES.TEXT_PRIMARY.fontWeight}; color: ${PROFILE_PAGE_COLORS.TEXT_VALUE}; word-break: break-word; line-height: 1.5;">${escapeHtml(item.value || 'N/A')}</div>
             </div>
           </div>
         `).join('')}
@@ -189,18 +189,21 @@ export function getDetailSectionHTML(title: string, items: Array<{ label: string
 
 export function getNotFoundHTML(): string {
   return `
-    <div class="glass-card rounded-xl p-8 text-center">
-      <div class="mb-4">
-        <svg class="mx-auto w-16 h-16 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div style="background: ${PROFILE_PAGE_COLORS.CARD_BACKGROUND}; border-radius: 0.5rem; padding: 2rem; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER}; box-shadow: ${PROFILE_PAGE_COLORS.CARD_SHADOW}; text-align: center;">
+      <div style="margin-bottom: 1rem;">
+        <svg style="margin: 0 auto; width: 4rem; height: 4rem; color: ${PROFILE_PAGE_COLORS.ERROR_ICON};" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
         </svg>
       </div>
-      <h2 class="text-xl font-bold text-white mb-2">User Not Found</h2>
-      <p class="text-white/70 mb-4">The user profile you're looking for doesn't exist.</p>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: ${PROFILE_PAGE_COLORS.ERROR_HEADING}; margin-bottom: 0.5rem;">User Not Found</h2>
+      <p style="color: ${PROFILE_PAGE_COLORS.ERROR_TEXT}; margin-bottom: 1rem;">The user profile you're looking for doesn't exist.</p>
       <button 
+        type="button"
         id="notFoundBackButton"
         data-action="go-back"
-        class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all"
+        style="padding: 0.5rem 1rem; background-color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}; color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_TEXT}; border: none; border-radius: 0.375rem; font-size: 0.5625rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s ease;"
+        onmouseover="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_HOVER_BG}';"
+        onmouseout="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}';"
       >
         Go Back
       </button>
@@ -210,18 +213,21 @@ export function getNotFoundHTML(): string {
 
 export function getErrorHTML(message: string, escapeHtml: (text: string | null) => string): string {
   return `
-    <div class="glass-card rounded-xl p-8 text-center">
-      <div class="mb-4">
-        <svg class="mx-auto w-16 h-16 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div style="background: ${PROFILE_PAGE_COLORS.CARD_BACKGROUND}; border-radius: 0.5rem; padding: 2rem; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER}; box-shadow: ${PROFILE_PAGE_COLORS.CARD_SHADOW}; text-align: center;">
+      <div style="margin-bottom: 1rem;">
+        <svg style="margin: 0 auto; width: 4rem; height: 4rem; color: ${PROFILE_PAGE_COLORS.ERROR_ICON};" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
         </svg>
       </div>
-      <h2 class="text-xl font-bold text-white mb-2">Error</h2>
-      <p class="text-white/70 mb-4">${escapeHtml(message)}</p>
+      <h2 style="font-size: 1.25rem; font-weight: 700; color: ${PROFILE_PAGE_COLORS.ERROR_HEADING}; margin-bottom: 0.5rem;">Error</h2>
+      <p style="color: ${PROFILE_PAGE_COLORS.ERROR_TEXT}; margin-bottom: 1rem;">${escapeHtml(message)}</p>
       <button 
+        type="button"
         id="errorBackButton"
         data-action="go-back"
-        class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all"
+        style="padding: 0.5rem 1rem; background-color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}; color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_TEXT}; border: none; border-radius: 0.375rem; font-size: 0.5625rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s ease;"
+        onmouseover="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_HOVER_BG}';"
+        onmouseout="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}';"
       >
         Go Back
       </button>

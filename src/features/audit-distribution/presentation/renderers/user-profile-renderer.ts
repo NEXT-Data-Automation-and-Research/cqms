@@ -70,13 +70,38 @@ export class UserProfileRenderer {
 
   private attachEventListeners(container: HTMLElement): void {
     // Attach back button event listeners
-    container.querySelectorAll('[data-action="go-back"]').forEach(button => {
-      if (button.hasAttribute('data-listener-attached')) return;
+    const backButtons = container.querySelectorAll('[data-action="go-back"]');
+    logInfo(`[UserProfileRenderer] Attaching listeners to ${backButtons.length} back button(s)`);
+    
+    backButtons.forEach((button, index) => {
+      if (button.hasAttribute('data-listener-attached')) {
+        logInfo(`[UserProfileRenderer] Button ${index} already has listener attached`);
+        return;
+      }
       button.setAttribute('data-listener-attached', 'true');
       
-      button.addEventListener('click', () => {
-        window.history.back();
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        logInfo('[UserProfileRenderer] Back button clicked');
+        
+        // Try to go back in history
+        // Check if there's a referrer or history to go back to
+        if (document.referrer && document.referrer !== window.location.href) {
+          logInfo('[UserProfileRenderer] Going back in history via referrer');
+          window.history.back();
+        } else if (window.history.length > 1) {
+          logInfo('[UserProfileRenderer] Going back in history');
+          window.history.back();
+        } else {
+          // Fallback: navigate to home page if no history
+          logInfo('[UserProfileRenderer] No history available, redirecting to home page');
+          window.location.href = '/src/features/home/presentation/home-page.html';
+        }
       });
+      
+      logInfo(`[UserProfileRenderer] Listener attached to button ${index}`);
     });
   }
 }

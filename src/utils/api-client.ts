@@ -29,6 +29,48 @@ async function getAuthToken(): Promise<string | null> {
 }
 
 /**
+ * Get CSRF token from server
+ * Makes a GET request to get the token from response headers
+ * Note: CSRF tokens are generated per-request, so we need to fetch fresh tokens
+ */
+async function getCSRFToken(authToken: string): Promise<string | null> {
+  try {
+    if (!authToken) {
+      return null;
+    }
+
+    // Make a GET request to any API endpoint to get CSRF token from response headers
+    // The csrfToken middleware generates a new token for each request
+    // IMPORTANT: Use the same auth token that will be used in the POST request
+    const response = await fetch('/api/users/me', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+      },
+    });
+
+    // Get token from response headers (check both cases for compatibility)
+    const token = response.headers.get('X-CSRF-Token') || response.headers.get('x-csrf-token');
+    if (token) {
+      logger.debug('CSRF token fetched successfully', { tokenLength: token.length });
+      return token;
+    } else {
+      // Log available headers for debugging
+      const headerKeys: string[] = [];
+      response.headers.forEach((_, key) => headerKeys.push(key));
+      logger.warn('CSRF token not found in response headers', { 
+        availableHeaders: headerKeys,
+        status: response.status 
+      });
+    }
+  } catch (error) {
+    logger.error('Failed to get CSRF token:', error);
+  }
+
+  return null;
+}
+
+/**
  * Make an authenticated API request
  */
 async function apiRequest<T>(
@@ -45,13 +87,35 @@ async function apiRequest<T>(
       };
     }
 
+    // Get CSRF token for state-changing requests
+    const method = options.method || 'GET';
+    const needsCSRF = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase());
+    
+    // Build headers as a Record to allow dynamic property assignment
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Fetch fresh CSRF token for state-changing requests
+    // CSRF tokens are tied to session ID (derived from auth token), so we need a fresh token
+    // IMPORTANT: Use the same auth token for both GET (to get token) and POST (to use token)
+    // This ensures the session ID matches
+    if (needsCSRF) {
+      const csrfToken = await getCSRFToken(token);
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+        logger.debug('CSRF token added to request', { endpoint, method, tokenLength: csrfToken.length });
+      } else {
+        logger.warn('CSRF token not available for request', { endpoint, method });
+        // Don't fail the request, let the server handle it
+      }
+    }
+
     const response = await fetch(endpoint, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
+      headers,
     });
 
     const json = await response.json();
@@ -232,6 +296,55 @@ export const apiClient = {
     async delete(id: string): Promise<{ data: null; error: any }> {
       return apiRequest(`/api/notification-subscriptions/${id}`, {
         method: 'DELETE',
+      });
+    },
+  },
+
+  /**
+   * People/User Management operations
+   */
+  people: {
+    /**
+     * Get all people/users
+     */
+    async getAll(): Promise<{ data: any[] | null; error: any }> {
+      return apiRequest('/api/people');
+    },
+
+    /**
+     * Get a person by email
+     */
+    async getByEmail(email: string): Promise<{ data: any | null; error: any }> {
+      return apiRequest(`/api/people/${encodeURIComponent(email)}`);
+    },
+
+    /**
+     * Create a new person/user
+     */
+    async create(userData: any): Promise<{ data: any | null; error: any }> {
+      return apiRequest('/api/people', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+    },
+
+    /**
+     * Update a person by email
+     */
+    async update(email: string, updates: any): Promise<{ data: any | null; error: any }> {
+      return apiRequest(`/api/people/${encodeURIComponent(email)}`, {
+        method: 'PUT',
+        body: JSON.stringify(updates),
+      });
+    },
+
+    /**
+     * Bulk update multiple people
+     */
+    async bulkUpdate(emails: string[], updates: any): Promise<{ data: any[] | null; error: any }> {
+      return apiRequest('/api/people/bulk-update', {
+        method: 'POST',
+        body: JSON.stringify({ emails, updates }),
       });
     },
   },

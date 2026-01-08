@@ -336,10 +336,12 @@ app.use('/api', csrfProtection);
 import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
+import peopleRouter from './api/routes/people.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 
 // Error handler (must be last)

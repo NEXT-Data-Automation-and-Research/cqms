@@ -145,7 +145,7 @@ export const routes: RouteConfig[] = [
       {
         path: '/src/features/settings/user-management/presentation/user-management.html',
         label: 'User Management',
-        roles: ['Admin', 'Manager']
+        roles: ['Admin', 'Manager', 'Super Admin']
       },
       {
         path: '/src/features/settings/access-control/presentation/access-control.html',

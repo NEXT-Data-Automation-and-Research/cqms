@@ -1,0 +1,156 @@
+/**
+ * User Profile Page Styles
+ * Ensures proper visibility and styling for user profile page
+ */
+
+/* Override any global white text rules for profile page */
+body:not(.home-page):not(.audit-distribution-page) main.main-content {
+  background-color: #f8f7f2 !important;
+  color: #000000 !important;
+}
+
+/* Ensure main content has light background */
+main.main-content {
+  background-color: #f8f7f2 !important;
+  color: #000000 !important;
+}
+
+/* Override any global text color rules */
+main.main-content * {
+  color: inherit !important;
+}
+
+/* Ensure container has proper background */
+.user-management-container {
+  background-color: transparent !important;
+}
+
+/* Ensure profile cards are visible */
+#user-profile-container {
+  background-color: transparent !important;
+}
+
+/* Force white background on all profile cards */
+#user-profile-container > div[style*="background"] {
+  background-color: #ffffff !important;
+  border: 0.0625rem solid #d1d5db !important;
+}
+
+/* Force white background on detail section cards */
+#user-profile-container div[style*="background"] div[style*="background"] {
+  background-color: #ffffff !important;
+  border: 0.0625rem solid #d1d5db !important;
+}
+
+/* Ensure all headings are visible with dark color */
+#user-profile-container h2 {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+}
+
+/* Ensure section titles are visible with green color */
+#user-profile-container h3 {
+  color: #1A733E !important;
+  font-weight: 700 !important;
+}
+
+/* Ensure ALL text values in detail sections are visible - very dark */
+#user-profile-container div[style*="font-size: 0.875rem"],
+#user-profile-container div[style*="font-size:0.875rem"] {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+/* Ensure labels (uppercase text) are visible - darker gray */
+#user-profile-container div[style*="uppercase"],
+#user-profile-container div[style*="TEXT_TRANSFORM"],
+#user-profile-container div[style*="text-transform: uppercase"] {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+/* Ensure email and secondary text are visible */
+#user-profile-container span:not([style*="display"]) {
+  color: #374151 !important;
+}
+
+/* Ensure email text in header is visible */
+#user-profile-container div[style*="display: flex"] span {
+  color: #374151 !important;
+}
+
+/* Ensure all text in the profile header area is visible */
+#user-profile-container > div > div[style*="flex-direction: column"] * {
+  color: inherit !important;
+}
+
+#user-profile-container > div > div[style*="flex-direction: column"] span {
+  color: #374151 !important;
+}
+
+/* Force all divs inside detail sections to have dark text */
+#user-profile-container div[style*="background"] div {
+  color: #111827 !important;
+}
+
+/* But keep labels slightly lighter */
+#user-profile-container div[style*="background"] div[style*="uppercase"] {
+  color: #374151 !important;
+}
+
+/* Ensure all text in detail cards is dark */
+#user-profile-container div[style*="background"] > div > div {
+  color: #111827 !important;
+}
+
+/* Ensure value divs are very dark */
+#user-profile-container div[style*="background"] > div > div:not([style*="uppercase"]) {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+/* Ensure all SVG icons inherit color from parent */
+#user-profile-container svg {
+  color: currentColor !important;
+}
+
+/* Ensure section title SVG icons are green */
+#user-profile-container h3 svg {
+  color: #1A733E !important;
+}
+
+/* NUCLEAR OPTION: Force ALL text inside profile container to be dark - maximum specificity */
+#user-profile-container,
+#user-profile-container *,
+#user-profile-container div,
+#user-profile-container span,
+#user-profile-container p {
+  color: #111827 !important;
+}
+
+/* But override for specific elements */
+#user-profile-container h2 {
+  color: #1f2937 !important;
+}
+
+#user-profile-container h3 {
+  color: #1A733E !important;
+}
+
+#user-profile-container div[style*="uppercase"],
+#user-profile-container div[style*="text-transform: uppercase"] {
+  color: #374151 !important;
+}
+
+#user-profile-container span {
+  color: #374151 !important;
+}
+
+/* Ensure values are darkest */
+#user-profile-container div[style*="font-size: 0.875rem"],
+#user-profile-container div[style*="font-size:0.875rem"],
+#user-profile-container div[style*="word-break"] {
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+

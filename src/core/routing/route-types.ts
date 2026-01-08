@@ -6,7 +6,7 @@
 /**
  * User roles that can access routes
  */
-export type UserRole = 'all' | 'Employee' | 'Auditor' | 'Admin' | 'Manager'
+export type UserRole = 'all' | 'Employee' | 'Auditor' | 'Admin' | 'Manager' | 'Super Admin'
 
 /**
  * Route metadata for navigation and permissions

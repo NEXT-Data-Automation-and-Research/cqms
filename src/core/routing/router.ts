@@ -43,13 +43,25 @@ export class Router {
       return true
     }
     
-    // If no user role provided, show routes that allow 'all' only
+    // If no user role provided, show all routes initially
     // This matches the old behavior where all routes were shown initially
+    // JavaScript will hide them later based on actual role
     if (!userRole) {
-      return routeRoles.includes('all')
+      return true
     }
 
-    return routeRoles.includes(userRole as UserRole)
+    // Normalize role for comparison (trim and handle case)
+    const normalizedUserRole = userRole.trim()
+    
+    // Check exact match first
+    if (routeRoles.includes(normalizedUserRole as UserRole)) {
+      return true
+    }
+    
+    // Also check case-insensitive match for common role variations
+    return routeRoles.some(routeRole => 
+      routeRole.toLowerCase() === normalizedUserRole.toLowerCase()
+    )
   }
 
   /**

@@ -3,7 +3,7 @@
  * Displays filters and conversation table for selected audit
  */
 
-import { safeSetHTML } from '../../../../../utils/html-sanitizer.js';
+import { safeSetHTML, safeSetTableBodyHTML } from '../../../../../utils/html-sanitizer.js';
 import { logInfo, logError, logWarn } from '../../../../../utils/logging-helper.js';
 import { getAuthenticatedSupabase } from '../../../../../utils/authenticated-supabase.js';
 // ConversationStatistics interface definition
@@ -25,12 +25,17 @@ export interface Conversation {
   subject: string;
   csat: number;
   cxScore: number;
-  length: number;
+  length: number; // Duration in minutes
+  totalParts: number; // Total conversation parts count
   errorsDetected: number;
   tags: string[];
   created: string;
   aiStatus: 'Completed' | 'Processing' | 'Failed';
   channel?: string;
+  timeToAdminReply?: number; // Response time in seconds
+  handlingTime?: number; // Total handling time in seconds
+  cxScoreExplanation?: string; // CX Score explanation text
+  topics?: string[]; // Conversation topics
 }
 
 export class ConversationsPanel {
@@ -74,7 +79,7 @@ export class ConversationsPanel {
    * Get table body element, lazy-loading if needed
    * Works even when element is inside hidden panel
    */
-  private getTableBody(): HTMLTableSectionElement {
+  private getTableBody(): HTMLTableSectionElement | null {
     // Always re-query if tableBody exists but is not in DOM
     if (this.tableBody && !this.tableBody.parentElement) {
       this.tableBody = null;
@@ -95,22 +100,45 @@ export class ConversationsPanel {
       
       if (!this.tableBody) {
         // Try to find the table and get its tbody
-        const table = this.container.querySelector('#conversations-panel-content table') ||
-                     this.container.querySelector('table');
+        // First try content panel (even if hidden)
+        const contentPanel = this.container.querySelector('#conversations-panel-content');
+        let table: HTMLTableElement | null = null;
+        
+        if (contentPanel) {
+          table = contentPanel.querySelector('table') as HTMLTableElement;
+        }
+        
+        // Fallback: search in entire container
+        if (!table) {
+          table = this.container.querySelector('table') as HTMLTableElement;
+        }
+        
         if (table) {
           // Check if tbody already exists
           this.tableBody = table.querySelector('tbody#conversations-table-body') as HTMLTableSectionElement;
           if (!this.tableBody) {
-            // Create new tbody if it doesn't exist
-            this.tableBody = document.createElement('tbody');
-            this.tableBody.id = 'conversations-table-body';
-            table.appendChild(this.tableBody);
+            // Check if there's any tbody
+            const existingTbody = table.querySelector('tbody');
+            if (existingTbody) {
+              // Use existing tbody and set ID
+              existingTbody.id = 'conversations-table-body';
+              this.tableBody = existingTbody;
+            } else {
+              // Create new tbody if it doesn't exist
+              this.tableBody = document.createElement('tbody');
+              this.tableBody.id = 'conversations-table-body';
+              table.appendChild(this.tableBody);
+            }
           }
         } else {
-          logError('Table body element not found and no table element available');
-          // Last resort: create standalone tbody (won't be visible but prevents crash)
-          this.tableBody = document.createElement('tbody');
-          this.tableBody.id = 'conversations-table-body';
+          // Table not found - this can happen if HTML hasn't loaded yet
+          // Don't throw error, return null and let caller retry
+          logWarn('Table element not found yet, will retry', {
+            hasContentPanel: !!contentPanel,
+            containerId: this.container.id,
+            contentPanelHTML: contentPanel ? contentPanel.innerHTML.substring(0, 300) : 'no content panel'
+          });
+          return null;
         }
       }
     }
@@ -346,26 +374,97 @@ export class ConversationsPanel {
       
       this.showContent();
       
-      // Wait a tick for DOM to update after removing hidden class
-      // Then lazy-load tableBody (it's inside the content panel)
-      await new Promise(resolve => setTimeout(resolve, 10));
+      // Update employee info immediately (doesn't need table body)
+      this.updateEmployeeInfo(employee);
+      this.setDefaultDateRange();
+      
+      // Wait for DOM to update after removing hidden class
+      // Use requestAnimationFrame + setTimeout to ensure DOM is ready
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            requestAnimationFrame(resolve);
+          }, 100);
+        });
+      });
       
       // Force re-query the table body after content is shown
       this.tableBody = null;
-      const tableBody = this.getTableBody();
+      
+      // Try multiple times with increasing delays to find table body
+      let tableBody: HTMLTableSectionElement | null = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          tableBody = this.getTableBody();
+          if (tableBody && tableBody.parentElement) {
+            break;
+          }
+        } catch (error) {
+          // Ignore errors and retry
+        }
+        
+        if (attempt < 4) {
+          await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+        }
+      }
+      
+      // Last attempt: directly query the DOM with more aggressive searching
       if (!tableBody || !tableBody.parentElement) {
-        logError('Cannot proceed: table body element not found after showing content', {
+        const contentPanel = this.container.querySelector('#conversations-panel-content');
+        if (contentPanel) {
+          // Try multiple query strategies
+          let table = contentPanel.querySelector('table');
+          if (!table) {
+            // Try finding by class or any table element
+            table = contentPanel.querySelector('table.min-w-full') || 
+                   contentPanel.querySelector('table') ||
+                   this.container.querySelector('table');
+          }
+          
+          if (table) {
+            let tbody = table.querySelector('tbody#conversations-table-body');
+            if (!tbody) {
+              tbody = table.querySelector('tbody');
+            }
+            if (tbody) {
+              this.tableBody = tbody as HTMLTableSectionElement;
+              tableBody = this.tableBody;
+              logInfo('✅ Found table body via direct query', {
+                hasTableBody: !!tableBody,
+                hasParent: !!tableBody.parentElement
+              });
+            } else {
+              // Create tbody if table exists but tbody doesn't
+              this.tableBody = document.createElement('tbody');
+              this.tableBody.id = 'conversations-table-body';
+              table.appendChild(this.tableBody);
+              tableBody = this.tableBody;
+              logInfo('✅ Created table body element', {
+                hasTableBody: !!tableBody,
+                hasParent: !!tableBody.parentElement
+              });
+            }
+          } else {
+            logError('Table still not found after all attempts', {
+              hasContentPanel: !!contentPanel,
+              contentPanelHTML: contentPanel ? contentPanel.innerHTML.substring(0, 500) : 'no content panel',
+              allTables: Array.from(this.container.querySelectorAll('table')).length
+            });
+          }
+        }
+      }
+      
+      // Clear conversations if table body is available
+      if (tableBody && tableBody.parentElement) {
+        this.clearConversations();
+      } else {
+        logWarn('Table body not found, but continuing to pull conversations', {
           hasTableBody: !!tableBody,
           hasParent: tableBody ? !!tableBody.parentElement : false,
           contentPanelVisible: !this.contentPanel.classList.contains('hidden'),
           contentPanelExists: !!this.contentPanel
         });
-        return;
       }
-      
-      this.updateEmployeeInfo(employee);
-      this.setDefaultDateRange();
-      this.clearConversations();
       
       logInfo('📞 About to call pullConversations', {
         employeeEmail: this.selectedAudit?.employee_email
@@ -469,14 +568,13 @@ export class ConversationsPanel {
 
   async pullConversations(): Promise<void> {
     if (!this.selectedAudit) {
-      const tableBody = this.getTableBody();
-      if (tableBody && tableBody.parentElement) {
-        tableBody.textContent = '';
-        const row = tableBody.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 11; // Fixed: 11 columns in table
-        cell.className = 'px-4 py-8 text-center text-white/60 text-sm';
-        cell.textContent = 'No employee selected';
+      const cardsContainer = this.container.querySelector('#conversations-cards-body');
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="col-span-1 px-4 py-8 text-center">
+            <p class="text-white/60 text-sm">No employee selected</p>
+          </div>
+        `;
       }
       return;
     }
@@ -492,30 +590,33 @@ export class ConversationsPanel {
       const updatedStartDate = (this.container.querySelector('#conversation-start-date') as HTMLInputElement)?.value;
       const updatedEndDate = (this.container.querySelector('#conversation-end-date') as HTMLInputElement)?.value;
       if (!updatedStartDate || !updatedEndDate) {
-        const tableBody = this.getTableBody();
-        if (tableBody && tableBody.parentElement) {
-          tableBody.textContent = '';
-          const row = tableBody.insertRow();
-          const cell = row.insertCell();
-          cell.colSpan = 11; // Fixed: 11 columns in table
-          cell.className = 'px-4 py-8 text-center text-white/60 text-sm';
-          cell.textContent = 'Please select date range';
+        const cardsContainer = this.container.querySelector('#conversations-cards-body');
+        if (cardsContainer) {
+          cardsContainer.innerHTML = `
+            <div class="col-span-1 px-4 py-8 text-center">
+              <p class="text-white/60 text-sm">Please select date range</p>
+            </div>
+          `;
         }
         return;
       }
     }
 
     // Show loading state
-    const tableBody = this.getTableBody();
-    if (tableBody && tableBody.parentElement) {
-      tableBody.textContent = '';
-      const row = tableBody.insertRow();
-      const cell = row.insertCell();
-      cell.colSpan = 11; // Fixed: 11 columns in table
-      cell.className = 'px-4 py-8 text-center text-white/60';
-      cell.textContent = 'Loading conversations...';
-    } else {
-      logWarn('Cannot show loading state: table body not available');
+    const cardsContainer = this.container.querySelector('#conversations-cards-body');
+    if (cardsContainer) {
+      cardsContainer.innerHTML = `
+        <div class="col-span-1 px-4 py-12 text-center">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+              <svg class="w-6 h-6 text-white/40 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </div>
+            <p class="text-white/60 text-sm font-medium">Loading conversations...</p>
+          </div>
+        </div>
+      `;
     }
 
     try {
@@ -676,6 +777,20 @@ export class ConversationsPanel {
       }
       
       // Transform Intercom conversations to our Conversation format
+      // Log first conversation structure for debugging
+      if (data.conversations && data.conversations.length > 0) {
+        logInfo('📋 Sample conversation structure', {
+          firstConv: JSON.stringify(data.conversations[0], null, 2).substring(0, 1000),
+          hasSource: !!data.conversations[0].source,
+          hasRating: !!data.conversations[0].rating,
+          hasTags: !!data.conversations[0].tags,
+          hasContacts: !!data.conversations[0].contacts,
+          sourceType: data.conversations[0].source?.type,
+          sourceAuthor: data.conversations[0].source?.author,
+          ratingValue: data.conversations[0].rating
+        });
+      }
+      
       this.conversations = (data.conversations || []).map((conv: any) => {
         try {
         // Helper function to extract conversation parts array
@@ -704,10 +819,23 @@ export class ConversationsPanel {
         
         // Extract subject from source or first part body
         let subject = '';
-        if (conv.source && typeof conv.source === 'object') {
+        
+        // Try title first (Intercom API v2.14)
+        if (conv.title) {
+          subject = String(conv.title).trim();
+        }
+        
+        // Try source.subject
+        if (!subject && conv.source && typeof conv.source === 'object') {
           subject = conv.source.subject || conv.source.body || '';
         }
         
+        // Try source.title
+        if (!subject && conv.source && typeof conv.source === 'object' && conv.source.title) {
+          subject = String(conv.source.title).trim();
+        }
+        
+        // Fallback to first part body
         if (!subject && parts.length > 0) {
           // Try to get subject from first user message
           const firstUserPart = parts.find((p: any) => p.author?.type === 'user');
@@ -717,25 +845,45 @@ export class ConversationsPanel {
             subject = String(parts[0].body).substring(0, 100).replace(/\n/g, ' ').trim();
           }
         }
+        
+        // Final fallback
         if (!subject) {
-          subject = `Conversation ${conv.id || 'unknown'}`;
+          const convId = String(conv.id || 'unknown');
+          subject = `Conversation ${convId}`;
         }
         
         // Extract client email/name from source or conversation parts
         let clientEmail = '';
         let clientName = '';
         
-        if (conv.source && typeof conv.source === 'object' && conv.source.author) {
-          clientEmail = conv.source.author.email || '';
-          clientName = conv.source.author.name || '';
+        // Try source.author first (Intercom API structure)
+        if (conv.source && typeof conv.source === 'object') {
+          if (conv.source.author) {
+            clientEmail = conv.source.author.email || '';
+            clientName = conv.source.author.name || '';
+          }
+          // Also check source.contacts for contact information
+          if (!clientEmail && conv.source.contacts && Array.isArray(conv.source.contacts) && conv.source.contacts.length > 0) {
+            const contact = conv.source.contacts[0];
+            clientEmail = contact.email || '';
+            clientName = contact.name || '';
+          }
         }
         
+        // Fallback: check conversation parts for user author
         if (!clientEmail && !clientName) {
           const userPart = parts.find((p: any) => p.author?.type === 'user');
           if (userPart?.author) {
             clientEmail = userPart.author.email || '';
             clientName = userPart.author.name || '';
           }
+        }
+        
+        // Fallback: check contacts array directly on conversation
+        if (!clientEmail && !clientName && conv.contacts && Array.isArray(conv.contacts) && conv.contacts.length > 0) {
+          const contact = conv.contacts[0];
+          clientEmail = contact.email || '';
+          clientName = contact.name || '';
         }
         
         // Use email username or name as client identifier
@@ -749,27 +897,54 @@ export class ConversationsPanel {
           lengthMinutes = Math.round((updated - created) / (1000 * 60)); // Convert to minutes
         }
         
-        // Use participation_part_count if available, otherwise use parts length
-        const partCount = conv.participation_part_count || parts.length;
+        // Get total conversation parts count from statistics
+        const totalParts = conv.statistics?.count_conversation_parts || conv.participation_part_count || parts.length;
         
-        // Extract tags if available - handle different formats
+        // Extract tags - Intercom API v2.14 structure: tags.tags[] with name field
         let tags: string[] = [];
-        if (conv.tags) {
-          if (Array.isArray(conv.tags)) {
+        if (conv.tags && typeof conv.tags === 'object') {
+          // Check for tags.tags array (Intercom API structure)
+          if (conv.tags.tags && Array.isArray(conv.tags.tags)) {
+            tags = conv.tags.tags.map((tag: any) => {
+              if (tag && typeof tag === 'object' && tag.name) return tag.name;
+              if (typeof tag === 'string') return tag;
+              if (tag && typeof tag === 'object' && tag.id) return String(tag.id);
+              return null;
+            }).filter((tag: any): tag is string => Boolean(tag));
+          } else if (Array.isArray(conv.tags)) {
+            // Direct array format
             tags = conv.tags.map((tag: any) => {
               if (typeof tag === 'string') return tag;
               if (tag && typeof tag === 'object' && tag.name) return tag.name;
-              if (tag && typeof tag === 'object' && tag.id) return tag.id;
+              if (tag && typeof tag === 'object' && tag.id) return String(tag.id);
               return null;
             }).filter((tag: any): tag is string => Boolean(tag));
-          } else if (typeof conv.tags === 'object') {
-            // If tags is an object, try to extract values
-            const tagValues = Object.values(conv.tags);
-            tags = tagValues.map((tag: any) => {
+          } else if (conv.tags.data && Array.isArray(conv.tags.data)) {
+            // Alternative structure with data array
+            tags = conv.tags.data.map((tag: any) => {
               if (typeof tag === 'string') return tag;
               if (tag && typeof tag === 'object' && tag.name) return tag.name;
+              if (tag && typeof tag === 'object' && tag.id) return String(tag.id);
               return null;
             }).filter((tag: any): tag is string => Boolean(tag));
+          }
+        }
+        
+        // Extract topics
+        let topics: string[] = [];
+        if (conv.topics && typeof conv.topics === 'object') {
+          if (conv.topics.topics && Array.isArray(conv.topics.topics)) {
+            topics = conv.topics.topics.map((topic: any) => {
+              if (topic && typeof topic === 'object' && topic.name) return topic.name;
+              if (typeof topic === 'string') return topic;
+              return null;
+            }).filter((topic: any): topic is string => Boolean(topic));
+          } else if (Array.isArray(conv.topics)) {
+            topics = conv.topics.map((topic: any) => {
+              if (typeof topic === 'string') return topic;
+              if (topic && typeof topic === 'object' && topic.name) return topic.name;
+              return null;
+            }).filter((topic: any): topic is string => Boolean(topic));
           }
         }
         
@@ -794,32 +969,68 @@ export class ConversationsPanel {
           createdDate = created.toISOString().split('T')[0];
         }
 
+        // Ensure ID is a string
+        const conversationId = String(conv.id || 'unknown');
+        
         return {
-          id: conv.id,
+          id: conversationId,
           client: client,
           subject: subject,
-          csat: conv.rating?.rating || 0, // Intercom rating if available
-          cxScore: 0, // Would need custom calculation
+          csat: (() => {
+            // Intercom conversation_rating.rating field (1-5 scale)
+            if (conv.conversation_rating && typeof conv.conversation_rating === 'object') {
+              if (typeof conv.conversation_rating.rating === 'number') {
+                return conv.conversation_rating.rating;
+              }
+            }
+            // Fallback: check rating field directly
+            if (conv.rating) {
+              if (typeof conv.rating === 'number') return conv.rating;
+              if (typeof conv.rating === 'object' && conv.rating.rating) {
+                return typeof conv.rating.rating === 'number' ? conv.rating.rating : 0;
+              }
+            }
+            return 0;
+          })(),
+          cxScore: (() => {
+            // CX Score from custom_attributes
+            if (conv.custom_attributes && typeof conv.custom_attributes === 'object') {
+              const cxScore = conv.custom_attributes['CX Score rating'];
+              if (typeof cxScore === 'number') return cxScore;
+              if (typeof cxScore === 'string') {
+                const parsed = parseFloat(cxScore);
+                return isNaN(parsed) ? 0 : parsed;
+              }
+            }
+            return 0;
+          })(),
           length: lengthMinutes, // Duration in minutes
+          totalParts: totalParts, // Total conversation parts count
           errorsDetected: 0, // Would need AI analysis
-          tags: Array.isArray(tags) ? tags : [], // Ensure tags is always an array
+          tags: Array.isArray(tags) ? tags : [],
+          topics: Array.isArray(topics) ? topics : [],
+          timeToAdminReply: conv.statistics?.time_to_admin_reply || undefined,
+          handlingTime: conv.statistics?.handling_time || undefined,
+          cxScoreExplanation: conv.custom_attributes?.['CX Score explanation'] || undefined,
           created: createdDate,
           aiStatus: 'Completed' as const,
           channel: channel
-          };
+        };
         } catch (error) {
           logError('❌ Error processing conversation', error);
           // Return a safe default conversation object
           return {
-            id: conv.id || 'unknown',
+            id: String(conv.id || 'unknown'),
             client: 'Unknown',
             subject: `Conversation ${conv.id || 'unknown'}`,
             csat: 0,
             cxScore: 0,
             length: 0,
+            totalParts: 0,
             errorsDetected: 0,
-            tags: [], // Always an array
-            created: conv.created_at_iso || (conv.created_at ? new Date(conv.created_at * 1000).toISOString().split('T')[0] : ''),
+            tags: [],
+            topics: [],
+            created: conv.created_at_iso || (conv.created_at ? new Date(typeof conv.created_at === 'number' ? conv.created_at * 1000 : new Date(conv.created_at).getTime()).toISOString().split('T')[0] : ''),
             aiStatus: 'Completed' as const,
             channel: 'chat'
           };
@@ -873,46 +1084,23 @@ export class ConversationsPanel {
       
       logError('❌ Error pulling conversations:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      const tableBody = this.getTableBody();
-      if (tableBody && tableBody.parentElement) {
-        tableBody.textContent = '';
-        const row = tableBody.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 11;
-        cell.className = 'px-4 py-16 text-center';
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'flex flex-col items-center gap-3';
-        
-        const iconDiv = document.createElement('div');
-        iconDiv.className = 'w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20';
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('class', 'w-8 h-8 text-red-400');
-        svg.setAttribute('fill', 'none');
-        svg.setAttribute('stroke', 'currentColor');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('stroke-linecap', 'round');
-        path.setAttribute('stroke-linejoin', 'round');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('d', 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z');
-        svg.appendChild(path);
-        iconDiv.appendChild(svg);
-        
-        const titleP = document.createElement('p');
-        titleP.className = 'text-red-400 text-sm font-semibold';
-        titleP.textContent = 'Error loading conversations';
-        
-        const messageP = document.createElement('p');
-        messageP.className = 'text-white/50 text-xs';
-        messageP.textContent = errorMessage;
-        
-        errorDiv.appendChild(iconDiv);
-        errorDiv.appendChild(titleP);
-        errorDiv.appendChild(messageP);
-        cell.appendChild(errorDiv);
+      const cardsContainer = this.container.querySelector('#conversations-cards-body');
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="col-span-1 px-4 py-16 text-center">
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <p class="text-red-400 text-sm font-semibold">Error loading conversations</p>
+              <p class="text-white/50 text-xs">${this.escapeHtml(errorMessage)}</p>
+            </div>
+          </div>
+        `;
       } else {
-        logError('Cannot display error: table body not available');
+        logError('Cannot display error: cards container not available');
       }
     }
   }
@@ -978,57 +1166,36 @@ export class ConversationsPanel {
   }
 
   private renderConversations(conversations: Conversation[]): void {
-    const tableBody = this.getTableBody();
-    
-    if (!tableBody || !tableBody.parentElement) {
-      logError('Cannot render conversations: table body not available', {
-        hasTableBody: !!tableBody,
-        hasParent: tableBody ? !!tableBody.parentElement : false
-      });
+    // Update conversations count
+    const countElement = this.container.querySelector('#conversations-count');
+    if (countElement) {
+      countElement.textContent = `${conversations.length} conversation${conversations.length !== 1 ? 's' : ''}`;
+    }
+
+    const cardsContainer = this.container.querySelector('#conversations-cards-body');
+    if (!cardsContainer) {
+      logError('Conversations cards container not found');
       return;
     }
     
     if (conversations.length === 0) {
-      tableBody.textContent = '';
-      const row = tableBody.insertRow();
-      const cell = row.insertCell();
-      cell.colSpan = 11;
-      cell.className = 'px-4 py-16 text-center';
-      
-      const emptyDiv = document.createElement('div');
-      emptyDiv.className = 'flex flex-col items-center gap-3';
-      
-      const iconDiv = document.createElement('div');
-      iconDiv.className = 'w-16 h-16 rounded-full bg-white/5 flex items-center justify-center';
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('class', 'w-8 h-8 text-white/30');
-      svg.setAttribute('fill', 'none');
-      svg.setAttribute('stroke', 'currentColor');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('stroke-linecap', 'round');
-      path.setAttribute('stroke-linejoin', 'round');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('d', 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z');
-      svg.appendChild(path);
-      iconDiv.appendChild(svg);
-      
-      const titleP = document.createElement('p');
-      titleP.className = 'text-white/60 text-sm font-medium';
-      titleP.textContent = 'No conversations found';
-      
-      const messageP = document.createElement('p');
-      messageP.className = 'text-white/40 text-xs';
-      messageP.textContent = 'Try adjusting your filters or date range';
-      
-      emptyDiv.appendChild(iconDiv);
-      emptyDiv.appendChild(titleP);
-      emptyDiv.appendChild(messageP);
-      cell.appendChild(emptyDiv);
+      cardsContainer.innerHTML = `
+        <div class="col-span-1 px-4 py-16 text-center">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center">
+              <svg class="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+              </svg>
+            </div>
+            <p class="text-white/60 text-sm font-medium">No conversations found</p>
+            <p class="text-white/40 text-xs">Try adjusting your filters or date range</p>
+          </div>
+        </div>
+      `;
       return;
     }
 
-    // Build HTML string with proper escaping
+    // Build HTML string for card-based layout
     const htmlContent = conversations.map(conv => {
       const isSelected = this.selectedConversationIds.has(conv.id);
       const aiStatusClass = conv.aiStatus.toLowerCase() === 'completed' ? 'completed' :
@@ -1043,15 +1210,10 @@ export class ConversationsPanel {
       const channelIcon = channelIcons[conv.channel || 'chat'] || channelIcons['chat'];
       const channelLabel = conv.channel ? conv.channel.charAt(0).toUpperCase() + conv.channel.slice(1) : 'Chat';
       
-      // Format subject to be more readable (remove ID if it's in the subject)
+      // Format subject to be more readable
       let subjectDisplay = conv.subject;
-      // Remove "Conversation" prefix and ID if present
       if (subjectDisplay.startsWith('Conversation ')) {
         subjectDisplay = subjectDisplay.replace(/^Conversation \d+/, '').trim() || 'Conversation';
-      }
-      // Truncate if too long
-      if (subjectDisplay.length > 50) {
-        subjectDisplay = subjectDisplay.substring(0, 50) + '...';
       }
       
       // Format date
@@ -1060,68 +1222,151 @@ export class ConversationsPanel {
       // CSAT stars
       const csatStars = '★'.repeat(Math.min(conv.csat, 5)) + '☆'.repeat(Math.max(0, 5 - conv.csat));
       
-      // Format ID to be more readable (show last 8 digits)
-      const shortId = conv.id.length > 12 ? conv.id.substring(conv.id.length - 8) : conv.id;
+      // Format ID
+      const idStr = String(conv.id);
+      const shortId = idStr.length > 12 ? idStr.substring(idStr.length - 8) : idStr;
       
       return `
-        <tr class="conversation-row ${isSelected ? 'bg-purple-500/10 border-l-2 border-purple-500' : ''} hover:bg-white/5 transition-colors">
-          <td class="px-2 py-2">
-            <input type="checkbox" class="conversation-checkbox form-checkbox w-3.5 h-3.5" 
-                   value="${this.escapeHtml(conv.id)}" ${isSelected ? 'checked' : ''} />
-          </td>
-          <td class="px-2 py-2">
-            <div class="conversation-id-tile" title="${this.escapeHtml(conv.id)}">
-              <span class="text-white/60 text-xs font-mono">${this.escapeHtml(shortId)}</span>
-            </div>
-          </td>
-          <td class="px-2 py-2">
-            <div class="flex items-center gap-1.5">
-              <div class="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-xs font-semibold text-blue-300 border border-white/10 flex-shrink-0">
-                ${this.escapeHtml(conv.client.charAt(0).toUpperCase())}
+        <div class="conversation-card ${isSelected ? 'conversation-card-selected' : ''}" data-conversation-id="${this.escapeHtml(conv.id)}">
+          <!-- Card Header -->
+          <div class="conversation-card-header">
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <input type="checkbox" class="conversation-checkbox form-checkbox w-4 h-4 flex-shrink-0" 
+                     value="${this.escapeHtml(conv.id)}" ${isSelected ? 'checked' : ''} />
+              <div class="conversation-id-tile flex items-center gap-1.5 group cursor-pointer flex-shrink-0" 
+                   title="Click to copy conversation ID: ${this.escapeHtml(conv.id)}"
+                   onclick="navigator.clipboard.writeText('${this.escapeHtml(conv.id)}').then(() => { const el = event.currentTarget.querySelector('.copy-indicator'); if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '📋'; }, 2000); } })">
+                <span class="text-white/80 text-xs font-mono font-semibold hover:text-white transition-colors">${this.escapeHtml(shortId)}</span>
+                <span class="copy-indicator text-white/40 group-hover:text-white/70 text-xs transition-colors" title="Click to copy">📋</span>
               </div>
-              <span class="font-medium text-white/90 text-xs truncate max-w-[120px]" title="${this.escapeHtml(conv.client)}">${this.escapeHtml(conv.client)}</span>
+              <div class="flex items-center gap-2 flex-1 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center text-sm font-semibold text-blue-300 border border-white/10 flex-shrink-0">
+                  ${this.escapeHtml(conv.client.charAt(0).toUpperCase())}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-white font-medium text-sm truncate" title="${this.escapeHtml(conv.client)}">${this.escapeHtml(conv.client)}</div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <div class="flex items-center gap-1 text-white/50 text-xs">
+                      <div class="w-3 h-3 flex-shrink-0">${channelIcon}</div>
+                      <span>${this.escapeHtml(channelLabel)}</span>
+                    </div>
+                    <span class="text-white/30">•</span>
+                    <span class="text-white/50 text-xs">${dateDisplay}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </td>
-          <td class="px-2 py-2">
-            <div class="flex items-center gap-1.5">
-              <div class="w-4 h-4 text-white/50 flex-shrink-0">${channelIcon}</div>
-              <span class="text-white/80 text-xs truncate max-w-[200px]" title="${this.escapeHtml(conv.subject)}">${this.escapeHtml(subjectDisplay)}</span>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="ai-status-badge-compact ${aiStatusClass}" title="${this.escapeHtml(conv.aiStatus)}">${this.escapeHtml(conv.aiStatus.charAt(0))}</span>
             </div>
-          </td>
-          <td class="px-2 py-2 text-center">
-            <span class="text-yellow-400 text-xs font-medium">${csatStars}</span>
-          </td>
-          <td class="px-2 py-2 text-center">
-            <span class="inline-flex items-center justify-center w-8 h-5 rounded-md text-xs font-semibold ${conv.cxScore >= 80 ? 'bg-green-500/20 text-green-400' : conv.cxScore >= 60 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}">
-              ${conv.cxScore}
-            </span>
-          </td>
-          <td class="px-2 py-2 text-center">
-            <span class="text-white/70 text-xs font-medium">${conv.length}m</span>
-          </td>
-          <td class="px-2 py-2 text-center">
-            ${conv.errorsDetected > 0 ? `<span class="inline-flex items-center justify-center w-5 h-5 rounded-md text-xs font-semibold bg-red-500/20 text-red-400">${conv.errorsDetected}</span>` : '<span class="text-white/30 text-xs">-</span>'}
-          </td>
-          <td class="px-2 py-2">
-            <div class="flex flex-wrap gap-1">
-              ${Array.isArray(conv.tags) && conv.tags.length > 0 ? conv.tags.slice(0, 2).map(tag => `<span class="conversation-tag-compact">${this.escapeHtml(tag)}</span>`).join('') + (conv.tags.length > 2 ? `<span class="text-white/40 text-xs">+${conv.tags.length - 2}</span>` : '') : '<span class="text-white/30 text-xs">-</span>'}
+          </div>
+          
+          <!-- Card Body -->
+          <div class="conversation-card-body">
+            <!-- Subject -->
+            <div class="conversation-card-subject">
+              <div class="text-white/90 text-sm leading-relaxed line-clamp-2" title="${this.escapeHtml(conv.subject)}">${this.escapeHtml(subjectDisplay)}</div>
             </div>
-          </td>
-          <td class="px-2 py-2">
-            <span class="text-white/70 text-xs">${dateDisplay}</span>
-          </td>
-          <td class="px-2 py-2 text-center">
-            <span class="ai-status-badge-compact ${aiStatusClass}">${this.escapeHtml(conv.aiStatus.charAt(0))}</span>
-          </td>
-        </tr>
+            
+            <!-- Metrics Row -->
+            <div class="conversation-card-metrics">
+              <div class="conversation-metric">
+                <div class="conversation-metric-label">CSAT</div>
+                <div class="conversation-metric-value">
+                  ${conv.csat > 0 ? `<span class="text-yellow-400 text-sm font-semibold" title="CSAT Rating: ${conv.csat}/5">${csatStars}</span>` : '<span class="text-white/30 text-sm">-</span>'}
+                </div>
+              </div>
+              <div class="conversation-metric">
+                <div class="conversation-metric-label">CX Score</div>
+                <div class="conversation-metric-value">
+                  ${conv.cxScore > 0 ? `<span class="inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold ${conv.cxScore >= 4 ? 'bg-green-500/20 text-green-400' : conv.cxScore >= 3 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'}" title="CX Score: ${conv.cxScore}/5${conv.cxScoreExplanation ? ' - ' + this.escapeHtml(conv.cxScoreExplanation.substring(0, 100)) : ''}">${conv.cxScore}/5</span>` : '<span class="text-white/30 text-sm">-</span>'}
+                </div>
+              </div>
+              <div class="conversation-metric">
+                <div class="conversation-metric-label">Duration</div>
+                <div class="conversation-metric-value">
+                  <span class="text-white/90 text-sm font-medium">${conv.length}m</span>
+                </div>
+              </div>
+              <div class="conversation-metric">
+                <div class="conversation-metric-label">Parts</div>
+                <div class="conversation-metric-value">
+                  <span class="text-white/90 text-sm font-medium">${conv.totalParts}</span>
+                </div>
+              </div>
+              ${conv.errorsDetected > 0 ? `
+              <div class="conversation-metric">
+                <div class="conversation-metric-label">Errors</div>
+                <div class="conversation-metric-value">
+                  <span class="inline-flex items-center justify-center px-2 py-1 rounded-md text-sm font-semibold bg-red-500/20 text-red-400">${conv.errorsDetected}</span>
+                </div>
+              </div>
+              ` : ''}
+            </div>
+            
+            <!-- Tags and Topics -->
+            ${(Array.isArray(conv.tags) && conv.tags.length > 0) || (Array.isArray(conv.topics) && conv.topics.length > 0) ? `
+            <div class="conversation-card-footer">
+              ${Array.isArray(conv.tags) && conv.tags.length > 0 ? `
+              <div class="conversation-tags-section">
+                <div class="conversation-tags-label">Tags:</div>
+                <div class="conversation-tags-list">
+                  ${conv.tags.map(tag => `<span class="conversation-tag-compact">${this.escapeHtml(tag)}</span>`).join('')}
+                </div>
+              </div>
+              ` : ''}
+              ${Array.isArray(conv.topics) && conv.topics.length > 0 ? `
+              <div class="conversation-topics-section">
+                <div class="conversation-topics-label">Topics:</div>
+                <div class="conversation-topics-list">
+                  ${conv.topics.map(topic => `<span class="conversation-topic-badge">${this.escapeHtml(topic)}</span>`).join('')}
+                </div>
+              </div>
+              ` : ''}
+            </div>
+            ` : ''}
+          </div>
+        </div>
       `;
     }).join('');
 
     // Safely set HTML content using DOMPurify
-    safeSetHTML(tableBody, htmlContent);
+    safeSetHTML(cardsContainer as HTMLElement, htmlContent);
 
     // Attach checkbox listeners
-    tableBody.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
+    cardsContainer.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const convId = (e.target as HTMLInputElement).value;
+        const checked = (e.target as HTMLInputElement).checked;
+        this.toggleConversation(convId, checked);
+      });
+    });
+    
+    // Attach card click listeners (for selection)
+    cardsContainer.querySelectorAll('.conversation-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // Don't toggle if clicking checkbox or copy button
+        const target = e.target as HTMLElement;
+        if (target.closest('.conversation-checkbox') || target.closest('.conversation-id-tile')) {
+          return;
+        }
+        const convId = card.getAttribute('data-conversation-id');
+        if (convId) {
+          const checkbox = card.querySelector('.conversation-checkbox') as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            this.toggleConversation(convId, checkbox.checked);
+          }
+        }
+      });
+    });
+  }
+  
+  private attachConversationCheckboxListeners(): void {
+    const cardsContainer = this.container.querySelector('#conversations-cards-body');
+    if (!cardsContainer) return;
+    
+    cardsContainer.querySelectorAll('.conversation-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', (e) => {
         const convId = (e.target as HTMLInputElement).value;
         const checked = (e.target as HTMLInputElement).checked;
@@ -1140,8 +1385,9 @@ export class ConversationsPanel {
   }
 
   private toggleAllConversations(checked: boolean): void {
-    const tableBody = this.getTableBody();
-    const checkboxes = tableBody.querySelectorAll('.conversation-checkbox') as NodeListOf<HTMLInputElement>;
+    const cardsContainer = this.container.querySelector('#conversations-cards-body');
+    if (!cardsContainer) return;
+    const checkboxes = cardsContainer.querySelectorAll('.conversation-checkbox') as NodeListOf<HTMLInputElement>;
     checkboxes.forEach(checkbox => {
       checkbox.checked = checked;
       this.toggleConversation(checkbox.value, checked);
@@ -1169,6 +1415,7 @@ export class ConversationsPanel {
     const selectAll = this.container.querySelector('#select-all-conversations') as HTMLInputElement;
     if (selectAll) {
       const tableBody = this.getTableBody();
+      if (!tableBody) return;
       const visibleCheckboxes = Array.from(tableBody.querySelectorAll('.conversation-checkbox') as NodeListOf<HTMLInputElement>);
       const allChecked = visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked);
       selectAll.checked = allChecked;
@@ -1187,16 +1434,22 @@ export class ConversationsPanel {
     this.selectedConversationIds.clear();
     
     try {
-      const tableBody = this.getTableBody();
-      if (tableBody && tableBody.parentElement) {
-        tableBody.textContent = '';
-        const row = tableBody.insertRow();
-        const cell = row.insertCell();
-        cell.colSpan = 11; // Fixed: should be 11 columns, not 10
-        cell.className = 'px-4 py-8 text-center text-white/60 text-sm';
-        cell.textContent = 'Loading conversations...';
+      const cardsContainer = this.container.querySelector('#conversations-cards-body');
+      if (cardsContainer) {
+        cardsContainer.innerHTML = `
+          <div class="col-span-1 px-4 py-12 text-center">
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                <svg class="w-6 h-6 text-white/40 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </div>
+              <p class="text-white/60 text-sm font-medium">Loading conversations...</p>
+            </div>
+          </div>
+        `;
       } else {
-        logWarn('Cannot clear conversations: table body not available');
+        logWarn('Cannot clear conversations: cards container not available');
       }
     } catch (error) {
       logError('Error clearing conversations:', error);

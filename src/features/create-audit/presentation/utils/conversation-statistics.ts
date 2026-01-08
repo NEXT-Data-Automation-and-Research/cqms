@@ -11,8 +11,10 @@ export interface Conversation {
   csat: number;
   cxScore: number;
   length: number;
+  totalParts: number;
   errorsDetected: number;
   tags: string[];
+  topics?: string[];
   created: string;
   aiStatus: 'Completed' | 'Processing' | 'Failed';
   channel?: string;

@@ -1,0 +1,88 @@
+<!-- Edit User Modal -->
+<div id="editUserModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId">
+                <div class="form-group">
+                    <label for="editUserName">Name</label>
+                    <input type="text" id="editUserName" required>
+                </div>
+                <div class="form-group">
+                    <label for="editUserRole">Role</label>
+                    <select id="editUserRole" required>
+                        <option value="Super Admin">Super Admin</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Quality Analyst">Quality Analyst</option>
+                        <option value="Employee">Employee</option>
+                        <option value="General User">General User</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserDepartment">Department</label>
+                    <select id="editUserDepartment">
+                        <option value="">Select Department</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserChannel">Channel</label>
+                    <select id="editUserChannel">
+                        <option value="">Select Channel</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserTeam">Team</label>
+                    <input type="text" id="editUserTeam" placeholder="e.g., Team A, Customer Support, etc.">
+                </div>
+                <div class="form-group">
+                    <label for="editUserTeamSupervisor">Team Supervisor</label>
+                    <select id="editUserTeamSupervisor">
+                        <option value="">Select Team Supervisor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserQualitySupervisor">Quality Mentor</label>
+                    <select id="editUserQualitySupervisor">
+                        <option value="">Select Quality Mentor</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserDesignation">Designation</label>
+                    <input type="text" id="editUserDesignation" placeholder="Job title or designation">
+                </div>
+                <div class="form-group">
+                    <label for="editUserEmployeeId">Employee ID</label>
+                    <div style="display: flex; align-items: center; gap: 0.375rem;">
+                        <span style="font-size: 0.5625rem; font-weight: 600; color: var(--primary-color); padding: 0.375rem 0.5rem; background-color: #f3f4f6; border-radius: 0.1875rem; border: 0.0469rem solid #d1d5db;">NXT</span>
+                        <input type="text" id="editUserEmployeeId" style="flex: 1;">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="editUserStatus">Status</label>
+                    <select id="editUserStatus">
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserIntercomAdmin">Intercom Admin</label>
+                    <select id="editUserIntercomAdmin">
+                        <option value="">Select Intercom Admin (Optional)</option>
+                    </select>
+                    <small style="display: block; margin-top: 0.25rem; font-size: 0.5rem; color: #6b7280;">
+                        Auto-detected if email matches an Intercom admin
+                    </small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="editUserCancelBtn">Cancel</button>
+            <button type="button" class="btn-primary" id="editUserSaveBtn">Save Changes</button>
+        </div>
+    </div>
+</div>
+

@@ -34,6 +34,9 @@ export const AUDIT_ASSIGNMENT_MINIMAL_FIELDS = 'id, auditor_email, employee_emai
 export const PEOPLE_PUBLIC_FIELDS = 'email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias, created_at, updated_at';
 export const PEOPLE_MINIMAL_FIELDS = 'email, name, avatar_url';
 export const PEOPLE_PROFILE_FIELDS = 'email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias, created_at, updated_at';
+// User management fields - includes all fields needed for user management page
+// Note: avatar_url may exist in some people tables - include it if available
+export const PEOPLE_USER_MANAGEMENT_FIELDS = 'email, name, role, department, channel, team, designation, employee_id, country, team_supervisor, quality_mentor, is_active, intercom_admin_id, intercom_admin_alias, last_login, login_count, avatar_url, created_at, updated_at';
 
 // Audit fields (generic audit table)
 export const AUDIT_FIELDS = 'id, employee_id, interaction_id, scorecard_id, transcript, recommendations, parameters, created_at, updated_at';
@@ -41,4 +44,12 @@ export const AUDIT_FIELDS = 'id, employee_id, interaction_id, scorecard_id, tran
 // Generic audit table fields (for dynamic scorecard tables)
 // These are common fields across all audit scorecard tables
 export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, auditor_email, scorecard_id, interaction_id, created_at, submitted_at, status, passing_status, audit_duration, reversal_requested_at, acknowledged_at, acknowledged_by, created_by, updated_at';
+
+// Channels table fields
+export const CHANNEL_FIELDS = 'id, name, description, is_active';
+export const CHANNEL_MINIMAL_FIELDS = 'id, name';
+
+// Intercom admin cache table fields
+export const INTERCOM_ADMIN_CACHE_FIELDS = 'id, email, name';
+export const INTERCOM_ADMIN_CACHE_MINIMAL_FIELDS = 'id, name';
 

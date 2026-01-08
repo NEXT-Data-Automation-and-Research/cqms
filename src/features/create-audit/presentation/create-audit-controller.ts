@@ -257,24 +257,24 @@ export class CreateAuditController {
 
   private async initializeConversationsPanel(): Promise<void> {
     try {
-      // Dynamic import for the conversations panel component
-      // @ts-ignore - Runtime import path
-      const module = await import('/js/features/create-audit/presentation/components/conversations-panel/conversations-panel.js');
-      const panel = new module.ConversationsPanel('conversations-panel-container');
-      
-      // When conversations are selected, handle them
-      panel.onConversationsSelected((conversationIds: string[]) => {
-        logInfo('Selected conversations:', { count: conversationIds.length });
-        // TODO: Update form state with selected conversations
-      });
+    // Dynamic import for the conversations panel component
+    // @ts-ignore - Runtime import path
+    const module = await import('/js/features/create-audit/presentation/components/conversations-panel/conversations-panel.js');
+    const panel = new module.ConversationsPanel('conversations-panel-container');
+    
+    // When conversations are selected, handle them
+    panel.onConversationsSelected((conversationIds: string[]) => {
+      logInfo('Selected conversations:', { count: conversationIds.length });
+      // TODO: Update form state with selected conversations
+    });
 
-      // When statistics are updated, update the stats section
-      panel.onStatisticsUpdated((stats: any) => {
-        this.updateConversationStatistics(stats);
-      });
-      
-      this.conversationsPanel = panel;
-      logInfo('✓ Conversations Panel initialized');
+    // When statistics are updated, update the stats section
+    panel.onStatisticsUpdated((stats: any) => {
+      this.updateConversationStatistics(stats);
+    });
+    
+    this.conversationsPanel = panel;
+    logInfo('✓ Conversations Panel initialized');
     } catch (error) {
       logError('Error initializing conversations panel:', error);
       // Don't throw - allow sidebar to initialize even if conversations panel fails

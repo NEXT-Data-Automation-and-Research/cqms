@@ -41,8 +41,8 @@ export function safeSetHTML(element: HTMLElement | null, html: string): void {
   if (isDOMPurifyAvailable()) {
     try {
       const sanitized = DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option'],
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name'],
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step'],
         ALLOW_DATA_ATTR: true // Allow data-* attributes for employee selection, event tracking, etc.
       });
       element.innerHTML = sanitized;
@@ -55,6 +55,61 @@ export function safeSetHTML(element: HTMLElement | null, html: string): void {
     // Fallback: if DOMPurify isn't loaded, escape the HTML
     console.warn('[HTML Sanitizer] DOMPurify not available, using escapeHtml fallback');
     element.innerHTML = escapeHtml(html);
+  }
+}
+
+/**
+ * Safely set HTML content for table body elements
+ * Wraps tr elements in tbody for proper sanitization, then extracts them
+ */
+export function safeSetTableBodyHTML(tbody: HTMLTableSectionElement | null, html: string): void {
+  if (!tbody) return;
+  
+  if (isDOMPurifyAvailable()) {
+    try {
+      // Wrap tr elements in a full table structure for proper sanitization context
+      // DOMPurify needs the full table context to preserve tbody and tr tags
+      const wrappedHtml = `<table><tbody>${html}</tbody></table>`;
+      
+      const sanitized = DOMPurify.sanitize(wrappedHtml, {
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step'],
+        ALLOW_DATA_ATTR: true
+      });
+      
+      // Extract the tbody content (just the tr elements)
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = sanitized;
+      const sanitizedTable = tempDiv.querySelector('table');
+      const sanitizedTbody = sanitizedTable ? sanitizedTable.querySelector('tbody') : tempDiv.querySelector('tbody');
+      
+      if (sanitizedTbody) {
+        // Clear existing content
+        tbody.innerHTML = '';
+        // Move all tr elements from sanitized tbody to actual tbody
+        // Use a document fragment to batch the moves
+        const fragment = document.createDocumentFragment();
+        while (sanitizedTbody.firstChild) {
+          fragment.appendChild(sanitizedTbody.firstChild);
+        }
+        tbody.appendChild(fragment);
+      } else {
+        // Fallback: try to extract tr elements directly from tempDiv
+        const trElements = tempDiv.querySelectorAll('tr');
+        tbody.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        trElements.forEach(tr => fragment.appendChild(tr.cloneNode(true)));
+        tbody.appendChild(fragment);
+      }
+    } catch (error) {
+      // If sanitization fails, fall back to escaping
+      console.error('[HTML Sanitizer] DOMPurify sanitization failed for table body:', error);
+      tbody.innerHTML = escapeHtml(html);
+    }
+  } else {
+    // Fallback: if DOMPurify isn't loaded, escape the HTML
+    console.warn('[HTML Sanitizer] DOMPurify not available, using escapeHtml fallback');
+    tbody.innerHTML = escapeHtml(html);
   }
 }
 
@@ -96,10 +151,10 @@ export function createTextElement(tagName: string, text: string, className?: str
 export function sanitizeHTML(html: string, allowTrustedContent: boolean = false): string {
   if (isDOMPurifyAvailable()) {
     try {
-      const allowedTags = ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'nav', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option'];
+      const allowedTags = ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'nav', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'];
       const sanitized = DOMPurify.sanitize(html, {
         ALLOWED_TAGS: allowedTags,
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step'],
         ALLOW_DATA_ATTR: true // Allow data-* attributes for employee selection, event tracking, etc.
       });
       return sanitized;

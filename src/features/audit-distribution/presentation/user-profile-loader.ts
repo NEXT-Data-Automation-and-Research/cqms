@@ -9,6 +9,7 @@ import { UserProfileRenderer } from './renderers/user-profile-renderer.js';
 import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js';
 import { safeSetHTML } from '../../../utils/html-sanitizer.js';
 import { logInfo, logError } from '../../../utils/logging-helper.js';
+import { PROFILE_PAGE_COLORS } from '../../../core/constants/color-whitelists.js';
 
 declare global {
   interface Window {
@@ -88,17 +89,19 @@ export class UserProfileLoader {
     const container = document.getElementById('user-profile-container');
     if (container) {
       const html = `
-        <div class="glass-card rounded-xl p-8 text-center">
-          <div class="mb-4">
-            <svg class="mx-auto w-16 h-16 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div style="background: ${PROFILE_PAGE_COLORS.CARD_BACKGROUND}; border-radius: 0.5rem; padding: 2rem; border: 0.0625rem solid ${PROFILE_PAGE_COLORS.CARD_BORDER}; box-shadow: ${PROFILE_PAGE_COLORS.CARD_SHADOW}; text-align: center;">
+          <div style="margin-bottom: 1rem;">
+            <svg style="margin: 0 auto; width: 4rem; height: 4rem; color: ${PROFILE_PAGE_COLORS.ERROR_ICON};" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
           </div>
-          <h2 class="text-xl font-bold text-white mb-2">Error</h2>
-          <p class="text-white/70">${this.escapeHtml(message)}</p>
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: ${PROFILE_PAGE_COLORS.ERROR_HEADING}; margin-bottom: 0.5rem;">Error</h2>
+          <p style="color: ${PROFILE_PAGE_COLORS.ERROR_TEXT}; margin-bottom: 1rem;">${this.escapeHtml(message)}</p>
           <button 
             onclick="window.history.back()" 
-            class="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all"
+            style="margin-top: 1rem; padding: 0.5rem 1rem; background-color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}; color: ${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_TEXT}; border: none; border-radius: 0.375rem; font-size: 0.5625rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s ease;"
+            onmouseover="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_HOVER_BG}';"
+            onmouseout="this.style.backgroundColor='${PROFILE_PAGE_COLORS.BUTTON_PRIMARY_BG}';"
           >
             Go Back
           </button>

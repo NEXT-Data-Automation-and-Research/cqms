@@ -101,12 +101,23 @@ export function csrfProtection(
 
 /**
  * Middleware to add CSRF token to response
+ * Only generates tokens for GET requests (not state-changing methods)
+ * This prevents overwriting tokens that are being validated in the same request
  */
 export function csrfToken(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
+  // Only generate tokens for GET requests
+  // POST/PUT/DELETE/PATCH requests should use existing tokens, not generate new ones
+  const protectedMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
+  if (protectedMethods.includes(req.method)) {
+    // Don't generate new token for state-changing requests
+    // The token should already exist from a previous GET request
+    return next();
+  }
+
   const sessionId = getSessionId(req);
   const token = generateCSRFToken(sessionId);
   

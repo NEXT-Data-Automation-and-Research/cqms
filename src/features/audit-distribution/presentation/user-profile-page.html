@@ -4,12 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Profile - CQMS</title>
-  <!-- Global Styles (includes compiled Tailwind output) -->
+  <!-- Global Styles -->
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
-  <link rel="stylesheet" href="/home-page.css">
-  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  <!-- User Management Styles (for consistent styling) -->
+  <link rel="stylesheet" href="/src/features/settings/user-management/presentation/user-management.css">
+  <link rel="stylesheet" href="/src/features/settings/user-management/presentation/user-management-table.css">
+  <link rel="stylesheet" href="/src/features/settings/user-management/presentation/user-management-modal.css">
+  <!-- User Profile Page Specific Styles -->
+  <link rel="stylesheet" href="/src/features/audit-distribution/presentation/styles/user-profile-page.css">
   
   <!-- Import map for npm packages in browser -->
   <script type="importmap">
@@ -23,18 +27,19 @@
   </script>
 </head>
 
-<body class="home-page">
+<body>
   <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
   <main class="main-content" role="main">
-    <!-- Dot Background Pattern Component -->
-    <div id="dot-background-container"></div>
-    
-    <!-- Main Content Container (matches homepage structure) -->
-    <div class="px-4 py-6 max-w-7xl mx-auto w-full relative z-10">
-      <div id="user-profile-container">
-        <!-- Content will be loaded by user-profile-loader -->
-      </div>
+    <!-- Page Heading -->
+  <p class="page-heading">User Profile</p>
+  <div style="margin-bottom: 1.125rem;"></div>
+
+  <!-- Main Content Container -->
+  <div class="user-management-container" style="margin-top: 2rem;">
+    <div id="user-profile-container">
+      <!-- Content will be loaded by user-profile-loader -->
     </div>
+  </div>
   </main>
 
   <!-- Authentication Guard -->
@@ -56,52 +61,6 @@
         console.error('Failed to initialize Supabase:', error);
       }
     })();
-  </script>
-  
-  <!-- Component Loader - Must load after Supabase is initialized -->
-  <script type="module">
-    import { loadComponents } from '/js/features/home/infrastructure/component-loader.js';
-    import { isSupabaseInitialized } from '/js/utils/supabase-init.js';
-    
-    // Wait for Supabase to be initialized before loading components
-    async function waitForSupabase() {
-      // Check if already initialized
-      if (isSupabaseInitialized() || window.supabaseReady) {
-        return;
-      }
-      
-      // Wait for supabaseReady event
-      return new Promise((resolve) => {
-        if (window.supabaseReady) {
-          resolve();
-          return;
-        }
-        window.addEventListener('supabaseReady', resolve, { once: true });
-      });
-    }
-    
-    // Load all components
-    async function initializeComponents() {
-      // Wait for Supabase to be initialized first
-      await waitForSupabase();
-      try {
-        // Load dot background component
-        await loadComponents([
-          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' }
-        ]);
-        console.log('✓ Dot background component loaded');
-      } catch (error) {
-        console.error('Error loading components:', error);
-      }
-    }
-    
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initializeComponents);
-    } else {
-      // DOM is already ready
-      initializeComponents();
-    }
   </script>
   
   <!-- Sidebar Loader -->
