@@ -21,6 +21,10 @@ export const NOTIFICATION_SUBSCRIPTION_FIELDS = 'id, user_id, endpoint, p256dh, 
 // Scorecard fields
 export const SCORECARD_FIELDS = 'id, name, table_name, created_at, updated_at';
 export const SCORECARD_MINIMAL_FIELDS = 'id, name, table_name';
+// Scorecard fields for audit form (includes all fields needed for scorecard selection and display)
+export const SCORECARD_AUDIT_FORM_FIELDS = 'id, name, description, passing_threshold, table_name, scoring_type, channels, is_active, default_for_channels, allow_over_100, max_bonus_points, created_at';
+// Scorecard parameter fields
+export const SCORECARD_PARAMETER_FIELDS = 'id, scorecard_id, name, description, weight, max_score, is_active, display_order, parameter_type';
 
 // Audit assignment fields (matches actual table schema from audit_assignments table)
 // Verified against database schema - includes all non-sensitive fields
@@ -44,6 +48,39 @@ export const AUDIT_FIELDS = 'id, employee_id, interaction_id, scorecard_id, tran
 // Generic audit table fields (for dynamic scorecard tables)
 // These are common fields across all audit scorecard tables
 export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, auditor_email, scorecard_id, interaction_id, created_at, submitted_at, status, passing_status, audit_duration, reversal_requested_at, acknowledged_at, acknowledged_by, created_by, updated_at';
+
+// Audit form fields (for audit form feature)
+export const AUDIT_FORM_FIELDS = [
+  'id',
+  'employee_email',
+  'employee_name',
+  'employee_type',
+  'employee_department',
+  'country_of_employee',
+  'auditor_email',
+  'auditor_name',
+  'interaction_id',
+  'interaction_date',
+  'channel',
+  'client_email',
+  'client_name',
+  'transcript',
+  'scorecard_id',
+  'quarter',
+  'week',
+  'audit_timestamp',
+  'passing_status',
+  'average_score',
+  'total_errors_count',
+  'recommendations',
+  'validation_status',
+  'audit_duration',
+  'audit_start_time',
+  'audit_end_time',
+  'intercom_alias',
+  'conversation_id',
+  'parameter_comments'
+];
 
 // Channels table fields
 export const CHANNEL_FIELDS = 'id, name, description, is_active';

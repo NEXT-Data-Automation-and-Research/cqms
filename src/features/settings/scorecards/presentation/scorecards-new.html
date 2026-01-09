@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scorecards | CQMS</title>
+<meta name="description" content="Quality Management System - Manage Scorecards">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    <link rel="stylesheet" href="scorecards.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <!-- Import map for npm packages -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    
+    <!-- Authentication Guard -->
+    <script type="module" src="/js/auth-checker.js"></script>
+    
+    <!-- Initialize Supabase -->
+    <script type="module">
+      import { initSupabase } from '/js/utils/supabase-init.js';
+      
+      (async function initSupabaseFirst() {
+        try {
+          const baseClient = await initSupabase();
+          if (baseClient) {
+            window.supabaseClient = baseClient;
+            window.supabaseClientReady = true;
+            window.dispatchEvent(new CustomEvent('supabaseClientReady'));
+          }
+          window.supabaseReady = true;
+          window.dispatchEvent(new CustomEvent('supabaseReady'));
+        } catch (error) {
+          console.error('Failed to initialize Supabase:', error);
+        }
+      })();
+    </script>
+    
+    <!-- Sidebar Loader -->
+    <script type="module" src="/js/load-sidebar.js" defer></script>
+    
+    <!-- Initialize Scorecard Controller -->
+    <script type="module">
+      import { ScorecardController } from './scorecard-controller.js';
+      
+      // Wait for Supabase client to be ready
+      async function initController() {
+        try {
+          // Ensure Supabase client is initialized
+          if (!window.supabaseClientReady) {
+            await new Promise(resolve => {
+              window.addEventListener('supabaseClientReady', resolve, { once: true });
+            });
+          }
+          
+          // Initialize controller
+          window.scorecardController = new ScorecardController();
+          await window.scorecardController.initialize();
+        } catch (error) {
+          console.error('Failed to initialize scorecard controller:', error);
+        }
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initController);
+      } else {
+        initController();
+      }
+    </script>
+</head>
+
+<body>
+<!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+<main class="main-content" role="main">
+    <p class="page-heading">Scorecards Management</p>
+    <div style="margin-bottom: 1.125rem; width: 100%;"></div>
+
+    <div class="scorecards-container" style="margin-top: 2rem;">
+        <!-- Statistics Overview -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Total Scorecards</span>
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                </div>
+                <div class="stat-value" id="totalScorecards">-</div>
+                <div class="stat-change positive" id="totalScorecardsChange">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/>
+                        <polyline points="17,6 23,6 23,12"/>
+                    </svg>
+                    All scorecards
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Active Scorecards</span>
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 12l2 2 4-4"/>
+                        <circle cx="12" cy="12" r="10"/>
+                    </svg>
+                </div>
+                <div class="stat-value" id="activeScorecards">-</div>
+                <div class="stat-change positive" id="activeScorecardsChange">
+                    Currently in use
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-title">Inactive Scorecards</span>
+                    <svg class="stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/>
+                        <line x1="12" y1="2" x2="12" y2="22"/>
+                    </svg>
+                </div>
+                <div class="stat-value" id="inactiveScorecards">-</div>
+                <div class="stat-change" id="inactiveScorecardsChange">
+                    Archived
+                </div>
+            </div>
+        </div>
+
+        <!-- Scorecards Table Section -->
+        <div class="scorecards-table-section">
+            <div class="table-header">
+                <div style="display: flex; align-items: center; gap: 0.375rem;">
+                    <h3 class="table-title">All Scorecards</h3>
+                    <span class="table-count" id="scorecardsCount">0 Scorecards</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.375rem;">
+                    <button class="btn-create" onclick="alert('Create modal - to be implemented')" style="margin: 0;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Create New Scorecard
+                    </button>
+                </div>
+            </div>
+            <table class="scorecards-table">
+                <thead>
+                    <tr>
+                        <th>Scorecard Name</th>
+                        <th>Scoring Type</th>
+                        <th>Table Name</th>
+                        <th>Passing Threshold</th>
+                        <th>Audits</th>
+                        <th>Version</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th style="text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scorecardsTableBody">
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 1.5rem; color: #6b7280;">Loading scorecards...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+
