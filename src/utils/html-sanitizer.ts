@@ -73,7 +73,7 @@ export function safeSetTableBodyHTML(tbody: HTMLTableSectionElement | null, html
       
       const sanitized = DOMPurify.sanitize(wrappedHtml, {
         ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'data-action', 'data-scorecard-id', 'data-table-name', 'data-scorecard-name', 'data-audit-count', 'data-new-status'],
         ALLOW_DATA_ATTR: true
       });
       

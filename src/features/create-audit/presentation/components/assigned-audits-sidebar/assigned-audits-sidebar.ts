@@ -37,6 +37,7 @@ export class AssignedAuditsSidebar {
   private searchInput: HTMLInputElement | null = null;
   private statusFilter: HTMLSelectElement | null = null;
   private refreshButton: HTMLButtonElement | null = null;
+  private manualAuditButton: HTMLButtonElement | null = null;
   private audits: AssignedAudit[] = [];
   private employeeSummaries: EmployeeAuditSummary[] = [];
   private filteredSummaries: EmployeeAuditSummary[] = [];
@@ -61,6 +62,7 @@ export class AssignedAuditsSidebar {
     this.searchInput = this.container.querySelector('#audit-search') as HTMLInputElement | null;
     this.statusFilter = this.container.querySelector('#audit-status-filter') as HTMLSelectElement | null;
     this.refreshButton = this.container.querySelector('#refresh-assigned-audits') as HTMLButtonElement | null;
+    this.manualAuditButton = this.container.querySelector('#manual-audit-button') as HTMLButtonElement | null;
 
     // Log if filter elements are missing (non-critical, will use defaults in applyFilters)
     if (!this.searchInput) {
@@ -71,6 +73,9 @@ export class AssignedAuditsSidebar {
     }
     if (!this.refreshButton) {
       logWarn('Refresh button element (#refresh-assigned-audits) not found in sidebar HTML');
+    }
+    if (!this.manualAuditButton) {
+      logWarn('Manual audit button element (#manual-audit-button) not found in sidebar HTML');
     }
 
     // Initialize arrays to prevent null reference errors
@@ -98,6 +103,14 @@ export class AssignedAuditsSidebar {
     if (this.refreshButton) {
       this.refreshButton.addEventListener('click', () => this.loadAssignedAudits());
     }
+    if (this.manualAuditButton) {
+      this.manualAuditButton.addEventListener('click', () => this.navigateToAuditForm());
+    }
+  }
+
+  private navigateToAuditForm(): void {
+    // Navigate to the audit form page
+    window.location.href = '/src/features/audit-form/audit-form.html';
   }
 
   onEmployeeSelect(callback: (employee: EmployeeAuditSummary) => void): void {

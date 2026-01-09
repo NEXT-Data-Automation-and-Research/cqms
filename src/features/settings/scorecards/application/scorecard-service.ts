@@ -212,6 +212,36 @@ export class ScorecardService extends BaseService {
   }
 
   /**
+   * Update scorecard with parameters
+   * Handles both metadata updates and parameter updates
+   */
+  async updateScorecardWithParameters(
+    id: string,
+    updates: Partial<Scorecard>,
+    parameters: ScorecardParameter[]
+  ): Promise<void> {
+    this.validateInput(id, (id) => id.length > 0 || 'Scorecard ID is required');
+    
+    return this.executeBusinessLogic(
+      async () => {
+        // Update scorecard metadata
+        if (Object.keys(updates).length > 0) {
+          await this.repository.update(id, updates);
+        }
+        
+        // Update parameters
+        if (parameters.length > 0) {
+          await this.repository.replaceParameters(id, parameters);
+        } else {
+          // If no parameters provided, delete existing ones
+          await this.repository.deleteParameters(id);
+        }
+      },
+      `Failed to update scorecard ${id} with parameters`
+    );
+  }
+
+  /**
    * Delete scorecard
    */
   async deleteScorecard(id: string, tableName: string): Promise<void> {
@@ -238,7 +268,8 @@ export class ScorecardService extends BaseService {
   async loadChannels(): Promise<Channel[]> {
     return this.executeBusinessLogic(
       async () => {
-        return await this.repository.loadChannels();
+        const channels = await this.repository.loadChannels();
+        return channels;
       },
       'Failed to load channels'
     );

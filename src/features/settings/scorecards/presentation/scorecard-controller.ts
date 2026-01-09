@@ -7,9 +7,10 @@ import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supaba
 import { DatabaseFactory } from '../../../../infrastructure/database-factory.js';
 import { ScorecardRepository } from '../infrastructure/scorecard-repository.js';
 import { ScorecardService } from '../application/scorecard-service.js';
-import { escapeHtml, safeSetHTML } from '../../../../utils/html-sanitizer.js';
+import { escapeHtml, safeSetHTML, safeSetTableBodyHTML } from '../../../../utils/html-sanitizer.js';
 import { logError, logInfo } from '../../../../utils/logging-helper.js';
 import { createScorecardRowHTML } from './utils/html-utils.js';
+import { ScorecardEventHandlers } from './event-handlers.js';
 import type { Scorecard, ScorecardParameter, Channel } from '../domain/entities.js';
 
 export class ScorecardController {
@@ -17,10 +18,12 @@ export class ScorecardController {
   private scorecards: Scorecard[] = [];
   private filteredScorecards: Scorecard[] = [];
   private availableChannels: Channel[] = [];
+  private eventHandlers: ScorecardEventHandlers;
 
   constructor() {
     // Service will be initialized after Supabase is ready
     this.service = null as any;
+    this.eventHandlers = new ScorecardEventHandlers(this);
   }
 
   /**
@@ -96,15 +99,20 @@ export class ScorecardController {
    */
   renderScorecards(): void {
     const tbody = document.getElementById('scorecardsTableBody');
-    if (!tbody) return;
+    if (!tbody) {
+      return;
+    }
 
     if (this.filteredScorecards.length === 0) {
-      safeSetHTML(tbody, '<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #6b7280;">No scorecards found</td></tr>');
+      safeSetTableBodyHTML(tbody as HTMLTableSectionElement, '<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #6b7280;">No scorecards found</td></tr>');
       return;
     }
 
     const rowsHTML = this.filteredScorecards.map(scorecard => createScorecardRowHTML(scorecard)).join('');
-    safeSetHTML(tbody, rowsHTML);
+    safeSetTableBodyHTML(tbody as HTMLTableSectionElement, rowsHTML);
+    
+    // ✅ SECURITY: Attach event listeners programmatically (CSP-safe, no inline handlers)
+    this.eventHandlers.attachActionListeners();
   }
 
   /**
@@ -147,14 +155,41 @@ export class ScorecardController {
    */
   async editScorecard(id: string): Promise<void> {
     try {
+      if (!id || id.trim() === '') {
+        throw new Error('Scorecard ID is required');
+      }
+
       const { scorecard, parameters } = await this.service.loadScorecardWithParameters(id);
+      
+      if (!scorecard) {
+        throw new Error('Scorecard not found');
+      }
+
       // Open edit modal (implementation in modal component)
       if (window.scorecardModals) {
-        window.scorecardModals.openEditModal(scorecard, parameters);
+        window.scorecardModals.openEditModal(scorecard, parameters || []);
+      } else {
+        throw new Error('Scorecard modals not initialized');
       }
     } catch (error) {
-      logError('Failed to edit scorecard', error);
-      this.showError('Failed to load scorecard for editing');
+      // Extract error message properly from AppError or regular Error
+      let errorMessage = 'Unknown error';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
+      logError('Failed to edit scorecard', {
+        message: errorMessage,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : error
+      });
+      
+      this.showError(`Failed to load scorecard for editing: ${errorMessage}`);
     }
   }
 
@@ -241,7 +276,12 @@ export class ScorecardController {
 declare global {
   interface Window {
     scorecardController: ScorecardController;
-    scorecardModals?: any;
+    scorecardModals?: {
+      openViewModal: (scorecard: Scorecard, parameters: ScorecardParameter[]) => void;
+      openEditModal: (scorecard: Scorecard, parameters: ScorecardParameter[]) => void;
+      openCreateModal: () => void;
+      openBulkImportModal: () => void;
+    };
     confirmationDialog?: {
       show: (options: {
         title: string;

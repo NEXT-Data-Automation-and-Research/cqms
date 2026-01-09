@@ -99,22 +99,24 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: [
-        "'self'", 
-        "'unsafe-inline'", // Allow inline styles for Tailwind
+        "'self'", // Allows CSS from same origin (including /src/... paths)
+        "'unsafe-inline'", // Allow inline styles for Tailwind and dynamic styles
         "https://fonts.googleapis.com" // Allow Google Fonts
       ],
       scriptSrc: [
         "'self'", 
         "'unsafe-inline'", // Allow inline scripts for ES modules
         "'unsafe-eval'", // Required for some ES module features
-        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for loglevel and other libraries
+        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
+        "https://accounts.google.com" // Allow Google Sign-In client
       ],
       imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
       connectSrc: [
         "'self'", 
         "https://*.supabase.co", 
         "https://*.supabase.in",
-        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for source maps and module loading
+        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for source maps and module loading
+        "http://127.0.0.1:7242" // Allow debug logging endpoint
       ], // Allow Supabase connections and CDN
       fontSrc: [
         "'self'", 

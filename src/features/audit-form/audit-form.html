@@ -135,6 +135,68 @@
             max-width: 100% !important;
         }
 
+        /* Enhanced Employee Dropdown Styling */
+        #employeeName {
+            transition: all 0.2s ease;
+        }
+        #employeeName:hover {
+            opacity: 0.9;
+        }
+        #employeeName:focus {
+            outline: 2px solid rgba(255, 255, 255, 0.5);
+            outline-offset: 2px;
+            border-radius: 0.1617rem;
+        }
+        /* Style for dropdown options - improved appearance */
+        #employeeName option {
+            background-color: #ffffff;
+            color: #374151;
+            padding: 0.4852rem 0.6468rem;
+            font-size: 0.4852rem;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+            line-height: 1.5;
+        }
+        #employeeName option:hover {
+            background-color: #e5f2e8;
+            color: #1f9e4b;
+        }
+        #employeeName option:checked,
+        #employeeName option:focus {
+            background-color: #1f9e4b;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        /* Improve dropdown list appearance */
+        #employeeName option:not(:first-child) {
+            border-bottom: 1px solid #e5e7eb;
+        }
+        #employeeName option:not(:first-child):hover {
+            background-color: #e5f2e8;
+            color: #1f9e4b;
+        }
+        /* Better scrollbar for dropdown */
+        #employeeName {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+        }
+        #employeeName::-webkit-scrollbar {
+            width: 8px;
+        }
+        #employeeName::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        #employeeName::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        #employeeName::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
         /* Message Content Styling - Professional HTML formatting */
         .message-text-content {
             font-size: 0.5257rem;
@@ -709,12 +771,45 @@
     <script type="module">
       import { isAuthenticated } from '/js/auth-checker.js';
       import { initSupabase } from '/js/utils/supabase-init.js';
+      import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
       
       // Initialize Supabase and check auth before loading sidebar
       (async () => {
         try {
+          // #region agent log
+          const logData = {location:'audit-form.html:779',message:'Supabase init started',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+          console.log('[DEBUG]', logData);
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+          // #endregion
+          
           // Initialize Supabase first
-          await initSupabase();
+          const baseClient = await initSupabase();
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:787',message:'Supabase init completed',data:{hasClient:!!baseClient,clientType:baseClient?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          if (!baseClient) {
+            throw new Error('Failed to initialize Supabase client');
+          }
+          
+          // Store base client for compatibility
+          window.supabaseClient = baseClient;
+          window.supabaseClientReady = true;
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:792',message:'Supabase ready flags set',data:{hasWindowClient:!!window.supabaseClient,readyFlag:window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          // Dispatch ready event
+          window.dispatchEvent(new CustomEvent('supabaseClientReady'));
+          window.dispatchEvent(new CustomEvent('supabaseReady'));
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:795',message:'Supabase ready events dispatched',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          console.log('✓ Supabase client initialized and ready');
           
           // Check authentication
           const authenticated = await isAuthenticated();
@@ -725,11 +820,95 @@
             return;
           }
           
+          // Verify authenticated client works
+          try {
+            await getAuthenticatedSupabase();
+            console.log('✓ Authenticated Supabase client verified');
+          } catch (authError) {
+            console.warn('Auth verification warning:', authError);
+            // Don't block page load, but log the warning
+          }
+          
           // User is authenticated - load sidebar
           // Import sidebar loader after auth check
           await import('/js/load-sidebar.js');
+          
+          // Dispatch event to trigger dropdown loading (main script will listen for this)
+          console.log('[DEBUG] Dispatching supabaseReadyForDropdowns event');
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:837',message:'Dispatching supabaseReadyForDropdowns event',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          // Store ready state for scripts that load later
+          window.supabaseReadyForDropdowns = true;
+          
+          // Dispatch event (but also set up direct loading as fallback)
+          window.dispatchEvent(new CustomEvent('supabaseReadyForDropdowns'));
+          console.log('[DEBUG] Event dispatched');
+          
+          // Direct fallback: Try to load dropdowns if functions are available (with retry)
+          // Increase retry attempts and wait longer since main script loads after this
+          const tryLoadDropdowns = (attempt = 0) => {
+            if (attempt > 100) { // Increased to 100 attempts (20 seconds total)
+              console.warn('[DEBUG] Direct fallback: Max attempts reached, giving up');
+              console.warn('[DEBUG] Functions still not available:', {
+                loadScorecards: typeof window.loadScorecards,
+                loadChannels: typeof window.loadChannels,
+                loadEmployees: typeof window.loadEmployees
+              });
+              return;
+            }
+            if (typeof window.loadScorecards === 'function' && 
+                typeof window.loadChannels === 'function' && 
+                typeof window.loadEmployees === 'function') {
+              console.log('[DEBUG] Direct fallback: Functions available, loading dropdowns');
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:859',message:'Direct fallback loading dropdowns',data:{attempt,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+              // #endregion
+              Promise.all([
+                window.loadScorecards(null, null, true).catch(err => {
+                  console.error('[DEBUG] Error loading scorecards:', err);
+                  return null;
+                }),
+                window.loadChannels().catch(err => {
+                  console.error('[DEBUG] Error loading channels:', err);
+                  return null;
+                }),
+                window.loadEmployees().catch(err => {
+                  console.error('[DEBUG] Error loading employees:', err);
+                  return null;
+                })
+              ]).then((results) => {
+                const successCount = results.filter(r => r !== null).length;
+                console.log(`[DEBUG] Direct fallback: Loaded ${successCount}/3 dropdowns`);
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:877',message:'Direct fallback completed',data:{successCount,attempt},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+              });
+            } else {
+              if (attempt % 10 === 0) { // Log every 10th attempt
+                console.log(`[DEBUG] Direct fallback: Waiting for functions (attempt ${attempt + 1}/100)...`, {
+                  loadScorecards: typeof window.loadScorecards,
+                  loadChannels: typeof window.loadChannels,
+                  loadEmployees: typeof window.loadEmployees
+                });
+              }
+              setTimeout(() => tryLoadDropdowns(attempt + 1), 200);
+            }
+          };
+          setTimeout(() => tryLoadDropdowns(), 1000); // Increased initial delay to 1 second
         } catch (error) {
           console.error('Error initializing page:', error);
+          // Show error to user
+          document.body.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 1rem;">
+              <h1 style="color: #ef4444;">Error Initializing Page</h1>
+              <p style="color: #6b7280;">${error.message || 'Unknown error occurred'}</p>
+              <button onclick="window.location.reload()" style="padding: 0.5rem 1rem; background: #1f9e4b; color: white; border: none; border-radius: 0.25rem; cursor: pointer;">
+                Reload Page
+              </button>
+            </div>
+          `;
         }
       })();
     </script>
@@ -788,6 +967,47 @@
                         <select id="employeeName" name="employeeName" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; width: 100%; min-height: 1.2em; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right center; background-size: 0.5659rem; padding-right: 1.2937rem; line-height: 1.2; position: relative; z-index: 10;">
                         <option value="" style="background-color: #ffffff; color: #374151;">Select Employee...</option>
                     </select>
+                    <style>
+                        /* Enhanced Employee Dropdown Styling */
+                        #employeeName {
+                            transition: all 0.2s ease;
+                        }
+                        #employeeName:hover {
+                            opacity: 0.9;
+                        }
+                        #employeeName:focus {
+                            outline: 2px solid rgba(255, 255, 255, 0.5);
+                            outline-offset: 2px;
+                            border-radius: 0.1617rem;
+                        }
+                        /* Style for dropdown options */
+                        #employeeName option {
+                            background-color: #ffffff;
+                            color: #374151;
+                            padding: 0.4852rem 0.6468rem;
+                            font-size: 0.4852rem;
+                            font-family: 'Poppins', sans-serif;
+                            font-weight: 500;
+                            cursor: pointer;
+                            transition: background-color 0.15s ease;
+                        }
+                        #employeeName option:hover {
+                            background-color: #f3f4f6;
+                        }
+                        #employeeName option:checked {
+                            background-color: #1f9e4b;
+                            color: #ffffff;
+                            font-weight: 600;
+                        }
+                        /* Improve dropdown list appearance */
+                        #employeeName option:not(:first-child) {
+                            border-bottom: 1px solid #e5e7eb;
+                        }
+                        #employeeName option:not(:first-child):hover {
+                            background-color: #e5f2e8;
+                            color: #1f9e4b;
+                        }
+                    </style>
                 </div>
                     <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
                         <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Email *</p>
@@ -1138,6 +1358,7 @@
 // ============================================================================
 // Dynamic Scorecard System
 // ============================================================================
+console.log('[DEBUG] Script tag executing at', new Date().toISOString());
 let currentScorecard = null;
 let currentParameters = [];
 
@@ -1149,121 +1370,190 @@ const quillInstances = new Map();
 
 // Cache imports to avoid repeated dynamic imports
 let safeSetHTMLFn = null;
+let escapeHtmlFn = null;
 let getAuthenticatedSupabaseFn = null;
 
 async function getSafeSetHTML() {
     if (!safeSetHTMLFn) {
         const module = await import('/js/utils/html-sanitizer.js');
         safeSetHTMLFn = module.safeSetHTML;
+        escapeHtmlFn = module.escapeHtml;
     }
     return safeSetHTMLFn;
 }
 
+async function escapeHtml(text) {
+    // Ensure module is loaded
+    if (!escapeHtmlFn) {
+        const module = await import('/js/utils/html-sanitizer.js');
+        escapeHtmlFn = module.escapeHtml;
+    }
+    return escapeHtmlFn(text || '');
+}
+
+// Wait for Supabase to be ready before loading dropdowns
+async function waitForSupabaseReady(maxWait = 10000) {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1311',message:'waitForSupabaseReady called',data:{maxWait,hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    
+    // Check if already ready
+    if (window.supabaseClient && window.supabaseClientReady) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1314',message:'Supabase already ready',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        return true;
+    }
+    
+    // Wait for ready event
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1320',message:'waitForSupabaseReady timeout',data:{maxWait,hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            console.warn('Timeout waiting for Supabase ready event');
+            resolve(false);
+        }, maxWait);
+        
+        const checkReady = () => {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1325',message:'checkReady event fired',data:{hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            if (window.supabaseClient && window.supabaseClientReady) {
+                clearTimeout(timeout);
+                window.removeEventListener('supabaseClientReady', checkReady);
+                window.removeEventListener('supabaseReady', checkReady);
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1330',message:'waitForSupabaseReady resolved true',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                resolve(true);
+            }
+        };
+        
+        window.addEventListener('supabaseClientReady', checkReady);
+        window.addEventListener('supabaseReady', checkReady);
+        
+        // Also check immediately in case event already fired
+        if (window.supabaseClient && window.supabaseClientReady) {
+            clearTimeout(timeout);
+            window.removeEventListener('supabaseClientReady', checkReady);
+            window.removeEventListener('supabaseReady', checkReady);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1341',message:'waitForSupabaseReady resolved true (immediate)',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            resolve(true);
+        }
+    });
+}
+
 async function getSupabaseClient() {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1162',message:'getSupabaseClient called',data:{hasCachedFn:!!getAuthenticatedSupabaseFn},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1346',message:'getSupabaseClient called',data:{hasWindowClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
-    if (!getAuthenticatedSupabaseFn) {
+    
+    // Wait for Supabase to be ready if not already
+    if (!window.supabaseClient || !window.supabaseClientReady) {
+        console.log('Waiting for Supabase client to be ready...');
+        const ready = await waitForSupabaseReady(5000);
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1164',message:'Importing authenticated-supabase module',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1350',message:'waitForSupabaseReady result',data:{ready,hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
+    }
+    
+    if (!getAuthenticatedSupabaseFn) {
         const module = await import('/js/utils/authenticated-supabase.js');
         getAuthenticatedSupabaseFn = module.getAuthenticatedSupabase;
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1166',message:'Module imported',data:{hasGetAuthenticatedSupabase:!!module.getAuthenticatedSupabase},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1355',message:'authenticated-supabase module imported',data:{hasFn:!!getAuthenticatedSupabaseFn},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
         // #endregion
     }
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1167',message:'Calling getAuthenticatedSupabase',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+    
+    try {
     const result = await getAuthenticatedSupabaseFn();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1168',message:'getAuthenticatedSupabase result',data:{hasResult:!!result,resultType:typeof result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1360',message:'getAuthenticatedSupabase success',data:{hasResult:!!result,resultType:result?.constructor?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
     return result;
+    } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1363',message:'getAuthenticatedSupabase error',data:{errorMessage:error?.message,errorCode:error?.code,hasWindowClient:!!window.supabaseClient},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+        // #endregion
+        console.error('Error getting authenticated Supabase client:', error);
+        // If auth fails but we have base client, try to use it (for debugging)
+        if (window.supabaseClient) {
+            console.warn('Using base Supabase client (auth may fail)');
+            return window.supabaseClient;
+        }
+        throw error;
+    }
 }
 
 // Load available scorecards
 async function loadScorecards(channelFilter = null, preselectedScorecardId = null, skipAutoSelect = false) {
     // #region agent log
-    console.log('[DEBUG] loadScorecards called', {channelFilter, preselectedScorecardId, skipAutoSelect});
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1171',message:'loadScorecards called',data:{channelFilter,preselectedScorecardId,skipAutoSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1373',message:'loadScorecards called',data:{channelFilter,preselectedScorecardId,skipAutoSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
-    
     const scorecardSelect = document.getElementById('scorecardSelect');
     
     // #region agent log
-    console.log('[DEBUG] scorecardSelect element check', {exists: !!scorecardSelect});
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1173',message:'scorecardSelect element check',data:{exists:!!scorecardSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1376',message:'loadScorecards DOM check',data:{hasSelect:!!scorecardSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
     // #endregion
     
     if (!scorecardSelect) {
-        console.error('[DEBUG] Scorecard select element not found - early return');
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1176',message:'scorecardSelect not found - early return',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-        // #endregion
+        console.error('Scorecard select element not found');
         return;
     }
     
     try {
-        // #region agent log
-        console.log('[DEBUG] Checking supabaseReady', {supabaseReady: !!window.supabaseReady});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1180',message:'Checking supabaseReady',data:{supabaseReady:!!window.supabaseReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
+        // Try to get Supabase client immediately with retry logic
+        let supabase = null;
+        let attempts = 0;
+        const maxAttempts = 30; // 3 seconds max (30 * 100ms) - reduced from 5 seconds
         
-        // Wait for Supabase to be ready
-        if (!window.supabaseReady) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1182',message:'Waiting for supabaseReady event',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            await new Promise((resolve) => {
-                if (window.supabaseReady) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1184',message:'supabaseReady was true immediately',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
-                    resolve();
-                } else {
-                    window.addEventListener('supabaseReady', () => {
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1187',message:'supabaseReady event fired',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        // #endregion
-                        resolve();
+        while (!supabase && attempts < maxAttempts) {
+            try {
+                supabase = await getSupabaseClient();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1389',message:'loadScorecards getSupabaseClient result',data:{attempt:attempts+1,hasSupabase:!!supabase},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                if (supabase) break;
+            } catch (e) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1392',message:'loadScorecards getSupabaseClient error',data:{attempt:attempts+1,errorMessage:e?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                // Supabase not ready yet, continue waiting
+                if (attempts === 0) {
+                    // Listen for supabaseReady event on first attempt
+                    window.addEventListener('supabaseReady', async () => {
+                        try {
+                            const client = await getSupabaseClient();
+                            if (client && !supabase) {
+                                supabase = client;
+                            }
+                        } catch (err) {
+                            console.warn('Failed to get Supabase after ready event:', err);
+                        }
                     }, { once: true });
-                    // Timeout after 5 seconds
-                    setTimeout(() => {
-                        console.warn('Supabase initialization timeout');
-                        // #region agent log
-                        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1190',message:'Supabase initialization timeout',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                        // #endregion
-                        resolve();
-                    }, 5000);
                 }
-            });
+            }
+            
+            // Wait 100ms before next attempt (reduced from longer waits)
+            if (!supabase) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            attempts++;
         }
-        
-        // Get authenticated Supabase client
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1197',message:'Calling getSupabaseClient',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        const supabase = await getSupabaseClient();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1199',message:'getSupabaseClient result',data:{hasSupabase:!!supabase,supabaseType:typeof supabase},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         
         if (!supabase) {
             // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1200',message:'getSupabaseClient returned null/undefined',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1416',message:'loadScorecards no supabase after retries',data:{attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
             // #endregion
-            throw new Error('Failed to get authenticated Supabase client');
+            throw new Error('Failed to get authenticated Supabase client after retries');
         }
         
         // Use field whitelist instead of select('*')
         const SCORECARD_FIELDS = 'id, name, description, passing_threshold, table_name, scoring_type, channels, is_active, default_for_channels, allow_over_100, max_bonus_points, created_at';
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1206',message:'Executing Supabase query',data:{table:'scorecards',fields:SCORECARD_FIELDS},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         let query = supabase
             .from('scorecards')
             .select(SCORECARD_FIELDS)
@@ -1273,29 +1563,18 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
         const { data, error } = await query;
         
         // #region agent log
-        console.log('[DEBUG] Query result received', {hasError: !!error, hasData: !!data, dataLength: data?.length || 0, errorMessage: error?.message, errorCode: error?.code});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1212',message:'Query result received',data:{hasError:!!error,hasData:!!data,dataLength:data?.length||0,errorMessage:error?.message,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C,D'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1432',message:'loadScorecards query result',data:{hasError:!!error,errorMessage:error?.message,dataCount:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
         
         if (error) {
             console.error('Error fetching scorecards:', error);
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1215',message:'Query error - throwing',data:{errorMessage:error?.message,errorCode:error?.code,errorDetails:error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             throw error;
         }
         
         console.log('Scorecards loaded:', data?.length || 0);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1219',message:'Query successful',data:{dataLength:data?.length||0,isEmpty:!data||data.length===0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         
         // Store all scorecards for filtering
         allAvailableScorecards = data || [];
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1222',message:'Stored scorecards',data:{allAvailableScorecardsLength:allAvailableScorecards.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         
         // Filter by channel if provided
         let filteredScorecards = allAvailableScorecards;
@@ -1326,10 +1605,6 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
         const safeSetHTML = await getSafeSetHTML();
         safeSetHTML(scorecardSelect, '<option value="">Select a scorecard...</option>');
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1253',message:'Before populating options',data:{filteredScorecardsLength:filteredScorecards?.length||0,hasFilteredScorecards:!!filteredScorecards},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
-        
         if (filteredScorecards && filteredScorecards.length > 0) {
             filteredScorecards.forEach(scorecard => {
                 const option = document.createElement('option');
@@ -1349,7 +1624,31 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
                 option.dataset.tableName = scorecard.table_name;
                 option.dataset.channels = scorecard.channels || '';
                 scorecardSelect.appendChild(option);
+                addedCount++;
             });
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1559',message:'loadScorecards completed',data:{addedCount,optionsCount:scorecardSelect.options.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+            
+            // Ensure change event listener is working - attach onchange handler
+            // This ensures the event fires even if there are issues with event propagation
+            if (!scorecardSelect.hasAttribute('data-listener-attached')) {
+                scorecardSelect.setAttribute('data-listener-attached', 'true');
+                scorecardSelect.onchange = async function() {
+                    const selectedValue = this.value;
+                    if (selectedValue && selectedValue !== 'null' && selectedValue !== 'undefined' && selectedValue.trim() !== '') {
+                        await loadScorecardParameters(selectedValue);
+                    } else {
+                        currentScorecard = null;
+                        currentParameters = [];
+                        document.getElementById('scorecardInfo').style.display = 'none';
+                        clearErrorParameters();
+                        updateHeaderMetadata();
+                        showNoScorecardMessage();
+                    }
+                };
+            }
             
             // Auto-select scorecard: only if preselectedScorecardId is explicitly provided
             // By default, no scorecard should be selected
@@ -1400,10 +1699,10 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
             }
         }
     } catch (error) {
-        console.error('Error loading scorecards:', error);
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1322',message:'Error caught in loadScorecards',data:{errorMessage:error?.message,errorStack:error?.stack,errorName:error?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1628',message:'loadScorecards error caught',data:{errorMessage:error?.message,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
         // #endregion
+        console.error('Error loading scorecards:', error);
         const safeSetHTML = await getSafeSetHTML();
         safeSetHTML(scorecardSelect, '<option value="">Error loading scorecards</option>');
         showNoScorecardMessage();
@@ -1413,6 +1712,9 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
     // Only show if no parameters are currently loaded (don't overwrite rendered UI)
     if ((!scorecardSelect.value || scorecardSelect.value === '') && (!currentParameters || currentParameters.length === 0)) {
         showNoScorecardMessage();
+    } else if (scorecardSelect.value && scorecardSelect.value !== '' && scorecardSelect.value !== 'null' && (!currentParameters || currentParameters.length === 0)) {
+        // If a scorecard is selected but parameters aren't loaded, load them now
+        await loadScorecardParameters(scorecardSelect.value);
     }
 }
 
@@ -1436,15 +1738,8 @@ async function autoSelectScorecardByChannel(channelName) {
 
 // Load parameters for selected scorecard
 async function loadScorecardParameters(scorecardId) {
-        // #region agent log
-        console.log('[DEBUG C] loadScorecardParameters called', {scorecardId});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1437',message:'loadScorecardParameters called',data:{scorecardId:scorecardId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
     // Handle empty, null, or "null" string values
     if (!scorecardId || scorecardId === 'null' || scorecardId === 'undefined' || scorecardId.trim() === '') {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1439',message:'Early return: empty scorecardId',data:{scorecardId:scorecardId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         currentScorecard = null;
         currentParameters = [];
         document.getElementById('scorecardInfo').style.display = 'none';
@@ -1456,9 +1751,6 @@ async function loadScorecardParameters(scorecardId) {
     // Validate UUID format to prevent SQL errors
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(scorecardId)) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1450',message:'Early return: invalid UUID format',data:{scorecardId:scorecardId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         console.error('Invalid scorecard ID format:', scorecardId);
         currentScorecard = null;
         currentParameters = [];
@@ -1473,9 +1765,6 @@ async function loadScorecardParameters(scorecardId) {
         const supabase = await getSupabaseClient();
         
         if (!supabase) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1465',message:'Failed to get Supabase client',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             throw new Error('Failed to get authenticated Supabase client');
         }
         
@@ -1488,82 +1777,39 @@ async function loadScorecardParameters(scorecardId) {
             .single();
         
         if (scorecardError) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1477',message:'Scorecard query error',data:{error:scorecardError?.message,code:scorecardError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             console.error('Error loading scorecard:', scorecardError);
             throw scorecardError;
         }
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1480',message:'Scorecard loaded successfully',data:{scorecardId:scorecard?.id,scorecardName:scorecard?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         
-        // Load parameters with field whitelist - try to include all fields needed for rendering
-        // First try with all possible fields
-        let PARAMETER_FIELDS = 'id, scorecard_id, name, description, weight, max_score, is_active, display_order, parameter_type, field_id, field_type, error_name, error_category, penalty_points';
-        let { data: parameters, error: paramsError } = await supabase
+        // Load parameters with correct field names from database schema
+        // Based on actual schema: id, scorecard_id, error_name, penalty_points, parameter_type, error_category, field_type, field_id, description, enable_ai_audit, prompt, is_fail_all, points_direction, requires_feedback, display_order, is_active, created_at
+        const PARAMETER_FIELDS = 'id, scorecard_id, error_name, penalty_points, parameter_type, error_category, field_type, field_id, description, enable_ai_audit, prompt, is_fail_all, points_direction, requires_feedback, display_order, is_active, created_at';
+        const { data: parameters, error: paramsError } = await supabase
             .from('scorecard_perameters')
             .select(PARAMETER_FIELDS)
             .eq('scorecard_id', scorecardId)
             .eq('is_active', true)
             .order('display_order', { ascending: true });
         
-        // #region agent log
-        console.log('[DEBUG D] Parameters query result (extended fields)', {parametersCount:parameters?.length || 0,hasError:!!paramsError,errorMessage:paramsError?.message,errorCode:paramsError?.code,firstParam:parameters?.[0]});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1489',message:'Parameters query result (extended fields)',data:{parametersCount:parameters?.length || 0,hasError:!!paramsError,errorMessage:paramsError?.message,errorCode:paramsError?.code,firstParam:parameters?.[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
-        
-        // If query fails, try with basic fields only (some fields might not exist in DB)
         if (paramsError) {
-            console.warn('Failed to load with extended fields, trying basic fields:', paramsError);
-            PARAMETER_FIELDS = 'id, scorecard_id, name, description, weight, max_score, is_active, display_order, parameter_type';
-            const retryResult = await supabase
-                .from('scorecard_perameters')
-                .select(PARAMETER_FIELDS)
-                .eq('scorecard_id', scorecardId)
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-            
-            parameters = retryResult.data;
-            paramsError = retryResult.error;
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1503',message:'Parameters query result (basic fields)',data:{parametersCount:parameters?.length || 0,hasError:!!paramsError,errorMessage:paramsError?.message,errorCode:paramsError?.code,firstParam:parameters?.[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-            // #endregion
-        }
-        
-        if (paramsError) {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1507',message:'Parameters query error',data:{error:paramsError?.message,code:paramsError?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-            // #endregion
             console.error('Error loading parameters:', paramsError);
             throw paramsError;
         }
         
-        console.log('Loaded parameters:', parameters);
-        console.log('[DEBUG RAW] Raw parameters from DB:', JSON.stringify(parameters, null, 2));
-        
         currentScorecard = scorecard;
-        // Map database fields to expected field names for renderErrorParameters
+        // Parameters already have correct field names from database (error_name, field_id, etc.)
+        // Just ensure defaults for optional fields
         currentParameters = (parameters || []).map(param => {
-            const mapped = {
+            return {
                 ...param,
-                // Map field names to what renderErrorParameters expects
-                error_name: param.error_name || param.name || '',
+                // Ensure required fields have defaults
+                error_name: param.error_name || '',
                 error_category: param.error_category || '',
-                penalty_points: param.penalty_points || param.weight || param.max_score || 0,
+                penalty_points: param.penalty_points || 0,
                 field_type: param.field_type || 'counter', // Default to counter if not specified
                 field_id: param.field_id || param.id || '' // Use field_id if exists, otherwise use id
             };
-            console.log('[DEBUG MAP] Mapping param:', {original: param, mapped: mapped});
-            return mapped;
         });
-        
-        // #region agent log
-        console.log('[DEBUG E] Parameters mapped', {mappedCount:currentParameters.length,firstMapped:currentParameters[0],allMapped:currentParameters});
-        console.log('[DEBUG E DETAIL] Full mapped parameters array:', JSON.stringify(currentParameters, null, 2));
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1525',message:'Parameters mapped',data:{mappedCount:currentParameters.length,firstMapped:currentParameters[0],allMapped:currentParameters},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-        console.log('Mapped parameters:', currentParameters);
         
         // Update scorecard info display
         const scorecardScoringType = document.getElementById('scorecardScoringType');
@@ -1579,31 +1825,26 @@ async function loadScorecardParameters(scorecardId) {
         if (scorecardParamsCount) scorecardParamsCount.textContent = currentParameters.length;
         if (scorecardInfo) scorecardInfo.style.display = 'flex';
         
-        // #region agent log
-        console.log('[DEBUG F] Before renderErrorParameters call', {currentParametersCount:currentParameters.length,hasScorecard:!!currentScorecard});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1542',message:'Before renderErrorParameters call',data:{currentParametersCount:currentParameters.length,hasScorecard:!!currentScorecard},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
         // Render error parameters
-        renderErrorParameters();
-        // #region agent log
-        console.log('[DEBUG F] After renderErrorParameters call');
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1544',message:'After renderErrorParameters call',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-        // #endregion
+        await renderErrorParameters();
         
         // Set initial average score based on scoring type
         setInitialAverageScore();
         
     } catch (error) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1548',message:'Error caught in loadScorecardParameters',data:{errorMessage:error?.message,errorStack:error?.stack,errorName:error?.name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         console.error('Error loading scorecard parameters:', error);
-        await window.confirmationDialog.show({
-            title: 'Error',
-            message: 'Failed to load scorecard parameters: ' + error.message,
-            confirmText: 'OK',
-            type: 'error'
-        });
+        // Show error message to user
+        if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+            await window.confirmationDialog.show({
+                title: 'Error',
+                message: 'Failed to load scorecard parameters: ' + (error.message || 'Unknown error'),
+                confirmText: 'OK',
+                type: 'error'
+            });
+        } else {
+            // Fallback to alert if confirmationDialog is not available
+            alert('Failed to load scorecard parameters: ' + (error.message || 'Unknown error'));
+        }
     }
 }
 
@@ -2760,9 +3001,6 @@ window.createManualAudit = async function() {
         await autoSelectScorecardByChannel(channelSelect.value);
     } else {
         // Otherwise, just reload and auto-select first available scorecard
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:2662',message:'Calling loadScorecards from window.onload',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
         await loadScorecards();
     }
     
@@ -8820,12 +9058,10 @@ function setupFeedbackTextareaAutoExpand(fieldId, textareaElement = null) {
 function showNoScorecardMessage() {
     // Don't show message if parameters are already loaded (prevents overwriting rendered UI)
     if (currentParameters && currentParameters.length > 0) {
-        console.log('[DEBUG] showNoScorecardMessage called but parameters exist, skipping', {parametersCount: currentParameters.length});
         return;
     }
     const container = document.getElementById('errorParametersContainer');
     if (container) {
-        console.log('[DEBUG] showNoScorecardMessage setting container innerHTML');
         container.innerHTML = `
             <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
                 <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">No scorecard selected. Please select a scorecard first to load error parameters.</p>
@@ -8843,20 +9079,9 @@ function hideNoScorecardMessage() {
 }
 
 // Render error parameter fields dynamically
-function renderErrorParameters() {
-    // #region agent log
-    console.log('[DEBUG G] renderErrorParameters called', {currentParametersCount:currentParameters?.length || 0,hasCurrentParameters:!!currentParameters,hasCurrentScorecard:!!currentScorecard});
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8768',message:'renderErrorParameters called',data:{currentParametersCount:currentParameters?.length || 0,hasCurrentParameters:!!currentParameters,hasCurrentScorecard:!!currentScorecard},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
+async function renderErrorParameters() {
     const container = document.getElementById('errorParametersContainer');
-    // #region agent log
-    console.log('[DEBUG G] Container check', {containerExists:!!container,containerId:container?.id});
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8769',message:'Container check',data:{containerExists:!!container,containerId:container?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
     if (!container) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8771',message:'Container not found, returning early',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-        // #endregion
         console.error('errorParametersContainer not found');
         return;
     }
@@ -8867,10 +9092,6 @@ function renderErrorParameters() {
     hideNoScorecardMessage();
     
     if (!currentParameters || currentParameters.length === 0) {
-        // #region agent log
-        console.log('[DEBUG G] No parameters to render - EMPTY ARRAY', {currentParameters:currentParameters,currentParametersLength:currentParameters?.length,currentParametersType:typeof currentParameters,currentParametersIsArray:Array.isArray(currentParameters)});
-        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8777',message:'No parameters to render',data:{currentParameters:currentParameters,currentParametersLength:currentParameters?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-        // #endregion
         container.innerHTML = '<div style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;"><p>No parameters defined for this scorecard.</p></div>';
         // Reset header to default "Status"
         const headerStatusCol = document.querySelector('#errorParametersSection .error-details-header-status');
@@ -8879,8 +9100,6 @@ function renderErrorParameters() {
         }
         return;
     }
-    
-    console.log('[DEBUG G] Rendering parameters - HAS PARAMETERS', {count: currentParameters.length, firstParam: currentParameters[0]});
     
     // Determine column header based on field types (matching audit-view.html logic)
     let statusColumnHeader = 'Status';
@@ -8899,6 +9118,9 @@ function renderErrorParameters() {
         headerStatusCol.textContent = statusColumnHeader;
     }
     
+    // Load safeSetHTML and escapeHtml once before rendering
+    const safeSetHTML = await getSafeSetHTML();
+    
     // Update scorecard display in header
     const scorecardDisplay = document.getElementById('formScorecardDisplay');
     if (scorecardDisplay && currentScorecard) {
@@ -8915,13 +9137,14 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${currentScorecard.name}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        const escapedName = await escapeHtml(currentScorecard.name);
+        const scorecardHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapedName}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        safeSetHTML(scorecardDisplay, scorecardHTML);
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8821',message:'Starting to render parameters',data:{parametersCount:currentParameters.length,firstParam:currentParameters[0]},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
-    currentParameters.forEach(param => {
+    try {
+    
+    for (const param of currentParameters) {
         // Determine parameter styling based on type
         const paramType = param.parameter_type || 'error';
         const paramIcon = paramType === 'error' ? '-' : (paramType === 'achievement' || paramType === 'bonus' ? '+' : '');
@@ -8977,28 +9200,29 @@ function renderErrorParameters() {
         
         let inputHtml = '';
         
+        // Create inputHtml without inline styles - styles will be applied directly after creation
         if (param.field_type === 'radio') {
-            // Radio button field (YES/NO)
+            // Radio button field (YES/NO) - no inline styles, will be applied after creation
             inputHtml = `
-                <div style="display: flex; align-items: center; gap: 0.3234rem;">
-                    <label style="display: flex; align-items: center; gap: 0.1617rem; cursor: pointer;">
-                        <input type="radio" name="${param.field_id}" id="${param.field_id}_yes" value="1" required data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}" onchange="calculateAverageScore()" style="width: 0.6469rem; height: 0.6469rem; cursor: pointer; accent-color: #10b981;">
-                        <span style="font-size: 0.4852rem; font-weight: 600; color: #10b981;">✓ YES</span>
+                <div>
+                    <label>
+                        <input type="radio" name="${param.field_id}" id="${param.field_id}_yes" value="1" required data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}" onchange="calculateAverageScore()">
+                        <span>✓ YES</span>
                     </label>
-                    <label style="display: flex; align-items: center; gap: 0.1617rem; cursor: pointer;">
-                        <input type="radio" name="${param.field_id}" id="${param.field_id}_no" value="0" required data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}" onchange="calculateAverageScore()" style="width: 0.6469rem; height: 0.6469rem; cursor: pointer; accent-color: #ef4444;">
-                        <span style="font-size: 0.4852rem; font-weight: 600; color: #ef4444;">âœ— NO</span>
+                    <label>
+                        <input type="radio" name="${param.field_id}" id="${param.field_id}_no" value="0" required data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}" onchange="calculateAverageScore()">
+                        <span>✗ NO</span>
                     </label>
                 </div>
             `;
         } else {
-            // Counter field (default) - plain text display for counter value (no container)
+            // Counter field (default) - no inline styles, will be applied after creation
             inputHtml = `
-                <div style="display: flex; align-items: center; gap: 0.2425rem;">
-                    <button type="button" class="counter-btn" data-action="decrement" data-target="${param.field_id}" style="width: 1.1321rem; height: 1.1321rem; display: flex; align-items: center; justify-content: center; border: 0.0304rem solid #d1d5db; background-color: #ffffff; color: #000000; border-radius: 0.1617rem; font-size: 0.6469rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-family: 'Poppins', sans-serif; padding: 0; line-height: 1;">-</button>
-                    <span id="${param.field_id}_display" style="font-size: 0.5659rem; font-weight: 700; font-family: 'Poppins', sans-serif; color: #1f2937; min-width: 0.8086rem; text-align: center;">0</span>
-                    <button type="button" class="counter-btn" data-action="increment" data-target="${param.field_id}" style="width: 1.1321rem; height: 1.1321rem; display: flex; align-items: center; justify-content: center; border: 0.0304rem solid #d1d5db; background-color: #ffffff; color: #000000; border-radius: 0.1617rem; font-size: 0.6469rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-family: 'Poppins', sans-serif; padding: 0; line-height: 1;">+</button>
-                    <input type="number" id="${param.field_id}" name="${param.field_id}" min="0" max="10" value="0" readonly data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}" style="display: none;">
+                <div>
+                    <button type="button" class="counter-btn" data-action="decrement" data-target="${param.field_id}">-</button>
+                    <span id="${param.field_id}_display">0</span>
+                    <button type="button" class="counter-btn" data-action="increment" data-target="${param.field_id}">+</button>
+                    <input type="number" id="${param.field_id}" name="${param.field_id}" min="0" max="10" value="0" readonly data-penalty="${param.penalty_points}" data-category="${param.error_category}" data-param-type="${paramType}">
                 </div>
             `;
         }
@@ -9007,39 +9231,183 @@ function renderErrorParameters() {
         const rowDiv = document.createElement('div');
         rowDiv.style.cssText = 'display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 4fr; gap: 0.6469rem; align-items: start; padding: 0.3234rem 0; border-bottom: 0.0405rem solid #f3f4f6; width: 100%; min-width: 0;';
         
-        rowDiv.innerHTML = `
-            <div style="font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0; overflow: hidden;">
-                <span style="font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};">${paramIcon}</span> ${param.error_name}
+        // Use safeSetHTML to preserve styles, then apply CSS directly to ensure it's not stripped
+        const escapedErrorName = await escapeHtml(param.error_name || '');
+        const escapedSeverityLabel = await escapeHtml(severityLabel);
+        const rowHTML = `
+            <div>
+                <span>${paramIcon}</span> ${escapedErrorName}
             </div>
-            <div style="display: flex; justify-content: center; font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0;">
-                ${param.penalty_points}
+            <div>
+                ${param.penalty_points || 0}
             </div>
-            <div style="display: flex; justify-content: center; min-width: 0;">
-                <span style="background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;">${severityLabel}</span>
+            <div>
+                <span>${escapedSeverityLabel}</span>
             </div>
-            <div style="display: flex; justify-content: center; min-width: 0;">
+            <div>
                 ${inputHtml}
             </div>
-            <div id="feedback_container_${param.field_id}" style="display: flex; flex-direction: column; gap: 0.3234rem; min-width: 0; width: 100%; word-wrap: break-word; overflow-wrap: break-word;">
+            <div id="feedback_container_${param.field_id}">
                 <!-- Feedback boxes will be dynamically added here based on error count -->
             </div>
         `;
+        safeSetHTML(rowDiv, rowHTML);
+        
+        // Apply styles directly to elements after sanitization to ensure CSS is preserved
+        const children = rowDiv.children;
+        if (children.length >= 5) {
+            // First column: Error name
+            children[0].style.cssText = 'font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: "Poppins", sans-serif; min-width: 0; overflow: hidden;';
+            const iconSpan = children[0].querySelector('span');
+            if (iconSpan) {
+                iconSpan.style.cssText = `font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};`;
+            }
+            
+            // Second column: Penalty points
+            children[1].style.cssText = 'display: flex; justify-content: center; font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: "Poppins", sans-serif; min-width: 0;';
+            
+            // Third column: Severity badge
+            children[2].style.cssText = 'display: flex; justify-content: center; min-width: 0;';
+            const severitySpan = children[2].querySelector('span');
+            if (severitySpan) {
+                severitySpan.style.cssText = `background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: "Poppins", sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;`;
+            }
+            
+            // Fourth column: Input - apply styles to container and nested elements
+            children[3].style.cssText = 'display: flex; justify-content: center; min-width: 0;';
+            
+            // Apply styles to input container elements - CRITICAL: Apply styles to ALL nested elements
+            const inputContainer = children[3].querySelector('div');
+            if (inputContainer) {
+                if (param.field_type === 'radio') {
+                    // Radio button container styles
+                    inputContainer.style.cssText = 'display: flex; align-items: center; gap: 0.3234rem;';
+                    
+                    // Apply styles to ALL labels and their children
+                    const labels = inputContainer.querySelectorAll('label');
+                    labels.forEach((label, index) => {
+                        // Label styles
+                        label.style.cssText = 'display: flex; align-items: center; gap: 0.1617rem; cursor: pointer;';
+                        
+                        // Radio input styles
+                        const input = label.querySelector('input[type="radio"]');
+                        if (input) {
+                            input.style.cssText = `width: 0.6469rem; height: 0.6469rem; cursor: pointer; accent-color: ${index === 0 ? '#10b981' : '#ef4444'};`;
+                        }
+                        
+                        // Span styles (YES/NO text)
+                        const span = label.querySelector('span');
+                        if (span) {
+                            span.style.cssText = `font-size: 0.4852rem; font-weight: 600; color: ${index === 0 ? '#10b981' : '#ef4444'};`;
+                        }
+                    });
+                } else {
+                    // Counter field container styles
+                    inputContainer.style.cssText = 'display: flex; align-items: center; gap: 0.2425rem;';
+                    
+                    // Apply styles to ALL buttons
+                    const buttons = inputContainer.querySelectorAll('button.counter-btn');
+                    buttons.forEach(button => {
+                        button.style.cssText = 'width: 1.1321rem; height: 1.1321rem; display: flex; align-items: center; justify-content: center; border: 0.0304rem solid #d1d5db; background-color: #ffffff; color: #000000; border-radius: 0.1617rem; font-size: 0.6469rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-family: "Poppins", sans-serif; padding: 0; line-height: 1;';
+                    });
+                    
+                    // Display span styles
+                    const displaySpan = inputContainer.querySelector(`#${param.field_id}_display`);
+                    if (displaySpan) {
+                        displaySpan.style.cssText = 'font-size: 0.5659rem; font-weight: 700; font-family: "Poppins", sans-serif; color: #1f2937; min-width: 0.8086rem; text-align: center;';
+                    }
+                    
+                    // Hidden input styles
+                    const hiddenInput = inputContainer.querySelector(`input[type="number"]#${param.field_id}`);
+                    if (hiddenInput) {
+                        hiddenInput.style.cssText = 'display: none;';
+                    }
+                }
+            }
+            
+            // Fifth column: Feedback container
+            children[4].style.cssText = 'display: flex; flex-direction: column; gap: 0.3234rem; min-width: 0; width: 100%; word-wrap: break-word; overflow-wrap: break-word;';
+        }
         
         container.appendChild(rowDiv);
+        
+        // CRITICAL: Reapply styles after DOM insertion to ensure they persist
+        // Use requestAnimationFrame to ensure styles are applied after browser rendering
+        requestAnimationFrame(() => {
+            // Reapply row styles
+            rowDiv.style.cssText = 'display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 4fr; gap: 0.6469rem; align-items: start; padding: 0.3234rem 0; border-bottom: 0.0405rem solid #f3f4f6; width: 100%; min-width: 0;';
+            
+            // Reapply all column styles
+            const children = rowDiv.children;
+            if (children.length >= 5) {
+                children[0].style.cssText = 'font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: "Poppins", sans-serif; min-width: 0; overflow: hidden;';
+                const iconSpan = children[0].querySelector('span');
+                if (iconSpan) {
+                    iconSpan.style.cssText = `font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};`;
+                }
+                
+                children[1].style.cssText = 'display: flex; justify-content: center; font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: "Poppins", sans-serif; min-width: 0;';
+                
+                children[2].style.cssText = 'display: flex; justify-content: center; min-width: 0;';
+                const severitySpan = children[2].querySelector('span');
+                if (severitySpan) {
+                    severitySpan.style.cssText = `background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: "Poppins", sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;`;
+                }
+                
+                children[3].style.cssText = 'display: flex; justify-content: center; min-width: 0;';
+                const inputContainer = children[3].querySelector('div');
+                if (inputContainer) {
+                    if (param.field_type === 'radio') {
+                        inputContainer.style.cssText = 'display: flex; align-items: center; gap: 0.3234rem;';
+                        const labels = inputContainer.querySelectorAll('label');
+                        labels.forEach((label, index) => {
+                            label.style.cssText = 'display: flex; align-items: center; gap: 0.1617rem; cursor: pointer;';
+                            const input = label.querySelector('input[type="radio"]');
+                            if (input) {
+                                input.style.cssText = `width: 0.6469rem; height: 0.6469rem; cursor: pointer; accent-color: ${index === 0 ? '#10b981' : '#ef4444'};`;
+                            }
+                            const span = label.querySelector('span');
+                            if (span) {
+                                span.style.cssText = `font-size: 0.4852rem; font-weight: 600; color: ${index === 0 ? '#10b981' : '#ef4444'};`;
+                            }
+                        });
+                    } else {
+                        inputContainer.style.cssText = 'display: flex; align-items: center; gap: 0.2425rem;';
+                        const buttons = inputContainer.querySelectorAll('button.counter-btn');
+                        buttons.forEach(button => {
+                            button.style.cssText = 'width: 1.1321rem; height: 1.1321rem; display: flex; align-items: center; justify-content: center; border: 0.0304rem solid #d1d5db; background-color: #ffffff; color: #000000; border-radius: 0.1617rem; font-size: 0.6469rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; font-family: "Poppins", sans-serif; padding: 0; line-height: 1;';
+                        });
+                        const displaySpan = inputContainer.querySelector(`#${param.field_id}_display`);
+                        if (displaySpan) {
+                            displaySpan.style.cssText = 'font-size: 0.5659rem; font-weight: 700; font-family: "Poppins", sans-serif; color: #1f2937; min-width: 0.8086rem; text-align: center;';
+                        }
+                        const hiddenInput = inputContainer.querySelector(`input[type="number"]#${param.field_id}`);
+                        if (hiddenInput) {
+                            hiddenInput.style.cssText = 'display: none;';
+                        }
+                    }
+                }
+                
+                children[4].style.cssText = 'display: flex; flex-direction: column; gap: 0.3234rem; min-width: 0; width: 100%; word-wrap: break-word; overflow-wrap: break-word;';
+            }
+        });
         
         // Initialize feedback boxes based on current error count (initially 0, so no boxes shown)
         updateFeedbackBoxesForParameter(param.field_id, param.field_type || 'counter', param.parameter_type || 'error');
         
         // Setup auto-expand functionality helper
         setupFeedbackTextareaAutoExpand(param.field_id);
-    });
+    }
+    } catch (renderError) {
+        console.error('Error rendering parameters:', renderError);
+        const safeSetHTML = await getSafeSetHTML();
+        const escapedMessage = await escapeHtml(renderError.message);
+        safeSetHTML(container, `<div style="padding: 1.2937rem; text-align: center; color: #dc2626; font-size: 0.5659rem;"><p>Error rendering parameters: ${escapedMessage}</p></div>`);
+        return;
+    }
     
     // Update summary badges when scores change
     calculateAverageScore();
-    // #region agent log
-    console.log('[DEBUG G] renderErrorParameters completed', {parametersRendered:currentParameters.length,containerInnerHTMLLength:container?.innerHTML?.length || 0});
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:8843',message:'renderErrorParameters completed',data:{parametersRendered:currentParameters.length,containerInnerHTMLLength:container?.innerHTML?.length || 0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-    // #endregion
 }
 
 // Clear error parameters
@@ -10023,28 +10391,77 @@ let allEmployees = []; // Store all employees loaded from Supabase
 
 // Load employees from Supabase
 async function loadEmployees() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10250',message:'loadEmployees called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     try {
         console.log('loadEmployees called');
         const employeeSelect = document.getElementById('employeeName');
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10254',message:'loadEmployees DOM check',data:{hasSelect:!!employeeSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
         
         if (!employeeSelect) {
             console.warn('Employee select element not found');
             return;
         }
         
-        // Check if Supabase is available
-        if (!window.SupabaseUsers) {
-            console.error('SupabaseUsers not available');
-            employeeSelect.innerHTML = '<option value="">Error: Supabase not initialized</option>';
-            throw new Error('SupabaseUsers not available');
+        // Try to get Supabase client with retry logic
+        let supabase = null;
+        let attempts = 0;
+        const maxAttempts = 30; // 3 seconds max (30 * 100ms)
+        
+        while (!supabase && attempts < maxAttempts) {
+            try {
+                supabase = await getSupabaseClient();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10267',message:'getSupabaseClient result',data:{attempt:attempts+1,hasSupabase:!!supabase},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                if (supabase) break;
+            } catch (e) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10270',message:'getSupabaseClient error',data:{attempt:attempts+1,errorMessage:e?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                // Supabase not ready yet, continue waiting
+                if (attempts === 0) {
+                    console.log('Waiting for Supabase client to be ready...');
+                }
+            }
+            attempts++;
+            if (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
         }
         
-        console.log('Loading users from Supabase...');
-        // Load users from Supabase
-        allEmployees = await window.SupabaseUsers.getAllUsers({
-            orderBy: { column: 'name', ascending: true }
-        });
+        if (!supabase) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10282',message:'loadEmployees no supabase after retries',data:{attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            console.error('Supabase client not available after retries');
+            employeeSelect.innerHTML = '<option value="">Error: Supabase not initialized</option>';
+            throw new Error('Supabase client not available');
+        }
         
+        console.log('Loading employees from Supabase people table...');
+        
+        // Load employees from people table with proper field selection
+        const { data: employeesData, error } = await supabase
+            .from('people')
+            .select('email, name, role, department, channel, designation, employee_id, country, is_active')
+            .eq('is_active', true)
+            .order('name', { ascending: true });
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10295',message:'loadEmployees query result',data:{hasError:!!error,errorMessage:error?.message,dataCount:employeesData?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
+        if (error) {
+            console.error('Error loading employees from Supabase:', error);
+            throw error;
+        }
+        
+        allEmployees = employeesData || [];
         console.log(`Loaded ${allEmployees ? allEmployees.length : 0} employees from Supabase`);
         
         if (!allEmployees || allEmployees.length === 0) {
@@ -10076,9 +10493,16 @@ async function loadEmployees() {
             addedCount++;
         });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10333',message:'loadEmployees completed',data:{addedCount,optionsCount:employeeSelect.options.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
         console.log(`Successfully added ${addedCount} employees to dropdown`);
         
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10336',message:'loadEmployees error caught',data:{errorMessage:error?.message,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         console.error('Error loading employees:', error);
         console.error('Error stack:', error.stack);
         const employeeSelect = document.getElementById('employeeName');
@@ -10091,6 +10515,156 @@ async function loadEmployees() {
 // Expose loadEmployees globally
 window.loadEmployees = loadEmployees;
 
+// Expose loadScorecards globally
+window.loadScorecards = loadScorecards;
+
+// Expose loadChannels globally
+window.loadChannels = loadChannels;
+
+// Function to load all dropdowns
+async function loadAllDropdowns() {
+    console.log('[DEBUG] loadAllDropdowns called');
+    console.log('[DEBUG] Function availability:', {
+        loadScorecards: typeof loadScorecards,
+        loadChannels: typeof loadChannels,
+        loadEmployees: typeof loadEmployees,
+        windowLoadScorecards: typeof window.loadScorecards,
+        windowLoadChannels: typeof window.loadChannels,
+        windowLoadEmployees: typeof window.loadEmployees
+    });
+    
+    // Check both local and window versions
+    const hasLoadScorecards = typeof loadScorecards === 'function' || typeof window.loadScorecards === 'function';
+    const hasLoadChannels = typeof loadChannels === 'function' || typeof window.loadChannels === 'function';
+    const hasLoadEmployees = typeof loadEmployees === 'function' || typeof window.loadEmployees === 'function';
+    
+    if (!hasLoadScorecards || !hasLoadChannels || !hasLoadEmployees) {
+        console.warn('[DEBUG] Load functions not yet available, will retry in 500ms');
+        setTimeout(loadAllDropdowns, 500);
+        return;
+    }
+    
+    // Use window versions if available, otherwise use local
+    const loadScorecardsFn = window.loadScorecards || loadScorecards;
+    const loadChannelsFn = window.loadChannels || loadChannels;
+    const loadEmployeesFn = window.loadEmployees || loadEmployees;
+    
+    try {
+        console.log('[DEBUG] Starting to load all dropdowns...');
+        const results = await Promise.all([
+            loadScorecardsFn(null, null, true).catch(err => {
+                console.error('[DEBUG] Error loading scorecards:', err);
+                return null;
+            }),
+            loadChannelsFn().catch(err => {
+                console.error('[DEBUG] Error loading channels:', err);
+                return null;
+            }),
+            loadEmployeesFn().catch(err => {
+                console.error('[DEBUG] Error loading employees:', err);
+                return null;
+            })
+        ]);
+        
+        const successCount = results.filter(r => r !== null).length;
+        console.log(`[DEBUG] Loaded ${successCount}/3 dropdowns successfully`);
+        
+        // Verify dropdowns are populated
+        setTimeout(() => {
+            const scorecardSelect = document.getElementById('scorecardSelect');
+            const channelSelect = document.getElementById('channel');
+            const employeeSelect = document.getElementById('employeeName');
+            console.log('[DEBUG] Dropdown verification:', {
+                scorecards: scorecardSelect?.options?.length || 0,
+                channels: channelSelect?.options?.length || 0,
+                employees: employeeSelect?.options?.length || 0
+            });
+        }, 1000);
+    } catch (error) {
+        console.error('[DEBUG] Error in loadAllDropdowns:', error);
+    }
+}
+
+// Listen for Supabase ready event and load dropdowns
+console.log('[DEBUG] Setting up supabaseReadyForDropdowns event listener');
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10513',message:'Setting up event listener',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+// #endregion
+
+const dropdownLoader = function(event) {
+    console.log('[DEBUG] supabaseReadyForDropdowns event received!', event);
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10516',message:'Event received',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    loadAllDropdowns();
+};
+
+window.addEventListener('supabaseReadyForDropdowns', dropdownLoader, { once: true });
+
+// If Supabase is already ready (event fired before listener was set up), trigger immediately
+if (window.supabaseReadyForDropdowns || (window.supabaseClient && window.supabaseClientReady)) {
+    console.log('[DEBUG] Supabase already ready flag detected, calling loadAllDropdowns immediately');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10567',message:'Supabase ready flag detected',data:{hasFlag:!!window.supabaseReadyForDropdowns,hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    setTimeout(loadAllDropdowns, 100);
+}
+
+// Also check if Supabase is already ready when this script runs
+console.log('[DEBUG] Checking if Supabase already ready:', {
+    hasClient: !!window.supabaseClient,
+    readyFlag: !!window.supabaseClientReady,
+    dropdownsReady: !!window.supabaseReadyForDropdowns
+});
+// #region agent log
+fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10525',message:'Checking Supabase ready state',data:{hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+// #endregion
+
+if (window.supabaseClient && window.supabaseClientReady) {
+    console.log('[DEBUG] Supabase already ready when script loaded, triggering dropdown load');
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10529',message:'Supabase ready, calling loadAllDropdowns',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    setTimeout(loadAllDropdowns, 100);
+} else {
+    // Fallback: Try loading after a delay even if event doesn't fire
+    console.log('[DEBUG] Supabase not ready yet, setting up fallback timer');
+    setTimeout(() => {
+        console.log('[DEBUG] Fallback timer fired, checking Supabase:', {
+            hasClient: !!window.supabaseClient,
+            readyFlag: !!window.supabaseClientReady
+        });
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10537',message:'Fallback timer fired',data:{hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        // #endregion
+        if (window.supabaseClient && window.supabaseClientReady) {
+            console.log('[DEBUG] Fallback: Supabase ready detected, loading dropdowns');
+            loadAllDropdowns();
+        } else {
+            console.warn('[DEBUG] Fallback: Supabase still not ready, trying anyway');
+            // Try loading anyway - functions might handle it
+            loadAllDropdowns();
+        }
+    }, 2000);
+}
+
+// Additional fallback: Try loading on window load
+window.addEventListener('load', () => {
+    console.log('[DEBUG] Window load event, checking dropdowns');
+    setTimeout(() => {
+        const scorecardSelect = document.getElementById('scorecardSelect');
+        const channelSelect = document.getElementById('channel');
+        const employeeSelect = document.getElementById('employeeName');
+        const needsLoad = (!scorecardSelect || scorecardSelect.options.length <= 1) ||
+                         (!channelSelect || channelSelect.options.length <= 1) ||
+                         (!employeeSelect || employeeSelect.options.length <= 1);
+        if (needsLoad) {
+            console.log('[DEBUG] Window load fallback: Dropdowns empty, loading...');
+            loadAllDropdowns();
+        }
+    }, 1000);
+});
+
 // Also try loading on window load as a final fallback
 window.addEventListener('load', async function() {
     console.log('Window load event fired, checking employee dropdown...');
@@ -10098,7 +10672,7 @@ window.addEventListener('load', async function() {
         const employeeSelect = document.getElementById('employeeName');
         if (employeeSelect && employeeSelect.options.length <= 1) {
             console.log('Window load fallback: Employee dropdown empty, attempting load...');
-            if (window.SupabaseUsers && window.SupabaseDB && typeof loadEmployees === 'function') {
+            if (typeof loadEmployees === 'function') {
                 try {
                     await loadEmployees();
                     console.log('Window load fallback succeeded! Options:', document.getElementById('employeeName')?.options.length);
@@ -10106,7 +10680,7 @@ window.addEventListener('load', async function() {
                     console.error('Window load fallback error:', error);
                 }
             } else {
-                console.error('Window load fallback - missing dependencies. SupabaseUsers:', !!window.SupabaseUsers, 'SupabaseDB:', !!window.SupabaseDB);
+                console.error('Window load fallback - loadEmployees function not available');
             }
         } else {
             console.log('Window load fallback - dropdown already populated:', employeeSelect?.options.length);
@@ -10116,43 +10690,114 @@ window.addEventListener('load', async function() {
 
 // Load channels from channels table
 async function loadChannels() {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10378',message:'loadChannels called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     try {
         const channelSelect = document.getElementById('channel');
         
-        if (!window.supabaseClient) {
-            console.error('Supabase client not initialized');
-            channelSelect.innerHTML = '<option value="">Error: Supabase not initialized</option>';
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10382',message:'loadChannels DOM check',data:{hasSelect:!!channelSelect},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+        // #endregion
+        
+        if (!channelSelect) {
+            console.error('Channel select element not found');
             return;
         }
         
+        // Try to get Supabase client immediately with retry logic
+        let supabase = null;
+        let attempts = 0;
+        const maxAttempts = 30; // 3 seconds max (30 * 100ms) - reduced from 5 seconds
+        
+        while (!supabase && attempts < maxAttempts) {
+            try {
+                supabase = await getSupabaseClient();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10393',message:'loadChannels getSupabaseClient result',data:{attempt:attempts+1,hasSupabase:!!supabase},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                if (supabase) break;
+            } catch (e) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10396',message:'loadChannels getSupabaseClient error',data:{attempt:attempts+1,errorMessage:e?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                // Supabase not ready yet, continue waiting
+                if (attempts === 0) {
+                    // Listen for supabaseReady event on first attempt
+                    window.addEventListener('supabaseReady', async () => {
+                        try {
+                            const client = await getSupabaseClient();
+                            if (client && !supabase) {
+                                supabase = client;
+                            }
+                        } catch (err) {
+                            console.warn('Failed to get Supabase after ready event:', err);
+                        }
+                    }, { once: true });
+                }
+            }
+            
+            // Wait 100ms before next attempt (reduced from longer waits)
+            if (!supabase) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            attempts++;
+        }
+        
+        if (!supabase) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10420',message:'loadChannels no supabase after retries',data:{attempts},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            throw new Error('Failed to get authenticated Supabase client after retries');
+        }
+        
         // Fetch active channels from channels table
-        const { data, error } = await window.supabaseClient
+        const { data, error } = await supabase
             .from('channels')
             .select('name')
             .eq('is_active', true)
             .order('name', { ascending: true });
         
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10430',message:'loadChannels query result',data:{hasError:!!error,errorMessage:error?.message,dataCount:data?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        
         if (error) throw error;
         
-        // Populate the dropdown
-        channelSelect.innerHTML = '<option value="">Select Channel</option>';
+        // Use safeSetHTML for initial option
+        const safeSetHTML = await getSafeSetHTML();
+        safeSetHTML(channelSelect, '<option value="">Select Channel</option>');
         
-        data.forEach(channel => {
-            const option = document.createElement('option');
-            option.value = channel.name;
-            option.textContent = channel.name;
-            channelSelect.appendChild(option);
-        });
-        
-        // Keep channel blank by default - no auto-selection
-        // Scorecards will be loaded without auto-selection when page loads
-        
-        console.log('Loaded channels from channels table:', data.map(c => c.name));
+        // Add channel options
+        if (data && data.length > 0) {
+            data.forEach(channel => {
+                const option = document.createElement('option');
+                option.value = channel.name;
+                option.textContent = channel.name;
+                channelSelect.appendChild(option);
+            });
+            
+            console.log('Loaded channels from channels table:', data.map(c => c.name));
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10560',message:'loadChannels completed',data:{channelCount:data.length,optionsCount:channelSelect.options.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+            // #endregion
+        } else {
+            console.warn('No active channels found');
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10563',message:'loadChannels no data',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+        }
         
     } catch (error) {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:10566',message:'loadChannels error caught',data:{errorMessage:error?.message,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
         console.error('Error loading channels:', error);
         const channelSelect = document.getElementById('channel');
-        channelSelect.innerHTML = '<option value="">Error loading channels</option>';
+        if (channelSelect) {
+            const safeSetHTML = await getSafeSetHTML();
+            safeSetHTML(channelSelect, '<option value="">Error loading channels</option>');
+        }
     }
 }
 
@@ -11014,18 +11659,156 @@ function waitForPageReady() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('DOMContentLoaded fired in audit-form.html');
-    // #region agent log
-    console.log('[DEBUG] DOMContentLoaded - attempting to load scorecards');
-    // #endregion
-    // Load scorecards on page load
+// Initialize dropdowns - handle both cases: DOM already loaded or still loading
+async function initializeDropdowns() {
     try {
-        await loadScorecards(null, null, true);
-        console.log('[DEBUG] loadScorecards completed from DOMContentLoaded');
-    } catch (err) {
-        console.error('[DEBUG] Error loading scorecards from DOMContentLoaded:', err);
+        // #region agent log
+        const logData1 = {location:'audit-form.html:11453',message:'initializeDropdowns called',data:{readyState:document.readyState,timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'};
+        console.log('[DEBUG]', logData1);
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData1)}).catch(()=>{});
+        // #endregion
+        console.log('[DEBUG] initializeDropdowns called, readyState:', document.readyState);
+        console.log('[DEBUG] Function availability:', {
+            loadScorecards: typeof loadScorecards,
+            loadChannels: typeof loadChannels,
+            loadEmployees: typeof loadEmployees,
+            waitForSupabaseReady: typeof waitForSupabaseReady
+        });
+        
+        // Wait for Supabase to be ready first
+        console.log('Waiting for Supabase to be ready...');
+        const supabaseReady = await waitForSupabaseReady(10000);
+        
+        // #region agent log
+        const logData2 = {location:'audit-form.html:11504',message:'waitForSupabaseReady result',data:{supabaseReady,hasClient:!!window.supabaseClient,readyFlag:!!window.supabaseClientReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'};
+        console.log('[DEBUG]', logData2);
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData2)}).catch(()=>{});
+        // #endregion
+        
+        if (!supabaseReady) {
+            console.error('Supabase not ready after timeout, attempting to load anyway...');
+        } else {
+            console.log('✓ Supabase is ready');
+        }
+        
+        // Wait a bit to ensure all functions are defined
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Verify functions exist before calling
+        const functionsReady = typeof loadScorecards === 'function' && 
+                              typeof loadChannels === 'function' && 
+                              typeof loadEmployees === 'function';
+        
+        // #region agent log
+        const logData3 = {location:'audit-form.html:11522',message:'Functions availability check',data:{functionsReady,hasLoadScorecards:typeof loadScorecards==='function',hasLoadChannels:typeof loadChannels==='function',hasLoadEmployees:typeof loadEmployees==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+        console.log('[DEBUG]', logData3);
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData3)}).catch(()=>{});
+        // #endregion
+        
+        if (!functionsReady) {
+            console.warn('Some load functions not ready, waiting...');
+            // Wait a bit more and try again
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Load scorecards, channels, and employees immediately in parallel
+        const loadPromises = [];
+        
+        if (typeof loadScorecards === 'function') {
+            // #region agent log
+            const logData4 = {location:'audit-form.html:11540',message:'Starting loadScorecards',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+            console.log('[DEBUG]', logData4);
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData4)}).catch(()=>{});
+            // #endregion
+            console.log('Loading scorecards...');
+            loadPromises.push(
+                loadScorecards(null, null, true).catch(err => {
+                    console.error('Error loading scorecards from DOMContentLoaded:', err);
+                    return null;
+                })
+            );
+        } else {
+            console.error('loadScorecards function not available');
+        }
+        
+        if (typeof loadChannels === 'function') {
+            // #region agent log
+            const logData5 = {location:'audit-form.html:11552',message:'Starting loadChannels',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+            console.log('[DEBUG]', logData5);
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData5)}).catch(()=>{});
+            // #endregion
+            console.log('Loading channels...');
+            loadPromises.push(
+                loadChannels().catch(err => {
+                    console.error('Error loading channels from DOMContentLoaded:', err);
+                    return null;
+                })
+            );
+        } else {
+            console.error('loadChannels function not available');
+        }
+        
+        if (typeof loadEmployees === 'function') {
+            // #region agent log
+            const logData6 = {location:'audit-form.html:11564',message:'Starting loadEmployees',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+            console.log('[DEBUG]', logData6);
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData6)}).catch(()=>{});
+            // #endregion
+            console.log('Loading employees...');
+            loadPromises.push(
+                loadEmployees().catch(err => {
+                    console.error('Error loading employees from DOMContentLoaded:', err);
+                    return null;
+                })
+            );
+        } else {
+            console.error('loadEmployees function not available');
+        }
+        
+        if (loadPromises.length > 0) {
+            const results = await Promise.all(loadPromises);
+            const successCount = results.filter(r => r !== null).length;
+            // #region agent log
+            const logData7 = {location:'audit-form.html:11578',message:'Promise.all completed',data:{successCount,totalPromises:loadPromises.length,results:results.map(r=>r!==null)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'};
+            console.log('[DEBUG]', logData7);
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData7)}).catch(()=>{});
+            // #endregion
+            console.log(`✓ Loaded ${successCount}/${loadPromises.length} dropdowns successfully`);
+            
+            // Verify dropdowns are actually populated
+            const scorecardSelect = document.getElementById('scorecardSelect');
+            const channelSelect = document.getElementById('channel');
+            const employeeSelect = document.getElementById('employeeName');
+            console.log('[DEBUG] Dropdown verification:', {
+                scorecards: scorecardSelect?.options?.length || 0,
+                channels: channelSelect?.options?.length || 0,
+                employees: employeeSelect?.options?.length || 0
+            });
+        } else {
+            console.error('No load functions available!');
+        }
+    } catch (error) {
+        // #region agent log
+        const logData8 = {location:'audit-form.html:11582',message:'initializeDropdowns error',data:{errorMessage:error?.message,errorCode:error?.code,stack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'};
+        console.log('[DEBUG]', logData8);
+        fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData8)}).catch(()=>{});
+        // #endregion
+        console.error('[DEBUG] Error loading dropdowns:', error);
+        console.error('[DEBUG] Error stack:', error.stack);
     }
+}
+
+// Attach DOMContentLoaded listener, or run immediately if DOM is already loaded
+console.log('[DEBUG] Setting up dropdown initialization, readyState:', document.readyState);
+if (document.readyState === 'loading') {
+    console.log('[DEBUG] DOM still loading, attaching DOMContentLoaded listener');
+    document.addEventListener('DOMContentLoaded', initializeDropdowns);
+} else {
+    // DOM is already loaded, run immediately
+    console.log('[DEBUG] DOM already loaded, calling initializeDropdowns immediately');
+    initializeDropdowns();
+}
+
     // Header dropdown functionality
     const headerDropdownBtn = document.getElementById('headerDropdownBtn');
     const headerDropdownMenu = document.getElementById('headerDropdownMenu');
@@ -11088,67 +11871,68 @@ document.addEventListener('DOMContentLoaded', async function() {
             showNotification('No client email available', 'error');
         }
     };
-    console.log('DOMContentLoaded fired');
     
-    // Check page access using centralized access control
-    if (!window.accessControl || !window.accessControl.enforcePageAccess('audit-form.html')) {
-        return; // Access denied, user will be redirected
-    }
-    
-    // Initialize form immediately - the submit handler will wait for Supabase
-    initializeForm();
-    
-    // Also try to load employees directly after a short delay as a backup
-    setTimeout(async () => {
-        console.log('Backup: Attempting to load employees directly...');
+    // Initialize form handler - wrapped in DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded fired');
+        
+        // Check page access using centralized access control
+        if (!window.accessControl || !window.accessControl.enforcePageAccess('audit-form.html')) {
+            return; // Access denied, user will be redirected
+        }
+        
+        // Initialize form immediately - the submit handler will wait for Supabase
+        initializeForm();
+        
+        // Backup: Verify all dropdowns loaded correctly after a delay
+        setTimeout(async () => {
+        const scorecardSelect = document.getElementById('scorecardSelect');
+        const channelSelect = document.getElementById('channel');
         const employeeSelect = document.getElementById('employeeName');
-        if (employeeSelect) {
-            console.log('Employee select found, current options:', employeeSelect.options.length);
-            if (employeeSelect.options.length <= 1) {
-                console.log('Employee dropdown is empty, trying to load...');
-                if (window.SupabaseUsers && typeof loadEmployees === 'function') {
+        
+        let needsReload = false;
+        
+        // Check scorecards
+        if (!scorecardSelect || scorecardSelect.options.length <= 1) {
+            console.warn('Backup: Scorecard dropdown empty, retrying loadScorecards...');
+            try {
+                await loadScorecards(null, null, true);
+                    } catch (error) {
+                console.error('Backup loadScorecards error:', error);
+            }
+            needsReload = true;
+        }
+        
+        // Check channels
+        if (!channelSelect || channelSelect.options.length <= 1) {
+            console.warn('Backup: Channel dropdown empty, retrying loadChannels...');
+            try {
+                await loadChannels();
+            } catch (error) {
+                console.error('Backup loadChannels error:', error);
+            }
+            needsReload = true;
+        }
+        
+        // Check employees
+        if (!employeeSelect || employeeSelect.options.length <= 1) {
+            console.warn('Backup: Employee dropdown empty, retrying loadEmployees...');
+            if (typeof loadEmployees === 'function') {
                     try {
                         await loadEmployees();
                         console.log('Backup loadEmployees completed, options now:', document.getElementById('employeeName')?.options.length);
                     } catch (error) {
                         console.error('Backup loadEmployees error:', error);
                     }
-                } else {
-                    console.error('Backup failed - SupabaseUsers:', !!window.SupabaseUsers, 'loadEmployees:', typeof loadEmployees);
                 }
-            } else {
-                console.log('Employee dropdown already has options:', employeeSelect.options.length);
+            needsReload = true;
             }
-        } else {
-            console.error('Employee select element not found in backup attempt');
+        
+        if (!needsReload) {
+            console.log('All dropdowns verified and loaded successfully');
         }
-    }, 1500);
-    
-    // Also try to load employees directly after a short delay as a backup
-    setTimeout(async () => {
-        console.log('Backup: Attempting to load employees directly...');
-        const employeeSelect = document.getElementById('employeeName');
-        if (employeeSelect) {
-            console.log('Employee select found, current options:', employeeSelect.options.length);
-            if (employeeSelect.options.length <= 1) {
-                console.log('Employee dropdown is empty, trying to load...');
-                if (window.SupabaseUsers && typeof loadEmployees === 'function') {
-                    try {
-                        await loadEmployees();
-                        console.log('Backup loadEmployees completed, options now:', document.getElementById('employeeName')?.options.length);
-                    } catch (error) {
-                        console.error('Backup loadEmployees error:', error);
-                    }
-                } else {
-                    console.error('Backup failed - SupabaseUsers:', !!window.SupabaseUsers, 'loadEmployees:', typeof loadEmployees);
-                }
-            } else {
-                console.log('Employee dropdown already has options:', employeeSelect.options.length);
-            }
-        } else {
-            console.error('Employee select element not found in backup attempt');
-        }
-    }, 1500);
+        }, 2000);
+    });
     
     function initializeForm() {
         // Check if user is an Employee and hide create manual audit button
@@ -11190,27 +11974,19 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Load employees when page loads (with retry logic)
         (async function() {
             let attempts = 0;
-            const maxAttempts = 20; // Increase attempts
+            const maxAttempts = 20;
             while (attempts < maxAttempts) {
                 try {
-                    // Wait for SupabaseUsers and SupabaseDB to be available
-                    if (!window.SupabaseUsers || !window.SupabaseDB) {
-                        console.log(`Waiting for Supabase (attempt ${attempts + 1}/${maxAttempts})... SupabaseUsers: ${!!window.SupabaseUsers}, SupabaseDB: ${!!window.SupabaseDB}`);
-                        attempts++;
-                        if (attempts < maxAttempts) {
-                            await new Promise(resolve => setTimeout(resolve, 300));
-                            continue;
-                        }
-                    }
-                    
                     // Check if loadEmployees function exists
                     if (typeof loadEmployees === 'function') {
                         await loadEmployees();
                         // Check if employees were loaded successfully
                         const employeeSelect = document.getElementById('employeeName');
                         if (employeeSelect && employeeSelect.options.length > 1) {
-                            console.log('Employees loaded successfully');
+                            console.log('Employees loaded successfully in initializeForm');
                             break;
+                        } else {
+                            console.log(`Employees not loaded yet (attempt ${attempts + 1}/${maxAttempts}), retrying...`);
                         }
                     } else {
                         console.warn('loadEmployees function not yet available, waiting...');
@@ -11239,10 +12015,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             const employeeSelect = document.getElementById('employeeName');
             if (employeeSelect && employeeSelect.options.length <= 1) {
                 console.log('Fallback: Attempting to load employees after delay...');
-                console.log('SupabaseUsers available:', !!window.SupabaseUsers);
-                console.log('SupabaseDB available:', !!window.SupabaseDB);
                 console.log('loadEmployees function available:', typeof loadEmployees);
-                if (window.SupabaseUsers && window.SupabaseDB && typeof loadEmployees === 'function') {
+                if (typeof loadEmployees === 'function') {
                     try {
                         await loadEmployees();
                         const finalCheck = document.getElementById('employeeName');
@@ -11256,7 +12030,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                         console.error('Error stack:', error.stack);
                     }
                 } else {
-                    console.error('Fallback cannot run - dependencies not available');
+                    console.error('Fallback cannot run - loadEmployees function not available');
                 }
             }
         }, 3000);
@@ -11412,39 +12186,32 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Handle scorecard selection change
         const scorecardSelect = document.getElementById('scorecardSelect');
         if (scorecardSelect) {
+            // Check if a scorecard is already selected (e.g., from URL parameter or previous state)
+            // and load its parameters if so - do this after a short delay to ensure scorecards are loaded
+            setTimeout(async () => {
+                if (scorecardSelect.value && scorecardSelect.value !== '' && scorecardSelect.value !== 'null' && (!currentParameters || currentParameters.length === 0)) {
+                    // Don't trigger change event to avoid clearing form, load parameters directly
+                    await loadScorecardParameters(scorecardSelect.value);
+                }
+            }, 1000);
+            
             scorecardSelect.addEventListener('change', async function() {
-                // #region agent log
-                console.log('[DEBUG A] Scorecard change event fired', {selectedValue:this.value,isEditingExistingAudit:isEditingExistingAudit,isLoadingAIAuditData:window.isLoadingAIAuditData});
-                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:11333',message:'Scorecard change event fired',data:{selectedValue:this.value,isEditingExistingAudit:isEditingExistingAudit,isLoadingAIAuditData:window.isLoadingAIAuditData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 // Don't clear form if we're in edit mode
                 if (isEditingExistingAudit) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:11336',message:'Early return: editing existing audit',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
                     return; // Let the edit mode handler manage the scorecard selection
                 }
                 
                 // Don't clear form if we're loading AI audit data
                 if (window.isLoadingAIAuditData) {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:11341',message:'Early return: loading AI audit data',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-                    // #endregion
                     console.log('⏸️ Skipping form clear - AI audit data is being loaded');
                     return;
                 }
                 
                 const selectedValue = this.value;
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:11347',message:'Before loadScorecardParameters call',data:{selectedValue:selectedValue,isValid:selectedValue && selectedValue !== 'null' && selectedValue !== 'undefined' && selectedValue.trim() !== ''},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 // Validate before loading to prevent UUID errors
                 if (selectedValue && selectedValue !== 'null' && selectedValue !== 'undefined' && selectedValue.trim() !== '') {
                     await loadScorecardParameters(selectedValue);
                 } else {
-                    // #region agent log
-                    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:11350',message:'Invalid scorecard selection, clearing',data:{selectedValue:selectedValue},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     // Clear scorecard info if invalid selection
                     currentScorecard = null;
                     currentParameters = [];
@@ -11460,8 +12227,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         // Load employees (already handled in initializeForm above)
         // loadEmployees();
         
-        // Load channels from users' teams
-        loadChannels();
+        // Channels are already loaded in DOMContentLoaded (parallel with scorecards)
+        // No need to load again here
         
         // Handle channel selection change - auto-select matching scorecard
         const channelSelect = document.getElementById('channel');
@@ -11520,34 +12287,55 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
         
-        // Handle employee selection change
-        employeeSelect.addEventListener('change', async function() {
+        // Handle employee selection change - ensure it's attached after DOM is ready
+        if (employeeSelect) {
+            // Use a named function to avoid duplicate listeners
+            const handleEmployeeChange = async function() {
+                console.log('Employee selection changed');
             const selectedOption = this.options[this.selectedIndex];
             
             if (selectedOption && selectedOption.value) {
+                    console.log('Selected employee:', {
+                        email: selectedOption.dataset.email,
+                        role: selectedOption.dataset.role,
+                        department: selectedOption.dataset.department,
+                        designation: selectedOption.dataset.designation,
+                        country: selectedOption.dataset.country,
+                        channel: selectedOption.dataset.channel
+                    });
+                    
                 // Auto-populate email from the selected employee
                 const email = selectedOption.dataset.email || selectedOption.value;
-                if (employeeEmail) {
-                    employeeEmail.value = email;
-                }
-                
-                // Auto-populate employee type from designation
+                    const employeeEmailEl = document.getElementById('employeeEmail');
+                    if (employeeEmailEl) {
+                        employeeEmailEl.value = email;
+                        console.log('Set email:', email);
+                    }
+                    
+                    // Auto-populate employee type from role (use role for Type field)
+                    const role = selectedOption.dataset.role || '';
                 const designation = selectedOption.dataset.designation || '';
-                if (employeeType && designation) {
-                    employeeType.value = designation;
+                    const employeeTypeEl = document.getElementById('employeeType');
+                    if (employeeTypeEl) {
+                        // Use role if available, otherwise use designation
+                        employeeTypeEl.value = role || designation || '';
+                        console.log('Set type:', role || designation || '');
                 }
                 
                 // Auto-populate department from selected employee
                 const department = selectedOption.dataset.department || '';
-                const employeeDepartment = document.getElementById('employeeDepartment');
-                if (employeeDepartment) {
-                    employeeDepartment.value = department;
+                    const employeeDepartmentEl = document.getElementById('employeeDepartment');
+                    if (employeeDepartmentEl) {
+                        employeeDepartmentEl.value = department;
+                        console.log('Set department:', department);
                 }
                 
                 // Auto-populate country from selected employee
                 const country = selectedOption.dataset.country || '';
-                if (countryOfEmployee && country) {
-                    countryOfEmployee.value = country;
+                    const countryOfEmployeeEl = document.getElementById('countryOfEmployee');
+                    if (countryOfEmployeeEl) {
+                        countryOfEmployeeEl.value = country;
+                        console.log('Set country:', country);
                 }
                 
                 // Auto-populate channel from selected employee
@@ -11562,22 +12350,27 @@ document.addEventListener('DOMContentLoaded', async function() {
                         channelSelect.value = channel;
                         // Trigger change event to auto-select matching scorecard
                         channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('Set channel:', channel);
                     }
                 }
             } else {
                 // Clear fields if no employee selected
-                if (employeeEmail) {
-                    employeeEmail.value = '';
-                }
-                if (employeeType) {
-                    employeeType.value = '';
-                }
-                const employeeDepartment = document.getElementById('employeeDepartment');
-                if (employeeDepartment) {
-                    employeeDepartment.value = '';
-                }
-                if (countryOfEmployee) {
-                    countryOfEmployee.value = '';
+                    const employeeEmailEl = document.getElementById('employeeEmail');
+                    const employeeTypeEl = document.getElementById('employeeType');
+                    const employeeDepartmentEl = document.getElementById('employeeDepartment');
+                    const countryOfEmployeeEl = document.getElementById('countryOfEmployee');
+                    
+                    if (employeeEmailEl) {
+                        employeeEmailEl.value = '';
+                    }
+                    if (employeeTypeEl) {
+                        employeeTypeEl.value = '';
+                    }
+                    if (employeeDepartmentEl) {
+                        employeeDepartmentEl.value = '';
+                    }
+                    if (countryOfEmployeeEl) {
+                        countryOfEmployeeEl.value = '';
                 }
                 // Clear channel field
                 const channelSelect = document.getElementById('channel');
@@ -11587,7 +12380,11 @@ document.addEventListener('DOMContentLoaded', async function() {
                     await loadScorecards(null, null, true);
                 }
             }
-        });
+            };
+            
+            // Remove any existing listeners and attach the new one
+            employeeSelect.removeEventListener('change', handleEmployeeChange);
+            employeeSelect.addEventListener('change', handleEmployeeChange);
         
         // Load user data when page loads
         loadUserData();
@@ -12579,21 +13376,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         console.log('✅ Recommendations Quill editor initialized');
     }
-    
-    // Initialize recommendations editor after a short delay to ensure DOM is ready
-    setTimeout(() => {
-        initializeRecommendationsEditor();
-    }, 500);
-    
-    // Check for assignment parameter in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const assignmentId = urlParams.get('assignment');
-    
-    if (assignmentId) {
-        // Load the assignment and start the audit
-        loadAssignmentFromURL(assignmentId);
-    }
-}); // End of DOMContentLoaded
 
 // Load assignment from URL parameter and start audit
 async function loadAssignmentFromURL(assignmentId) {
@@ -17000,4 +17782,3 @@ async function loadConversationDataIntoForm(conversationData) {
 
 </body>
 </html>
-</body></html>

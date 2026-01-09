@@ -70,7 +70,8 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
         // Check if refresh token itself is expired (user needs to re-login)
         const isRefreshTokenExpired = refreshError?.message?.includes('refresh_token') || 
                                        refreshError?.message?.includes('expired') ||
-                                       refreshError?.message?.includes('invalid_grant');
+                                       refreshError?.message?.includes('invalid_grant') ||
+                                       refreshError?.message?.includes('token_not_found');
         
         if (isRefreshTokenExpired) {
           logWarn('Refresh token expired - user needs to re-login:', refreshError?.message);
@@ -85,16 +86,19 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
           if (localStorage.getItem(supabaseAuthKey)) {
             localStorage.removeItem(supabaseAuthKey);
           }
+          return false;
         } else {
-          // Network or temporary error - don't logout, just return false
-          logWarn('Token refresh failed (non-expiration error):', refreshError?.message);
+          // Network or temporary error - don't logout, trust the existing session
+          // Supabase's autoRefreshToken will retry automatically
+          logWarn('Token refresh failed (non-expiration error, likely network issue):', refreshError?.message);
+          logInfo('Continuing with existing session - Supabase will auto-refresh when possible');
+          // Continue with existing session - don't return false for network errors
         }
-        return false;
+      } else {
+        // Use refreshed session
+        currentSession = refreshedSession;
+        logInfo('Token refreshed successfully');
       }
-      
-      // Use refreshed session
-      currentSession = refreshedSession;
-      logInfo('Token refreshed successfully');
     }
 
     // ✅ SECURITY FIX: Verify token with server AFTER ensuring it's not expired/refreshed
@@ -102,26 +106,74 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     // getUser() makes an API call to Supabase to verify the token is valid
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    // If getUser() fails, token is invalid - clear everything immediately
+    // If getUser() fails, check if it's a network error or actual token invalidation
     if (userError || !user) {
-      logWarn('Token verification failed - invalid or expired token:', userError?.message);
-      // Clear invalid session data
-      try {
-        await supabase.auth.signOut();
-      } catch (signOutError) {
-        // Ignore sign out errors
+      // Check if it's a network error (not a token expiration issue)
+      const isNetworkError = userError?.message?.includes('network') || 
+                            userError?.message?.includes('fetch') ||
+                            userError?.message?.includes('timeout') ||
+                            userError?.status === 0; // Network error status
+      
+      if (isNetworkError && currentSession && currentSession.user) {
+        // Network error but we have a valid session - trust the session
+        // Supabase's autoRefreshToken will handle token refresh when network is available
+        logWarn('getUser() failed due to network issue, but session is valid. Continuing with session:', userError?.message);
+        // Use session user instead
+        const sessionUser = currentSession.user;
+        
+        // ✅ SECURITY: Still validate device fingerprint even with network error
+        const accessToken = currentSession.access_token || '';
+        const userId = sessionUser?.id;
+        
+        if (accessToken && userId) {
+          if (!validateDeviceFingerprint(accessToken, userId)) {
+            logError('🚨 SECURITY VIOLATION: Token appears to be copied to different device!');
+            logError('Invalidating session for security.');
+            
+            try {
+              await supabase.auth.signOut();
+            } catch (signOutError) {
+              // Ignore sign out errors
+            }
+            localStorage.removeItem('userInfo');
+            const supabaseAuthKey = 'supabase.auth.token';
+            if (localStorage.getItem(supabaseAuthKey)) {
+              localStorage.removeItem(supabaseAuthKey);
+            }
+            clearDeviceFingerprints();
+            return false;
+          }
+        }
+        
+        // Session is valid, network error is temporary - allow access
+        return true;
       }
-      localStorage.removeItem('userInfo');
-      // Clear Supabase auth token from localStorage
-      const supabaseAuthKey = 'supabase.auth.token';
-      if (localStorage.getItem(supabaseAuthKey)) {
-        localStorage.removeItem(supabaseAuthKey);
+      
+      // Token is actually invalid (not just network error) - clear everything
+      logWarn('Token verification failed - invalid or expired token:', userError?.message);
+      // Only logout if session is also invalid
+      if (!currentSession || !currentSession.user) {
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutError) {
+          // Ignore sign out errors
+        }
+        localStorage.removeItem('userInfo');
+        const supabaseAuthKey = 'supabase.auth.token';
+        if (localStorage.getItem(supabaseAuthKey)) {
+          localStorage.removeItem(supabaseAuthKey);
+        }
       }
       return false;
     }
 
     // Check if session exists and matches verified user
-    if (!currentSession || !currentSession.user || currentSession.user.id !== user.id) {
+    if (!currentSession || !currentSession.user) {
+      logWarn('No valid session found');
+      return false;
+    }
+    
+    if (currentSession.user.id !== user.id) {
       logWarn('Session mismatch with verified user - clearing session');
       try {
         await supabase.auth.signOut();

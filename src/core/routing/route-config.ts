@@ -145,7 +145,7 @@ export const routes: RouteConfig[] = [
       {
         path: '/src/features/settings/scorecards/presentation/scorecards.html',
         label: 'Scorecards',
-        roles: ['Admin', 'Manager', 'Super Admin']
+        roles: ['all']
       },
       {
         path: '/src/features/settings/user-management/presentation/user-management.html',

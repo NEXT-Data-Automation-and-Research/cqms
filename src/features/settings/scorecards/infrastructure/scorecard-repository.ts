@@ -60,7 +60,6 @@ export class ScorecardRepository extends BaseRepository {
       // Use underlying Supabase client for count queries (Supabase-specific feature)
       const supabaseClient = (this.db as any).client;
       if (!supabaseClient) {
-        logError('Database connection not available for count query', null);
         return 0;
       }
 
@@ -69,13 +68,44 @@ export class ScorecardRepository extends BaseRepository {
         .select('*', { count: 'exact', head: true });
 
       if (error) {
+        // Handle table not found errors silently (404, PGRST205, PGRST116, etc.)
+        // These are expected when audit tables haven't been created yet
+        const isTableNotFound = 
+          error.code === 'PGRST205' || 
+          error.code === 'PGRST116' || 
+          error.code === '42P01' || 
+          error.code === '42703' ||
+          error.message?.includes('relation') ||
+          error.message?.includes('does not exist') ||
+          error.message?.includes('not found') ||
+          (error as any).status === 404;
+
+        if (isTableNotFound) {
+          // Table doesn't exist - this is normal for scorecards without audits yet
+          return 0;
+        }
+
+        // Log other errors (permissions, connection issues, etc.)
         logError('Failed to get audit count', error);
         return 0;
       }
 
       return count || 0;
-    } catch (error) {
-      logError('Failed to get audit count', error);
+    } catch (error: any) {
+      // Handle table not found errors silently
+      const isTableNotFound = 
+        error?.code === 'PGRST205' || 
+        error?.code === 'PGRST116' || 
+        error?.code === '42P01' || 
+        error?.code === '42703' ||
+        error?.message?.includes('relation') ||
+        error?.message?.includes('does not exist') ||
+        error?.message?.includes('not found') ||
+        error?.status === 404;
+
+      if (!isTableNotFound) {
+        logError('Failed to get audit count', error);
+      }
       return 0;
     }
   }
@@ -182,6 +212,36 @@ export class ScorecardRepository extends BaseRepository {
       },
       `Failed to update parameter ${fieldId}`
     );
+  }
+
+  /**
+   * Delete all parameters for a scorecard
+   */
+  async deleteParameters(scorecardId: string): Promise<void> {
+    return this.executeQuery(
+      async () => {
+        const result = await this.db
+          .from('scorecard_perameters')
+          .delete()
+          .eq('scorecard_id', scorecardId)
+          .execute();
+        return result;
+      },
+      `Failed to delete parameters for scorecard ${scorecardId}`
+    );
+  }
+
+  /**
+   * Replace all parameters for a scorecard (delete old, insert new)
+   */
+  async replaceParameters(scorecardId: string, parameters: ScorecardParameter[]): Promise<void> {
+    // Delete existing parameters
+    await this.deleteParameters(scorecardId);
+    
+    // Insert new parameters if any
+    if (parameters.length > 0) {
+      await this.createParameters(parameters);
+    }
   }
 
   /**

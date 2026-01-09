@@ -31,7 +31,8 @@ export class DatabaseFactory {
         if (typeof window === 'undefined' || !(window as any).supabaseClient) {
           throw new Error('Supabase client not initialized. Call initSupabase() first.');
         }
-        return new SupabaseClientAdapter((window as any).supabaseClient);
+        const adapter = new SupabaseClientAdapter((window as any).supabaseClient);
+        return adapter;
       
       // Future: Add PostgreSQL support
       // case 'postgresql':

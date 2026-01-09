@@ -119,16 +119,37 @@ export async function verifyAuth(): Promise<AuthStatus> {
       const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError || !refreshedSession) {
-        // Refresh failed - session is invalid
-        logger.warn('Token refresh failed:', refreshError?.message);
-        const status: AuthStatus = {
-          isAuthenticated: false,
-          userId: null,
-          session: null,
-          error: refreshError?.message || 'Session expired and refresh failed',
-        };
-        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
-        return status;
+        // Check if refresh token itself is expired (user needs to re-login)
+        const isRefreshTokenExpired = refreshError?.message?.includes('refresh_token') || 
+                                       refreshError?.message?.includes('expired') ||
+                                       refreshError?.message?.includes('invalid_grant') ||
+                                       refreshError?.message?.includes('token_not_found');
+        
+        if (isRefreshTokenExpired) {
+          // Refresh token expired - session is invalid
+          logger.warn('Refresh token expired - user needs to re-login:', refreshError?.message);
+          const status: AuthStatus = {
+            isAuthenticated: false,
+            userId: null,
+            session: null,
+            error: refreshError?.message || 'Refresh token expired',
+          };
+          authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+          return status;
+        } else {
+          // Network or temporary error - don't invalidate session
+          // Trust existing session and let Supabase auto-refresh handle it
+          logger.warn('Token refresh failed (likely network issue), continuing with existing session:', refreshError?.message);
+          // Return existing session as valid - Supabase will auto-refresh when possible
+          const status: AuthStatus = {
+            isAuthenticated: true,
+            userId: session.user.id,
+            session: session,
+            error: refreshError?.message || 'Refresh failed but session still valid',
+          };
+          authStatusCache = { status, timestamp: Date.now() };
+          return status;
+        }
       }
       
       // Use refreshed session
@@ -146,16 +167,46 @@ export async function verifyAuth(): Promise<AuthStatus> {
     // Session is valid - verify user with server (but don't fail if getUser has minor issues)
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    // If getUser fails but we have a valid session, still allow access
-    // (getUser might fail due to network issues, but session is still valid)
+    // If getUser fails, check if it's a network error or actual token invalidation
     if (userError && !user) {
-      // Only fail if we can't get user AND session user doesn't match
-      if (!session.user || (user && user.id !== session.user.id)) {
+      // Check if it's a network error (not a token expiration issue)
+      const isNetworkError = userError?.message?.includes('network') || 
+                            userError?.message?.includes('fetch') ||
+                            userError?.message?.includes('timeout') ||
+                            userError?.status === 0; // Network error status
+      
+      if (isNetworkError && session.user) {
+        // Network error but we have a valid session - trust the session
+        logger.warn('getUser() failed due to network issue, but session is valid. Continuing with session:', userError?.message);
+        const status: AuthStatus = {
+          isAuthenticated: true,
+          userId: session.user.id,
+          session: session,
+          error: userError?.message || 'Network error but session valid',
+        };
+        authStatusCache = { status, timestamp: Date.now() };
+        return status;
+      }
+      
+      // Token is actually invalid (not just network error) - only fail if session user doesn't exist
+      if (!session.user) {
         const status: AuthStatus = {
           isAuthenticated: false,
           userId: null,
           session: null,
           error: userError?.message || 'User verification failed',
+        };
+        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+        return status;
+      }
+      
+      // Session user exists, but getUser failed - check if IDs match
+      if (user && user.id !== session.user.id) {
+        const status: AuthStatus = {
+          isAuthenticated: false,
+          userId: null,
+          session: null,
+          error: 'User ID mismatch',
         };
         authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
         return status;
