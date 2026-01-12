@@ -107,7 +107,8 @@ app.use(helmet({
         "'self'", 
         "'unsafe-inline'", // Allow inline scripts for ES modules
         "'unsafe-eval'", // Required for some ES module features
-        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for loglevel and other libraries
+        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
+        "https://accounts.google.com" // Allow Google Sign-In script
       ],
       imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
       connectSrc: [
