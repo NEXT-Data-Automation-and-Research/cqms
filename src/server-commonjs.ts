@@ -110,7 +110,7 @@ app.use(helmet({
         "'unsafe-eval'", // Required for some ES module features
         "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
         "https://cdn.tailwindcss.com", // Allow Tailwind CDN
-        "https://accounts.google.com" // Allow Google Sign-In client
+        "https://accounts.google.com" // Allow Google Sign-In script
       ],
       imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
       connectSrc: [

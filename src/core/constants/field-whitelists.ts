@@ -91,3 +91,7 @@ export const CHANNEL_MINIMAL_FIELDS = 'id, name';
 export const INTERCOM_ADMIN_CACHE_FIELDS = 'id, email, name';
 export const INTERCOM_ADMIN_CACHE_MINIMAL_FIELDS = 'id, name';
 
+// Event fields
+export const EVENT_FIELDS = 'id, title, type, date, start_time, end_time, description, participants, meet_link, created_by, created_at, updated_at';
+export const EVENT_MINIMAL_FIELDS = 'id, title, type, date, start_time, end_time';
+

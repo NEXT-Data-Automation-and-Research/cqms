@@ -1,0 +1,242 @@
+/**
+ * Event Management Styles
+ */
+
+.main-content {
+  background-color: #f8f7f2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Dark Mode Styles */
+[data-theme="dark"] .main-content {
+  background-color: var(--background-color);
+}
+
+[data-theme="dark"] .bg-white {
+  background-color: var(--background-white) !important;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover {
+  background-color: var(--gray-100) !important;
+}
+
+/* Event filter button active state */
+.event-type-filter.active {
+  background-color: #1a733e !important; /* primary */
+  color: white !important;
+  border: none !important;
+}
+
+.event-type-filter.active:hover {
+  background-color: #0d5e3a !important; /* primary-dark */
+}
+
+.event-type-filter:not(.active):hover {
+  background-color: #f9fafb !important; /* gray-50 */
+}
+
+/* Create Event Button */
+#createEventBtn {
+  background-color: #1a733e !important; /* primary */
+  color: white !important;
+}
+
+#createEventBtn:hover {
+  background-color: #0d5e3a !important; /* primary-dark */
+}
+
+/* Calendar View Styles */
+.view-toggle-btn {
+  color: #6b7280;
+  background-color: transparent;
+}
+
+.view-toggle-btn.active {
+  background-color: #1a733e;
+  color: white;
+}
+
+.view-toggle-btn:hover:not(.active) {
+  background-color: #f3f4f6;
+}
+
+.calendar-day {
+  min-height: 100px;
+  background-color: white;
+  padding: 0.25rem;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.calendar-day:hover {
+  background-color: #f9fafb;
+}
+
+.calendar-day.other-month {
+  background-color: #f9fafb;
+  color: #9ca3af;
+}
+
+.calendar-day.today {
+  background-color: #eff6ff;
+}
+
+.calendar-day.today .day-number {
+  background-color: #1a733e;
+  color: white;
+  border-radius: 50%;
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.calendar-day-number {
+  font-size: 0.75rem;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  padding: 0.125rem;
+}
+
+.calendar-event {
+  font-size: 0.625rem;
+  padding: 0.125rem 0.25rem;
+  margin-bottom: 0.125rem;
+  border-radius: 0.125rem;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.calendar-event:hover {
+  opacity: 0.8;
+}
+
+.calendar-event.session {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.calendar-event.meeting {
+  background-color: #e9d5ff;
+  color: #6b21a8;
+}
+
+.calendar-event.feedback {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.calendar-event.training {
+  background-color: #fed7aa;
+  color: #9a3412;
+}
+
+.calendar-event-more {
+  font-size: 0.625rem;
+  color: #6b7280;
+  padding: 0.125rem 0.25rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.calendar-event-more:hover {
+  color: #1a733e;
+}
+
+/* Dark Mode Calendar */
+[data-theme="dark"] .calendar-day {
+  background-color: var(--background-white);
+}
+
+[data-theme="dark"] .calendar-day:hover {
+  background-color: var(--gray-100);
+}
+
+[data-theme="dark"] .calendar-day.other-month {
+  background-color: var(--gray-100);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .calendar-day.today {
+  background-color: rgba(26, 115, 62, 0.15);
+}
+
+[data-theme="dark"] .view-toggle-btn {
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .view-toggle-btn.active {
+  background-color: #1a733e;
+  color: white;
+}
+
+[data-theme="dark"] .view-toggle-btn:hover:not(.active) {
+  background-color: var(--gray-100);
+}
+
+/* Quick Add Modal Dark Mode */
+[data-theme="dark"] #quickAddModal .bg-white {
+  background-color: var(--background-white) !important;
+}
+
+[data-theme="dark"] #quickAddModal .border-gray-200,
+[data-theme="dark"] #quickAddModal .border-gray-300 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] #quickAddModal .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] #quickAddModal .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #quickAddModal .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #quickAddModal .hover\:bg-gray-50:hover,
+[data-theme="dark"] #quickAddModal .hover\:bg-gray-100:hover {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] #quickAddDropdown {
+  background-color: var(--background-white);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] #quickAddDropdown .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #quickAddDropdown .hover\:bg-gray-100:hover {
+  background-color: var(--gray-100) !important;
+}
+

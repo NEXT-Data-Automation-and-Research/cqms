@@ -172,14 +172,19 @@ export class SidebarLoader {
         throw new Error('Sidebar nav element not found')
       }
 
-      // Restore saved sidebar state BEFORE inserting into DOM
+      // Always start collapsed to enable hover expansion
+      // The sidebar will auto-expand on hover when collapsed (CSS handles this)
+      // Only stay expanded if user explicitly toggles it
       const savedState = sidebarState.loadSidebarState()
       const isExpanded = savedState === 'expanded'
 
+      // Apply collapsed class (enables hover expansion via CSS)
+      // Only remove collapsed if user explicitly expanded it
       if (isExpanded) {
         sidebarNav.classList.remove('collapsed')
         sidebarState.sidebarIsExpanded = true
       } else {
+        // Default to collapsed for hover expansion behavior
         sidebarNav.classList.add('collapsed')
         sidebarState.sidebarIsExpanded = false
       }
@@ -266,14 +271,17 @@ export class SidebarLoader {
     }
 
     // Handle toggle button click
+    // Toggle between permanently expanded and collapsed (with hover expansion)
     toggleButton.addEventListener('click', () => {
       const isCollapsed = sidebar.classList.contains('collapsed')
       
       if (isCollapsed) {
+        // Expand permanently (user wants it to stay expanded)
         sidebar.classList.remove('collapsed')
         sidebarState.sidebarIsExpanded = true
         sidebarState.saveSidebarState('expanded')
       } else {
+        // Collapse (will auto-expand on hover via CSS)
         sidebar.classList.add('collapsed')
         sidebarState.sidebarIsExpanded = false
         sidebarState.saveSidebarState('collapsed')
@@ -287,10 +295,12 @@ export class SidebarLoader {
         const isCollapsed = sidebar.classList.contains('collapsed')
         
         if (isCollapsed) {
+          // Expand permanently
           sidebar.classList.remove('collapsed')
           sidebarState.sidebarIsExpanded = true
           sidebarState.saveSidebarState('expanded')
         } else {
+          // Collapse (will auto-expand on hover via CSS)
           sidebar.classList.add('collapsed')
           sidebarState.sidebarIsExpanded = false
           sidebarState.saveSidebarState('collapsed')

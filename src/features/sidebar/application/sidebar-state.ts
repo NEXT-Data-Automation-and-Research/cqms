@@ -40,10 +40,19 @@ export class SidebarStateManager {
 
   /**
    * Load sidebar state from browser storage
+   * Defaults to 'collapsed' to enable hover expansion
+   * The sidebar will auto-expand on hover when collapsed (CSS handles this)
    */
   loadSidebarState(): SidebarState {
     try {
-      return (localStorage.getItem('sidebarState') || 'collapsed') as SidebarState
+      const saved = localStorage.getItem('sidebarState')
+      // Default to collapsed for hover expansion behavior
+      // Only return 'expanded' if user explicitly toggled it to stay expanded
+      if (saved === 'expanded') {
+        return 'expanded'
+      }
+      // Always default to collapsed (enables CSS hover expansion)
+      return 'collapsed'
     } catch (error) {
       logError('Error loading sidebar state:', error)
       return 'collapsed'
