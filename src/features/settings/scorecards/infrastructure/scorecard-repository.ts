@@ -7,7 +7,7 @@ import { BaseRepository } from '../../../../core/repository/base-repository.js';
 import { IDatabaseClient } from '../../../../core/database/database-client.interface.js';
 import { SCORECARD_AUDIT_FORM_FIELDS } from '../../../../core/constants/field-whitelists.js';
 import type { Scorecard, ScorecardParameter, Channel } from '../domain/entities.js';
-import { logError } from '../../../../utils/logging-helper.js';
+import { logError, logInfo } from '../../../../utils/logging-helper.js';
 
 const SCORECARD_PARAMETER_FIELDS = 'id, scorecard_id, error_name, penalty_points, parameter_type, error_category, field_type, field_id, description, enable_ai_audit, prompt, is_fail_all, points_direction, requires_feedback, display_order, is_active, created_at';
 const CHANNEL_FIELDS = 'id, name, description, is_active, created_at, created_by, updated_at, updated_by';
@@ -186,9 +186,13 @@ export class ScorecardRepository extends BaseRepository {
   async createParameters(parameters: ScorecardParameter[]): Promise<void> {
     return this.executeQuery(
       async () => {
+        // Remove id field from parameters to let database auto-generate UUID
+        // This prevents "null value in column id" errors when updating scorecards
+        const parametersWithoutId = parameters.map(({ id, ...param }) => param);
+        
         const result = await this.db
           .from('scorecard_perameters')
-          .insert(parameters)
+          .insert(parametersWithoutId)
           .execute();
         return result;
       },
@@ -323,6 +327,14 @@ export class ScorecardRepository extends BaseRepository {
         return { success: false, error: 'Database connection not available' };
       }
 
+      logInfo('Calling create_audit_table RPC', {
+        tableName,
+        parameterCount: parameters.length,
+        parameters: parameters.slice(0, 2) // Log first 2 parameters for debugging
+      });
+
+      // Supabase automatically converts JavaScript arrays/objects to JSONB
+      // Pass parameters as array - Supabase will handle conversion
       const { data, error } = await supabaseClient.rpc('create_audit_table', {
         table_name: tableName,
         parameters: parameters

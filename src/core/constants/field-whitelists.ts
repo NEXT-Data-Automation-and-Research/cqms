@@ -23,8 +23,8 @@ export const SCORECARD_FIELDS = 'id, name, table_name, created_at, updated_at';
 export const SCORECARD_MINIMAL_FIELDS = 'id, name, table_name';
 // Scorecard fields for audit form (includes all fields needed for scorecard selection and display)
 export const SCORECARD_AUDIT_FORM_FIELDS = 'id, name, description, passing_threshold, table_name, scoring_type, channels, is_active, default_for_channels, allow_over_100, max_bonus_points, created_at';
-// Scorecard parameter fields
-export const SCORECARD_PARAMETER_FIELDS = 'id, scorecard_id, name, description, weight, max_score, is_active, display_order, parameter_type';
+// Scorecard parameter fields (matches actual database schema)
+export const SCORECARD_PARAMETER_FIELDS = 'id, scorecard_id, error_name, penalty_points, parameter_type, error_category, field_type, field_id, description, enable_ai_audit, prompt, is_fail_all, points_direction, requires_feedback, display_order, is_active, created_at';
 
 // Audit assignment fields (matches actual table schema from audit_assignments table)
 // Verified against database schema - includes all non-sensitive fields
@@ -47,7 +47,8 @@ export const AUDIT_FIELDS = 'id, employee_id, interaction_id, scorecard_id, tran
 
 // Generic audit table fields (for dynamic scorecard tables)
 // These are common fields across all audit scorecard tables
-export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, auditor_email, scorecard_id, interaction_id, created_at, submitted_at, status, passing_status, audit_duration, reversal_requested_at, acknowledged_at, acknowledged_by, created_by, updated_at';
+// Used for audit reports feature - includes all fields needed for reporting
+export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, employee_type, auditor_email, auditor_name, interaction_id, interaction_date, audit_type, channel, quarter, week, country_of_employee, client_email, client_name, agent_pre_status, agent_post_status, passing_status, validation_status, average_score, critical_errors, total_errors_count, transcript, error_description, critical_fail_error, critical_error, significant_error, recommendations, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, acknowledgement_status_updated_at, audit_duration, submitted_at, audit_timestamp, audit_start_time, audit_end_time, created_at, updated_at';
 
 // Audit form fields (for audit form feature)
 export const AUDIT_FORM_FIELDS = [

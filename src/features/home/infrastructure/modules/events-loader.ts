@@ -5,26 +5,24 @@
 
 import type { Event, User } from '../types.js';
 import { logError } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class EventsLoader {
   async loadUpcomingEvents(currentUser: User): Promise<Event[]> {
-    if (!window.supabaseClient) {
-      logError('Supabase client not initialized');
-      return [];
-    }
+    try {
+      const supabase = await getAuthenticatedSupabase();
+      const currentUserEmail = (currentUser.email || '').toLowerCase().trim();
+      const isSuperAdmin = currentUser.role === 'Super Admin';
 
-    const currentUserEmail = (currentUser.email || '').toLowerCase().trim();
-    const isSuperAdmin = currentUser.role === 'Super Admin';
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      const now = new Date();
+      const currentTime = now.toTimeString().slice(0, 5);
 
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const now = new Date();
-    const currentTime = now.toTimeString().slice(0, 5);
-
-    let query = window.supabaseClient
-      .from('events')
-      .select('id, title, description, date, start_time, end_time, type, created_by, participants, created_at, updated_at')
-      .gte('date', todayStr);
+      let query = supabase
+        .from('events')
+        .select('id, title, description, date, start_time, end_time, type, created_by, participants, created_at, updated_at')
+        .gte('date', todayStr);
 
     if (!isSuperAdmin) {
       const { data: allEvents, error: allError } = await query;
@@ -103,6 +101,10 @@ export class EventsLoader {
     });
 
     return upcomingEvents;
+    } catch (error) {
+      logError('Error loading events:', error);
+      return [];
+    }
   }
 }
 

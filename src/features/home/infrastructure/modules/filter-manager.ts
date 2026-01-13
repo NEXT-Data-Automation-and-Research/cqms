@@ -7,6 +7,7 @@ import type { Audit, FiltersData, Scorecard } from '../types.js';
 import { homeState } from '../state.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logError, logWarn, logInfo } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class FilterManager {
   /**
@@ -25,10 +26,11 @@ export class FilterManager {
    */
   private async fetchAndCacheFilters(): Promise<void> {
     try {
+      const supabase = await getAuthenticatedSupabase();
       let allAssignmentsForFilters: Audit[] = [];
       
       if (homeState.isAgent) {
-        const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+        const { data: scorecards, error: scError } = await supabase
           .from('scorecards')
           .select('table_name')
           .eq('is_active', true);
@@ -36,7 +38,7 @@ export class FilterManager {
         if (!scError && scorecards) {
           for (const scorecard of scorecards) {
             try {
-              const { data: audits, error } = await (window.supabaseClient as any)
+              const { data: audits, error } = await supabase
                 .from(scorecard.table_name)
                 .select('channel, employee_email')
                 .eq('employee_email', homeState.currentUserEmail);
@@ -50,7 +52,7 @@ export class FilterManager {
           }
         }
       } else {
-        const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+        const { data: scorecards, error: scError } = await supabase
           .from('scorecards')
           .select('table_name')
           .eq('is_active', true);
@@ -58,7 +60,7 @@ export class FilterManager {
         if (!scError && scorecards) {
           const assignmentPromises = scorecards.map(async (scorecard: Scorecard) => {
             try {
-              let { data: audits, error } = await (window.supabaseClient as any)
+              let { data: audits, error } = await supabase
                 .from(scorecard.table_name)
                 .select('channel, employee_email')
                 .eq('auditor_email', homeState.currentUserEmail);

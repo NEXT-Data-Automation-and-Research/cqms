@@ -23,6 +23,7 @@ export interface AuditFormData {
   quarter?: string;
   week?: number;
   auditTimestamp?: string;
+  auditType?: string;
   passingStatus?: string;
   averageScore?: number;
   totalErrorsCount?: number;
@@ -67,6 +68,7 @@ export interface Scorecard {
   defaultForChannels?: string;
   allowOver100?: boolean;
   maxBonusPoints?: string;
+  createdAt?: string;
 }
 
 export interface Employee {

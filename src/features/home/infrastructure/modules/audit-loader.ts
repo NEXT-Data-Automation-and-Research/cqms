@@ -7,6 +7,7 @@ import type { Audit, Assignment, PeriodDates, Scorecard, Filters } from '../type
 import { homeState } from '../state.js';
 import { DateFilterManager } from '../date-filter-manager.js';
 import { logError, logWarn } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class AuditLoader {
   constructor(
@@ -28,8 +29,9 @@ export class AuditLoader {
     filters: Filters
   ): Promise<void> {
     const { currentUserEmail } = homeState;
+    const supabase = await getAuthenticatedSupabase();
     
-    const { data: scorecards, error: scError } = await window.supabaseClient
+    const { data: scorecards, error: scError } = await supabase
       .from('scorecards')
       .select('id, name, table_name, scoring_type')
       .eq('is_active', true);
@@ -42,7 +44,7 @@ export class AuditLoader {
     
     for (const scorecard of (scorecards || [])) {
       try {
-        const { data, error } = await window.supabaseClient
+        const { data, error } = await supabase
           .from(scorecard.table_name)
           .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
           .order('submitted_at', { ascending: false })
@@ -116,8 +118,9 @@ export class AuditLoader {
   ): Promise<void> {
     const { currentUserEmail } = homeState;
     const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+    const supabase = await getAuthenticatedSupabase();
     
-    const { data, error } = await window.supabaseClient
+    const { data, error } = await supabase
       .from('audit_assignments')
       .select(`
         *,

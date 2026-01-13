@@ -101,13 +101,15 @@ app.use(helmet({
       styleSrc: [
         "'self'", // Allows CSS from same origin (including /src/... paths)
         "'unsafe-inline'", // Allow inline styles for Tailwind and dynamic styles
-        "https://fonts.googleapis.com" // Allow Google Fonts
+        "https://fonts.googleapis.com", // Allow Google Fonts
+        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for Quill CSS and other libraries
       ],
       scriptSrc: [
         "'self'", 
         "'unsafe-inline'", // Allow inline scripts for ES modules
         "'unsafe-eval'", // Required for some ES module features
         "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
+        "https://cdn.tailwindcss.com", // Allow Tailwind CDN
         "https://accounts.google.com" // Allow Google Sign-In client
       ],
       imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
@@ -224,13 +226,21 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 
 // ✅ SECURITY: Serve public HTML files with auth-checker injection
 // These routes MUST be BEFORE express.static to intercept requests
+// Audit Reports route - serve migrated Clean Architecture version
 app.get('/audit-reports.html', (req: express.Request, res: express.Response): void => {
   try {
+    // injectVersionIntoHTML will automatically find the file in feature directories
     const html = injectVersionIntoHTML('audit-reports.html', appVersion);
     res.send(html);
   } catch (error) {
     serverLogger.error('Error processing audit-reports.html:', error);
-    res.sendFile(path.join(__dirname, '../public', 'audit-reports.html'));
+    // Fallback: try to serve from feature directory directly
+    const featurePath = path.join(__dirname, '../src/features/audit-reports/presentation/audit-reports.html');
+    if (fs.existsSync(featurePath)) {
+      res.sendFile(featurePath);
+    } else {
+      res.status(404).send('Audit Reports page not found');
+    }
   }
 });
 

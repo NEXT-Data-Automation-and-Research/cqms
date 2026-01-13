@@ -913,6 +913,141 @@
       })();
     </script>
     
+    <!-- Initialize Audit Form Loader (loads scorecards, channels, employees) -->
+    <script type="module">
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:917',message:'Module script starting',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      (async () => {
+        try {
+          // Wait for Supabase to be ready
+          const waitForSupabase = () => {
+            return new Promise((resolve) => {
+              if (window.supabaseClientReady) {
+                resolve(true);
+                return;
+              }
+              
+              const checkSupabase = setInterval(() => {
+                if (window.supabaseClientReady) {
+                  clearInterval(checkSupabase);
+                  resolve(true);
+                }
+              }, 100);
+              
+              setTimeout(() => {
+                clearInterval(checkSupabase);
+                resolve(false);
+              }, 10000);
+            });
+          };
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:930',message:'Waiting for Supabase',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          
+          console.log('[AuditFormLoader] Waiting for Supabase...');
+          const supabaseReady = await waitForSupabase();
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:940',message:'Supabase ready',data:{supabaseReady},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+          
+          // Try to import functions directly from their modules
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:944',message:'Importing functions from modules',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          const [scorecardModule, dropdownModule] = await Promise.all([
+            import('/js/features/audit-form/presentation/controllers/scorecard-controller.js').catch(e => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:948',message:'Scorecard import failed',data:{error:e.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              console.error('[AuditFormLoader] Failed to import scorecard-controller:', e);
+              return null;
+            }),
+            import('/js/features/audit-form/presentation/utils/dropdown-loader.js').catch(e => {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:953',message:'Dropdown import failed',data:{error:e.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              console.error('[AuditFormLoader] Failed to import dropdown-loader:', e);
+              return null;
+            })
+          ]);
+          
+          // Expose functions to window
+          if (scorecardModule && scorecardModule.loadScorecards) {
+            window.loadScorecards = scorecardModule.loadScorecards;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:961',message:'loadScorecards exposed',data:{hasFunction:typeof window.loadScorecards==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+          }
+          if (dropdownModule) {
+            if (dropdownModule.loadChannels) {
+              window.loadChannels = dropdownModule.loadChannels;
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:966',message:'loadChannels exposed',data:{hasFunction:typeof window.loadChannels==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+            }
+            if (dropdownModule.loadEmployees) {
+              window.loadEmployees = dropdownModule.loadEmployees;
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:971',message:'loadEmployees exposed',data:{hasFunction:typeof window.loadEmployees==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+            }
+            if (dropdownModule.loadAllDropdowns) {
+              window.loadAllDropdowns = dropdownModule.loadAllDropdowns;
+            }
+          }
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:978',message:'Functions exposed check',data:{loadScorecards:typeof window.loadScorecards,loadChannels:typeof window.loadChannels,loadEmployees:typeof window.loadEmployees,hasScorecard:!!scorecardModule,hasDropdown:!!dropdownModule},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          
+          console.log('[AuditFormLoader] Functions exposed:', {
+            loadScorecards: typeof window.loadScorecards,
+            loadChannels: typeof window.loadChannels,
+            loadEmployees: typeof window.loadEmployees
+          });
+          
+          // Try to initialize the loader if available
+          try {
+            const loaderModule = await import('/js/features/audit-form/presentation/audit-form-loader.js');
+            if (loaderModule.AuditFormLoader) {
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:990',message:'Loader module found, initializing',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
+              
+              const loader = new loaderModule.AuditFormLoader();
+              await loader.initialize();
+              
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:995',message:'Loader initialized',data:{loadScorecards:typeof window.loadScorecards,loadChannels:typeof window.loadChannels,loadEmployees:typeof window.loadEmployees},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
+            }
+          } catch (loaderError) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:999',message:'Loader init failed, but functions available',data:{error:loaderError.message,hasFunctions:typeof window.loadScorecards==='function'&&typeof window.loadChannels==='function'&&typeof window.loadEmployees==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
+            console.warn('[AuditFormLoader] Loader initialization failed, but functions are available:', loaderError);
+          }
+          
+          // Dispatch event that functions are ready
+          window.dispatchEvent(new CustomEvent('auditFormFunctionsReady'));
+          
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1005',message:'Event dispatched',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
+        } catch (error) {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-form.html:1008',message:'Error in module script',data:{error:error.message,errorStack:error.stack?.substring(0,300)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          console.error('[AuditFormLoader] Error:', error);
+        }
+      })();
+    </script>
+    
     <!-- Legacy scripts removed - functionality handled by ES modules above -->
 </head>
 <body style="margin: 0; padding: 0;">
@@ -17655,17 +17790,24 @@ async function loadConversationDataIntoForm(conversationData) {
                                         quill.root.innerHTML = feedback;
                                     } else if (feedback) {
                                         // It's plain text, convert to HTML
-                                        const htmlText = feedback.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                                        // Use synchronous escapeHtml helper
+                                        const escapeHtmlSync = (text) => {
+                                            if (!text) return '';
+                                            const div = document.createElement('div');
+                                            div.textContent = text;
+                                            return div.innerHTML;
+                                        };
+                                        const htmlText = feedback.split('\n').map(line => `<p>${escapeHtmlSync(line)}</p>`).join('');
                                         quill.root.innerHTML = htmlText;
                                     }
                                     console.log(`✅ Set feedback ${param.field_id}_${index}`);
                                 } else {
                                     // Fallback to textarea for backward compatibility
                                     const feedbackTextarea = document.getElementById(feedbackId);
-                                if (feedbackTextarea && feedback) {
-                                    feedbackTextarea.value = feedback;
-                                    feedbackTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-                                    console.log(`✅ Set feedback ${param.field_id}_${index}`);
+                                    if (feedbackTextarea && feedback) {
+                                        feedbackTextarea.value = feedback;
+                                        feedbackTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                                        console.log(`✅ Set feedback ${param.field_id}_${index}`);
                                     }
                                 }
                             }
@@ -17689,7 +17831,14 @@ async function loadConversationDataIntoForm(conversationData) {
                     if (aiScorecardData.recommendations.trim().startsWith('<')) {
                         quill.root.innerHTML = aiScorecardData.recommendations;
                     } else {
-                        const htmlContent = aiScorecardData.recommendations.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                        // Use synchronous escapeHtml helper
+                        const escapeHtmlSync = (text) => {
+                            if (!text) return '';
+                            const div = document.createElement('div');
+                            div.textContent = text;
+                            return div.innerHTML;
+                        };
+                        const htmlContent = aiScorecardData.recommendations.split('\n').map(line => `<p>${escapeHtmlSync(line)}</p>`).join('');
                         quill.root.innerHTML = htmlContent;
                     }
                     console.log('✅ Set recommendations');
@@ -17729,6 +17878,7 @@ async function loadConversationDataIntoForm(conversationData) {
             } else {
                 console.warn('⚠️ AI scorecard data is not a valid object:', aiScorecardData);
             }
+            }
         } else {
             console.warn('⚠️ Scorecard select not found or scorecard_id missing');
         }
@@ -17750,6 +17900,7 @@ async function loadConversationDataIntoForm(conversationData) {
         }
     }
 }
+
 </script>
 
     <!-- Image Viewer Modal -->

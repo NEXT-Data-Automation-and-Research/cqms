@@ -7,6 +7,7 @@ import type { User } from '../types.js';
 import { homeState } from '../state.js';
 import { escapeHtml } from '../utils.js';
 import { logError, logWarn } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class UserProfileManager {
   /**
@@ -72,7 +73,8 @@ export class UserProfileManager {
     }
     
     try {
-      const { data: userData, error } = await window.supabaseClient
+      const supabase = await getAuthenticatedSupabase();
+      const { data: userData, error } = await supabase
         .from('users')
         .select('email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias')
         .eq('email', homeState.currentUserEmail)
@@ -232,7 +234,8 @@ export class UserProfileManager {
    */
   async loadAllUsers(): Promise<void> {
     try {
-      const { data, error } = await window.supabaseClient
+      const supabase = await getAuthenticatedSupabase();
+      const { data, error } = await supabase
         .from('users')
         .select('email, name, role, channel, quality_mentor')
         .eq('is_active', true);

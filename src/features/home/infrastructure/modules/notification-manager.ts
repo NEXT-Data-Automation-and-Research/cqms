@@ -8,6 +8,7 @@ import { homeState } from '../state.js';
 import { formatTimestamp, escapeHtml, viewAudit, viewAuditDetails } from '../utils.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logError, logWarn } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class NotificationManager {
   async load(): Promise<void> {
@@ -21,8 +22,9 @@ export class NotificationManager {
   }
 
   private async fetchAndCache(): Promise<void> {
+    const supabase = await getAuthenticatedSupabase();
     const notificationFilterField = homeState.isAgent ? 'employee_email' : 'auditor_email';
-    const { data: scorecards, error: scError } = await window.supabaseClient
+    const { data: scorecards, error: scError } = await supabase
       .from('scorecards')
       .select('table_name')
       .eq('is_active', true);
@@ -31,7 +33,7 @@ export class NotificationManager {
     if (!scError && scorecards) {
       const assignmentPromises = scorecards.map(async (scorecard: Scorecard) => {
         try {
-          const { data: audits, error } = await window.supabaseClient
+          const { data: audits, error } = await supabase
             .from(scorecard.table_name)
             .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
             .eq(notificationFilterField, homeState.currentUserEmail)
@@ -64,13 +66,14 @@ export class NotificationManager {
   }
 
   private async loadReversals(scorecards: Scorecard[]): Promise<Audit[]> {
+    const supabase = await getAuthenticatedSupabase();
     const reversals: Audit[] = [];
     const reversalFilterField = homeState.isAgent ? 'employee_email' : 'auditor_email';
     const normalizedEmail = homeState.currentUserEmail.toLowerCase().trim();
     
     for (const scorecard of scorecards) {
       try {
-        const { data: auditReversals, error } = await window.supabaseClient
+        const { data: auditReversals, error } = await supabase
           .from(scorecard.table_name)
           .select('id, employee_name, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, interaction_id, submitted_at')
           .not('reversal_requested_at', 'is', null)

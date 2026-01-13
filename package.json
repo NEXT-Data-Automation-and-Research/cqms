@@ -20,6 +20,7 @@
     "start": "npm run build && npm run serve",
     "watch": "npm run dev",
     "apply-rls": "node -r ts-node/register src/scripts/apply-rls-migration.ts || node dist/scripts/apply-rls-migration.js",
+    "apply-audit-migrations": "npx tsx src/scripts/apply-audit-reports-migrations.ts",
     "validate:css": "node scripts/css-pattern-validator.js",
     "postinstall": "node setup-env.js || echo 'Setup skipped - .env file may already exist'"
   },

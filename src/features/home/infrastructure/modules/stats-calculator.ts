@@ -8,6 +8,7 @@ import { homeState } from '../state.js';
 import { normalizePassingStatus } from '../utils.js';
 import { DateFilterManager } from '../date-filter-manager.js';
 import { logError, logWarn } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class StatsCalculator {
   constructor(
@@ -76,7 +77,8 @@ export class StatsCalculator {
     isAgent: boolean
   ): Promise<{ totalAssigned: number; inProgress: number; pending: number }> {
     const filterField = isAgent ? 'employee_email' : 'auditor_email';
-    const { data: assignments, error } = await (window.supabaseClient as any)
+    const supabase = await getAuthenticatedSupabase();
+    const { data: assignments, error } = await supabase
       .from('audit_assignments')
       .select('id, employee_email, auditor_email, scorecard_id, status, created_at, scheduled_date, completed_at')
       .eq(filterField, currentUserEmail)
@@ -108,7 +110,8 @@ export class StatsCalculator {
     isAgent: boolean
   ): Promise<number> {
     try {
-      const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+      const supabase = await getAuthenticatedSupabase();
+      const { data: scorecards, error: scError } = await supabase
         .from('scorecards')
         .select('table_name')
         .eq('is_active', true);
@@ -117,7 +120,7 @@ export class StatsCalculator {
         const auditFilterField = isAgent ? 'employee_email' : 'auditor_email';
         const completedPromises = scorecards.map(async (scorecard: Scorecard) => {
           try {
-            let completedQuery = (window.supabaseClient as any)
+            let completedQuery = supabase
               .from(scorecard.table_name)
               .select('id, submitted_at')
               .eq(auditFilterField, currentUserEmail)
@@ -133,7 +136,7 @@ export class StatsCalculator {
             const completedResult = await completedQuery;
             
             if (completedResult.error) {
-              const retryQuery = await (window.supabaseClient as any)
+              const retryQuery = await supabase
                 .from(scorecard.table_name)
                 .select('id, submitted_at')
                 .eq(auditFilterField, currentUserEmail)
@@ -184,7 +187,8 @@ export class StatsCalculator {
     let avgDurationText = '-';
     
     try {
-      const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+      const supabase = await getAuthenticatedSupabase();
+      const { data: scorecards, error: scError } = await supabase
         .from('scorecards')
         .select('table_name')
         .eq('is_active', true);
@@ -193,7 +197,7 @@ export class StatsCalculator {
         const auditFilterField = isAgent ? 'employee_email' : 'auditor_email';
         const durationPromises = scorecards.map(async (scorecard: Scorecard) => {
           try {
-            let durationQuery = (window.supabaseClient as any)
+            let durationQuery = supabase
               .from(scorecard.table_name)
               .select('audit_duration, submitted_at')
               .eq(auditFilterField, currentUserEmail)
@@ -211,7 +215,7 @@ export class StatsCalculator {
             let error = result.error;
             
             if (error && period && (period.start || period.end)) {
-              const retryQuery = (window.supabaseClient as any)
+              const retryQuery = supabase
                 .from(scorecard.table_name)
                 .select('audit_duration, submitted_at')
                 .eq(auditFilterField, currentUserEmail)
@@ -233,7 +237,7 @@ export class StatsCalculator {
             }
             
             if (error) {
-              let retryQuery = (window.supabaseClient as any)
+              let retryQuery = supabase
                 .from(scorecard.table_name)
                 .select('audit_duration, submitted_at')
                 .eq(auditFilterField, currentUserEmail);
@@ -349,7 +353,8 @@ export class StatsCalculator {
     let notPassingCount = 0;
     
     try {
-      const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+      const supabase = await getAuthenticatedSupabase();
+      const { data: scorecards, error: scError } = await supabase
         .from('scorecards')
         .select('id, name, table_name, scoring_type')
         .eq('is_active', true);
@@ -360,7 +365,7 @@ export class StatsCalculator {
         
         const auditPromises = scorecards.map(async (scorecard: Scorecard) => {
           try {
-            const { data: audits, error } = await (window.supabaseClient as any)
+            const { data: audits, error } = await supabase
               .from(scorecard.table_name)
               .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status')
               .order('submitted_at', { ascending: false })
@@ -444,7 +449,8 @@ export class StatsCalculator {
     let totalReversals = 0;
     
     try {
-      const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+      const supabase = await getAuthenticatedSupabase();
+      const { data: scorecards, error: scError } = await supabase
         .from('scorecards')
         .select('table_name')
         .eq('is_active', true);
@@ -455,7 +461,7 @@ export class StatsCalculator {
         
         const reversalPromises = scorecards.map(async (scorecard: Scorecard) => {
           try {
-            let { data: allReversals, error: allError } = await (window.supabaseClient as any)
+            let { data: allReversals, error: allError } = await supabase
               .from(scorecard.table_name)
               .select('reversal_requested_at, reversal_responded_at, ' + reversalFilterField)
               .not('reversal_requested_at', 'is', null)
@@ -515,7 +521,8 @@ export class StatsCalculator {
     if (!isAgent) return 0;
     
     try {
-      const { data: scorecards, error: scError } = await (window.supabaseClient as any)
+      const supabase = await getAuthenticatedSupabase();
+      const { data: scorecards, error: scError } = await supabase
         .from('scorecards')
         .select('table_name')
         .eq('is_active', true);
@@ -525,7 +532,7 @@ export class StatsCalculator {
         
         const auditPromises = scorecards.map(async (scorecard: Scorecard) => {
           try {
-            const { data: allAudits, error: auditError } = await (window.supabaseClient as any)
+            const { data: allAudits, error: auditError } = await supabase
               .from(scorecard.table_name)
               .select('id, employee_email, acknowledgement_status, submitted_at')
               .limit(1000);

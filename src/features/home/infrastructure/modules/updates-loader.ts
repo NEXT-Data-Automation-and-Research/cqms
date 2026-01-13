@@ -7,6 +7,7 @@ import type { Update, PeriodDates, Audit, Scorecard, User } from '../types.js';
 import { homeState } from '../state.js';
 import { DateFilterManager } from '../date-filter-manager.js';
 import { logWarn } from '../../../../utils/logging-helper.js';
+import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 
 export class UpdatesLoader {
   constructor(
@@ -30,8 +31,9 @@ export class UpdatesLoader {
   private async loadUpdatesForAgent(period: PeriodDates, currentUserEmail: string): Promise<Update[]> {
     const allUpdates: Update[] = [];
     const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+    const supabase = await getAuthenticatedSupabase();
 
-    const { data: scorecards, error: scError } = await window.supabaseClient
+    const { data: scorecards, error: scError } = await supabase
       .from('scorecards')
       .select('id, name, table_name')
       .eq('is_active', true);
@@ -39,7 +41,7 @@ export class UpdatesLoader {
     if (!scError && scorecards) {
       const auditPromises = scorecards.map(async (scorecard: Scorecard) => {
         try {
-          const { data: audits, error } = await window.supabaseClient
+          const { data: audits, error } = await supabase
             .from(scorecard.table_name)
             .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
             .eq('employee_email', currentUserEmail)
@@ -78,7 +80,7 @@ export class UpdatesLoader {
       
       const reversalPromises = scorecards.map(async (scorecard: Scorecard) => {
         try {
-          const { data: reversals, error } = await window.supabaseClient
+          const { data: reversals, error } = await supabase
             .from(scorecard.table_name)
             .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, interaction_id, submitted_at')
             .not('reversal_requested_at', 'is', null)
@@ -196,8 +198,9 @@ export class UpdatesLoader {
   private async loadUpdatesForAuditor(period: PeriodDates, currentUserEmail: string, allUsers: User[]): Promise<Update[]> {
     const allUpdates: Update[] = [];
     const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+    const supabase = await getAuthenticatedSupabase();
 
-    const { data: scorecards, error: scError } = await window.supabaseClient
+    const { data: scorecards, error: scError } = await supabase
       .from('scorecards')
       .select('id, name, table_name')
       .eq('is_active', true);
@@ -205,7 +208,7 @@ export class UpdatesLoader {
     if (!scError && scorecards) {
       const assignmentPromises = scorecards.map(async (scorecard: Scorecard) => {
         try {
-          let { data: audits, error } = await window.supabaseClient
+          let { data: audits, error } = await supabase
             .from(scorecard.table_name)
             .select('id, employee_email, employee_name, auditor_email, interaction_id, created_at, submitted_at, status, passing_status, _scorecard_id, _scorecard_name, _scorecard_table')
             .eq('auditor_email', currentUserEmail)
@@ -255,7 +258,7 @@ export class UpdatesLoader {
         });
       });
       
-      const { data: reversalScorecards, error: reversalScError } = await window.supabaseClient
+      const { data: reversalScorecards, error: reversalScError } = await supabase
         .from('scorecards')
         .select('id, name, table_name')
         .eq('is_active', true);
@@ -263,7 +266,7 @@ export class UpdatesLoader {
       if (!reversalScError && reversalScorecards) {
         const reversalPromises = reversalScorecards.map(async (scorecard: Scorecard) => {
           try {
-            let { data: reversals, error } = await window.supabaseClient
+            let { data: reversals, error } = await supabase
               .from(scorecard.table_name)
               .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, interaction_id')
               .not('reversal_requested_at', 'is', null)
@@ -272,7 +275,7 @@ export class UpdatesLoader {
               .limit(50);
             
             if (error) {
-              const retryQuery = await window.supabaseClient
+              const retryQuery = await supabase
                 .from(scorecard.table_name)
                 .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, interaction_id')
                 .not('reversal_requested_at', 'is', null)

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Reports | CQMS</title>
+<meta name="description" content="Quality Management System - Audit Reports">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/sidebar.css">
+<!-- Tailwind CDN - Load first -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind Config - Set after Tailwind loads -->
+<script>
+  function setTailwindConfig() {
+    if (typeof tailwind !== 'undefined') {
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary: '#1a733e',
+              'primary-dark': '#0d5e3a',
+              'dark-forest': '#032816',
+              'success': '#10b981',
+              'warning': '#f59e0b',
+              'error': '#ef4444',
+            },
+            fontFamily: {
+              sans: ['Poppins', 'sans-serif'],
+            },
+          },
+        },
+      };
+    }
+  }
+  
+  // Set config when Tailwind loads
+  const tailwindScript = document.querySelector('script[src*="tailwindcss"]');
+  if (tailwindScript) {
+    tailwindScript.addEventListener('load', setTailwindConfig);
+  }
+  
+  // Also try to set config if Tailwind is already loaded
+  if (typeof tailwind !== 'undefined') {
+    setTailwindConfig();
+  }
+  
+  // Fallback: try setting config after a short delay
+  setTimeout(() => {
+    if (typeof tailwind !== 'undefined') {
+      setTailwindConfig();
+    }
+  }, 100);
+</script>
+<!-- Custom CSS - Load after Tailwind to ensure proper precedence -->
+<link rel="stylesheet" href="/src/features/audit-reports/presentation/styles/audit-reports.css">
+<link rel="stylesheet" href="/src/features/audit-reports/presentation/styles/audit-reports-kpi.css">
+<link rel="stylesheet" href="/src/features/audit-reports/presentation/styles/audit-reports-filters.css">
+<link rel="stylesheet" href="/src/features/audit-reports/presentation/styles/audit-reports-modal.css">
+<!-- Ensure custom CSS takes precedence over Tailwind -->
+<style>
+  /* Force custom CSS to override Tailwind CDN */
+  .kpi-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)) !important;
+    gap: 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .header-actions {
+    display: flex !important;
+    gap: 0.5625rem !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .expert-audits-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.125rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .kpi-card {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  .kpi-grid {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    display: grid !important;
+  }
+  
+  .audit-card {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: var(--background-white) !important;
+    border: 0.0469rem solid var(--border-light) !important;
+    border-radius: 0.375rem !important;
+    padding: 0.75rem !important;
+    margin-bottom: 0.5625rem !important;
+  }
+
+  /* Ensure grid items inside audit cards are visible and not blocked */
+  .audit-card > div[style*="display: grid"] {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)) !important;
+    gap: 0.5625rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+  }
+
+  .audit-card > div[style*="display: grid"] > div {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 3 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Ensure text in grid items is visible */
+  .audit-card > div[style*="display: grid"] > div > div {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    color: var(--text-color) !important;
+  }
+
+  /* Label text (Interaction ID, Channel, etc.) */
+  .audit-card > div[style*="display: grid"] > div > div:first-child {
+    color: var(--text-muted) !important;
+    font-size: 0.5156rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Value text */
+  .audit-card > div[style*="display: grid"] > div > div:last-child {
+    color: var(--text-color) !important;
+    font-size: 0.5625rem !important;
+    font-weight: 600 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Audit card grid and fields - explicit classes */
+  .audit-card-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)) !important;
+    gap: 0.5625rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 2 !important;
+    pointer-events: auto !important;
+  }
+
+  .audit-card-field {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-width: 0 !important;
+    position: relative !important;
+    z-index: 3 !important;
+    pointer-events: auto !important;
+  }
+
+  .audit-card-label {
+    font-size: 0.5156rem !important;
+    color: #6b7280 !important;
+    margin-bottom: 0.1875rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  .audit-card-value {
+    font-size: 0.5625rem !important;
+    font-weight: 600 !important;
+    color: #1f2937 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    word-break: break-word !important;
+  }
+  
+  #auditList {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5625rem !important;
+  }
+  
+  .expert-audits-container {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  
+  /* Ensure no overlay blocks cards */
+  body > *:not(.modal):not(.modal *) {
+    pointer-events: auto;
+  }
+  
+  /* Ensure sidebar doesn't block content */
+  .sidebar {
+    z-index: 1000 !important;
+  }
+  
+  .main-content {
+    position: relative !important;
+    z-index: 1 !important;
+    pointer-events: auto !important;
+  }
+  
+  @media (min-width: 1200px) {
+    .kpi-grid {
+      grid-template-columns: repeat(4, 1fr) !important;
+    }
+  }
+  
+  @media (max-width: 1199px) {
+    .kpi-grid {
+      grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)) !important;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .kpi-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .kpi-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  
+  /* Ensure filter panel elements are clickable */
+  #filterPanel {
+    pointer-events: auto !important;
+    z-index: 100 !important;
+    position: relative !important;
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  #filterPanel * {
+    pointer-events: auto !important;
+  }
+  
+  #filterPanel input,
+  #filterPanel select,
+  #filterPanel button {
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 101 !important;
+    background-color: #ffffff !important;
+    touch-action: manipulation !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  
+  #filterPanel input[type="text"] {
+    cursor: text !important;
+  }
+  
+  #filterPanel select {
+    cursor: pointer !important;
+    appearance: auto !important;
+    -webkit-appearance: menulist !important;
+    -moz-appearance: menulist !important;
+  }
+  
+  #filterPanel button {
+    cursor: pointer !important;
+    user-select: none !important;
+  }
+  
+  #filterPanel label {
+    pointer-events: none !important;
+    cursor: default !important;
+  }
+  
+  /* Ensure header actions are clickable */
+  .header-actions {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 50 !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 0.5625rem !important;
+  }
+  
+  .header-actions > * {
+    pointer-events: auto !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .header-actions > div {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.375rem !important;
+    flex-wrap: nowrap !important;
+  }
+  
+  .action-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative !important;
+    z-index: 51 !important;
+    touch-action: manipulation !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  
+  /* Quick date buttons alignment */
+  .quick-date-btn {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    min-width: fit-content !important;
+  }
+  
+  /* Ensure main content doesn't block filters */
+  .main-content {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+  
+  /* Ensure filter panel is above everything except modals */
+  #filterPanel.controls-section {
+    z-index: 100 !important;
+  }
+  
+  /* Ensure date dropdown appears above filter panel */
+  .date-picker-dropdown {
+    position: relative !important;
+    z-index: 1001 !important;
+  }
+  
+  .date-dropdown-menu {
+    z-index: 1002 !important;
+  }
+  
+  .date-dropdown-menu.active {
+    z-index: 1002 !important;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Import map for npm packages in browser -->
+<script type="importmap">
+{
+  "imports": {
+    "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+    "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+  }
+}
+</script>
+</head>
+<body>
+<!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+<main class="main-content" role="main">
+    <p class="page-heading">Audit Reports</p>
+    <div style="margin-bottom: 1.125rem; width: 100%;"></div>
+
+    <!-- Header Actions -->
+    <div class="header-actions" id="headerActions">
+        <!-- Week Navigation, Date Picker, Export, Filters, etc. -->
+        <!-- Will be rendered by renderer -->
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="filterPanel" class="controls-section" style="display: none;">
+        <!-- Filters will be rendered by renderer -->
+    </div>
+
+    <!-- KPI Cards Grid -->
+    <div class="expert-audits-container">
+        <div class="kpi-grid" id="kpiGrid">
+            <!-- KPI cards will be rendered by renderer -->
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; width: 100%;">
+            <div style="width: 2.5rem; height: 2.5rem; border: 0.25rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
+            <p style="font-size: 0.75rem; color: #6b7280; font-family: 'Poppins', sans-serif; margin: 0;">Loading audits...</p>
+        </div>
+
+        <!-- Audit List -->
+        <div id="auditList" style="display: none; flex-direction: column; gap: 0.5625rem; width: 100%;">
+            <!-- Audits will be rendered by renderer -->
+        </div>
+
+        <!-- Pagination Controls -->
+        <div id="paginationContainer" style="display: none; margin-top: 1.125rem; padding: 0.75rem; background: var(--background-white); border-radius: 0.375rem; border: 0.0469rem solid var(--border-light); width: 100%;">
+            <!-- Pagination will be rendered by renderer -->
+        </div>
+    </div>
+</main>
+
+<!-- Authentication Guard - Must be loaded first -->
+<script type="module" src="/js/auth-checker.js"></script>
+
+<!-- Initialize Supabase FIRST before any components load -->
+<script type="module">
+  import { initSupabase } from '/js/utils/supabase-init.js';
+  import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+  
+  // Initialize Supabase immediately when page loads
+  (async function initSupabaseFirst() {
+    try {
+      // Initialize base Supabase client
+      await initSupabase();
+      
+      // Set up secure client on window.supabaseClient (required by DatabaseFactory)
+      const secureClient = await getSecureSupabase(false); // Don't require auth initially (will check on each DB op)
+      window.supabaseClient = secureClient;
+      
+      // Signal that Supabase is ready
+      window.supabaseReady = true;
+      window.dispatchEvent(new CustomEvent('supabaseReady'));
+    } catch (error) {
+      // Note: Using direct console.error here as logging helper may not be available yet
+      // This is acceptable for initialization errors
+      if (typeof console !== 'undefined' && console.error) {
+        console.error('Error initializing Supabase:', error);
+      }
+    }
+  })();
+</script>
+
+<!-- Sidebar Loader -->
+<script type="module" src="/js/load-sidebar.js" defer></script>
+
+<!-- Audit Reports Loader -->
+<script type="module">
+import { AuditReportsLoader } from '/js/features/audit-reports/presentation/audit-reports-loader.js';
+
+// Wait for Supabase to be ready before initializing
+async function initializeAuditReports() {
+  // Wait for Supabase to be ready (with timeout)
+  const maxWait = 10000; // 10 seconds
+  const startTime = Date.now();
+  
+  while (Date.now() - startTime < maxWait) {
+    if (window.supabaseReady && window.supabaseClient) {
+      const loader = new AuditReportsLoader();
+      await loader.initialize();
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  // If timeout, try anyway (might still work)
+  // Note: Using direct console.warn here as logging helper may not be available yet
+  // This is acceptable for initialization errors
+  if (typeof console !== 'undefined' && console.warn) {
+    console.warn('Supabase ready timeout, initializing anyway...');
+  }
+  const loader = new AuditReportsLoader();
+  await loader.initialize();
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeAuditReports);
+} else {
+    initializeAuditReports();
+}
+</script>
+</body>
+</html>
+

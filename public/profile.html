@@ -42,29 +42,12 @@
 
     <!-- Main Content -->
     <div class="px-4 py-4 max-w-7xl mx-auto w-full">
-      <h1 class="text-xl font-bold text-gray-900 mb-4">User Profile</h1>
-      
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-        <div class="text-center">
-          <div class="mb-4">
-            <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-            </svg>
-          </div>
-          <h2 class="text-2xl font-semibold text-gray-900 mb-2">User Profile</h2>
-          <p class="text-gray-600 mb-4">
-            This page will display and manage your user profile information.
-          </p>
-          <div class="bg-purple-50 border border-purple-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-            <h3 class="font-semibold text-purple-900 mb-2">Purpose:</h3>
-            <ul class="list-disc list-inside text-purple-800 space-y-1 text-sm">
-              <li>View and edit personal information</li>
-              <li>Update profile picture and contact details</li>
-              <li>Change password and security settings</li>
-              <li>Manage notification preferences</li>
-              <li>View account activity and audit history</li>
-              <li>Configure dashboard preferences</li>
-            </ul>
+      <!-- Profile content will be loaded here -->
+      <div id="profile-container">
+        <div class="flex items-center justify-center min-h-[400px]">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p class="text-gray-600">Loading profile...</p>
           </div>
         </div>
       </div>
@@ -76,6 +59,38 @@
   
   <!-- Sidebar Loader -->
   <script type="module" src="/js/load-sidebar.js" defer></script>
+
+  <!-- Profile Controller -->
+  <script type="module">
+    import { ProfileController } from '/js/features/profile/presentation/profile-controller.js';
+    
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initializeProfile);
+    } else {
+      initializeProfile();
+    }
+
+    async function initializeProfile() {
+      try {
+        const controller = new ProfileController();
+        await controller.initialize();
+        
+        // Make controller available globally for sidebar refresh
+        window.profileController = controller;
+      } catch (error) {
+        console.error('Failed to initialize profile:', error);
+        const container = document.getElementById('profile-container');
+        if (container) {
+          container.innerHTML = `
+            <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              Failed to load profile. Please refresh the page.
+            </div>
+          `;
+        }
+      }
+    }
+  </script>
 </body>
 </html>
 

@@ -6,7 +6,7 @@
 import { BaseRepository } from '../../../core/repository/base-repository.js';
 import { IDatabaseClient } from '../../../core/database/database-client.interface.js';
 import type { AuditFormData, Scorecard, ScorecardParameter } from '../domain/entities.js';
-import { AUDIT_FORM_FIELDS } from '../../../core/constants/field-whitelists.js';
+import { AUDIT_FORM_FIELDS, SCORECARD_PARAMETER_FIELDS } from '../../../core/constants/field-whitelists.js';
 
 export class AuditFormRepository extends BaseRepository {
   constructor(db: IDatabaseClient) {
@@ -59,12 +59,12 @@ export class AuditFormRepository extends BaseRepository {
       async () => {
         const result = await this.db
           .from('scorecard_perameters')
-          .select('*')
+          .select(SCORECARD_PARAMETER_FIELDS)
           .eq('scorecard_id', scorecardId)
           .eq('is_active', true)
           .order('display_order', { ascending: true })
           .execute<ScorecardParameter[]>();
-        return result || [];
+        return result;
       },
       `Failed to load parameters for scorecard ${scorecardId}`
     );

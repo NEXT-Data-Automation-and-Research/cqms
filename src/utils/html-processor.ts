@@ -108,12 +108,46 @@ function injectPageTransition(html: string, htmlPath: string): string {
  * @returns Processed HTML string
  */
 export function injectVersionIntoHTML(htmlPath: string, version: string): string {
-  // Try public directory first
-  let fullPath = path.join(__dirname, '../../public', htmlPath);
+  const baseDir = path.join(__dirname, '../..');
+  let fullPath: string;
   
-  // If not found, try src directory (for auth-page.html)
-  if (!fs.existsSync(fullPath)) {
-    fullPath = path.join(__dirname, '../../src', htmlPath);
+  // If htmlPath already includes a full path (starts with 'src/' or '../'), use it directly
+  if (htmlPath.startsWith('src/') || htmlPath.startsWith('../')) {
+    fullPath = path.join(baseDir, htmlPath);
+  } else {
+    // Try public directory first
+    fullPath = path.join(baseDir, 'public', htmlPath);
+    
+    // If not found, try src directory (for auth-page.html)
+    if (!fs.existsSync(fullPath)) {
+      fullPath = path.join(baseDir, 'src', htmlPath);
+    }
+    
+    // If not found, try feature directories (for migrated HTML files)
+    if (!fs.existsSync(fullPath)) {
+      const srcDir = path.join(baseDir, 'src');
+      const featuresDir = path.join(srcDir, 'features');
+      
+      if (fs.existsSync(featuresDir)) {
+        // Extract just the filename
+        const filename = path.basename(htmlPath);
+        
+        // Search through feature directories for the HTML file
+        const features = fs.readdirSync(featuresDir, { withFileTypes: true });
+        for (const feature of features) {
+          if (feature.isDirectory()) {
+            const presentationDir = path.join(featuresDir, feature.name, 'presentation');
+            if (fs.existsSync(presentationDir)) {
+              const featureHtmlPath = path.join(presentationDir, filename);
+              if (fs.existsSync(featureHtmlPath)) {
+                fullPath = featureHtmlPath;
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
   }
   
   if (!fs.existsSync(fullPath)) {
