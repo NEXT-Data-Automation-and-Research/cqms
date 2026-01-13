@@ -25,6 +25,37 @@ export class ProfileController {
   }
 
   /**
+   * Wait for Supabase client to be initialized
+   */
+  private async waitForSupabaseClient(maxWaitMs: number = 5000): Promise<void> {
+    const startTime = Date.now();
+    const checkInterval = 100; // Check every 100ms
+    
+    while (Date.now() - startTime < maxWaitMs) {
+      if ((window as any).supabaseClient) {
+        return;
+      }
+      
+      // Try to initialize it if not available
+      try {
+        const secureWindowModule = await import('/js/utils/secure-window-supabase.js' as any);
+        if (secureWindowModule?.initSecureWindowSupabase) {
+          await secureWindowModule.initSecureWindowSupabase();
+          if ((window as any).supabaseClient) {
+            return;
+          }
+        }
+      } catch (importError) {
+        // Module might not exist, continue waiting
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+    
+    throw new Error('Supabase client not initialized after waiting');
+  }
+
+  /**
    * Initialize service (call after Supabase is ready)
    */
   private initializeService(): void {
@@ -41,7 +72,10 @@ export class ProfileController {
    */
   async initialize(): Promise<void> {
     try {
-      // Initialize service first
+      // Wait for Supabase client to be ready
+      await this.waitForSupabaseClient();
+      
+      // Initialize service
       this.initializeService();
       
       await this.loadProfile();

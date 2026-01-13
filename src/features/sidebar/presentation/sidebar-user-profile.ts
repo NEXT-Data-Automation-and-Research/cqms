@@ -293,7 +293,7 @@ export class SidebarUserProfile {
     if (!userProfile) return
 
     userProfile.addEventListener('click', () => {
-      window.location.href = 'profile.html'
+      window.location.href = '/profile.html'
     })
 
     // Also handle keyboard navigation
@@ -301,7 +301,7 @@ export class SidebarUserProfile {
       const keyboardEvent = event as KeyboardEvent
       if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
         event.preventDefault()
-        window.location.href = 'profile.html'
+        window.location.href = '/profile.html'
       }
     })
   }

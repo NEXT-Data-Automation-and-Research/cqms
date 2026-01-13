@@ -180,7 +180,7 @@ export class SidebarHTMLGenerator {
 
     <!-- User Profile Section at Bottom -->
     <div class="user-profile-section">
-        <div class="user-profile" role="button" tabindex="0" aria-label="User Profile">
+        <div class="user-profile" role="button" tabindex="0" aria-label="View your profile - Click to open profile page">
             <div class="user-avatar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>

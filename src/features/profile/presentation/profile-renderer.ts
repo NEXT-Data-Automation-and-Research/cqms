@@ -6,6 +6,7 @@
 import { UserProfile } from '../domain/entities.js';
 import { safeSetHTML, escapeHtml } from '../../../utils/html-sanitizer.js';
 import { logWarn } from '../../../utils/logging-helper.js';
+import { generateEmployeeInfoFields, generateTeamInfoFields, generateAccountInfoFields } from './profile-fields-renderer.js';
 
 /**
  * Renderer for profile page UI
@@ -136,6 +137,15 @@ export class ProfileRenderer {
 
       <!-- Role and Department (read-only) -->
       ${this.generateRoleDepartmentFields(profile)}
+      
+      <!-- Employee Information -->
+      ${generateEmployeeInfoFields(profile)}
+      
+      <!-- Team Information -->
+      ${generateTeamInfoFields(profile)}
+      
+      <!-- Account Information -->
+      ${generateAccountInfoFields(profile)}
 
       <!-- Submit Button (only shown when editing) -->
       ${isEditing ? this.generateActionButtons() : ''}
@@ -177,6 +187,7 @@ export class ProfileRenderer {
       </div>
     `;
   }
+
 
   /**
    * Generate action buttons
