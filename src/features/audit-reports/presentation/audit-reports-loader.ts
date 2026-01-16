@@ -57,11 +57,17 @@ export class AuditReportsLoader {
             <button id="retryButton" style="padding: 0.5rem 1rem; background: #1A733E; color: white; border: none; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; cursor: pointer;">Retry</button>
           </div>
         `);
-        // Attach event listener for retry button
+        // Attach event listener for retry button - preserve state
         const retryBtn = auditList.querySelector('#retryButton');
         if (retryBtn) {
-          retryBtn.addEventListener('click', () => {
-            window.location.reload();
+          retryBtn.addEventListener('click', async () => {
+            // Retry using controller instead of reload to preserve filters
+            if ((window as any).auditReportsController) {
+              await (window as any).auditReportsController.loadInitialData();
+            } else {
+              // Fallback to reload if controller not available
+              window.location.reload();
+            }
           });
         }
       }

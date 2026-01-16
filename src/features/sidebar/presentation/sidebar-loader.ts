@@ -69,7 +69,7 @@ export class SidebarLoader {
     // This runs after UI is already visible to user
     this.initializeSidebarFeaturesAsync().catch(error => {
       // Silently handle errors - UI is already shown with cached data
-      console.debug('[Sidebar] Background initialization error:', error)
+      // Background initialization error - non-critical
     })
 
     // Update sidebar when user info changes (for role-based menu updates)
@@ -166,7 +166,9 @@ export class SidebarLoader {
         tempDiv.innerHTML = sidebarHTML
       }
 
-      // Extract the sidebar nav element
+      // Extract the hamburger button, overlay, and sidebar nav element
+      const menuToggle = tempDiv.querySelector('.menu-toggle')
+      const sidebarOverlay = tempDiv.querySelector('.sidebar-overlay')
       const sidebarNav = tempDiv.querySelector('nav.sidebar')
       if (!sidebarNav) {
         throw new Error('Sidebar nav element not found')
@@ -189,8 +191,25 @@ export class SidebarLoader {
         sidebarState.sidebarIsExpanded = false
       }
 
-      // Insert the sidebar at the beginning of body
+      // Insert overlay and sidebar at the beginning of body
+      // Note: Hamburger button is now placed inline with page heading in each page's HTML
+      if (sidebarOverlay) {
+        document.body.insertBefore(sidebarOverlay, document.body.firstChild)
+      }
       document.body.insertBefore(sidebarNav, document.body.firstChild)
+      
+      // If hamburger button exists in sidebar HTML but not in page, insert it
+      // Otherwise, use the one that's already in the page HTML
+      if (menuToggle) {
+        const existingToggle = document.getElementById('mobileMenuToggle')
+        if (!existingToggle) {
+          // Insert at beginning of body if not found in page
+          document.body.insertBefore(menuToggle, document.body.firstChild)
+        } else {
+          // Use existing one, remove the duplicate from sidebar HTML
+          menuToggle.remove()
+        }
+      }
 
       sidebarState.isSidebarLoaded = true
       
@@ -255,7 +274,10 @@ export class SidebarLoader {
     const sidebar = document.querySelector('.sidebar')
     if (!sidebar) return
 
-    // Find or create toggle button
+    // Setup mobile menu toggle
+    this.setupMobileMenuToggle()
+
+    // Find or create desktop toggle button
     let toggleButton = document.querySelector('.sidebar-toggle')
     if (!toggleButton) {
       // Create toggle button if it doesn't exist
@@ -270,7 +292,7 @@ export class SidebarLoader {
       document.body.appendChild(toggleButton)
     }
 
-    // Handle toggle button click
+    // Handle desktop toggle button click
     // Toggle between permanently expanded and collapsed (with hover expansion)
     toggleButton.addEventListener('click', () => {
       const isCollapsed = sidebar.classList.contains('collapsed')
@@ -307,6 +329,86 @@ export class SidebarLoader {
         }
       })
     }
+  }
+
+  /**
+   * Setup mobile menu toggle functionality
+   */
+  private setupMobileMenuToggle(): void {
+    const sidebar = document.querySelector('.sidebar')
+    // Find hamburger button - could be in page HTML or inserted by sidebar loader
+    const menuToggle = document.getElementById('mobileMenuToggle') || document.querySelector('.menu-toggle')
+    const sidebarOverlay = document.getElementById('sidebarOverlay')
+    
+    if (!sidebar || !menuToggle) return
+
+    const toggleMobileMenu = (open: boolean) => {
+      if (open) {
+        sidebar.classList.add('mobile-open')
+        menuToggle.classList.add('active')
+        menuToggle.setAttribute('aria-expanded', 'true')
+        if (sidebarOverlay) {
+          sidebarOverlay.classList.add('active')
+        }
+        document.body.classList.add('sidebar-open')
+      } else {
+        sidebar.classList.remove('mobile-open')
+        menuToggle.classList.remove('active')
+        menuToggle.setAttribute('aria-expanded', 'false')
+        if (sidebarOverlay) {
+          sidebarOverlay.classList.remove('active')
+        }
+        document.body.classList.remove('sidebar-open')
+      }
+    }
+
+    // Toggle menu on hamburger button click
+    menuToggle.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const isOpen = sidebar.classList.contains('mobile-open')
+      toggleMobileMenu(!isOpen)
+    })
+
+    // Close menu when clicking overlay
+    if (sidebarOverlay) {
+      sidebarOverlay.addEventListener('click', () => {
+        toggleMobileMenu(false)
+      })
+    }
+
+    // Close menu when clicking outside on mobile
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        window.innerWidth <= 767 &&
+        sidebar.classList.contains('mobile-open') &&
+        !sidebar.contains(target) &&
+        !menuToggle.contains(target)
+      ) {
+        toggleMobileMenu(false)
+      }
+    }
+
+    document.addEventListener('click', handleClickOutside)
+
+    // Close menu when window is resized to desktop size
+    const handleResize = () => {
+      if (window.innerWidth > 767) {
+        toggleMobileMenu(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    // Close menu when a menu item is clicked (navigation)
+    const menuItems = sidebar.querySelectorAll('.menu-item, .submenu-item')
+    menuItems.forEach(item => {
+      item.addEventListener('click', () => {
+        if (window.innerWidth <= 767) {
+          toggleMobileMenu(false)
+        }
+      })
+    })
   }
 
   /**

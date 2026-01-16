@@ -11,21 +11,6 @@ export function renderHeaderActions(
   controller: AuditReportsController
 ): void {
   const html = `
-    <div style="display: flex; align-items: center; gap: 0.5625rem;">
-      <button class="action-btn" id="prevWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Previous Week">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-        </svg>
-      </button>
-      <div class="action-btn" id="weekDisplay" style="padding: 0.4688rem 0.75rem; cursor: default; background-color: var(--primary-color); color: var(--white); border-color: var(--primary-color);">
-        <span id="weekText">This Month</span>
-      </div>
-      <button class="action-btn" id="nextWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Next Week">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-        </svg>
-      </button>
-    </div>
     <div class="date-picker-dropdown" style="position: relative; z-index: 1001;">
       <button class="action-btn" id="dateBtn">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,13 +36,17 @@ export function renderHeaderActions(
         </div>
       </div>
     </div>
-    <div style="display: flex; align-items: center; gap: 0.375rem; flex-wrap: nowrap; pointer-events: auto; position: relative; z-index: 50;">
-      <button class="action-btn quick-date-btn" id="todayBtn" style="pointer-events: auto !important; cursor: pointer !important; white-space: nowrap; touch-action: manipulation;">Today</button>
-      <button class="action-btn quick-date-btn" id="yesterdayBtn" style="pointer-events: auto !important; cursor: pointer !important; white-space: nowrap; touch-action: manipulation;">Yesterday</button>
-      <button class="action-btn quick-date-btn active" id="thisMonthBtn" style="pointer-events: auto !important; cursor: pointer !important; white-space: nowrap; touch-action: manipulation;">This Month</button>
-      <button class="action-btn quick-date-btn" id="lastMonthBtn" style="pointer-events: auto !important; cursor: pointer !important; white-space: nowrap; touch-action: manipulation;">Last Month</button>
+    <!-- Quick Date Buttons - Visible on desktop only -->
+    <div class="quick-date-buttons-container">
+      <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
+      <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
+      <button class="action-btn quick-date-btn" id="thisWeekBtn">This Week</button>
+      <button class="action-btn quick-date-btn" id="lastWeekBtn">Last Week</button>
+      <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
+      <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
     </div>
-    <button class="action-btn" id="exportBtn">
+    <!-- Export Button - Hidden -->
+    <button class="action-btn" id="exportBtn" style="display: none;">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
       </svg>

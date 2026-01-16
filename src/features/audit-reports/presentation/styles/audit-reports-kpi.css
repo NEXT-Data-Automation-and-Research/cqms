@@ -3,10 +3,27 @@
  * Styles for KPI cards and statistics display
  */
 
-/* KPI Grid */
+/* Skeleton Loader Animation */
+@keyframes skeleton-loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.kpi-card.skeleton .skeleton-line {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 0.25rem;
+}
+
+/* KPI Grid - Default 2 columns for mobile/tablet, 4 for desktop */
 .kpi-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     margin-bottom: 1.125rem;
     margin-top: 0.5rem;
@@ -17,27 +34,43 @@
     padding-top: 0.5rem;
 }
 
-@media (min-width: 1200px) {
-    .kpi-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
-@media (max-width: 1199px) {
-    .kpi-grid {
-        grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-    }
-}
-
-@media (max-width: 768px) {
+/* Responsive KPI Grid - 2 columns on all screen sizes */
+/* Mobile: < 768px - 2 columns */
+@media screen and (max-width: 767px) {
     .kpi-grid {
         grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .kpi-card {
+        padding: 0.625rem;
     }
 }
 
-@media (max-width: 480px) {
+/* Tablet: 768px - 1024px - 2 columns */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
     .kpi-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.625rem;
+    }
+
+    .kpi-card {
+        padding: 0.6875rem;
+    }
+}
+
+/* Desktop: > 1024px - 4 columns */
+@media screen and (min-width: 1025px) {
+    .kpi-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+    }
+}
+
+/* Large Desktop: > 1440px - 4 columns */
+@media screen and (min-width: 1440px) {
+    .kpi-grid {
+        grid-template-columns: repeat(4, 1fr);
     }
 }
 
@@ -123,6 +156,29 @@
 .kpi-chart-container {
     height: 1.6875rem;
     margin-top: 0.5rem;
+    width: 100%;
+    position: relative;
+    display: none; /* Hidden on mobile by default */
+}
+
+.kpi-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Show charts on desktop only */
+@media screen and (min-width: 1025px) {
+    .kpi-chart-container.desktop-only {
+        display: block !important;
+    }
+}
+
+/* Hide charts on mobile and tablet */
+@media screen and (max-width: 1024px) {
+    .kpi-chart-container.desktop-only {
+        display: none !important;
+    }
 }
 
 /* Tooltip Styles */

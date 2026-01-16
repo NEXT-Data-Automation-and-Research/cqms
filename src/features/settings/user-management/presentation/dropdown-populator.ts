@@ -24,47 +24,64 @@ export class DropdownPopulator {
       option.textContent = channel.name;
       select.appendChild(option);
     });
+    
+    // If this select has been made searchable, refresh its options
+    if ((select as any).refreshSearchableOptions) {
+      (select as any).refreshSearchableOptions();
+    }
   }
 
   /**
    * Populate supervisor dropdowns
+   * Team Lead shows all users, Quality Mentor shows all users
    */
   populateSupervisorDropdowns(teamSupervisorId: string, qualitySupervisorId: string, users: User[]): void {
     const teamSelect = document.getElementById(teamSupervisorId) as HTMLSelectElement;
     const qualitySelect = document.getElementById(qualitySupervisorId) as HTMLSelectElement;
 
     if (teamSelect) {
-      teamSelect.innerHTML = '<option value="">Select Team Supervisor</option>';
+      teamSelect.innerHTML = '<option value="">Select Team Lead</option>';
     }
     if (qualitySelect) {
       qualitySelect.innerHTML = '<option value="">Select Quality Mentor</option>';
     }
 
-    const sortedUsers = [...users].sort((a, b) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      return nameA.localeCompare(nameB);
-    });
+    // Show all users (only require email as identifier)
+    const sortedUsers = [...users]
+      .filter(user => user.email) // Only require email, name is optional
+      .sort((a, b) => {
+        const nameA = (a.name || a.email || '').toLowerCase();
+        const nameB = (b.name || b.email || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
 
     sortedUsers.forEach(user => {
-      if (user.name && user.email) {
-        const optionText = `${user.name}${user.designation ? ' - ' + user.designation : ''}`;
-        
-        if (teamSelect) {
-          const option = document.createElement('option');
-          option.value = user.email;
-          option.textContent = optionText;
-          teamSelect.appendChild(option);
-        }
-        
-        if (qualitySelect) {
-          const option = document.createElement('option');
-          option.value = user.email;
-          option.textContent = optionText;
-          qualitySelect.appendChild(option);
-        }
+      // Use email as fallback if name is missing
+      const displayName = user.name || user.email || 'Unknown User';
+      const optionText = `${displayName}${user.designation ? ' - ' + user.designation : ''}`;
+      
+      if (teamSelect) {
+        const option = document.createElement('option');
+        option.value = user.email;
+        option.textContent = optionText;
+        teamSelect.appendChild(option);
+      }
+      
+      if (qualitySelect) {
+        const option = document.createElement('option');
+        option.value = user.email;
+        option.textContent = optionText;
+        qualitySelect.appendChild(option);
       }
     });
+    
+    // If these selects have been made searchable, refresh their options
+    if (teamSelect && (teamSelect as any).refreshSearchableOptions) {
+      (teamSelect as any).refreshSearchableOptions();
+    }
+    if (qualitySelect && (qualitySelect as any).refreshSearchableOptions) {
+      (qualitySelect as any).refreshSearchableOptions();
+    }
   }
 
   /**
@@ -83,6 +100,11 @@ export class DropdownPopulator {
         select.appendChild(option);
       }
     });
+    
+    // If this select has been made searchable, refresh its options
+    if ((select as any).refreshSearchableOptions) {
+      (select as any).refreshSearchableOptions();
+    }
   }
 
   /**
@@ -117,28 +139,96 @@ export class DropdownPopulator {
       option.textContent = dept;
       select.appendChild(option);
     });
+    
+    // If this select has been made searchable, refresh its options
+    if ((select as any).refreshSearchableOptions) {
+      (select as any).refreshSearchableOptions();
+    }
+  }
+
+  /**
+   * Populate country dropdown
+   */
+  populateCountryDropdown(selectId: string): void {
+    const select = document.getElementById(selectId) as HTMLSelectElement;
+    if (!select) return;
+
+    const countries = ['Bangladesh', 'Sri Lanka', 'Malaysia', 'Cyprus'];
+
+    select.innerHTML = '<option value="">Select Country</option>';
+    countries.forEach(country => {
+      const option = document.createElement('option');
+      option.value = country;
+      option.textContent = country;
+      select.appendChild(option);
+    });
+    
+    // If this select has been made searchable, refresh its options
+    if ((select as any).refreshSearchableOptions) {
+      (select as any).refreshSearchableOptions();
+    }
+  }
+
+  /**
+   * Populate designation dropdown
+   */
+  populateDesignationDropdown(selectId: string): void {
+    const select = document.getElementById(selectId) as HTMLSelectElement;
+    if (!select) return;
+
+    const designations = [
+      'Executive',
+      'Senior Executive',
+      'Manager I',
+      'Manager II',
+      'Manager III',
+      'Associate Director',
+      'Vice President'
+    ];
+
+    select.innerHTML = '<option value="">Select Designation</option>';
+    designations.forEach(designation => {
+      const option = document.createElement('option');
+      option.value = designation;
+      option.textContent = designation;
+      select.appendChild(option);
+    });
+    
+    // If this select has been made searchable, refresh its options
+    if ((select as any).refreshSearchableOptions) {
+      (select as any).refreshSearchableOptions();
+    }
+  }
+
+  /**
+   * Populate modal dropdowns (shared for create and edit)
+   */
+  populateModalDropdowns(prefix: 'create' | 'edit'): void {
+    const state = userManagementState.getState();
+    this.populateChannelDropdown(`${prefix}UserChannel`, state.channels);
+    this.populateSupervisorDropdowns(
+      `${prefix}UserTeamSupervisor`,
+      `${prefix}UserQualitySupervisor`,
+      state.allUsers
+    );
+    this.populateIntercomAdminDropdown(`${prefix}UserIntercomAdmin`, state.intercomAdmins);
+    this.populateDepartmentDropdown(`${prefix}UserDepartment`);
+    this.populateCountryDropdown(`${prefix}UserCountry`);
+    this.populateDesignationDropdown(`${prefix}UserDesignation`);
   }
 
   /**
    * Populate edit modal dropdowns
    */
   populateEditDropdowns(): void {
-    const state = userManagementState.getState();
-    this.populateChannelDropdown('editUserChannel', state.channels);
-    this.populateSupervisorDropdowns('editUserTeamSupervisor', 'editUserQualitySupervisor', state.allUsers);
-    this.populateIntercomAdminDropdown('editUserIntercomAdmin', state.intercomAdmins);
-    this.populateDepartmentDropdown('editUserDepartment');
+    this.populateModalDropdowns('edit');
   }
 
   /**
    * Populate create modal dropdowns
    */
   populateCreateDropdowns(): void {
-    const state = userManagementState.getState();
-    this.populateChannelDropdown('createUserChannel', state.channels);
-    this.populateSupervisorDropdowns('createUserTeamSupervisor', 'createUserQualitySupervisor', state.allUsers);
-    this.populateIntercomAdminDropdown('createUserIntercomAdmin', state.intercomAdmins);
-    this.populateDepartmentDropdown('createUserDepartment');
+    this.populateModalDropdowns('create');
   }
 }
 

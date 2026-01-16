@@ -105,7 +105,7 @@ async function retryQueryWithMinimalFields(
   try {
     // Use minimal field set that should exist in all tables
     // Include interaction_id and channel as they are critical for display
-    const minimalFields = 'id, employee_email, employee_name, auditor_email, interaction_id, channel, submitted_at, passing_status, average_score, total_errors_count';
+    const minimalFields = 'id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, channel, submitted_at, passing_status, average_score, total_errors_count';
     
     let query = db
       .from(tableName)

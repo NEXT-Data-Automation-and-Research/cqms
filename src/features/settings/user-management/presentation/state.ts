@@ -76,9 +76,17 @@ class UserManagementStateManager {
 
   /**
    * Set filters
+   * M4 FIX: Persist filters to sessionStorage
    */
   setFilters(filters: Partial<UserFilters>): void {
     this.state.filters = { ...this.state.filters, ...filters };
+    // Persist to sessionStorage
+    try {
+      sessionStorage.setItem('userManagementFilters', JSON.stringify(this.state.filters));
+    } catch (error) {
+      // Ignore storage errors (e.g., private browsing mode)
+      console.warn('Failed to save filters to sessionStorage:', error);
+    }
     this.notifyListeners();
   }
 

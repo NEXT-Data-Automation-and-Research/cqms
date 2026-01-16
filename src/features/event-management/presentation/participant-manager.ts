@@ -7,6 +7,7 @@ import type { EventStateManager } from '../application/event-state.js';
 import type { User } from '../domain/types.js';
 import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import { logError } from '../../../utils/logging-helper.js';
+import userProfileTooltip from './user-profile-tooltip.js';
 
 export class ParticipantManager {
   private highlightedIndex = -1;
@@ -64,17 +65,40 @@ export class ParticipantManager {
       return;
     }
 
-    const state = this.stateManager.getState();
-    const filtered = state.users.filter(user => {
-      const name = (user.name || '').toLowerCase();
-      const email = (user.email || '').toLowerCase();
-      return name.includes(query) || email.includes(query);
-    }).filter(user => {
-      // Exclude already selected participants
-      return !state.selectedParticipants.some(selected => selected.email === user.email);
-    });
+    // H6: Show loading state during search
+    this.showLoadingState();
 
-    this.renderDropdown(filtered);
+    // Debounce search for better performance
+    clearTimeout((this as any).searchTimeout);
+    (this as any).searchTimeout = setTimeout(() => {
+      const state = this.stateManager.getState();
+      const filtered = state.users.filter(user => {
+        const name = (user.name || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        return name.includes(query) || email.includes(query);
+      }).filter(user => {
+        // Exclude already selected participants
+        return !state.selectedParticipants.some(selected => selected.email === user.email);
+      });
+
+      this.renderDropdown(filtered);
+    }, 150);
+  }
+
+  /**
+   * Show loading state in dropdown (H6)
+   */
+  private showLoadingState(): void {
+    const dropdown = document.getElementById('participantDropdown');
+    if (!dropdown) return;
+    
+    dropdown.innerHTML = `
+      <div class="px-4 py-2 text-center">
+        <div class="inline-block w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p class="text-xs text-gray-500 mt-2">Searching...</p>
+      </div>
+    `;
+    dropdown.classList.remove('hidden');
   }
 
   /**
@@ -87,8 +111,14 @@ export class ParticipantManager {
     this.filteredUsers = filtered;
     this.highlightedIndex = -1;
 
+    // L4: Show "No results" state
     if (filtered.length === 0) {
-      dropdown.classList.add('hidden');
+      dropdown.innerHTML = `
+        <div class="px-4 py-2 text-center text-sm text-gray-500">
+          No participants found
+        </div>
+      `;
+      dropdown.classList.remove('hidden');
       return;
     }
 
@@ -238,14 +268,68 @@ export class ParticipantManager {
     }
 
     container.innerHTML = participants.map(user => `
-      <span class="inline-flex items-center gap-1 px-2 py-1 bg-primary text-white text-xs font-medium rounded">
-        ${escapeHtml(user.name || user.email)}
-        <button type="button" onclick="window.eventHandlers?.removeParticipant('${escapeHtml(user.email)}')" class="hover:bg-primary-dark rounded p-0.5 transition-colors">
+      <span class="inline-flex items-center gap-1 px-2 py-1 text-white text-xs font-medium rounded participant-chip" style="background-color: #1a733e !important; cursor: pointer;" data-user-email="${escapeHtml(user.email)}">
+        <span class="participant-name">${escapeHtml(user.name || user.email)}</span>
+        <button type="button" 
+                data-action="remove-participant"
+                data-email="${escapeHtml(user.email)}"
+                class="rounded p-0.5 transition-colors participant-remove-btn"
+                style="hover:opacity-80"
+                tabindex="0"
+                role="button"
+                aria-label="Remove ${escapeHtml(user.name || user.email)}">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
       </span>
     `).join('');
+
+    // M5: Add event listeners for remove buttons
+    container.querySelectorAll('[data-action="remove-participant"]').forEach(btn => {
+      // Click handler
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const email = btn.getAttribute('data-email');
+        if (email) {
+          this.removeParticipant(email);
+        }
+      });
+      
+      // Keyboard handler
+      btn.addEventListener('keydown', (e) => {
+        const keyEvent = e as KeyboardEvent;
+        if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+          keyEvent.preventDefault();
+          const email = btn.getAttribute('data-email');
+          if (email) {
+            this.removeParticipant(email);
+          }
+        }
+      });
+    });
+
+    // Add hover tooltip for participant names
+    container.querySelectorAll('.participant-chip').forEach(chip => {
+      const email = chip.getAttribute('data-user-email');
+      if (!email) return;
+
+      const user = participants.find(p => p.email === email);
+      if (!user) return;
+
+      const participantName = chip.querySelector('.participant-name');
+      if (!participantName) return;
+
+      // Show tooltip on hover
+      participantName.addEventListener('mouseenter', (e) => {
+        e.stopPropagation();
+        userProfileTooltip.show(user, participantName as HTMLElement);
+      });
+
+      // Hide tooltip when leaving the chip
+      chip.addEventListener('mouseleave', () => {
+        userProfileTooltip.hide();
+      });
+    });
   }
 }

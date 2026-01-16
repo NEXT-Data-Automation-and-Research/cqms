@@ -1,95 +1,152 @@
 <!-- Create User Modal -->
 <div id="createUserModal" class="modal" style="display: none;">
-    <div class="modal-content create-user-modal">
+    <div class="modal-content create-user-modal edit-user-modal">
         <div class="modal-header">
-            <h3>Create New User</h3>
-            <button class="modal-close" id="createUserModalClose">&times;</button>
+            <div class="modal-header-content">
+                <h3>Create New User</h3>
+                <p class="modal-subtitle">Add a new user to the system</p>
+            </div>
+            <button class="modal-close" id="createUserModalClose" aria-label="Close modal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
         <div class="modal-body">
             <form id="createUserForm">
-                <div class="form-group">
-                    <label for="createUserName">Name *</label>
-                    <input type="text" id="createUserName" required placeholder="Enter full name">
-                </div>
-                <div class="form-group">
-                    <label for="createUserEmail">Email *</label>
-                    <input type="email" id="createUserEmail" required placeholder="user@example.com">
-                </div>
-                <div class="form-group">
-                    <label for="createUserRole">Role *</label>
-                    <select id="createUserRole" required>
-                        <option value="">Select Role</option>
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Quality Analyst">Quality Analyst</option>
-                        <option value="Employee">Employee</option>
-                        <option value="General User">General User</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="createUserDepartment">Department</label>
-                    <select id="createUserDepartment">
-                        <option value="">Select Department</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="createUserChannel">Channel</label>
-                    <select id="createUserChannel">
-                        <option value="">Select Channel</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="createUserTeam">Team</label>
-                    <input type="text" id="createUserTeam" placeholder="e.g., Team A, Customer Support, etc.">
-                </div>
-                <div class="form-group">
-                    <label for="createUserTeamSupervisor">Team Supervisor</label>
-                    <select id="createUserTeamSupervisor">
-                        <option value="">Select Team Supervisor</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="createUserQualitySupervisor">Quality Mentor</label>
-                    <select id="createUserQualitySupervisor">
-                        <option value="">Select Quality Mentor</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="createUserDesignation">Designation</label>
-                    <input type="text" id="createUserDesignation" placeholder="Job title or designation">
-                </div>
-                <div class="form-group">
-                    <label for="createUserEmployeeId">Employee ID</label>
-                    <div style="display: flex; align-items: center; gap: 0.375rem;">
-                        <span style="font-size: 0.5625rem; font-weight: 600; color: var(--primary-color); padding: 0.375rem 0.5rem; background-color: #f3f4f6; border-radius: 0.1875rem; border: 0.0469rem solid #d1d5db;">NXT</span>
-                        <input type="text" id="createUserEmployeeId" placeholder="Enter employee ID" style="flex: 1;">
+                <!-- Primary Information Section - Most Important Fields First -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Primary Information</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="createUserEmail">Email Address <span class="required">*</span></label>
+                            <input type="email" id="createUserEmail" required placeholder="user@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserEmployeeId">Employee ID</label>
+                            <div class="employee-id-wrapper">
+                                <span class="employee-id-prefix">NXT</span>
+                                <input type="text" id="createUserEmployeeId" placeholder="Enter employee ID">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserDepartment">Department</label>
+                            <select id="createUserDepartment">
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserChannel">Channel</label>
+                            <select id="createUserChannel">
+                                <option value="">Select Channel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserTeamSupervisor">Team Lead</label>
+                            <select id="createUserTeamSupervisor">
+                                <option value="">Select Team Lead</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserName">Full Name <span class="required">*</span></label>
+                            <input type="text" id="createUserName" required placeholder="Enter full name">
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="createUserCountry">Country</label>
-                    <input type="text" id="createUserCountry" placeholder="e.g., Bangladesh">
+
+                <!-- Role & Organization Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Role & Organization</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="createUserRole">Role <span class="required">*</span></label>
+                            <select id="createUserRole" required>
+                                <option value="">Select Role</option>
+                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Quality Analyst">Quality Analyst</option>
+                                <option value="Employee">Employee</option>
+                                <option value="General User">General User</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserDesignation">Designation</label>
+                            <select id="createUserDesignation">
+                                <option value="">Select Designation</option>
+                                <option value="Executive">Executive</option>
+                                <option value="Senior Executive">Senior Executive</option>
+                                <option value="Manager I">Manager I</option>
+                                <option value="Manager II">Manager II</option>
+                                <option value="Manager III">Manager III</option>
+                                <option value="Associate Director">Associate Director</option>
+                                <option value="Vice President">Vice President</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserTeam">Team</label>
+                            <input type="text" id="createUserTeam" placeholder="e.g., Team A, Customer Support">
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserCountry">Country</label>
+                            <select id="createUserCountry">
+                                <option value="">Select Country</option>
+                                <option value="Bangladesh">Bangladesh</option>
+                                <option value="Sri Lanka">Sri Lanka</option>
+                                <option value="Malaysia">Malaysia</option>
+                                <option value="Cyprus">Cyprus</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="createUserStatus">Status</label>
-                    <select id="createUserStatus">
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                    </select>
+
+                <!-- Supervision Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Supervision</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="createUserQualitySupervisor">Quality Mentor</label>
+                            <select id="createUserQualitySupervisor">
+                                <option value="">Select Quality Mentor</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="createUserIntercomAdmin">Intercom Admin</label>
-                    <select id="createUserIntercomAdmin">
-                        <option value="">Select Intercom Admin (Optional)</option>
-                    </select>
-                    <small style="display: block; margin-top: 0.25rem; font-size: 0.5rem; color: #6b7280;">
-                        Auto-detected if email matches an Intercom admin
-                    </small>
+
+                <!-- Status & Settings Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Status & Settings</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="createUserStatus">Account Status</label>
+                            <select id="createUserStatus">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="createUserIntercomAdmin">Intercom Admin</label>
+                            <select id="createUserIntercomAdmin">
+                                <option value="">Select Intercom Admin (Optional)</option>
+                            </select>
+                            <small class="form-help-text">
+                                Auto-detected if email matches an Intercom admin
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-secondary" id="createUserCancelBtn">Cancel</button>
-            <button type="button" class="btn-primary" id="createUserSubmitBtn">Create User</button>
+            <button type="button" class="btn-primary" id="createUserSubmitBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Create User
+            </button>
         </div>
     </div>
 </div>

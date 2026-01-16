@@ -34,6 +34,49 @@ export class CalendarRenderer {
     // Build calendar grid
     const calendarHTML = this.buildCalendarGrid(state, calendarEvents);
     calendarGrid.innerHTML = calendarHTML;
+    
+    // Attach event listeners after rendering
+    this.attachEventListeners(calendarGrid);
+  }
+
+  /**
+   * Attach event listeners to calendar elements
+   */
+  private attachEventListeners(container: HTMLElement): void {
+    // View event
+    container.querySelectorAll('[data-action="view-event"]').forEach(element => {
+      element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = element.getAttribute('data-event-id');
+        if (eventId && (window as any).eventHandlers) {
+          (window as any).eventHandlers.viewEvent(eventId);
+        }
+      });
+    });
+
+    // Show day events
+    container.querySelectorAll('[data-action="show-day-events"]').forEach(element => {
+      element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const day = parseInt(element.getAttribute('data-day') || '0', 10);
+        const month = parseInt(element.getAttribute('data-month') || '0', 10);
+        const year = parseInt(element.getAttribute('data-year') || '0', 10);
+        if (day && month !== null && year && (window as any).eventHandlers) {
+          (window as any).eventHandlers.showDayEvents(day, month, year);
+        }
+      });
+    });
+
+    // Create event on date
+    container.querySelectorAll('[data-action="create-event-on-date"]').forEach(element => {
+      element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dateStr = element.getAttribute('data-date');
+        if (dateStr && (window as any).eventHandlers) {
+          (window as any).eventHandlers.createEventOnDate(dateStr);
+        }
+      });
+    });
   }
 
   /**
@@ -131,23 +174,24 @@ export class CalendarRenderer {
       const time = event.start_time ? event.start_time.substring(0, 5) : '';
       const title = escapeHtml(event.title);
       const displayTitle = title.length > 20 ? title.substring(0, 20) + '...' : title;
-      return `<div class="calendar-event ${eventTypeClass}" onclick="event.stopPropagation(); window.eventHandlers?.viewEvent('${event.id}')" title="${title}${time ? ' at ' + time : ''}">
+      return `<div class="calendar-event ${eventTypeClass}" data-action="view-event" data-event-id="${event.id}" title="${title}${time ? ' at ' + time : ''}">
         ${time ? `${time} ` : ''}${displayTitle}
       </div>`;
     }).join('');
     
     if (moreCount > 0) {
       const dateStr = isOtherMonth ? '' : `${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      eventsHTML += `<div class="calendar-event-more" onclick="event.stopPropagation(); window.eventHandlers?.showDayEvents(${day}, ${state.currentMonth}, ${state.currentYear})">
+      eventsHTML += `<div class="calendar-event-more" data-action="show-day-events" data-day="${day}" data-month="${state.currentMonth}" data-year="${state.currentYear}">
         +${moreCount} more
       </div>`;
     }
     
     const dateStr = isOtherMonth ? '' : `${state.currentYear}-${String(state.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const onClick = isOtherMonth ? '' : `onclick="window.eventHandlers?.createEventOnDate('${dateStr}')"`;
+    const tabIndex = isOtherMonth ? '-1' : '0';
+    const dataAction = isOtherMonth ? '' : `data-action="create-event-on-date" data-date="${dateStr}"`;
     
     return `
-      <div class="calendar-day ${otherMonthClass} ${todayClass}" ${onClick}>
+      <div class="calendar-day ${otherMonthClass} ${todayClass}" ${dataAction} tabindex="${tabIndex}" role="button" aria-label="Day ${day}${isToday ? ', today' : ''}">
         <div class="calendar-day-number ${dayNumberClass}">${day}</div>
         <div class="calendar-events">
           ${eventsHTML}

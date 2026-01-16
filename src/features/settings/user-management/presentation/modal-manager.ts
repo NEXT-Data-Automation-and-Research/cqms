@@ -7,12 +7,157 @@ import type { User, IntercomAdmin } from '../domain/entities.js';
 import { userManagementState } from './state.js';
 import { DropdownPopulator } from './dropdown-populator.js';
 import { logError } from '../../../../utils/logging-helper.js';
+import { setupFormValidation } from '../../../../utils/form-validation.js';
+import { makeAllDropdownsSearchable } from './searchable-dropdown.js';
 
 export class ModalManager {
   private dropdownPopulator: DropdownPopulator;
 
   constructor() {
     this.dropdownPopulator = new DropdownPopulator();
+  }
+
+  /**
+   * Populate form fields with user data (shared for create and edit)
+   */
+  private populateFormFields(user: User | null, prefix: 'create' | 'edit'): void {
+    // Populate dropdowns FIRST for both create and edit modals
+    // This ensures all dropdowns are available before setting values
+    if (prefix === 'edit') {
+      this.dropdownPopulator.populateEditDropdowns();
+    } else {
+      this.dropdownPopulator.populateCreateDropdowns();
+    }
+
+    if (!user) {
+      // For create, reset all fields
+      const form = document.getElementById(`${prefix}UserForm`) as HTMLFormElement;
+      if (form) {
+        form.reset();
+      }
+      const statusSelect = document.getElementById(`${prefix}UserStatus`) as HTMLSelectElement;
+      if (statusSelect) {
+        statusSelect.value = 'true';
+      }
+      return;
+    }
+
+    // Populate form fields
+    const nameInput = document.getElementById(`${prefix}UserName`) as HTMLInputElement;
+    if (nameInput) nameInput.value = user.name || '';
+
+    const emailInput = document.getElementById(`${prefix}UserEmail`) as HTMLInputElement;
+    if (emailInput) {
+      emailInput.value = user.email || '';
+      if (prefix === 'edit') {
+        emailInput.readOnly = true;
+      }
+    }
+
+    const roleSelect = document.getElementById(`${prefix}UserRole`) as HTMLSelectElement;
+    if (roleSelect) roleSelect.value = user.role || '';
+
+    const departmentSelect = document.getElementById(`${prefix}UserDepartment`) as HTMLSelectElement;
+    if (departmentSelect) departmentSelect.value = user.department || '';
+
+    // Set channel value - handle both ID and name for backward compatibility
+    const channelSelect = document.getElementById(`${prefix}UserChannel`) as HTMLSelectElement;
+    if (channelSelect && user.channel) {
+      const state = userManagementState.getState();
+      const channel = state.channels.find(c => c.id === user.channel) || 
+                     state.channels.find(c => c.name === user.channel);
+      if (channel) {
+        channelSelect.value = channel.id;
+      } else {
+        channelSelect.value = user.channel;
+      }
+    }
+
+    const teamInput = document.getElementById(`${prefix}UserTeam`) as HTMLInputElement;
+    if (teamInput) teamInput.value = user.team || '';
+
+    const teamSupervisorSelect = document.getElementById(`${prefix}UserTeamSupervisor`) as HTMLSelectElement;
+    if (teamSupervisorSelect) teamSupervisorSelect.value = user.team_supervisor || '';
+
+    const qualitySupervisorSelect = document.getElementById(`${prefix}UserQualitySupervisor`) as HTMLSelectElement;
+    if (qualitySupervisorSelect) qualitySupervisorSelect.value = user.quality_mentor || '';
+
+    // Populate designation (now a dropdown)
+    const designationSelect = document.getElementById(`${prefix}UserDesignation`) as HTMLSelectElement;
+    if (designationSelect) designationSelect.value = user.designation || '';
+
+    const employeeIdInput = document.getElementById(`${prefix}UserEmployeeId`) as HTMLInputElement;
+    if (employeeIdInput) employeeIdInput.value = user.employee_id || '';
+
+    // Populate country (now a dropdown)
+    const countrySelect = document.getElementById(`${prefix}UserCountry`) as HTMLSelectElement;
+    if (countrySelect) countrySelect.value = user.country || '';
+
+    const statusSelect = document.getElementById(`${prefix}UserStatus`) as HTMLSelectElement;
+    if (statusSelect) statusSelect.value = user.is_active ? 'true' : 'false';
+
+    const intercomAdminSelect = document.getElementById(`${prefix}UserIntercomAdmin`) as HTMLSelectElement;
+    if (intercomAdminSelect) intercomAdminSelect.value = user.intercom_admin_id || '';
+
+    // For edit modal, set hidden user ID
+    if (prefix === 'edit') {
+      const userIdInput = document.getElementById('editUserId') as HTMLInputElement;
+      if (userIdInput) userIdInput.value = user.email;
+    }
+  }
+
+  /**
+   * Setup modal event listeners (shared for create and edit)
+   */
+  private setupModalEventListeners(
+    modal: HTMLElement,
+    prefix: 'create' | 'edit',
+    onSave: () => Promise<void>,
+    onClose: () => void
+  ): void {
+    const saveButtonId = prefix === 'create' ? 'createUserSubmitBtn' : 'editUserSaveBtn';
+    const cancelButtonId = prefix === 'create' ? 'createUserCancelBtn' : 'editUserCancelBtn';
+    const closeButtonId = prefix === 'create' ? 'createUserModalClose' : 'editUserModalClose';
+
+    const saveButton = modal.querySelector(`#${saveButtonId}`) as HTMLButtonElement;
+    const cancelButton = modal.querySelector(`#${cancelButtonId}`) as HTMLButtonElement;
+    const closeButton = modal.querySelector(`#${closeButtonId}`) as HTMLButtonElement;
+
+    if (saveButton) {
+      const newSaveButton = saveButton.cloneNode(true) as HTMLButtonElement;
+      saveButton.parentNode?.replaceChild(newSaveButton, saveButton);
+      newSaveButton.addEventListener('click', async () => {
+        await onSave();
+      });
+    }
+
+    if (cancelButton) {
+      const newCancelButton = cancelButton.cloneNode(true) as HTMLButtonElement;
+      cancelButton.parentNode?.replaceChild(newCancelButton, cancelButton);
+      newCancelButton.addEventListener('click', () => {
+        onClose();
+      });
+    }
+
+    if (closeButton) {
+      const newCloseButton = closeButton.cloneNode(true) as HTMLButtonElement;
+      closeButton.parentNode?.replaceChild(newCloseButton, closeButton);
+      newCloseButton.addEventListener('click', () => {
+        onClose();
+      });
+    }
+
+    // Setup email auto-detection for create modal
+    if (prefix === 'create') {
+      const emailInput = document.getElementById('createUserEmail') as HTMLInputElement;
+      if (emailInput) {
+        const newEmailInput = emailInput.cloneNode(true) as HTMLInputElement;
+        emailInput.parentNode?.replaceChild(newEmailInput, emailInput);
+        newEmailInput.addEventListener('blur', () => {
+          this.autoDetectIntercomAdmin(newEmailInput.value, 'createUserIntercomAdmin');
+        });
+      }
+    }
   }
 
   /**
@@ -23,74 +168,30 @@ export class ModalManager {
     if (!modal) return;
 
     // Populate form fields
-    (document.getElementById('editUserId') as HTMLInputElement).value = user.email;
-    (document.getElementById('editUserName') as HTMLInputElement).value = user.name || '';
-    (document.getElementById('editUserRole') as HTMLSelectElement).value = user.role || '';
-    (document.getElementById('editUserDepartment') as HTMLSelectElement).value = user.department || '';
-    
-    // Populate dropdowns first so we can set the channel value correctly
-    this.dropdownPopulator.populateEditDropdowns();
-    
-    // Set channel value - handle both ID and name for backward compatibility
-    const channelSelect = document.getElementById('editUserChannel') as HTMLSelectElement;
-    if (channelSelect && user.channel) {
-      const state = userManagementState.getState();
-      // Try to find channel by ID first, then by name (for backward compatibility)
-      const channel = state.channels.find(c => c.id === user.channel) || 
-                     state.channels.find(c => c.name === user.channel);
-      if (channel) {
-        channelSelect.value = channel.id; // Use ID for new data
-      } else {
-        channelSelect.value = user.channel; // Fallback to stored value
-      }
-    }
-    
-    (document.getElementById('editUserTeam') as HTMLInputElement).value = user.team || '';
-    (document.getElementById('editUserTeamSupervisor') as HTMLSelectElement).value = user.team_supervisor || '';
-    (document.getElementById('editUserQualitySupervisor') as HTMLSelectElement).value = user.quality_mentor || '';
-    (document.getElementById('editUserDesignation') as HTMLInputElement).value = user.designation || '';
-    (document.getElementById('editUserEmployeeId') as HTMLInputElement).value = user.employee_id || '';
-    (document.getElementById('editUserStatus') as HTMLSelectElement).value = user.is_active ? 'true' : 'false';
-    (document.getElementById('editUserIntercomAdmin') as HTMLSelectElement).value = user.intercom_admin_id || '';
+    this.populateFormFields(user, 'edit');
 
     modal.style.display = 'flex';
-    
-    // Attach event listeners programmatically (CSP-safe, no inline handlers)
-    const saveButton = modal.querySelector('#editUserSaveBtn') as HTMLButtonElement;
-    const cancelButton = modal.querySelector('#editUserCancelBtn') as HTMLButtonElement;
-    const closeButton = modal.querySelector('#editUserModalClose') as HTMLButtonElement;
-    
-    if (saveButton) {
-      // Remove any existing listeners by cloning the button
-      const newSaveButton = saveButton.cloneNode(true) as HTMLButtonElement;
-      saveButton.parentNode?.replaceChild(newSaveButton, saveButton);
-      
-      newSaveButton.addEventListener('click', async () => {
+
+    // Setup form validation
+    setupFormValidation('editUserForm');
+
+    // Make all dropdowns searchable after dropdowns are populated
+    // Use a longer delay to ensure async data (channels, users, etc.) is loaded
+    setTimeout(() => {
+      makeAllDropdownsSearchable('editUserForm');
+    }, 500);
+
+    // Setup event listeners
+    this.setupModalEventListeners(
+      modal,
+      'edit',
+      async () => {
         if ((window as any).saveUserChanges) {
           await (window as any).saveUserChanges();
         }
-      });
-    }
-    
-    if (cancelButton) {
-      // Remove any existing listeners by cloning the button
-      const newCancelButton = cancelButton.cloneNode(true) as HTMLButtonElement;
-      cancelButton.parentNode?.replaceChild(newCancelButton, cancelButton);
-      
-      newCancelButton.addEventListener('click', () => {
-        this.closeEditModal();
-      });
-    }
-    
-    if (closeButton) {
-      // Remove any existing listeners by cloning the button
-      const newCloseButton = closeButton.cloneNode(true) as HTMLButtonElement;
-      closeButton.parentNode?.replaceChild(newCloseButton, closeButton);
-      
-      newCloseButton.addEventListener('click', () => {
-        this.closeEditModal();
-      });
-    }
+      },
+      () => this.closeEditModal()
+    );
   }
 
   /**
@@ -122,7 +223,7 @@ export class ModalManager {
         checkTemplates();
       });
     }
-    
+
     const modal = document.getElementById('createUserModal');
     if (!modal) {
       logError('[ModalManager] Create user modal not found');
@@ -130,71 +231,33 @@ export class ModalManager {
       return;
     }
 
-    // Reset form
-    const form = document.getElementById('createUserForm') as HTMLFormElement;
-    if (form) {
-      form.reset();
-    }
-    const statusSelect = document.getElementById('createUserStatus') as HTMLSelectElement;
-    if (statusSelect) {
-      statusSelect.value = 'true';
-    }
-
-    // Populate dropdowns
-    this.dropdownPopulator.populateCreateDropdowns();
-
-    // Setup email auto-detection listener (remove old one first to avoid duplicates)
-    const emailInput = document.getElementById('createUserEmail') as HTMLInputElement;
-    if (emailInput) {
-      // Clone to remove all event listeners
-      const newEmailInput = emailInput.cloneNode(true) as HTMLInputElement;
-      emailInput.parentNode?.replaceChild(newEmailInput, emailInput);
-      
-      newEmailInput.addEventListener('blur', () => {
-        this.autoDetectIntercomAdmin(newEmailInput.value, 'createUserIntercomAdmin');
-      });
-    }
+    // Reset and populate form fields
+    this.populateFormFields(null, 'create');
 
     modal.style.display = 'flex';
-    
-    // Attach event listeners programmatically (CSP-safe, no inline handlers)
-    const createButton = modal.querySelector('#createUserSubmitBtn') as HTMLButtonElement;
-    const cancelButton = modal.querySelector('#createUserCancelBtn') as HTMLButtonElement;
-    const closeButton = modal.querySelector('#createUserModalClose') as HTMLButtonElement;
-    
-    if (createButton) {
-      // Remove any existing listeners by cloning the button
-      const newCreateButton = createButton.cloneNode(true) as HTMLButtonElement;
-      createButton.parentNode?.replaceChild(newCreateButton, createButton);
-      
-      newCreateButton.addEventListener('click', async () => {
+
+    // Setup form validation
+    setupFormValidation('createUserForm');
+
+    // Make all dropdowns searchable after dropdowns are populated
+    // Use a longer delay to ensure async data (channels, users, etc.) is loaded
+    setTimeout(() => {
+      makeAllDropdownsSearchable('createUserForm');
+    }, 500);
+
+    // Setup event listeners
+    this.setupModalEventListeners(
+      modal,
+      'create',
+      async () => {
         if ((window as any).createNewUser) {
           await (window as any).createNewUser();
         } else {
           alert('Create user handler not ready. Please wait a moment and try again.');
         }
-      });
-    }
-    
-    if (cancelButton) {
-      // Remove any existing listeners by cloning the button
-      const newCancelButton = cancelButton.cloneNode(true) as HTMLButtonElement;
-      cancelButton.parentNode?.replaceChild(newCancelButton, cancelButton);
-      
-      newCancelButton.addEventListener('click', () => {
-        this.closeCreateModal();
-      });
-    }
-    
-    if (closeButton) {
-      // Remove any existing listeners by cloning the button
-      const newCloseButton = closeButton.cloneNode(true) as HTMLButtonElement;
-      closeButton.parentNode?.replaceChild(newCloseButton, closeButton);
-      
-      newCloseButton.addEventListener('click', () => {
-        this.closeCreateModal();
-      });
-    }
+      },
+      () => this.closeCreateModal()
+    );
   }
 
   /**

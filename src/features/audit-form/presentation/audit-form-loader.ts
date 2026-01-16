@@ -277,6 +277,7 @@ export class AuditFormLoader {
           const { scorecard, parameters } = await this.service!.loadScorecardWithParameters(selectedValue);
           if (this.formController) {
             this.formController.setScorecardData(scorecard, parameters);
+            // Validation will be set up automatically in setScorecardData
           }
           await this.scorecardController.loadScorecardParameters(selectedValue);
         }

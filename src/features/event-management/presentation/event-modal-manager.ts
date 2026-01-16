@@ -9,6 +9,7 @@ import type { EventRenderer } from './event-renderer.js';
 import type { Event, EventFormData } from '../domain/types.js';
 import { logError, logInfo } from '../../../utils/logging-helper.js';
 import { escapeHtml } from '../../../utils/html-sanitizer.js';
+import userProfileTooltip from './user-profile-tooltip.js';
 
 export class EventModalManager {
   private currentQuickAddType: string | null = null;
@@ -68,6 +69,12 @@ export class EventModalManager {
 
     pasteMeetLinkBtn?.addEventListener('click', () => this.pasteMeetLink());
     createMeetLinkBtn?.addEventListener('click', () => this.createMeetLink());
+
+    // H7: Setup keyboard navigation
+    this.setupKeyboardNavigation();
+
+    // H3: Setup real-time form validation
+    this.setupFormValidation();
 
     // Quick Add search
     const quickAddSearch = document.getElementById('quickAddSearch');
@@ -162,6 +169,7 @@ export class EventModalManager {
             type: 'error'
           });
         } else {
+          // Fallback to alert if confirmationDialog not available
           alert('You can only edit events that you created.');
         }
         return;
@@ -322,7 +330,7 @@ export class EventModalManager {
             <label class="block text-xs font-semibold text-gray-500 mb-1">Participants</label>
             <div class="flex flex-wrap gap-2">
               ${participantUsers.map(user => `
-                <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">${escapeHtml(user.name || user.email)}</span>
+                <span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded participant-name-view" style="cursor: pointer;" data-user-email="${escapeHtml(user.email)}">${escapeHtml(user.name || user.email)}</span>
               `).join('')}
             </div>
           </div>
@@ -331,7 +339,7 @@ export class EventModalManager {
         ${event.meet_link ? `
           <div>
             <label class="block text-xs font-semibold text-gray-500 mb-1">Google Meet Link</label>
-            <a href="${escapeHtml(event.meet_link)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors">
+            <a href="${escapeHtml(event.meet_link)}" target="_blank" rel="noopener noreferrer" class="join-meet-link inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors no-underline">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
               </svg>
@@ -351,6 +359,23 @@ export class EventModalManager {
       `;
       
       modal.classList.remove('hidden');
+
+      // Add hover tooltip for participant names in view modal
+      content.querySelectorAll('.participant-name-view').forEach(element => {
+        const email = element.getAttribute('data-user-email');
+        if (!email) return;
+
+        const user = participantUsers.find(u => u.email === email);
+        if (!user) return;
+
+        element.addEventListener('mouseenter', () => {
+          userProfileTooltip.show(user, element as HTMLElement);
+        });
+
+        element.addEventListener('mouseleave', () => {
+          userProfileTooltip.hide();
+        });
+      });
     } catch (error) {
       logError('[EventModalManager] Error viewing event:', error);
     }
@@ -362,6 +387,19 @@ export class EventModalManager {
   private async handleFormSubmit(e: SubmitEvent): Promise<void> {
     e.preventDefault();
     
+    // Get submit button and disable immediately (B1: Loading state)
+    const submitBtn = document.querySelector('#eventForm button[type="submit"]') as HTMLButtonElement;
+    const originalText = submitBtn?.textContent || 'Save Event';
+    const originalDisabled = submitBtn?.disabled || false;
+    
+    // Disable button immediately to prevent double submission
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving...';
+      submitBtn.style.opacity = '0.6';
+      submitBtn.style.cursor = 'not-allowed';
+    }
+    
     try {
       const title = (document.getElementById('eventTitle') as HTMLInputElement).value.trim();
       const type = (document.getElementById('eventType') as HTMLSelectElement).value;
@@ -371,30 +409,59 @@ export class EventModalManager {
       const description = (document.getElementById('eventDescription') as HTMLTextAreaElement).value.trim();
       const meetLinkInput = (document.getElementById('eventMeetLink') as HTMLInputElement).value.trim();
       
-      // Validate required fields
+      // Validate required fields (H1: Use confirmationDialog instead of alert)
       if (!title || !type || !date || !startTime || !endTime) {
-        alert('Please fill in all required fields');
+        if ((window as any).confirmationDialog) {
+          await (window as any).confirmationDialog.show({
+            title: 'Validation Error',
+            message: 'Please fill in all required fields',
+            confirmText: 'OK',
+            cancelText: '',
+            type: 'error'
+          });
+        } else {
+          alert('Please fill in all required fields');
+        }
         return;
       }
 
-      // Validate time
+      // Validate time (H1: Use confirmationDialog instead of alert)
       if (startTime >= endTime) {
-        alert('End time must be after start time');
+        if ((window as any).confirmationDialog) {
+          await (window as any).confirmationDialog.show({
+            title: 'Validation Error',
+            message: 'End time must be after start time',
+            confirmText: 'OK',
+            cancelText: '',
+            type: 'error'
+          });
+        } else {
+          alert('End time must be after start time');
+        }
         return;
       }
 
       const state = this.stateManager.getState();
       const participants = state.selectedParticipants.map(p => p.email);
 
-      // Process meet link
+      // Process meet link (M3: Add validation)
       let meetLink: string | null = null;
       if (meetLinkInput) {
+        const meetUrlPattern = /^https?:\/\/(meet\.google\.com\/[a-z0-9-]+|.*meet\.google\.com)/i;
+        const meetIdPattern = /^[a-z0-9-]+$/i;
+        
         if (meetLinkInput.startsWith('http://') || meetLinkInput.startsWith('https://')) {
+          if (!meetUrlPattern.test(meetLinkInput)) {
+            throw new Error('Invalid Google Meet URL format. Please enter a valid Google Meet URL.');
+          }
           meetLink = meetLinkInput;
         } else {
-          const meetId = meetLinkInput.replace(/[^a-z0-9-]/gi, '');
-          if (meetId) {
-            meetLink = `https://meet.google.com/${meetId}`;
+          const cleanedId = meetLinkInput.replace(/[^a-z0-9-]/gi, '');
+          if (!meetIdPattern.test(cleanedId)) {
+            throw new Error('Invalid Google Meet ID format. Please enter a valid Meet ID (e.g., abc-defg-hij).');
+          }
+          if (cleanedId) {
+            meetLink = `https://meet.google.com/${cleanedId}`;
           }
         }
       }
@@ -410,11 +477,17 @@ export class EventModalManager {
         meetLink
       };
       
+      // H2: Add success feedback
       if (state.editingEventId) {
         await this.controller.updateEvent(state.editingEventId, formData);
+        await this.showSuccessMessage('Event updated successfully!');
       } else {
         await this.controller.createEvent(formData);
+        await this.showSuccessMessage('Event created successfully!');
       }
+      
+      // Small delay to show success message
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       this.closeEventModal();
       this.renderer.render();
@@ -432,6 +505,32 @@ export class EventModalManager {
       } else {
         alert(errorMessage);
       }
+    } finally {
+      // Re-enable button on error or after success
+      if (submitBtn) {
+        submitBtn.disabled = originalDisabled;
+        submitBtn.textContent = originalText;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
+    }
+  }
+
+  /**
+   * Show success message (H2: Success feedback)
+   */
+  private async showSuccessMessage(message: string): Promise<void> {
+    if ((window as any).confirmationDialog) {
+      await (window as any).confirmationDialog.show({
+        title: 'Success',
+        message: message,
+        confirmText: 'OK',
+        cancelText: '',
+        type: 'success'
+      });
+    } else {
+      // Fallback to alert if confirmationDialog not available
+      alert(message);
     }
   }
 
@@ -492,6 +591,27 @@ export class EventModalManager {
             this.showQuickAddOptions(type);
           }
         });
+      });
+
+      // H8: Add keyboard navigation to Quick Add dropdown
+      quickAddDropdown.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          quickAddDropdown.classList.add('hidden');
+          quickAddBtn.focus();
+        }
+      });
+
+      // Focus first option when opened
+      quickAddBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          if (!quickAddDropdown.classList.contains('hidden')) {
+            const firstOption = quickAddDropdown.querySelector('.quick-add-option') as HTMLElement;
+            if (firstOption) {
+              firstOption.setAttribute('tabindex', '0');
+              firstOption.focus();
+            }
+          }
+        }, 0);
       });
     }
   }
@@ -723,28 +843,169 @@ export class EventModalManager {
       }
     } catch (error) {
       logError('Error pasting from clipboard:', error);
-      alert('Unable to paste from clipboard. Please make sure you have clipboard access permissions.');
+      if ((window as any).confirmationDialog) {
+        await (window as any).confirmationDialog.show({
+          title: 'Error',
+          message: 'Unable to paste from clipboard. Please make sure you have clipboard access permissions.',
+          confirmText: 'OK',
+          cancelText: '',
+          type: 'error'
+        });
+      } else {
+        alert('Unable to paste from clipboard. Please make sure you have clipboard access permissions.');
+      }
     }
   }
 
   /**
-   * Create meet link (opens Google Meet)
+   * Create meet link using Google Calendar API
    */
-  createMeetLink(): void {
-    window.open('https://meet.google.com', '_blank');
+  async createMeetLink(): Promise<void> {
+    const button = document.getElementById('createMeetLinkBtn') as HTMLButtonElement;
+    const meetLinkInput = document.getElementById('eventMeetLink') as HTMLInputElement;
     
-    // Show feedback
-    const button = document.getElementById('createMeetLinkBtn');
-    if (button) {
-      const originalHTML = button.innerHTML;
-      button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg> Opened';
-      button.classList.add('bg-green-600', 'hover:bg-green-700');
-      button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-      setTimeout(() => {
+    if (!button || !meetLinkInput) return;
+
+    // Show loading state
+    const originalHTML = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `
+      <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Generating...
+    `;
+
+    try {
+      // Import API client dynamically
+      const { apiClient } = await import('../../../utils/api-client.js');
+      
+      // Get event details if available
+      const state = this.stateManager.getState();
+      const titleInput = document.getElementById('eventTitle') as HTMLInputElement;
+      const dateInput = document.getElementById('eventDate') as HTMLInputElement;
+      const startTimeInput = document.getElementById('eventStartTime') as HTMLInputElement;
+      const endTimeInput = document.getElementById('eventEndTime') as HTMLInputElement;
+      
+      const title = titleInput?.value || 'Quick Meeting';
+      const date = dateInput?.value;
+      const startTime = startTimeInput?.value;
+      const endTime = endTimeInput?.value;
+      
+      // Prepare options
+      const options: any = { title };
+      
+      // If we have date and times, create a scheduled event
+      if (date && startTime && endTime) {
+        const startDateTime = new Date(`${date}T${startTime}`);
+        const endDateTime = new Date(`${date}T${endTime}`);
+        options.startTime = startDateTime.toISOString();
+        options.endTime = endDateTime.toISOString();
+        
+        // Add participants if available
+        if (state.selectedParticipants.length > 0) {
+          options.attendees = state.selectedParticipants.map(p => p.email);
+        }
+      }
+      
+      // Generate Meet link
+      let result;
+      try {
+        result = await apiClient.googleMeet.generate(options);
+      } catch (generateError: any) {
+        // Fallback: Open Google Meet landing page in new tab for manual link generation
+        logError('[EventModalManager] Meet link generation failed, opening fallback page:', generateError);
+        
+        // Open Google Meet landing page in a new tab
+        const fallbackUrl = 'https://meet.google.com/landing';
+        window.open(fallbackUrl, '_blank');
+        
+        // Reset button state
         button.innerHTML = originalHTML;
-        button.classList.remove('bg-green-600', 'hover:bg-green-700');
-        button.classList.add('bg-blue-600', 'hover:bg-blue-700');
-      }, 2000);
+        button.disabled = false;
+        
+        // Show instruction message
+        if ((window as any).confirmationDialog) {
+          await (window as any).confirmationDialog.show({
+            title: 'Manual Meet Link Generation',
+            message: 'Automatic Meet link generation is temporarily unavailable. A new tab has been opened to Google Meet where you can generate a link. Please:\n\n1. Generate or copy a Meet link from the opened page\n2. Return to this page\n3. Paste the link in the "Google Meet Link" field below',
+            confirmText: 'OK',
+            cancelText: '',
+            type: 'info',
+          });
+        } else {
+          alert('Automatic Meet link generation failed. A new tab has been opened to Google Meet. Please generate a link there and paste it in the Meet Link field.');
+        }
+        
+        // Focus on the Meet link input field to make it easy for user to paste
+        setTimeout(() => {
+          meetLinkInput.focus();
+          // Add a visual indicator that the field is ready for input
+          meetLinkInput.placeholder = 'Paste your Meet link here...';
+          meetLinkInput.style.borderColor = '#3b82f6'; // Blue border to indicate it's ready
+          setTimeout(() => {
+            meetLinkInput.style.borderColor = '';
+          }, 3000);
+        }, 500);
+        
+        return; // Exit early, user will paste the link manually
+      }
+      
+      // Result should have meetLink if successful
+      if (result && result.meetLink) {
+        // Fill in the Meet link input
+        meetLinkInput.value = result.meetLink;
+        
+        // Show success feedback
+        button.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Generated';
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+        button.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+        
+        setTimeout(() => {
+          button.innerHTML = originalHTML;
+          button.classList.remove('bg-green-600', 'hover:bg-green-700');
+          button.classList.add('bg-blue-600', 'hover:bg-blue-700');
+          button.disabled = false;
+        }, 2000);
+      } else {
+        throw new Error('Failed to generate Meet link');
+      }
+    } catch (error: any) {
+      // Fallback: Open Google Meet landing page in new tab for manual link generation
+      logError('[EventModalManager] Meet link generation failed, opening fallback page:', error);
+      
+      // Open Google Meet landing page in a new tab
+      const fallbackUrl = 'https://meet.google.com/landing';
+      window.open(fallbackUrl, '_blank');
+      
+      // Reset button state
+      button.innerHTML = originalHTML;
+      button.disabled = false;
+      
+      // Show instruction message
+      if ((window as any).confirmationDialog) {
+        await (window as any).confirmationDialog.show({
+          title: 'Manual Meet Link Generation',
+          message: 'Automatic Meet link generation is temporarily unavailable. A new tab has been opened to Google Meet where you can generate a link. Please:\n\n1. Generate or copy a Meet link from the opened page\n2. Return to this page\n3. Paste the link in the "Google Meet Link" field below',
+          confirmText: 'OK',
+          cancelText: '',
+          type: 'info',
+        });
+      } else {
+        alert('Automatic Meet link generation failed. A new tab has been opened to Google Meet. Please generate a link there and paste it in the Meet Link field.');
+      }
+      
+      // Focus on the Meet link input field to make it easy for user to paste
+      setTimeout(() => {
+        meetLinkInput.focus();
+        // Add a visual indicator that the field is ready for input
+        meetLinkInput.placeholder = 'Paste your Meet link here...';
+        meetLinkInput.style.borderColor = '#3b82f6'; // Blue border to indicate it's ready
+        setTimeout(() => {
+          meetLinkInput.style.borderColor = '';
+          meetLinkInput.placeholder = ''; // Reset placeholder after 3 seconds
+        }, 3000);
+      }, 500);
     }
   }
 
@@ -770,5 +1031,128 @@ export class EventModalManager {
       hour: '2-digit',
       minute: '2-digit'
     });
+  }
+
+  /**
+   * Setup keyboard navigation (H7)
+   */
+  private setupKeyboardNavigation(): void {
+    const modal = document.getElementById('eventModal');
+    const form = document.getElementById('eventForm');
+    
+    // Escape to close modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        this.closeEventModal();
+      }
+    });
+    
+    // Enter to submit when focus is on submit button
+    form?.addEventListener('keydown', (e) => {
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (e.key === 'Enter' && e.target === submitBtn) {
+        e.preventDefault();
+        (form as HTMLFormElement).requestSubmit();
+      }
+    });
+  }
+
+  /**
+   * Setup real-time form validation (H3)
+   */
+  private setupFormValidation(): void {
+    const requiredFields = [
+      { id: 'eventTitle', name: 'Event Title' },
+      { id: 'eventType', name: 'Event Type' },
+      { id: 'eventDate', name: 'Date' },
+      { id: 'eventStartTime', name: 'Start Time' },
+      { id: 'eventEndTime', name: 'End Time' }
+    ];
+    
+    requiredFields.forEach(({ id, name }) => {
+      const field = document.getElementById(id) as HTMLInputElement | HTMLSelectElement;
+      if (field) {
+        field.addEventListener('blur', () => {
+          this.validateField(field, name);
+        });
+      }
+    });
+    
+    // Time range validation
+    const endTimeField = document.getElementById('eventEndTime') as HTMLInputElement;
+    const startTimeField = document.getElementById('eventStartTime') as HTMLInputElement;
+    if (endTimeField && startTimeField) {
+      endTimeField.addEventListener('change', () => {
+        this.validateTimeRange(startTimeField, endTimeField);
+      });
+      startTimeField.addEventListener('change', () => {
+        this.validateTimeRange(startTimeField, endTimeField);
+      });
+    }
+  }
+
+  /**
+   * Validate a single field
+   */
+  private validateField(field: HTMLInputElement | HTMLSelectElement, fieldName: string): void {
+    const value = field.value.trim();
+    const isRequired = field.hasAttribute('required');
+    
+    // Remove existing error styling
+    field.classList.remove('border-red-500');
+    this.removeFieldError(field);
+    
+    if (isRequired && !value) {
+      field.classList.add('border-red-500');
+      this.showFieldError(field, `${fieldName} is required`);
+    }
+  }
+
+  /**
+   * Validate time range
+   */
+  private validateTimeRange(startField: HTMLInputElement, endField: HTMLInputElement): void {
+    const startTime = startField.value;
+    const endTime = endField.value;
+    
+    // Remove existing error styling
+    startField.classList.remove('border-red-500');
+    endField.classList.remove('border-red-500');
+    this.removeFieldError(startField);
+    this.removeFieldError(endField);
+    
+    if (startTime && endTime && startTime >= endTime) {
+      endField.classList.add('border-red-500');
+      this.showFieldError(endField, 'End time must be after start time');
+    }
+  }
+
+  /**
+   * Show field error message
+   */
+  private showFieldError(field: HTMLElement, message: string): void {
+    // Remove existing error
+    this.removeFieldError(field);
+    
+    // Create error element
+    const errorEl = document.createElement('p');
+    errorEl.className = 'text-xs text-red-600 mt-1 field-error';
+    errorEl.textContent = message;
+    
+    // Insert after field
+    field.parentElement?.appendChild(errorEl);
+  }
+
+  /**
+   * Remove field error message
+   */
+  private removeFieldError(field: HTMLElement): void {
+    const parent = field.parentElement;
+    if (parent) {
+      const errorEl = parent.querySelector('.field-error');
+      if (errorEl) {
+        errorEl.remove();
+      }
+    }
   }
 }

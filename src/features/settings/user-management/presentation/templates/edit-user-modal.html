@@ -1,87 +1,154 @@
 <!-- Edit User Modal -->
 <div id="editUserModal" class="modal" style="display: none;">
-    <div class="modal-content">
+    <div class="modal-content edit-user-modal">
         <div class="modal-header">
-            <h3>Edit User</h3>
-            <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            <div class="modal-header-content">
+                <h3>Edit User</h3>
+                <p class="modal-subtitle">Update user information and settings</p>
+            </div>
+            <button class="modal-close" onclick="closeEditModal()" aria-label="Close modal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
         <div class="modal-body">
             <form id="editUserForm">
                 <input type="hidden" id="editUserId">
-                <div class="form-group">
-                    <label for="editUserName">Name</label>
-                    <input type="text" id="editUserName" required>
-                </div>
-                <div class="form-group">
-                    <label for="editUserRole">Role</label>
-                    <select id="editUserRole" required>
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Quality Analyst">Quality Analyst</option>
-                        <option value="Employee">Employee</option>
-                        <option value="General User">General User</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="editUserDepartment">Department</label>
-                    <select id="editUserDepartment">
-                        <option value="">Select Department</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="editUserChannel">Channel</label>
-                    <select id="editUserChannel">
-                        <option value="">Select Channel</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="editUserTeam">Team</label>
-                    <input type="text" id="editUserTeam" placeholder="e.g., Team A, Customer Support, etc.">
-                </div>
-                <div class="form-group">
-                    <label for="editUserTeamSupervisor">Team Supervisor</label>
-                    <select id="editUserTeamSupervisor">
-                        <option value="">Select Team Supervisor</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="editUserQualitySupervisor">Quality Mentor</label>
-                    <select id="editUserQualitySupervisor">
-                        <option value="">Select Quality Mentor</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="editUserDesignation">Designation</label>
-                    <input type="text" id="editUserDesignation" placeholder="Job title or designation">
-                </div>
-                <div class="form-group">
-                    <label for="editUserEmployeeId">Employee ID</label>
-                    <div style="display: flex; align-items: center; gap: 0.375rem;">
-                        <span style="font-size: 0.5625rem; font-weight: 600; color: var(--primary-color); padding: 0.375rem 0.5rem; background-color: #f3f4f6; border-radius: 0.1875rem; border: 0.0469rem solid #d1d5db;">NXT</span>
-                        <input type="text" id="editUserEmployeeId" style="flex: 1;">
+                
+                <!-- Primary Information Section - Most Important Fields First -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Primary Information</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editUserEmail">Email Address</label>
+                            <input type="email" id="editUserEmail" readonly style="background-color: #f9fafb; cursor: not-allowed;" title="Email cannot be changed">
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserEmployeeId">Employee ID</label>
+                            <div class="employee-id-wrapper">
+                                <span class="employee-id-prefix">NXT</span>
+                                <input type="text" id="editUserEmployeeId" placeholder="Enter employee ID">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserDepartment">Department</label>
+                            <select id="editUserDepartment">
+                                <option value="">Select Department</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserChannel">Channel</label>
+                            <select id="editUserChannel">
+                                <option value="">Select Channel</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserTeamSupervisor">Team Lead</label>
+                            <select id="editUserTeamSupervisor">
+                                <option value="">Select Team Lead</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserName">Full Name <span class="required">*</span></label>
+                            <input type="text" id="editUserName" required placeholder="Enter full name">
+                        </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="editUserStatus">Status</label>
-                    <select id="editUserStatus">
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                    </select>
+
+                <!-- Role & Organization Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Role & Organization</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editUserRole">Role <span class="required">*</span></label>
+                            <select id="editUserRole" required>
+                                <option value="">Select Role</option>
+                                <option value="Super Admin">Super Admin</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Quality Analyst">Quality Analyst</option>
+                                <option value="Employee">Employee</option>
+                                <option value="General User">General User</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserDesignation">Designation</label>
+                            <select id="editUserDesignation">
+                                <option value="">Select Designation</option>
+                                <option value="Executive">Executive</option>
+                                <option value="Senior Executive">Senior Executive</option>
+                                <option value="Manager I">Manager I</option>
+                                <option value="Manager II">Manager II</option>
+                                <option value="Manager III">Manager III</option>
+                                <option value="Associate Director">Associate Director</option>
+                                <option value="Vice President">Vice President</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserTeam">Team</label>
+                            <input type="text" id="editUserTeam" placeholder="e.g., Team A, Customer Support">
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserCountry">Country</label>
+                            <select id="editUserCountry">
+                                <option value="">Select Country</option>
+                                <option value="Bangladesh">Bangladesh</option>
+                                <option value="Sri Lanka">Sri Lanka</option>
+                                <option value="Malaysia">Malaysia</option>
+                                <option value="Cyprus">Cyprus</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="editUserIntercomAdmin">Intercom Admin</label>
-                    <select id="editUserIntercomAdmin">
-                        <option value="">Select Intercom Admin (Optional)</option>
-                    </select>
-                    <small style="display: block; margin-top: 0.25rem; font-size: 0.5rem; color: #6b7280;">
-                        Auto-detected if email matches an Intercom admin
-                    </small>
+
+                <!-- Supervision Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Supervision</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editUserQualitySupervisor">Quality Mentor</label>
+                            <select id="editUserQualitySupervisor">
+                                <option value="">Select Quality Mentor</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status & Settings Section -->
+                <div class="form-section">
+                    <h4 class="form-section-title">Status & Settings</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="editUserStatus">Account Status</label>
+                            <select id="editUserStatus">
+                                <option value="true">Active</option>
+                                <option value="false">Inactive</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="editUserIntercomAdmin">Intercom Admin</label>
+                            <select id="editUserIntercomAdmin">
+                                <option value="">Select Intercom Admin (Optional)</option>
+                            </select>
+                            <small class="form-help-text">
+                                Auto-detected if email matches an Intercom admin
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-secondary" id="editUserCancelBtn">Cancel</button>
-            <button type="button" class="btn-primary" id="editUserSaveBtn">Save Changes</button>
+            <button type="button" class="btn-primary" id="editUserSaveBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save Changes
+            </button>
         </div>
     </div>
 </div>

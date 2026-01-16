@@ -10,7 +10,8 @@ import {
   SCORECARD_PARAMETER_FIELDS,
   AUDIT_TABLE_COMMON_FIELDS,
   AUDIT_ASSIGNMENT_FIELDS,
-  CHANNEL_MINIMAL_FIELDS
+  CHANNEL_MINIMAL_FIELDS,
+  USER_MINIMAL_FIELDS
 } from '../../../core/constants/field-whitelists.js';
 import { logError, logInfo } from '../../../utils/logging-helper.js';
 import type { AuditReport } from '../domain/entities.js';
@@ -90,6 +91,72 @@ export class AuditReportsRepository extends BaseRepository {
       }
       return audit;
     });
+  }
+
+  /**
+   * Enrich audits with auditor names from users table if missing
+   */
+  private async enrichAuditsWithAuditorNames(audits: AuditReport[]): Promise<AuditReport[]> {
+    // Find audits that need auditor names
+    const auditsNeedingNames = audits.filter(audit => 
+      audit.auditorEmail && 
+      (!audit.auditorName || audit.auditorName.trim() === '' || audit.auditorName === 'N/A')
+    );
+
+    if (auditsNeedingNames.length === 0) {
+      return audits;
+    }
+
+    // Get unique auditor emails
+    const auditorEmails = Array.from(new Set(
+      auditsNeedingNames
+        .map(a => a.auditorEmail)
+        .filter(email => email && email.trim() !== '')
+    ));
+
+    if (auditorEmails.length === 0) {
+      return audits;
+    }
+
+    try {
+      // Fetch auditor names from users table
+      const { data: users, error } = await this.db
+        .from('users')
+        .select(USER_MINIMAL_FIELDS)
+        .in('email', auditorEmails)
+        .execute<Array<{ email: string; full_name: string | null }>>();
+
+      if (error) {
+        logError('Error fetching auditor names from users table:', error);
+        return audits;
+      }
+
+      // Create lookup map: email -> full_name
+      const auditorNameLookup = new Map<string, string>();
+      (users || []).forEach(user => {
+        if (user.full_name && user.full_name.trim() !== '') {
+          auditorNameLookup.set(user.email.toLowerCase(), user.full_name);
+        }
+      });
+
+      // Enrich audits with auditor names
+      return audits.map(audit => {
+        if (audit.auditorEmail && 
+            (!audit.auditorName || audit.auditorName.trim() === '' || audit.auditorName === 'N/A')) {
+          const auditorName = auditorNameLookup.get(audit.auditorEmail.toLowerCase());
+          if (auditorName) {
+            return {
+              ...audit,
+              auditorName
+            };
+          }
+        }
+        return audit;
+      });
+    } catch (error) {
+      logError('Error enriching auditor names:', error);
+      return audits;
+    }
   }
 
   /**
@@ -209,7 +276,10 @@ export class AuditReportsRepository extends BaseRepository {
       } as AuditReport));
 
       // Enrich with channel names
-      return await this.enrichAuditsWithChannelNames(auditsWithMetadata);
+      const auditsWithChannels = await this.enrichAuditsWithChannelNames(auditsWithMetadata);
+      
+      // Enrich with auditor names if missing
+      return await this.enrichAuditsWithAuditorNames(auditsWithChannels);
     } catch (error: any) {
       // Only log unexpected errors (queryAuditTable already handles expected errors)
       if (error && !error.code && !error.message?.includes('does not exist')) {
@@ -257,7 +327,10 @@ export class AuditReportsRepository extends BaseRepository {
     const allAudits = results.flat();
     
     // Enrich all audits with channel names
-    const enrichedAudits = await this.enrichAuditsWithChannelNames(allAudits);
+    const auditsWithChannels = await this.enrichAuditsWithChannelNames(allAudits);
+    
+    // Enrich with auditor names if missing
+    const enrichedAudits = await this.enrichAuditsWithAuditorNames(auditsWithChannels);
     
     return enrichedAudits.sort((a, b) => {
       const dateAValue = a.submittedAt || a.submitted_at || a.auditTimestamp || a.audit_timestamp || '';

@@ -4,7 +4,7 @@
  */
 
 import type { User } from '../domain/entities.js';
-import { escapeHtml, safeSetTableBodyHTML, setTextContent } from '../../../../utils/html-sanitizer.js';
+import { escapeHtml, safeSetHTML, safeSetTableBodyHTML, setTextContent } from '../../../../utils/html-sanitizer.js';
 import { userManagementState } from './state.js';
 import { logInfo, logError } from '../../../../utils/logging-helper.js';
 
@@ -22,42 +22,106 @@ export class TableRenderer {
       return;
     }
 
+    // B3 FIX: Check for error state first
+    const state = userManagementState.getState();
+    if (state.error) {
+      logInfo('[TableRenderer] Error state detected, showing error message');
+      const errorHTML = `
+        <div class="error-state" style="text-align: center; padding: 2rem; max-width: 600px; margin: 0 auto;">
+          <div style="margin-bottom: 1.5rem;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444; margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.75rem;">Error Loading Users</h3>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">${escapeHtml(state.error)}</p>
+          <button id="retryUsersBtn" 
+                  style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s;">
+            Retry
+          </button>
+        </div>
+      `;
+      safeSetHTML(container, errorHTML);
+      // Attach event listener after rendering
+      const retryBtn = document.getElementById('retryUsersBtn');
+      if (retryBtn && (window as any).refreshUsers) {
+        retryBtn.addEventListener('click', () => {
+          (window as any).refreshUsers();
+        });
+      }
+      return;
+    }
+
+    // H4 FIX: Distinguish empty state from error/loading
     if (users.length === 0) {
       logInfo('[TableRenderer] No users to render, showing empty message');
-      container.innerHTML = '<div class="loading">No users found</div>';
+      const isEmpty = !state.error && !state.isLoading;
+      
+      if (isEmpty) {
+        const emptyHTML = `
+          <div style="text-align: center; padding: 3rem; max-width: 500px; margin: 0 auto;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #9ca3af; margin: 0 auto 1.5rem;">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem;">No Users Yet</h3>
+            <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">Get started by creating your first user.</p>
+            <button id="createUserEmptyBtn" class="btn-create"
+                    style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer;">
+              Create User
+            </button>
+          </div>
+        `;
+        safeSetHTML(container, emptyHTML);
+        // Attach event listener after rendering
+        const createBtn = document.getElementById('createUserEmptyBtn');
+        if (createBtn && (window as any).openCreateUserModal) {
+          createBtn.addEventListener('click', () => {
+            (window as any).openCreateUserModal();
+          });
+        }
+      } else {
+        safeSetHTML(container, '<div class="loading">No users found</div>');
+      }
       return;
     }
 
     logInfo('[TableRenderer] Rendering', { usersCount: users.length });
 
-    // Create table structure if it doesn't exist
+    // Create modern table structure if it doesn't exist
     if (!tbody) {
       const tableHTML = `
-        <table>
+        <table class="users-table-modern">
           <thead>
             <tr>
-              <th style="text-align: center; width: 3%;">
-                <input type="checkbox" id="selectAllUsers" style="cursor: pointer; accent-color: #1A733E;">
+              <th scope="col" style="text-align: center; width: 3%; padding: 0.5rem 0.75rem;">
+                <input type="checkbox" id="selectAllUsers" style="cursor: pointer; accent-color: #1A733E; width: 0.875rem; height: 0.875rem;" aria-label="Select all users">
               </th>
-              <th>ID</th>
-              <th>Name & Email</th>
-              <th>Department</th>
-              <th>Channel</th>
-              <th>Team</th>
-              <th>Designation</th>
-              <th>Team<br>Supervisor</th>
-              <th>Quality<br>Mentor</th>
-              <th>Intercom<br>Admin</th>
-              <th>Role</th>
-              <th>Country</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">ID</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Name & Email</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Department</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Channel</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Team</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Designation</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Team Supervisor</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Quality Mentor</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Intercom Admin</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Role</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Country</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">Status</th>
+              <th scope="col" style="padding: 0.5rem 0.75rem;">
+                <span class="sr-only">Actions</span>
+              </th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       `;
-      container.innerHTML = tableHTML;
+      safeSetHTML(container, tableHTML);
 
       // Setup select all checkbox
       const selectAllCheckbox = document.getElementById('selectAllUsers') as HTMLInputElement;
@@ -81,7 +145,7 @@ export class TableRenderer {
       safeSetTableBodyHTML(tbodyElement, rowsHTML);
     }
 
-    // Update users count in table header
+    // Update users count (if element exists)
     const usersCountEl = document.getElementById('usersCount');
     if (usersCountEl) {
       setTextContent(usersCountEl, `${users.length} User${users.length !== 1 ? 's' : ''}`);
@@ -92,6 +156,183 @@ export class TableRenderer {
     
     // Setup avatar image error handlers
     this.setupAvatarErrorHandlers();
+    
+    // Setup row click handlers and dropdowns
+    this.setupRowInteractions();
+    
+    // Render pagination
+    this.renderPagination(users.length);
+  }
+  
+  /**
+   * Setup row click handlers and dropdown interactions
+   */
+  private setupRowInteractions(): void {
+    const rows = document.querySelectorAll('.user-row');
+    rows.forEach(row => {
+      const email = row.getAttribute('data-email');
+      if (!email) return;
+      
+      // Row click handler (opens edit modal)
+      row.addEventListener('click', (e) => {
+        // Don't trigger if clicking checkbox or dropdown
+        if ((e.target as HTMLElement).closest('.user-checkbox') || 
+            (e.target as HTMLElement).closest('.action-dropdown-wrapper')) {
+          return;
+        }
+        if ((window as any).editUser) {
+          (window as any).editUser(email);
+        }
+      });
+      
+      // Keyboard navigation
+      row.setAttribute('tabindex', '0');
+      row.setAttribute('role', 'button');
+      row.setAttribute('aria-label', `Edit user ${email}`);
+      row.addEventListener('keydown', (e: Event) => {
+        const keyEvent = e as KeyboardEvent;
+        if (keyEvent.key === 'Enter' || keyEvent.key === ' ') {
+          keyEvent.preventDefault();
+          if ((window as any).editUser) {
+            (window as any).editUser(email);
+          }
+        }
+      });
+    });
+  }
+  
+  /**
+   * Render pagination
+   */
+  private renderPagination(totalItems: number): void {
+    const container = document.getElementById('paginationContainer');
+    if (!container) return;
+    
+    const itemsPerPage = 10; // Default items per page
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const currentPage = 1; // Will be managed by state in future
+    
+    if (totalPages <= 1) {
+      safeSetHTML(container, `
+        <span class="pagination-info">
+          Showing <strong>1</strong> to <strong>${escapeHtml(totalItems.toString())}</strong> of <strong>${escapeHtml(totalItems.toString())}</strong>
+        </span>
+      `);
+      return;
+    }
+    
+    const startItem = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+    
+    // Generate page numbers
+    const pageNumbers: string[] = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i.toString());
+      }
+    } else {
+      // Show first, last, and pages around current
+      pageNumbers.push('1');
+      if (currentPage > 3) pageNumbers.push('...');
+      
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i.toString());
+      }
+      
+      if (currentPage < totalPages - 2) pageNumbers.push('...');
+      pageNumbers.push(totalPages.toString());
+    }
+    
+    const pageButtons = pageNumbers.map((page, index) => {
+      if (page === '...') {
+        return `<a href="#" class="pagination-button" data-action="noop">...</a>`;
+      }
+      const pageNum = parseInt(page);
+      const isActive = pageNum === currentPage;
+      return `
+        <a href="#" 
+           class="pagination-button ${isActive ? 'active' : ''}" 
+           data-action="goto-page"
+           data-page="${pageNum}"
+           ${isActive ? 'aria-current="page"' : ''}>
+          ${escapeHtml(page)}
+        </a>
+      `;
+    }).join('');
+    
+    const paginationHTML = `
+      <span class="pagination-info">
+        Showing <strong>${escapeHtml(startItem.toString())}</strong> to <strong>${escapeHtml(endItem.toString())}</strong> of <strong>${escapeHtml(totalItems.toString())}</strong>
+      </span>
+      <ul class="pagination-controls">
+        <li>
+          <a href="#" 
+             class="pagination-button ${currentPage === 1 ? 'disabled' : ''}" 
+             data-action="prev-page"
+             data-page="${currentPage - 1}"
+             aria-label="Previous page">
+            <span class="sr-only">Previous</span>
+            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </li>
+        ${pageButtons}
+        <li>
+          <a href="#" 
+             class="pagination-button ${currentPage === totalPages ? 'disabled' : ''}" 
+             data-action="next-page"
+             data-page="${currentPage + 1}"
+             aria-label="Next page">
+            <span class="sr-only">Next</span>
+            <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </li>
+      </ul>
+    `;
+    safeSetHTML(container, paginationHTML);
+    
+    // Attach event listeners after rendering (replacing onclick handlers)
+    container.querySelectorAll('[data-action="prev-page"]').forEach(btn => {
+      if (currentPage > 1) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const page = parseInt(btn.getAttribute('data-page') || '1');
+          if ((window as any).goToPage) {
+            (window as any).goToPage(page);
+          }
+        });
+      }
+    });
+    
+    container.querySelectorAll('[data-action="next-page"]').forEach(btn => {
+      if (currentPage < totalPages) {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          const page = parseInt(btn.getAttribute('data-page') || '1');
+          if ((window as any).goToPage) {
+            (window as any).goToPage(page);
+          }
+        });
+      }
+    });
+    
+    container.querySelectorAll('[data-action="goto-page"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = parseInt(btn.getAttribute('data-page') || '1');
+        if ((window as any).goToPage) {
+          (window as any).goToPage(page);
+        }
+      });
+    });
   }
 
   /**
@@ -171,15 +412,24 @@ export class TableRenderer {
       : '';
     const initialsHTML = `<div class="user-avatar-initials" data-email="${safeEmail}" ${avatarUrl ? 'style="display: none;"' : ''}>${escapeHtml(initials)}</div>`;
     
+    // M5 FIX: Add keyboard navigation support
+    // Generate unique IDs for dropdown (use a simpler approach)
+    const emailSlug = safeEmail.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase();
+    const dropdownId = `user-${emailSlug}-dropdown`;
+    const dropdownButtonId = `${dropdownId}-button`;
+    
     return `
-      <tr class="user-row" data-email="${safeEmail}" style="cursor: pointer;">
-        <td style="text-align: center;">
+      <tr class="user-row border-b dark:border-gray-700" 
+          data-email="${safeEmail}">
+        <td style="text-align: center; padding: 0.5rem 0.75rem;">
           <input type="checkbox" class="user-checkbox" data-email="${safeEmail}" 
                  ${isSelected ? 'checked' : ''}
-                 style="cursor: pointer; accent-color: #1A733E;">
+                 style="cursor: pointer; accent-color: #1A733E; width: 0.875rem; height: 0.875rem;"
+                 aria-label="Select user ${safeName}"
+                 onclick="event.stopPropagation();">
         </td>
-        <td style="font-weight: 600; color: #6b7280;">${safeEmployeeId}</td>
-        <td>
+        <th scope="row" class="px-4 py-3 font-medium text-gray-900 whitespace-nowrap dark:text-white" style="padding: 0.5rem 0.75rem;">${safeEmployeeId}</th>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">
           <div class="user-info">
             <div class="user-name-row">
               <div class="user-avatar">
@@ -193,23 +443,39 @@ export class TableRenderer {
             </div>
           </div>
         </td>
-        <td>${safeDepartment}</td>
-        <td>${safeChannel}</td>
-        <td>${safeTeam}</td>
-        <td>${safeDesignation}</td>
-        <td style="color: #4b5563;">${safeTeamSupervisor}</td>
-        <td style="color: #4b5563;">${safeQualitySupervisor}</td>
-        <td style="color: #1e40af; font-weight: 500;">${safeIntercomAdmin}</td>
-        <td><span class="role-badge role-${escapeHtml(roleClass)}">${safeRole}</span></td>
-        <td>${safeCountry}</td>
-        <td><span class="${statusClass}">${escapeHtml(statusText)}</span></td>
-        <td>
-          <button class="btn-edit" data-email="${safeEmail}" title="Edit User">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">${safeDepartment}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">${safeChannel}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">${safeTeam}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">${safeDesignation}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem; color: #4b5563;">${safeTeamSupervisor}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem; color: #4b5563;">${safeQualitySupervisor}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem; color: #1e40af; font-weight: 500;">${safeIntercomAdmin}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;"><span class="role-badge role-${escapeHtml(roleClass)}">${safeRole}</span></td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">${safeCountry}</td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;"><span class="${statusClass}">${escapeHtml(statusText)}</span></td>
+        <td class="px-4 py-3" style="padding: 0.5rem 0.75rem;">
+          <div class="action-dropdown-wrapper">
+            <button id="${dropdownButtonId}" 
+                    class="action-dropdown-button" 
+                    type="button"
+                    data-dropdown-toggle="${dropdownId}"
+                    aria-label="Actions for user ${safeName}"
+                    aria-expanded="false"
+                    onclick="event.stopPropagation(); if(window.toggleDropdown) window.toggleDropdown('${dropdownId}');">
+              <svg class="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z" />
+              </svg>
+            </button>
+            <div id="${dropdownId}" 
+                 class="action-dropdown-menu" 
+                 aria-labelledby="${dropdownButtonId}">
+              <ul class="action-dropdown-list">
+                <li>
+                  <a href="#" class="action-dropdown-item" data-email="${safeEmail}" onclick="event.preventDefault(); event.stopPropagation(); const email = this.getAttribute('data-email'); if(window.openEditModal && email) window.openEditModal(email); return false;">Edit</a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </td>
       </tr>
     `;

@@ -169,6 +169,51 @@ export function filterAudits(
     });
   }
 
+  // Interaction ID filter
+  if (filters.interactionId && filters.interactionId.trim().length > 0) {
+    const interactionIdQuery = filters.interactionId.toLowerCase().trim();
+    filtered = filtered.filter(audit => {
+      const interactionId = String(audit.interactionId || '').toLowerCase();
+      return interactionId.includes(interactionIdQuery);
+    });
+  }
+
+  // Week filter
+  if (filters.week !== undefined && filters.week !== null) {
+    filtered = filtered.filter(audit => {
+      const auditWeek = audit.week ? Number(audit.week) : null;
+      return auditWeek !== null && auditWeek === filters.week;
+    });
+  }
+
+  // Min/Max Score filter
+  if (filters.minScore !== undefined && filters.minScore !== null) {
+    filtered = filtered.filter(audit => {
+      const score = audit.averageScore ? Number(audit.averageScore) : null;
+      return score !== null && score >= filters.minScore!;
+    });
+  }
+  if (filters.maxScore !== undefined && filters.maxScore !== null) {
+    filtered = filtered.filter(audit => {
+      const score = audit.averageScore ? Number(audit.averageScore) : null;
+      return score !== null && score <= filters.maxScore!;
+    });
+  }
+
+  // Min/Max Errors filter
+  if (filters.minErrors !== undefined && filters.minErrors !== null) {
+    filtered = filtered.filter(audit => {
+      const errors = audit.totalErrorsCount ? Number(audit.totalErrorsCount) : null;
+      return errors !== null && errors >= filters.minErrors!;
+    });
+  }
+  if (filters.maxErrors !== undefined && filters.maxErrors !== null) {
+    filtered = filtered.filter(audit => {
+      const errors = audit.totalErrorsCount ? Number(audit.totalErrorsCount) : null;
+      return errors !== null && errors <= filters.maxErrors!;
+    });
+  }
+
   return filtered;
 }
 

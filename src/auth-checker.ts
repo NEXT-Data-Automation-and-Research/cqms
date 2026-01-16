@@ -151,6 +151,11 @@ async function initAuthCheck(): Promise<void> {
   
   if (!authenticated) {
     logInfo('User not authenticated, redirecting to auth page...');
+    // Store current path for redirect after login
+    const currentPath = window.location.pathname;
+    if (currentPath && currentPath !== '/src/auth/presentation/auth-page.html') {
+      sessionStorage.setItem('redirectAfterLogin', currentPath + window.location.search);
+    }
     redirectToLogin();
     return;
   }
@@ -160,6 +165,11 @@ async function initAuthCheck(): Promise<void> {
   if (!user) {
     // Token appeared valid but user fetch failed - redirect to login
     logInfo('Token validation failed, redirecting to auth page...');
+    // Store current path for redirect after login
+    const currentPath = window.location.pathname;
+    if (currentPath && currentPath !== '/src/auth/presentation/auth-page.html') {
+      sessionStorage.setItem('redirectAfterLogin', currentPath + window.location.search);
+    }
     redirectToLogin();
     return;
   }
@@ -169,13 +179,36 @@ async function initAuthCheck(): Promise<void> {
   // Set up auth state listener to handle token expiration in real-time
   const supabase = getSupabase();
   if (supabase) {
+    // H3 FIX: Start session monitoring for expiry warnings
+    import('./utils/session-warning.js')
+      .then((module) => {
+        module.startSessionMonitoring();
+      })
+      .catch(() => {
+        // Ignore if module not loaded yet
+      });
+
     supabase.auth.onAuthStateChange((event: string, session: any) => {
       if (event === 'SIGNED_OUT') {
-        redirectToLogin();
+        // H3 FIX: Handle session expiry with auto-save
+        import('./utils/session-warning.js')
+          .then((module) => {
+            module.handleSessionExpiry();
+          })
+          .catch(() => {
+            redirectToLogin();
+          });
       } else if (event === 'TOKEN_REFRESHED') {
         if (!session) {
           logError('Auth Checker: Token refresh failed - redirecting to login');
-          redirectToLogin();
+          // H3 FIX: Handle session expiry with auto-save
+          import('./utils/session-warning.js')
+            .then((module) => {
+              module.handleSessionExpiry();
+            })
+            .catch(() => {
+              redirectToLogin();
+            });
         } else {
           // Clear auth cache to get fresh verification with new token
           import('./utils/authenticated-supabase.js')

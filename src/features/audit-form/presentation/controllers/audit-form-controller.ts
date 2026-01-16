@@ -29,10 +29,158 @@ export class AuditFormController {
   ) {}
 
   /**
-   * Initialize form submission handler
+   * Initialize form submission handler and real-time validation
    */
   initialize(): void {
     this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+    this.setupRealTimeValidation();
+  }
+
+  /**
+   * Setup real-time validation on blur
+   */
+  private setupRealTimeValidation(): void {
+    // Validate interaction ID on blur
+    const interactionIdField = document.getElementById('interactionId') as HTMLInputElement;
+    if (interactionIdField) {
+      interactionIdField.addEventListener('blur', () => {
+        this.validateInteractionId(interactionIdField);
+      });
+    }
+
+    // Setup validation for dynamically added fields
+    // This will be called when parameters are loaded
+    this.setupParameterValidation();
+  }
+
+  /**
+   * Validate interaction ID field
+   */
+  private validateInteractionId(field: HTMLInputElement): void {
+    const value = field.value?.trim() || '';
+    const isValid = value.length > 0;
+    
+    if (!isValid) {
+      field.style.borderColor = '#ef4444';
+      this.showFieldError(field, 'Interaction ID is required');
+    } else {
+      field.style.borderColor = '#10b981';
+      this.hideFieldError(field);
+    }
+  }
+
+  /**
+   * Setup validation for parameter fields
+   */
+  private setupParameterValidation(): void {
+    // This will be called when parameters are rendered
+    // We'll validate feedback fields when error count changes
+    const observer = new MutationObserver(() => {
+      this.attachFeedbackValidation();
+    });
+
+    const formContainer = this.form.querySelector('#parametersContainer') || this.form;
+    observer.observe(formContainer, { childList: true, subtree: true });
+  }
+
+  /**
+   * Attach validation to feedback fields
+   */
+  private attachFeedbackValidation(): void {
+    this.state.currentParameters.forEach(param => {
+      const errorCount = this.getParameterErrorCount(param);
+      if (errorCount > 0) {
+        const feedbackCount = Math.min(errorCount, 10);
+        for (let i = 0; i < feedbackCount; i++) {
+          const feedbackId = `feedback_${param.fieldId}_${i}`;
+          const feedbackField = document.getElementById(feedbackId) as HTMLTextAreaElement;
+          
+          if (feedbackField && !feedbackField.hasAttribute('data-validation-attached')) {
+            feedbackField.setAttribute('data-validation-attached', 'true');
+            feedbackField.addEventListener('blur', () => {
+              this.validateFeedbackField(feedbackField, param.errorName, i + 1, feedbackCount);
+            });
+          }
+
+          // Also check Quill editors
+          const quillContainer = document.querySelector(`#feedback_container_${param.fieldId} .quill-editor-container[data-feedback-index="${i}"]`);
+          if (quillContainer) {
+            const quillEditor = quillContainer.querySelector('.ql-editor') as HTMLElement;
+            if (quillEditor && !quillEditor.hasAttribute('data-validation-attached')) {
+              quillEditor.setAttribute('data-validation-attached', 'true');
+              quillEditor.addEventListener('blur', () => {
+                this.validateQuillFeedback(quillEditor, param.errorName, i + 1, feedbackCount);
+              });
+            }
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Validate feedback field
+   */
+  private validateFeedbackField(field: HTMLTextAreaElement, paramName: string, index: number, total: number): void {
+    const value = field.value?.trim() || '';
+    const isValid = value.length > 0;
+    
+    if (!isValid) {
+      field.style.borderColor = '#ef4444';
+      this.showFieldError(field, `Feedback is required for "${paramName}" (Feedback ${index} of ${total})`);
+    } else {
+      field.style.borderColor = '#10b981';
+      this.hideFieldError(field);
+    }
+  }
+
+  /**
+   * Validate Quill editor feedback
+   */
+  private validateQuillFeedback(editor: HTMLElement, paramName: string, index: number, total: number): void {
+    const content = editor.innerHTML?.trim() || '';
+    const isEmpty = !content || content === '<p><br></p>';
+    const container = editor.closest('.ql-container') as HTMLElement;
+    
+    if (container) {
+      if (isEmpty) {
+        container.style.borderColor = '#ef4444';
+        this.showFieldError(container, `Feedback is required for "${paramName}" (Feedback ${index} of ${total})`);
+      } else {
+        container.style.borderColor = '#10b981';
+        this.hideFieldError(container);
+      }
+    }
+  }
+
+  /**
+   * Show field error message
+   */
+  private showFieldError(field: HTMLElement, message: string): void {
+    // Remove existing error
+    this.hideFieldError(field);
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'field-error-message';
+    errorDiv.style.cssText = `
+      font-size: 0.75rem;
+      color: #ef4444;
+      margin-top: 0.25rem;
+      margin-left: 0.25rem;
+    `;
+    errorDiv.textContent = message;
+    
+    field.parentElement?.appendChild(errorDiv);
+  }
+
+  /**
+   * Hide field error message
+   */
+  private hideFieldError(field: HTMLElement): void {
+    const errorDiv = field.parentElement?.querySelector('.field-error-message');
+    if (errorDiv) {
+      errorDiv.remove();
+    }
   }
 
   /**
@@ -41,6 +189,10 @@ export class AuditFormController {
   setScorecardData(scorecard: Scorecard | null, parameters: ScorecardParameter[]): void {
     this.state.currentScorecard = scorecard;
     this.state.currentParameters = parameters;
+    // Setup validation for newly loaded parameters
+    setTimeout(() => {
+      this.attachFeedbackValidation();
+    }, 100);
   }
 
   /**
@@ -58,6 +210,16 @@ export class AuditFormController {
       return;
     }
 
+    // Disable submit button immediately and show loading state
+    const submitButton = this.form.querySelector('button[type="submit"]') as HTMLButtonElement;
+    const originalButtonText = submitButton?.textContent || 'Submit';
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Submitting...';
+      submitButton.style.opacity = '0.7';
+      submitButton.style.cursor = 'not-allowed';
+    }
+
     this.state.isSubmitting = true;
 
     try {
@@ -65,6 +227,13 @@ export class AuditFormController {
       if (!this.state.currentScorecard || !this.state.currentParameters || this.state.currentParameters.length === 0) {
         await this.showErrorDialog('No Scorecard Selected', 'Please select a scorecard before submitting the audit.');
         this.state.isSubmitting = false;
+        // Re-enable button on error
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
+          submitButton.style.cursor = 'pointer';
+        }
         return;
       }
 
@@ -76,6 +245,13 @@ export class AuditFormController {
           'Supabase client not initialized. Please refresh the page and try again.'
         );
         this.state.isSubmitting = false;
+        // Re-enable button on error
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
+          submitButton.style.cursor = 'pointer';
+        }
         return;
       }
 
@@ -90,6 +266,13 @@ export class AuditFormController {
       if (validationErrors.length > 0) {
         await this.showValidationErrors(validationErrors);
         this.state.isSubmitting = false;
+        // Re-enable button on validation error
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalButtonText;
+          submitButton.style.opacity = '1';
+          submitButton.style.cursor = 'pointer';
+        }
         return;
       }
 
@@ -109,6 +292,14 @@ export class AuditFormController {
     } catch (error) {
       logError('Error submitting audit form:', error);
       await this.showErrorDialog('Submission Error', 'Failed to submit audit. Please try again.');
+      // Re-enable button on error
+      const submitButton = this.form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = '✓ Submit Audit';
+        submitButton.style.opacity = '1';
+        submitButton.style.cursor = 'pointer';
+      }
     } finally {
       this.state.isSubmitting = false;
     }

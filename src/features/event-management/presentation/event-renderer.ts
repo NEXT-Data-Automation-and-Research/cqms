@@ -5,7 +5,7 @@
 
 import type { EventStateManager } from '../application/event-state.js';
 import type { Event } from '../domain/types.js';
-import { escapeHtml } from '../../../utils/html-sanitizer.js';
+import { escapeHtml, safeSetHTML } from '../../../utils/html-sanitizer.js';
 import { CalendarRenderer } from './calendar-renderer.js';
 
 export class EventRenderer {
@@ -30,6 +30,11 @@ export class EventRenderer {
     this.updateViewToggle();
     this.updateFilterButtons();
     this.updateCreateButtonText();
+    
+    // Ensure participant chips are re-rendered after state changes
+    if ((window as any).eventHandlers?.participantManager) {
+      (window as any).eventHandlers.participantManager.renderSelectedParticipants();
+    }
   }
 
   /**
@@ -37,23 +42,123 @@ export class EventRenderer {
    */
   private renderList(): void {
     const eventsList = document.getElementById('eventsList');
-    if (!eventsList) return;
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (!eventsList || !loadingIndicator) return;
+
+    const state = this.stateManager.getState();
+
+    // Show loading state when loading
+    if (state.isLoading) {
+      this.showLoading();
+      return;
+    }
+
+    // Hide loading and show events list
+    this.hideLoading();
 
     const filteredEvents = this.stateManager.getFilteredEvents();
     const sortedEvents = this.sortEvents(filteredEvents);
 
     if (sortedEvents.length === 0) {
-      eventsList.innerHTML = this.renderEmptyState();
+      safeSetHTML(eventsList, this.renderEmptyState());
       return;
     }
 
-    eventsList.innerHTML = sortedEvents.map(event => this.renderEventItem(event)).join('');
+    safeSetHTML(eventsList, sortedEvents.map(event => this.renderEventItem(event)).join(''));
+    
+    // Attach event listeners after rendering
+    this.attachEventListeners(eventsList);
+  }
+
+  /**
+   * Attach event listeners to rendered event items
+   */
+  private attachEventListeners(container: HTMLElement): void {
+    // View event
+    container.querySelectorAll('[data-action="view-event"]').forEach(element => {
+      element.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = element.getAttribute('data-event-id');
+        if (eventId && (window as any).eventHandlers) {
+          (window as any).eventHandlers.viewEvent(eventId);
+        }
+      });
+    });
+
+    // Edit event
+    container.querySelectorAll('[data-action="edit-event"]').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = button.getAttribute('data-event-id');
+        if (eventId && (window as any).eventHandlers) {
+          (window as any).eventHandlers.editEvent(eventId);
+        }
+      });
+    });
+
+    // Delete event
+    container.querySelectorAll('[data-action="delete-event"]').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const eventId = button.getAttribute('data-event-id');
+        if (eventId && (window as any).eventHandlers) {
+          (window as any).eventHandlers.deleteEvent(eventId);
+        }
+      });
+    });
+  }
+
+  /**
+   * Render loading state skeleton (M1)
+   */
+  /**
+   * Show loading indicator
+   */
+  private showLoading(): void {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const eventsList = document.getElementById('eventsList');
+    if (loadingIndicator) loadingIndicator.style.display = 'flex';
+    if (eventsList) eventsList.style.display = 'none';
+  }
+
+  /**
+   * Hide loading indicator
+   */
+  private hideLoading(): void {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const eventsList = document.getElementById('eventsList');
+    if (loadingIndicator) loadingIndicator.style.display = 'none';
+    if (eventsList) eventsList.style.display = 'block';
   }
 
   /**
    * Render calendar view
    */
   private renderCalendar(): void {
+    const state = this.stateManager.getState();
+    const calendarGrid = document.getElementById('calendarGrid');
+    const calendarLoadingIndicator = document.getElementById('calendarLoadingIndicator');
+    const calendarView = document.getElementById('calendarView');
+    
+    // Show loading state when loading
+    if (state.isLoading) {
+      if (calendarLoadingIndicator && calendarView && !calendarView.classList.contains('hidden')) {
+        calendarLoadingIndicator.style.display = 'flex';
+      }
+      if (calendarGrid) {
+        calendarGrid.style.display = 'none';
+      }
+      return;
+    }
+    
+    // Hide loading and show calendar
+    if (calendarLoadingIndicator) {
+      calendarLoadingIndicator.style.display = 'none';
+    }
+    if (calendarGrid) {
+      calendarGrid.style.display = 'grid';
+    }
+    
     this.calendarRenderer.render();
   }
 
@@ -61,11 +166,12 @@ export class EventRenderer {
    * Render single event item
    */
   private renderEventItem(event: Event): string {
+    // L2: Improved color contrast for badges
     const typeColors = {
-      session: 'bg-blue-100 text-blue-800',
-      meeting: 'bg-purple-100 text-purple-800',
-      feedback: 'bg-green-100 text-green-800',
-      training: 'bg-orange-100 text-orange-800'
+      session: 'bg-blue-600 text-white',
+      meeting: 'bg-purple-600 text-white',
+      feedback: 'bg-green-600 text-white',
+      training: 'bg-orange-600 text-white'
     };
     
     const typeLabels = {
@@ -78,12 +184,31 @@ export class EventRenderer {
     const participants = event.participants || [];
     const participantCount = participants.length;
     const state = this.stateManager.getState();
-    const userEmail = (window as any).eventController?.getUserEmail() || '';
-    const isSuperAdmin = (window as any).eventController?.isUserSuperAdmin() || false;
+    
+    // Get user email - try multiple sources
+    let userEmail = '';
+    let isSuperAdmin = false;
+    
+    if ((window as any).eventController) {
+      userEmail = (window as any).eventController.getUserEmail() || '';
+      isSuperAdmin = (window as any).eventController.isUserSuperAdmin() || false;
+    }
+    
+    // Fallback to localStorage if controller not available
+    if (!userEmail) {
+      try {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        userEmail = userInfo.email || '';
+        isSuperAdmin = userInfo.role === 'Super Admin';
+      } catch (e) {
+        // Ignore
+      }
+    }
+    
     const canModify = event.created_by === userEmail || isSuperAdmin;
 
     return `
-      <div class="px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer" onclick="window.eventHandlers?.viewEvent('${event.id}')">
+      <div class="px-4 py-4 hover:bg-gray-50 transition-colors cursor-pointer event-item" data-action="view-event" data-event-id="${event.id}">
         <div class="flex items-center justify-between gap-4">
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-2">
@@ -116,9 +241,9 @@ export class EventRenderer {
               ` : ''}
             </div>
           </div>
-          <div class="flex items-center gap-2" onclick="event.stopPropagation()">
+          <div class="flex items-center gap-2" data-action="stop-propagation" onclick="event.stopPropagation()">
             ${event.meet_link ? `
-              <a href="${escapeHtml(event.meet_link)}" target="_blank" rel="noopener noreferrer" class="px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors flex items-center gap-2" title="Join Google Meet">
+              <a href="${escapeHtml(event.meet_link)}" target="_blank" rel="noopener noreferrer" class="join-meet-link px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded hover:bg-blue-700 transition-colors flex items-center gap-2 no-underline" title="Join Google Meet">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                 </svg>
@@ -126,12 +251,12 @@ export class EventRenderer {
               </a>
             ` : ''}
             ${canModify ? `
-              <button onclick="window.eventHandlers?.editEvent('${event.id}')" class="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="Edit">
+              <button data-action="edit-event" data-event-id="${event.id}" class="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors" title="Edit">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
               </button>
-              <button onclick="window.eventHandlers?.deleteEvent('${event.id}')" class="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors" title="Delete">
+              <button data-action="delete-event" data-event-id="${event.id}" class="p-1.5 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors" title="Delete">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
@@ -173,7 +298,7 @@ export class EventRenderer {
         </svg>
         <p class="text-sm font-semibold text-gray-700 mb-1">${message}</p>
         <p class="text-xs text-gray-500 mb-4">Create your first event to get started</p>
-        <button onclick="document.getElementById('createEventBtn').click()" class="px-4 py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-primary-dark transition-colors">
+        <button class="empty-state-create-btn px-4 py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-primary-dark transition-colors">
           ${buttonText}
         </button>
       </div>

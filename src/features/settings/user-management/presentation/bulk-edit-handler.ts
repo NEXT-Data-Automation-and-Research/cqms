@@ -78,6 +78,17 @@ export class BulkEditHandler {
       if (!confirmed) return;
     }
 
+    // M3 FIX: Add loading state to button during operation
+    const button = document.querySelector('.btn-bulk-apply') as HTMLButtonElement;
+    const originalText = button?.textContent || 'Apply Changes';
+    
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'Applying...';
+      button.style.opacity = '0.6';
+      button.style.cursor = 'not-allowed';
+    }
+
     try {
       await this.service.bulkUpdateUsers(selectedEmails, bulkData);
       userManagementState.clearSelections();
@@ -106,6 +117,14 @@ export class BulkEditHandler {
         });
       } else {
         alert(errorMessage);
+      }
+    } finally {
+      // M3 FIX: Restore button state
+      if (button) {
+        button.disabled = false;
+        button.textContent = originalText;
+        button.style.opacity = '1';
+        button.style.cursor = 'pointer';
       }
     }
   }

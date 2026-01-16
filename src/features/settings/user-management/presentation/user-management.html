@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>User Management | CQMS</title>
 <meta name="description" content="Quality Management System - User Management">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
@@ -12,9 +13,22 @@
     <link rel="stylesheet" href="/sidebar.css">
     <link rel="stylesheet" href="user-management.css">
     <link rel="stylesheet" href="user-management-table.css">
+    <link rel="stylesheet" href="user-management-table-modern.css">
     <link rel="stylesheet" href="user-management-modal.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- SECURITY: SRI hashes should be added after verification -->
+    <!-- Generate hashes using: node scripts/generate-sri-hashes.js -->
+    <script 
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
+      integrity="sha384-..." 
+      crossorigin="anonymous">
+    </script>
+    <!-- Note: Google GSI may not support SRI - consider hosting locally -->
+    <script 
+      src="https://accounts.google.com/gsi/client" 
+      async 
+      defer
+      crossorigin="anonymous">
+    </script>
     
     <!-- Import map for npm packages -->
     <script type="importmap">
@@ -32,26 +46,7 @@
     
     <!-- Initialize Supabase FIRST before any components load -->
     <script type="module">
-      import { initSupabase } from '/js/utils/supabase-init.js';
-      import { getSecureSupabase } from '/js/utils/secure-supabase.js';
-      
-      // Initialize Supabase immediately when page loads
-      (async function initSupabaseFirst() {
-        try {
-          // Initialize base Supabase client
-          await initSupabase();
-          
-          // Set up secure client on window.supabaseClient (required by DatabaseFactory)
-          const secureClient = await getSecureSupabase(false); // Don't require auth initially (will check on each DB op)
-          window.supabaseClient = secureClient;
-          
-          // Signal that Supabase is ready
-          window.supabaseReady = true;
-          window.dispatchEvent(new CustomEvent('supabaseReady'));
-        } catch (error) {
-          // Error logged by initSupabase/getSecureSupabase
-        }
-      })();
+      import '/js/features/settings/user-management/presentation/supabase-initializer.js';
     </script>
     
     <!-- Sidebar Loader -->
@@ -62,101 +57,127 @@
 <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
 <main class="main-content" role="main">
     <p class="page-heading">User Management</p>
-    <div style="margin-bottom: 1.125rem;"></div>
+    <div class="page-heading-spacer"></div>
 
-    <div class="user-management-container" style="margin-top: 2rem;">
+    <div class="user-management-container">
         <!-- Statistics Overview - Loaded dynamically -->
         <div id="statisticsContainer"></div>
 
-        <!-- Controls Section -->
-        <div class="controls-section">
-            <div class="controls-header">Filter & Search</div>
-            <div class="controls-grid">
-                <div class="control-group">
-                    <label class="control-label">Search</label>
-                    <input type="text" id="searchInput" placeholder="Search users..." class="control-input">
+        <!-- Modern Table Container - Tailwind-inspired design -->
+        <div class="table-container-modern">
+            <!-- Table Header with Search and Actions -->
+            <div class="table-header-modern">
+                <!-- Search Bar -->
+                <div class="search-section">
+                    <form class="search-form">
+                        <label for="searchInput" class="sr-only">Search</label>
+                        <div class="search-input-wrapper">
+                            <div class="search-icon-wrapper">
+                                <svg class="search-icon" aria-hidden="true" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <input type="text" id="searchInput" class="search-input" placeholder="Search users..." aria-label="Search users">
+                        </div>
+                    </form>
                 </div>
-                <div class="control-group">
-                    <label class="control-label">Role</label>
-                    <select class="control-select" id="roleFilter">
-                        <option value="">All Roles</option>
-                        <option value="Super Admin">Super Admin</option>
-                        <option value="Admin">Admin</option>
-                        <option value="Quality Analyst">Quality Analyst</option>
-                        <option value="Employee">Employee</option>
-                        <option value="General User">General User</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Department</label>
-                    <select class="control-select" id="departmentFilter">
-                        <option value="">All Departments</option>
-                        <option value="Admin, Compliance & Corporate Affairs">Admin, Compliance & Corporate Affairs</option>
-                        <option value="Operations">Operations</option>
-                        <option value="CEO's Office">CEO's Office</option>
-                        <option value="Client Experience">Client Experience</option>
-                        <option value="Community & Partner Management">Community & Partner Management</option>
-                        <option value="Finance & Audit">Finance & Audit</option>
-                        <option value="Payments & Treasury">Payments & Treasury</option>
-                        <option value="Marketing">Marketing</option>
-                        <option value="People & Culture">People & Culture</option>
-                        <option value="Quality, Performance & Training">Quality, Performance & Training</option>
-                        <option value="Technology">Technology</option>
-                        <option value="Trading & Risk Management">Trading & Risk Management</option>
-                        <option value="FNmarkets">FNmarkets</option>
-                        <option value="Sri Lanka Operations">Sri Lanka Operations</option>
-                        <option value="Malaysia Operations">Malaysia Operations</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Status</label>
-                    <select class="control-select" id="statusFilter">
-                        <option value="">All Status</option>
-                        <option value="true">Active</option>
-                        <option value="false">Inactive</option>
-                    </select>
-                </div>
-            </div>
-            <div class="action-buttons">
-                <button class="btn-primary" onclick="refreshUsers()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="23,4 23,10 17,10"/>
-                        <polyline points="1,20 1,14 7,14"/>
-                        <path d="M20.49,9A9,9,0,0,0,5.64,5.64L1,10m22,4L18.36,18.36A9,9,0,0,1,3.51,15"/>
-                    </svg>
-                    Refresh
-                </button>
-            </div>
-        </div>
 
-        <!-- Users Table -->
-        <div class="users-table">
-            <div class="table-header">
-                <div style="display: flex; align-items: center; gap: 0.375rem;">
-                    <h3 class="table-title">All Users</h3>
-                    <span class="table-count" id="usersCount">0 Users</span>
-                </div>
-                <div style="display: flex; gap: 0.375rem;">
-                    <button class="btn-secondary" onclick="openBulkUploadModal()" style="margin: 0;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="17,8 12,3 7,8"/>
-                            <line x1="12" y1="3" x2="12" y2="15"/>
-                        </svg>
-                        Bulk Upload CSV
-                    </button>
-                    <button class="btn-create" onclick="openCreateUserModal()" style="margin: 0;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="12" y1="5" x2="12" y2="19"/>
-                            <line x1="5" y1="12" x2="19" y2="12"/>
+                <!-- Action Buttons -->
+                <div class="actions-section">
+                    <button type="button" class="btn-create-modern" aria-label="Create new user">
+                        <svg class="btn-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
                         </svg>
                         Create User
                     </button>
+                    
+                    <!-- Actions Dropdown -->
+                    <div class="dropdown-wrapper">
+                        <button id="actionsDropdownButton" class="btn-dropdown" type="button" aria-label="Actions menu" aria-expanded="false" data-dropdown-toggle="actionsDropdown">
+                            <svg class="dropdown-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                            Actions
+                        </button>
+                        <div id="actionsDropdown" class="dropdown-menu" aria-labelledby="actionsDropdownButton">
+                            <ul class="dropdown-list">
+                                <li>
+                                    <a href="#" class="dropdown-item" data-action="bulk-upload">Bulk Upload CSV</a>
+                                </li>
+                                <li>
+                                    <a href="#" class="dropdown-item" data-action="refresh">Refresh List</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Filter Dropdown -->
+                    <div class="dropdown-wrapper">
+                        <button id="filterDropdownButton" class="btn-dropdown" type="button" aria-label="Filter options" aria-expanded="false" data-dropdown-toggle="filterDropdown">
+                            <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="filter-icon" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd" />
+                            </svg>
+                            Filter
+                            <svg class="dropdown-icon" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                                <path clip-rule="evenodd" fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                            </svg>
+                        </button>
+                        <div id="filterDropdown" class="dropdown-menu filter-dropdown-menu" aria-labelledby="filterDropdownButton">
+                            <h6 class="filter-title">Filter Options</h6>
+                            <div class="filter-content">
+                                <div class="filter-group">
+                                    <label for="roleFilter" class="filter-label">Role</label>
+                                    <select id="roleFilter" class="filter-select" aria-label="Filter by role">
+                                        <option value="">All Roles</option>
+                                        <option value="Super Admin">Super Admin</option>
+                                        <option value="Admin">Admin</option>
+                                        <option value="Quality Analyst">Quality Analyst</option>
+                                        <option value="Employee">Employee</option>
+                                        <option value="General User">General User</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="departmentFilter" class="filter-label">Department</label>
+                                    <select id="departmentFilter" class="filter-select" aria-label="Filter by department">
+                                        <option value="">All Departments</option>
+                                        <option value="Admin, Compliance & Corporate Affairs">Admin, Compliance & Corporate Affairs</option>
+                                        <option value="Operations">Operations</option>
+                                        <option value="CEO's Office">CEO's Office</option>
+                                        <option value="Client Experience">Client Experience</option>
+                                        <option value="Community & Partner Management">Community & Partner Management</option>
+                                        <option value="Finance & Audit">Finance & Audit</option>
+                                        <option value="Payments & Treasury">Payments & Treasury</option>
+                                        <option value="Marketing">Marketing</option>
+                                        <option value="People & Culture">People & Culture</option>
+                                        <option value="Quality, Performance & Training">Quality, Performance & Training</option>
+                                        <option value="Technology">Technology</option>
+                                        <option value="Trading & Risk Management">Trading & Risk Management</option>
+                                        <option value="FNmarkets">FNmarkets</option>
+                                        <option value="Sri Lanka Operations">Sri Lanka Operations</option>
+                                        <option value="Malaysia Operations">Malaysia Operations</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label for="statusFilter" class="filter-label">Status</label>
+                                    <select id="statusFilter" class="filter-select" aria-label="Filter by status">
+                                        <option value="">All Status</option>
+                                        <option value="true">Active</option>
+                                        <option value="false">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="usersTableContent">
-                <div class="loading">Loading users...</div>
+
+            <!-- Table Content -->
+            <div class="table-wrapper">
+                <div id="usersTableContent">
+                    <div class="loading">Loading users...</div>
+                </div>
             </div>
+
             <!-- Bulk Actions Bar -->
             <div class="bulk-actions-bar" id="bulkActionsBar">
                 <div class="bulk-info">
@@ -186,9 +207,14 @@
                         <option value="Employee">Employee</option>
                         <option value="General User">General User</option>
                     </select>
-                    <button class="btn-bulk-apply" onclick="applyBulkEdit()">Apply Changes</button>
+                    <button class="btn-bulk-apply" id="bulkApplyButton">Apply Changes</button>
                 </div>
             </div>
+
+            <!-- Pagination - Will be populated dynamically -->
+            <nav class="table-pagination" aria-label="Table navigation" id="paginationContainer">
+                <!-- Pagination will be rendered here -->
+            </nav>
         </div>
     </div>
 </main>
@@ -196,27 +222,14 @@
 <!-- Modals Container - Loaded dynamically -->
 <div id="modalsContainer"></div>
 
+<!-- Page Initializer - TypeScript module for page setup -->
 <script type="module">
-// Load templates dynamically
-import { loadAllTemplates } from '/js/features/settings/user-management/presentation/template-loader.js';
+import '/js/features/settings/user-management/presentation/page-initializer.js';
+</script>
 
-// Load all templates first, then initialize user management
-(async function initializeUserManagement() {
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-        await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve));
-    }
-    
-    // Load templates first
-    await loadAllTemplates();
-    
-    // Signal that templates are loaded
-    window.templatesLoaded = true;
-    window.dispatchEvent(new CustomEvent('templatesLoaded'));
-    
-    // Load TypeScript module for user management
-    await import('/js/features/settings/user-management/presentation/user-management-main.js');
-})();
+<!-- UI Utilities - TypeScript module for dropdowns and navigation -->
+<script type="module">
+import '/js/features/settings/user-management/presentation/ui-utilities.js';
 </script>
 
 </body>

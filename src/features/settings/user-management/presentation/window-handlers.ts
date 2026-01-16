@@ -7,8 +7,10 @@ import { UserManagementMain } from './user-management-main.js';
 import { ModalManager } from './modal-manager.js';
 import { CSVHandler } from './csv-handler.js';
 import { getUserFriendlyErrorMessage } from '../../../../utils/error-sanitizer.js';
+import { userManagementState } from './state.js';
 
 let mainInstance: UserManagementMain | null = null;
+let modalManagerInstance: ModalManager | null = null;
 
 function getMainInstance(): UserManagementMain {
   if (!mainInstance) {
@@ -17,8 +19,20 @@ function getMainInstance(): UserManagementMain {
   return mainInstance;
 }
 
+function getModalManager(): ModalManager {
+  if (!modalManagerInstance) {
+    modalManagerInstance = new ModalManager();
+  }
+  return modalManagerInstance;
+}
+
 export function setupWindowHandlers(main: UserManagementMain): void {
   mainInstance = main;
+  
+  // Expose instances for global access
+  (window as any).userManagementMain = main;
+  (window as any).modalManager = getModalManager();
+  (window as any).userManagementState = userManagementState;
 
   (window as any).refreshUsers = () => {
     getMainInstance().refreshUsers();
@@ -71,6 +85,14 @@ export function setupWindowHandlers(main: UserManagementMain): void {
 
   (window as any).closeBulkUploadModal = () => {
     getMainInstance().closeBulkUploadModal();
+  };
+
+  (window as any).openEditModal = (email: string) => {
+    const state = userManagementState.getState();
+    const user = state.allUsers.find(u => u.email === email);
+    if (user) {
+      getModalManager().openEditModal(user);
+    }
   };
 }
 
