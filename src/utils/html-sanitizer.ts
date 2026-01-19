@@ -41,9 +41,14 @@ export function safeSetHTML(element: HTMLElement | null, html: string): void {
   if (isDOMPurifyAvailable()) {
     try {
       const sanitized = DOMPurify.sanitize(html, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'form', 'textarea', 'small'],
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'required', 'pattern', 'rows', 'cols'],
-        ALLOW_DATA_ATTR: true // Allow data-* attributes for employee selection, event tracking, etc.
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'form', 'textarea', 'small', 'main', 'section', 'article', 'header', 'footer', 'aside', 'figure', 'figcaption', 'dl', 'dt', 'dd', 'blockquote', 'cite', 'code', 'pre', 'mark', 'del', 'ins', 'sub', 'sup', 'time', 'abbr', 'address', 'hr'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'aria-expanded', 'aria-current', 'aria-describedby', 'aria-live', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'd', 'type', 'checked', 'disabled', 'readonly', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'required', 'pattern', 'rows', 'cols', 'autocomplete', 'autofocus', 'multiple', 'size', 'spellcheck', 'wrap', 'accept', 'accept-charset', 'action', 'enctype', 'method', 'novalidate', 'rel', 'download', 'hreflang', 'media', 'ping', 'referrerpolicy', 'shape', 'coords', 'usemap', 'ismap', 'loading', 'decoding', 'crossorigin', 'sizes', 'srcset', 'datetime', 'pubdate', 'cite', 'open', 'reversed', 'start'],
+        ALLOW_DATA_ATTR: true, // Allow data-* attributes for employee selection, event tracking, etc.
+        ALLOW_ARIA_ATTR: true, // Allow all ARIA attributes
+        KEEP_CONTENT: true, // Keep text content even if tags are removed
+        RETURN_DOM: false, // Return string, not DOM
+        RETURN_DOM_FRAGMENT: false, // Return string, not DOM fragment
+        RETURN_TRUSTED_TYPE: false // Return string
       });
       element.innerHTML = sanitized;
     } catch (error) {
@@ -72,9 +77,11 @@ export function safeSetTableBodyHTML(tbody: HTMLTableSectionElement | null, html
       const wrappedHtml = `<table><tbody>${html}</tbody></table>`;
       
       const sanitized = DOMPurify.sanitize(wrappedHtml, {
-        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'data-action', 'data-scorecard-id', 'data-table-name', 'data-scorecard-name', 'data-audit-count', 'data-new-status'],
-        ALLOW_DATA_ATTR: true
+        ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'nav', 'ul', 'ol', 'li', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'],
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'aria-expanded', 'aria-current', 'aria-describedby', 'aria-live', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'd', 'type', 'checked', 'disabled', 'readonly', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'data-action', 'data-scorecard-id', 'data-table-name', 'data-scorecard-name', 'data-audit-count', 'data-new-status'],
+        ALLOW_DATA_ATTR: true,
+        ALLOW_ARIA_ATTR: true,
+        KEEP_CONTENT: true
       });
       
       // Extract the tbody content (just the tr elements)
@@ -151,11 +158,13 @@ export function createTextElement(tagName: string, text: string, className?: str
 export function sanitizeHTML(html: string, allowTrustedContent: boolean = false): string {
   if (isDOMPurifyAvailable()) {
     try {
-      const allowedTags = ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'nav', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h2', 'h3', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th'];
+      const allowedTags = ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'nav', 'button', 'svg', 'path', 'polyline', 'polygon', 'circle', 'rect', 'g', 'line', 'input', 'label', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'style', 'img', 'select', 'option', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'main', 'section', 'article', 'header', 'footer', 'aside', 'form', 'textarea', 'small'];
       const sanitized = DOMPurify.sanitize(html, {
         ALLOWED_TAGS: allowedTags,
-        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'd', 'type', 'checked', 'disabled', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step'],
-        ALLOW_DATA_ATTR: true // Allow data-* attributes for employee selection, event tracking, etc.
+        ALLOWED_ATTR: ['href', 'class', 'id', 'title', 'target', 'role', 'aria-label', 'aria-hidden', 'aria-expanded', 'aria-current', 'aria-describedby', 'aria-live', 'tabindex', 'viewBox', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset', 'd', 'type', 'checked', 'disabled', 'readonly', 'xmlns', 'style', 'src', 'alt', 'width', 'height', 'referrerPolicy', 'points', 'cx', 'cy', 'r', 'x', 'y', 'rx', 'ry', 'x1', 'y1', 'x2', 'y2', 'selected', 'value', 'name', 'colspan', 'rowspan', 'colSpan', 'rowSpan', 'placeholder', 'for', 'min', 'max', 'step', 'required', 'pattern', 'rows', 'cols'],
+        ALLOW_DATA_ATTR: true, // Allow data-* attributes for employee selection, event tracking, etc.
+        ALLOW_ARIA_ATTR: true, // Allow all ARIA attributes
+        KEEP_CONTENT: true // Keep text content even if tags are removed
       });
       return sanitized;
     } catch (error) {

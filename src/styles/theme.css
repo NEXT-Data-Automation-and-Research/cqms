@@ -100,7 +100,7 @@
   --color-text-light: #ffffff;  /* Light text for dark backgrounds */
   
   /* Primary Color Aliases (for backward compatibility) */
-  --primary-color: var(--color-primary-600);
+  --primary-color: #FAF9F6;
   --primary-dark: var(--color-primary-700);
   
   /* Border Colors */
@@ -186,7 +186,7 @@
   --color-text-light: #ffffff;  /* Light text remains white in dark mode */
   
   /* Primary Color Aliases */
-  --primary-color: var(--color-primary-500);  /* Lighter in dark mode */
+  --primary-color: #FAF9F6;  /* Offwhite for dark mode */
   --primary-dark: var(--color-primary-600);
   
   /* Border Colors */

@@ -142,7 +142,19 @@ export class AuditorDashboardController {
       logInfo('[AuditorDashboard] Initializing UI...');
       this.renderer.initializeUI();
       this.state.initializeTodayFilter();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:143',message:'about to call setupEventListeners',data:{eventHandlersExists:!!this.eventHandlers,hasSetupMethod:typeof this.eventHandlers.setupEventListeners==='function'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       this.eventHandlers.setupEventListeners();
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:145',message:'setupEventListeners called',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      // Update week display
+      this.eventHandlers.updateWeekDisplay();
+      
+      // Expose event handlers to window for global functions
+      (window as any).auditorDashboardEventHandlers = this.eventHandlers;
 
       // Load data - repository must be initialized first
       logInfo('[AuditorDashboard] Loading data...');
@@ -250,13 +262,26 @@ export class AuditorDashboardController {
    */
   async loadTeamStats(): Promise<void> {
     // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:197',message:'loadTeamStats entry',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+    const period = this.state.getCurrentPeriodDates();
+    logInfo('[DEBUG] loadTeamStats entry', { 
+      filters: this.state.currentFilters, 
+      dateFilter: this.state.dateFilter,
+      periodStart: period.start?.toISOString(),
+      periodEnd: period.end?.toISOString()
+    });
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:197',message:'loadTeamStats entry',data:{filters:this.state.currentFilters,dateFilter:this.state.dateFilter,periodStart:period.start?.toISOString(),periodEnd:period.end?.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
     try {
       this.state.loading.isLoading = true;
+      this.renderer.showLoadingState();
       const stats = await this.service.calculateTeamStats();
       // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:200',message:'loadTeamStats stats calculated',data:{auditorStatsCount:stats.auditorStats.length,totalAssigned:stats.totalAssigned},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      logInfo('[DEBUG] loadTeamStats stats calculated', { 
+        auditorStatsCount: stats.auditorStats.length, 
+        totalAssigned: stats.totalAssigned,
+        completed: stats.completed
+      });
+      fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:200',message:'loadTeamStats stats calculated',data:{auditorStatsCount:stats.auditorStats.length,totalAssigned:stats.totalAssigned,completed:stats.completed},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
       // #endregion
       this.state.teamStats = stats;
       this.renderer.renderTeamStats(stats);
@@ -264,12 +289,15 @@ export class AuditorDashboardController {
       fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:203',message:'loadTeamStats rendered',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
       // #endregion
       this.renderer.hideLoadingState();
+      this.state.loading.isLoading = false;
     } catch (error) {
       // #region agent log
+      logError('[DEBUG] loadTeamStats error', error);
       fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:206',message:'loadTeamStats error',data:{error:error instanceof Error?error.message:String(error)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
       // #endregion
       logError('Error loading team stats:', error);
       this.renderer.hideLoadingState();
+      this.state.loading.isLoading = false;
     }
   }
 
@@ -396,20 +424,82 @@ export class AuditorDashboardController {
    * Apply date filter
    */
   async applyDateFilter(startDate: string | null, endDate: string | null): Promise<void> {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:420',message:'controller.applyDateFilter entry',data:{startDate,endDate},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    logInfo('[DEBUG] applyDateFilter called', { startDate, endDate });
     this.state.cancelOngoingFetches();
     this.renderer.showLoadingState();
     this.state.applyDateFilter(startDate, endDate);
+    
+    // Ensure repository is initialized before loading data
+    const repo = await this.getRepository();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:427',message:'repository obtained',data:{repoExists:!!repo},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+    
+    // Update date button text and inputs
+    this.updateDateButtonText();
+    if ((window as any).auditorDashboardEventHandlers) {
+      (window as any).auditorDashboardEventHandlers.updateDateInputs();
+    }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:433',message:'calling loadInitialData',data:{currentTab:this.state.currentTab},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     await this.loadInitialData();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'auditor-dashboard-controller.ts:435',message:'loadInitialData completed',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
   }
 
   /**
    * Clear date filter
    */
   async clearDateFilter(): Promise<void> {
+    logInfo('[DEBUG] clearDateFilter called');
     this.state.cancelOngoingFetches();
     this.renderer.showLoadingState();
     this.state.initializeTodayFilter();
+    
+    // Ensure repository is initialized before loading data
+    await this.getRepository();
+    
+    // Update date button text and inputs
+    this.updateDateButtonText();
+    if ((window as any).auditorDashboardEventHandlers) {
+      (window as any).auditorDashboardEventHandlers.updateDateInputs();
+      (window as any).auditorDashboardEventHandlers.updateDateButtonText();
+    }
+    
     await this.loadInitialData();
+  }
+
+  /**
+   * Update date button text
+   */
+  private updateDateButtonText(): void {
+    const dateBtnText = document.getElementById('dateBtnText');
+    if (!dateBtnText) return;
+
+    if (this.state.dateFilter.start && this.state.dateFilter.end) {
+      const startDate = window.parseDhakaDate?.(this.state.dateFilter.start);
+      const endDate = window.parseDhakaDate?.(this.state.dateFilter.end);
+      
+      if (startDate && endDate && window.formatDhakaDate) {
+        const startStr = window.formatDhakaDate(startDate);
+        const endStr = window.formatDhakaDate(endDate);
+        if (startStr === endStr) {
+          dateBtnText.textContent = startStr;
+        } else {
+          dateBtnText.textContent = `${startStr} - ${endStr}`;
+        }
+      } else {
+        dateBtnText.textContent = 'Date Range';
+      }
+    } else {
+      dateBtnText.textContent = 'Date Range';
+    }
   }
 
   /**
@@ -417,6 +507,27 @@ export class AuditorDashboardController {
    */
   async switchTab(index: number): Promise<void> {
     this.state.currentTab = index === 0 ? 'team-stats' : 'standup-view';
+    
+    // Update tab UI
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const slider = document.querySelector('.tab-slider');
+    const tabBar = document.querySelector('.tab-navigation');
+    
+    tabButtons.forEach((btn, idx) => {
+      if (idx === index) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    if (slider && tabBar) {
+      const containerPadding = 5;
+      const tabWidth = ((tabBar as HTMLElement).offsetWidth - (containerPadding * 2)) / 2;
+      (slider as HTMLElement).style.left = `${containerPadding + (index * tabWidth)}px`;
+      (slider as HTMLElement).style.width = `${tabWidth}px`;
+    }
+    
     this.renderer.showLoadingState();
     await this.loadInitialData();
   }

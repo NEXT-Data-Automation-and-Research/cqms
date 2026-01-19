@@ -221,6 +221,8 @@ export class AuditorDashboardRenderer {
         </div>
       `;
     }).join('');
+
+    safeSetHTML(tableBody, htmlContent);
   }
 
   /**

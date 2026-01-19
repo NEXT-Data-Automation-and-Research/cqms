@@ -170,8 +170,7 @@ export class AdminLookup {
         .upsert(cacheData, {
           onConflict: 'id',
           ignoreDuplicates: false
-        })
-        .execute();
+        });
       
       if (upsertError) {
         logWarn('Failed to cache admin:', upsertError);

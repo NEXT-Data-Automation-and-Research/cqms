@@ -11,7 +11,7 @@ import { ScorecardController, setGlobalScorecardController } from './controllers
 import { AssignmentController } from './controllers/assignment-controller.js';
 import { AuditFormController } from './controllers/audit-form-controller.js';
 import { logInfo, logError } from '../../../utils/logging-helper.js';
-import { getSupabaseClient, waitForSupabaseReady } from './utils/supabase-client-helper.js';
+import { waitForSupabaseReady } from './utils/supabase-client-helper.js';
 import { loadChannels, loadEmployees, loadAllDropdowns } from './utils/dropdown-loader.js';
 import { loadScorecards } from './controllers/scorecard-controller.js';
 
@@ -154,112 +154,16 @@ export class AuditFormLoader {
 
   /**
    * Load dropdowns (channels, employees)
+   * Uses the dropdown-loader module which has proper session handling
    */
   private async loadDropdowns(): Promise<void> {
     try {
-      await this.loadChannels();
-      await this.loadEmployees();
+      // Use the imported functions from dropdown-loader.ts
+      // These use getReadySupabaseClient() which properly waits for session
+      await loadChannels();
+      await loadEmployees();
     } catch (error) {
       logError('Error loading dropdowns:', error);
-    }
-  }
-
-  /**
-   * Load channels dropdown
-   */
-  private async loadChannels(): Promise<void> {
-    try {
-      const supabase = await getSupabaseClient();
-      const channelSelect = document.getElementById('channel') as HTMLSelectElement;
-      
-      if (!channelSelect) {
-        logError('Channel select element not found');
-        return;
-      }
-
-      const { data: channels, error } = await supabase
-        .from('channels')
-        .select('id, name')
-        .eq('is_active', true)
-        .order('name', { ascending: true })
-        .execute();
-
-      if (error) {
-        logError('Error loading channels:', error);
-        return;
-      }
-
-      // Clear existing options (except first)
-      while (channelSelect.options.length > 1) {
-        channelSelect.remove(1);
-      }
-
-      // Add channel options
-      if (channels && channels.length > 0) {
-        channels.forEach((channel: any) => {
-          const option = document.createElement('option');
-          option.value = channel.id;
-          option.textContent = channel.name;
-          channelSelect.appendChild(option);
-        });
-
-        // Attach change listener
-        if (!channelSelect.hasAttribute('data-listener-attached')) {
-          channelSelect.setAttribute('data-listener-attached', 'true');
-          channelSelect.addEventListener('change', async () => {
-            const selectedChannel = channelSelect.value;
-            if (this.scorecardController) {
-              await this.scorecardController.loadScorecards(selectedChannel || null, null, true);
-            }
-          });
-        }
-      }
-    } catch (error) {
-      logError('Error loading channels:', error);
-    }
-  }
-
-  /**
-   * Load employees dropdown
-   */
-  private async loadEmployees(): Promise<void> {
-    try {
-      const supabase = await getSupabaseClient();
-      const employeeSelect = document.getElementById('employeeName') as HTMLSelectElement;
-      
-      if (!employeeSelect) {
-        logError('Employee select element not found');
-        return;
-      }
-
-      const { data: employees, error } = await supabase
-        .from('people')
-        .select('email, name')
-        .eq('is_active', true)
-        .order('name', { ascending: true })
-        .execute();
-
-      if (error) {
-        logError('Error loading employees:', error);
-        return;
-      }
-
-      // Clear existing options (except first)
-      while (employeeSelect.options.length > 1) {
-        employeeSelect.remove(1);
-      }
-
-      // Add employee options
-      if (employees && employees.length > 0) {
-        employees.forEach((employee: any) => {
-          const option = document.createElement('option');
-          option.value = employee.email;
-          option.textContent = employee.name || employee.email;
-          employeeSelect.appendChild(option);
-        });
-      }
-    } catch (error) {
-      logError('Error loading employees:', error);
     }
   }
 

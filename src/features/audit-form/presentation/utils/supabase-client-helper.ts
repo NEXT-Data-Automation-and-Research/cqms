@@ -4,27 +4,43 @@
  * Migrated from audit-form.html
  */
 
-import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 import { logError, logWarn } from '../../../../utils/logging-helper.js';
 
 /**
  * Get authenticated Supabase client
- * Replaces window.supabaseClient usage
+ * Returns the raw Supabase client from window.supabaseClient
+ * The client should already be authenticated via the page's auth flow
  */
 export async function getSupabaseClient() {
-  try {
-    return await getAuthenticatedSupabase();
-  } catch (error) {
-    logError('Error getting authenticated Supabase client:', error);
-    
-    // Fallback: Check if window.supabaseClient exists (for debugging)
-    if (typeof window !== 'undefined' && (window as any).supabaseClient) {
-      logWarn('Using fallback Supabase client (auth may fail)');
-      return (window as any).supabaseClient;
+  // Wait for window.supabaseClient to be available
+  let attempts = 0;
+  const maxAttempts = 50; // 5 seconds max
+
+  while (attempts < maxAttempts) {
+    const client = (window as any).supabaseClient;
+    if (client) {
+      // Verify we have a session
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        if (session) {
+          return client;
+        }
+      } catch (e) {
+        logWarn('Error checking session:', e);
+      }
     }
-    
-    throw error;
+    attempts++;
+    await new Promise(resolve => setTimeout(resolve, 100));
   }
+
+  // Fallback to raw client even without verified session
+  const fallbackClient = (window as any).supabaseClient;
+  if (fallbackClient) {
+    logWarn('Using Supabase client without verified session');
+    return fallbackClient;
+  }
+
+  throw new Error('Supabase client not available');
 }
 
 /**

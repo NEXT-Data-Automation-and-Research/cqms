@@ -105,8 +105,7 @@ export class AssignmentLoader {
         const { error: updateError } = await supabase
           .from('audit_assignments')
           .update({ status: 'in_progress' })
-          .eq('id', mappedAssignment.id)
-          .execute();
+          .eq('id', mappedAssignment.id);
         
         if (updateError) {
           logError('Error updating assignment status:', updateError);
@@ -136,8 +135,7 @@ export class AssignmentLoader {
             .eq('conversation_id', String(mappedAssignment.conversation_id))
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle()
-            .execute();
+            .maybeSingle();
           
           if (!aiError && aiResult && aiResult.ai_scorecard_data) {
             aiAuditData = {

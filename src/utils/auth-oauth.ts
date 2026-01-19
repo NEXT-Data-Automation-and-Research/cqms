@@ -159,7 +159,7 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     }
 
     // Redirect to home page (wrapper page for authenticated users)
-    window.location.href = '/src/features/home/presentation/home-page.html';
+    window.location.href = '/src/features/home/presentation/legacy-home-page.html';
   } catch (error) {
     logError('Error in handleGoogleOAuthCallback:', error);
   }

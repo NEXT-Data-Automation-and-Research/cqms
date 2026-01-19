@@ -4,61 +4,87 @@
  * Migrated from audit-form.html
  */
 
-import { getSupabaseClient } from './supabase-client-helper.js';
-import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logInfo, logError, logWarn } from '../../../../utils/logging-helper.js';
-import { CHANNEL_MINIMAL_FIELDS, PEOPLE_MINIMAL_FIELDS } from '../../../../core/constants/field-whitelists.js';
+
+/**
+ * Get Supabase client with session verification
+ * Waits for client to be ready and verifies session exists
+ */
+async function getReadySupabaseClient(): Promise<any> {
+  // Wait for window.supabaseClient to be available
+  let attempts = 0;
+  const maxAttempts = 50; // 5 seconds max
+
+  while (attempts < maxAttempts) {
+    const client = (window as any).supabaseClient;
+    if (client) {
+      // Verify we have a session
+      try {
+        const { data: { session }, error } = await client.auth.getSession();
+        if (session) {
+          console.log('[DropdownLoader] Got authenticated client with session');
+          return client;
+        } else if (error) {
+          console.warn('[DropdownLoader] Session error:', error.message);
+        } else {
+          console.warn('[DropdownLoader] No session found, waiting...');
+        }
+      } catch (e) {
+        console.warn('[DropdownLoader] Error checking session:', e);
+      }
+    }
+    attempts++;
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Fallback to raw client even without session (for debugging)
+  const fallbackClient = (window as any).supabaseClient;
+  if (fallbackClient) {
+    console.warn('[DropdownLoader] Using client without verified session');
+    return fallbackClient;
+  }
+
+  throw new Error('Supabase client not available');
+}
 
 export class DropdownLoader {
   /**
    * Load channels dropdown
    */
   async loadChannels(): Promise<void> {
-    // #region agent log
-    if (typeof window !== 'undefined' && (window as any).fetch) {
-      (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:16',message:'loadChannels start',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    }
-    // #endregion
-    
     try {
-      const supabase = await getSupabaseClient();
       const channelSelect = document.getElementById('channel') as HTMLSelectElement;
-      
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:20',message:'DOM element check',data:{hasElement:!!channelSelect,elementId:'channel'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
-      
+
       if (!channelSelect) {
-        logError('Channel select element not found');
+        console.warn('[DropdownLoader] Channel select element not found');
         return;
       }
 
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:26',message:'Querying channels',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
+      console.log('[DropdownLoader] Loading channels...');
 
-      const { data: channels, error } = await supabase
+      // Get authenticated client with session
+      const supabase = await getReadySupabaseClient();
+
+      console.log('[DropdownLoader] Executing channels query...');
+      const result = await supabase
         .from('channels')
-        .select(CHANNEL_MINIMAL_FIELDS)
+        .select('id, name')
         .eq('is_active', true)
-        .order('name', { ascending: true })
-        .execute();
+        .order('name', { ascending: true });
 
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:32',message:'Channels query result',data:{hasError:!!error,errorMessage:error?.message,channelsCount:channels?.length||0,hasChannels:!!channels},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
+      // Debug: Log the raw result
+      console.log('[DropdownLoader] Channels result:', result);
+
+      // Extract data and error
+      const data = result?.data;
+      const error = result?.error;
 
       if (error) {
-        logError('Error loading channels:', error);
-        safeSetHTML(channelSelect, '<option value="">Error loading channels</option>');
+        console.error('[DropdownLoader] Channels query error:', error);
         return;
       }
+
+      console.log('[DropdownLoader] Channels data received:', data?.length, 'items');
 
       // Clear existing options (except first)
       while (channelSelect.options.length > 1) {
@@ -66,42 +92,35 @@ export class DropdownLoader {
       }
 
       // Add channel options
-      if (channels && channels.length > 0) {
+      const channels = data || [];
+      if (channels.length > 0) {
         channels.forEach((channel: any) => {
           const option = document.createElement('option');
           option.value = channel.id;
           option.textContent = channel.name;
           channelSelect.appendChild(option);
         });
-        
-        // #region agent log
-        if (typeof window !== 'undefined' && (window as any).fetch) {
-          (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:52',message:'Channel options added',data:{optionsCount:channelSelect.options.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        }
-        // #endregion
 
         // Attach change listener if not already attached
         if (!channelSelect.hasAttribute('data-listener-attached')) {
           channelSelect.setAttribute('data-listener-attached', 'true');
           channelSelect.addEventListener('change', async () => {
             const selectedChannel = channelSelect.value;
-            // Trigger scorecard reload with channel filter
             if (typeof (window as any).reloadScorecards === 'function') {
               await (window as any).reloadScorecards(selectedChannel || null);
             }
           });
         }
 
+        console.log(`[DropdownLoader] Channels loaded successfully: ${channels.length}`);
         logInfo(`Channels loaded: ${channels.length}`);
       } else {
-        safeSetHTML(channelSelect, '<option value="">No channels available</option>');
+        console.log('[DropdownLoader] No channels found in data');
       }
-    } catch (error) {
-      logError('Error loading channels:', error);
-      const channelSelect = document.getElementById('channel') as HTMLSelectElement;
-      if (channelSelect) {
-        safeSetHTML(channelSelect, '<option value="">Error loading channels</option>');
-      }
+    } catch (error: any) {
+      console.error('[DropdownLoader] Exception loading channels:', error);
+      console.error('[DropdownLoader] Exception message:', error?.message);
+      console.error('[DropdownLoader] Exception stack:', error?.stack);
     }
   }
 
@@ -109,51 +128,39 @@ export class DropdownLoader {
    * Load employees dropdown
    */
   async loadEmployees(): Promise<void> {
-    // #region agent log
-    if (typeof window !== 'undefined' && (window as any).fetch) {
-      (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:81',message:'loadEmployees start',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    }
-    // #endregion
-    
     try {
-      const supabase = await getSupabaseClient();
       const employeeSelect = document.getElementById('employeeName') as HTMLSelectElement;
-      
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:85',message:'DOM element check',data:{hasElement:!!employeeSelect,elementId:'employeeName'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
-      
+
       if (!employeeSelect) {
-        logError('Employee select element not found');
+        console.warn('[DropdownLoader] Employee select element not found');
         return;
       }
 
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:91',message:'Querying employees',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
+      console.log('[DropdownLoader] Loading employees...');
 
-      const { data: employees, error } = await supabase
+      // Get authenticated client with session
+      const supabase = await getReadySupabaseClient();
+
+      console.log('[DropdownLoader] Executing employees query...');
+      const result = await supabase
         .from('people')
-        .select(PEOPLE_MINIMAL_FIELDS)
+        .select('email, name, role, department, designation, employee_id, country, channel')
         .eq('is_active', true)
-        .order('name', { ascending: true })
-        .execute();
+        .order('name', { ascending: true });
 
-      // #region agent log
-      if (typeof window !== 'undefined' && (window as any).fetch) {
-        (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:139',message:'Employees query result',data:{hasError:!!error,errorMessage:error?.message,employeesCount:employees?.length||0,hasEmployees:!!employees},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      }
-      // #endregion
+      // Debug: Log the raw result
+      console.log('[DropdownLoader] Employees result:', result);
+
+      // Extract data and error
+      const data = result?.data;
+      const error = result?.error;
 
       if (error) {
-        logError('Error loading employees:', error);
-        safeSetHTML(employeeSelect, '<option value="">Error loading employees</option>');
+        console.error('[DropdownLoader] Employees query error:', error);
         return;
       }
+
+      console.log('[DropdownLoader] Employees data received:', data?.length, 'items');
 
       // Clear existing options (except first)
       while (employeeSelect.options.length > 1) {
@@ -161,13 +168,14 @@ export class DropdownLoader {
       }
 
       // Store all employees globally for filtering
-      (window as any).allEmployees = employees || [];
-      
+      const employees = data || [];
+      (window as any).allEmployees = employees;
+
       // Add employee options with data attributes
-      if (employees && employees.length > 0) {
+      if (employees.length > 0) {
         employees.forEach((employee: any) => {
           if (!employee || !employee.email) {
-            logWarn('Skipping invalid employee:', employee);
+            console.warn('[DropdownLoader] Skipping invalid employee:', employee);
             return;
           }
           const option = document.createElement('option');
@@ -182,12 +190,6 @@ export class DropdownLoader {
           option.dataset.channel = employee.channel || '';
           employeeSelect.appendChild(option);
         });
-        
-        // #region agent log
-        if (typeof window !== 'undefined' && (window as any).fetch) {
-          (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:178',message:'Employee options added',data:{optionsCount:employeeSelect.options.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        }
-        // #endregion
 
         // Attach change listener if not already attached
         if (!employeeSelect.hasAttribute('data-listener-attached')) {
@@ -197,16 +199,15 @@ export class DropdownLoader {
           });
         }
 
+        console.log(`[DropdownLoader] Employees loaded successfully: ${employees.length}`);
         logInfo(`Employees loaded: ${employees.length}`);
       } else {
-        safeSetHTML(employeeSelect, '<option value="">No employees available</option>');
+        console.log('[DropdownLoader] No employees found in data');
       }
-    } catch (error) {
-      logError('Error loading employees:', error);
-      const employeeSelect = document.getElementById('employeeName') as HTMLSelectElement;
-      if (employeeSelect) {
-        safeSetHTML(employeeSelect, '<option value="">Error loading employees</option>');
-      }
+    } catch (error: any) {
+      console.error('[DropdownLoader] Exception loading employees:', error);
+      console.error('[DropdownLoader] Exception message:', error?.message);
+      console.error('[DropdownLoader] Exception stack:', error?.stack);
     }
   }
 
@@ -217,16 +218,18 @@ export class DropdownLoader {
     if (!employeeEmail) return;
 
     try {
-      const supabase = await getSupabaseClient();
-      
+      const supabase = await getReadySupabaseClient();
+
       // Load employee details
-      const { data: employee, error } = await supabase
+      const result = await supabase
         .from('people')
         .select('email, name, role, department, country, employee_type')
         .eq('email', employeeEmail)
         .eq('is_active', true)
-        .single()
-        .execute();
+        .single();
+
+      const employee = result?.data;
+      const error = result?.error;
 
       if (error || !employee) {
         logWarn('Employee not found:', employeeEmail);
@@ -318,11 +321,7 @@ export function getDropdownLoader(): DropdownLoader {
  * Load channels (global function for backward compatibility)
  */
 export async function loadChannels(): Promise<void> {
-  // #region agent log
-  if (typeof window !== 'undefined' && (window as any).fetch) {
-    (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:260',message:'loadChannels called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  }
-  // #endregion
+  console.log('[DropdownLoader] loadChannels() called');
   await getDropdownLoader().loadChannels();
 }
 
@@ -330,11 +329,7 @@ export async function loadChannels(): Promise<void> {
  * Load employees (global function for backward compatibility)
  */
 export async function loadEmployees(): Promise<void> {
-  // #region agent log
-  if (typeof window !== 'undefined' && (window as any).fetch) {
-    (window as any).fetch('http://127.0.0.1:7242/ingest/ba7b91df-149f-453d-8410-43bdcb825ea7',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'dropdown-loader.ts:267',message:'loadEmployees called',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-  }
-  // #endregion
+  console.log('[DropdownLoader] loadEmployees() called');
   await getDropdownLoader().loadEmployees();
 }
 

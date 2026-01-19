@@ -97,7 +97,7 @@ export class UserProfileRenderer {
         } else {
           // Fallback: navigate to home page if no history
           logInfo('[UserProfileRenderer] No history available, redirecting to home page');
-          window.location.href = '/src/features/home/presentation/home-page.html';
+          window.location.href = '/src/features/home/presentation/legacy-home-page.html';
         }
       });
       

@@ -36,7 +36,7 @@ export const AUDIT_ASSIGNMENT_MINIMAL_FIELDS = 'id, auditor_email, employee_emai
 // People table fields (NOTE: people table does NOT have an 'id' column - email is the identifier)
 // Verified against database schema - people table has no primary key, uses email as identifier
 export const PEOPLE_PUBLIC_FIELDS = 'email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias, created_at, updated_at';
-export const PEOPLE_MINIMAL_FIELDS = 'email, name, avatar_url';
+export const PEOPLE_MINIMAL_FIELDS = 'email, name, avatar_url, role, department, designation, employee_id, country, channel';
 export const PEOPLE_PROFILE_FIELDS = 'email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias, created_at, updated_at';
 // User management fields - includes all fields needed for user management page
 // Note: avatar_url may exist in some people tables - include it if available

@@ -29,6 +29,7 @@
     "node_modules",
     "public",
     "src/server-commonjs.ts",
-    "src/setup-env.ts"
+    "src/setup-env.ts",
+    "src/features/home/old.home/**/*"
   ]
 }

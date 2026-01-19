@@ -40,7 +40,7 @@
   background: radial-gradient(
     ellipse at center,
     transparent 20%,
-    var(--home-background, #100A28) 60%
+    var(--home-background, #FAFAFA) 60%
   );
   z-index: 1;
 }

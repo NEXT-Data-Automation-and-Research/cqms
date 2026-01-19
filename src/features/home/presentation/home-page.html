@@ -11,8 +11,7 @@
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
   <link rel="stylesheet" href="/home-page.css">
-  <link rel="stylesheet" href="/src/features/home/styles/home-page-inline.css">
-  <link rel="stylesheet" href="/src/features/shared/components/dot-background/dot-background.css">
+  <link rel="stylesheet" href="/home-page-inline.css">
   
   <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
   
@@ -31,9 +30,6 @@
 <body class="home-page">
   <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
   <main class="main-content" role="main">
-    <!-- Dot Background Pattern Component -->
-    <div id="dot-background-container"></div>
-    
     <!-- Header Component -->
     <div id="header-container"></div>
 
@@ -44,9 +40,9 @@
         <div id="user-profile-dashboard-container"></div>
       </div>
 
-      <!-- Date Range and Filter Controls -->
+      <!-- Filter Bar -->
       <div class="mb-6">
-        <div id="action-buttons-container"></div>
+        <div id="filter-bar-container"></div>
       </div>
 
       <!-- Stats Cards Grid -->
@@ -120,15 +116,14 @@
       // Wait for Supabase to be initialized first
       await waitForSupabase();
       try {
-        // Use absolute paths from root for component files
+        // Use paths pointing to old.home components (new modular implementation)
         await loadComponents([
-          { path: '/src/features/shared/components/dot-background/dot-background.html', target: '#dot-background-container' },
-          { path: '/src/features/home/components/header/header.html', target: '#header-container' },
-          { path: '/src/features/home/components/user-profile-dashboard/user-profile-dashboard.html', target: '#user-profile-dashboard-container' },
-          { path: '/src/features/home/components/action-buttons/action-buttons.html', target: '#action-buttons-container' },
-          { path: '/src/features/home/components/stats-cards/stats-cards.html', target: '#stats-cards-container' },
-          { path: '/src/features/home/components/updates-feed/updates-feed.html', target: '#updates-feed-container' },
-          { path: '/src/features/home/components/assigned-audits/assigned-audits.html', target: '#assigned-audits-container' },
+          { path: '/src/features/home/old.home/components/header/header.html', target: '#header-container' },
+          { path: '/src/features/home/old.home/components/user-profile-dashboard/user-profile-dashboard.html', target: '#user-profile-dashboard-container' },
+          { path: '/src/features/home/old.home/components/filter-bar/filter-bar.html', target: '#filter-bar-container' },
+          { path: '/src/features/home/old.home/components/stats-cards/stats-cards.html', target: '#stats-cards-container' },
+          { path: '/src/features/home/old.home/components/updates-feed/updates-feed.html', target: '#updates-feed-container' },
+          { path: '/src/features/home/old.home/components/assigned-audits/assigned-audits.html', target: '#assigned-audits-container' },
           { path: '/src/features/notifications/presentation/notification-consent-modal.html', target: '#notification-consent-modal-container' }
         ]);
         
@@ -307,27 +302,71 @@
     
     // Wait for components to load before initializing home-main
     async function loadHomeMain() {
-      // Initialize secure client first
-      await initSecureClient();
-      
-      // Ensure user profile is saved (fallback)
-      await ensureUserProfileSaved();
-      
-      if (window.componentsLoaded) {
-        // Components already loaded
-        await import('/js/features/home/infrastructure/home-main.js');
-      } else {
-        // Wait for components to load
-        await new Promise((resolve) => {
-          window.addEventListener('componentsLoaded', resolve, { once: true });
-        });
-        await import('/js/features/home/infrastructure/home-main.js');
+      try {
+        console.log('[home-page] loadHomeMain called');
+        // Initialize secure client first
+        await initSecureClient();
+        console.log('[home-page] Secure client initialized');
+        
+        // Ensure user profile is saved (fallback)
+        await ensureUserProfileSaved();
+        console.log('[home-page] User profile ensured');
+        
+        if (window.componentsLoaded) {
+          // Components already loaded
+          console.log('[home-page] Components already loaded, importing home-main.js');
+          await import('/js/features/home/infrastructure/home-main.js');
+          console.log('[home-page] home-main.js imported successfully');
+        } else {
+          // Wait for components to load
+          console.log('[home-page] Waiting for componentsLoaded event');
+          await new Promise((resolve) => {
+            window.addEventListener('componentsLoaded', resolve, { once: true });
+          });
+          console.log('[home-page] Components loaded, importing home-main.js');
+          await import('/js/features/home/infrastructure/home-main.js');
+          console.log('[home-page] home-main.js imported successfully');
+        }
+      } catch (error) {
+        console.error('[home-page] Error loading home-main.js:', error);
+        throw error;
       }
     }
     
     loadHomeMain().catch(error => {
-      console.error('Error loading home-main.js:', error);
+      console.error('[home-page] Fatal error loading home-main.js:', error);
     });
+  </script>
+  
+  <!-- Simple Audit Loader - Directly loads assigned audits -->
+  <script type="module">
+    import { loadMyAssignedAudits } from '/js/features/home/infrastructure/simple-audit-loader.js';
+    
+    // Wait for components to load
+    async function loadAuditsSimple() {
+      try {
+        // Wait for components to be loaded
+        if (!window.componentsLoaded) {
+          await new Promise((resolve) => {
+            window.addEventListener('componentsLoaded', resolve, { once: true });
+          });
+        }
+        
+        // Wait a bit for DOM to be ready
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        await loadMyAssignedAudits();
+      } catch (error) {
+        console.error('Error loading audits:', error);
+      }
+    }
+    
+    // Start loading when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadAuditsSimple);
+    } else {
+      loadAuditsSimple();
+    }
   </script>
   
   <!-- Notification Consent Manager - Initialize after user profile is saved -->

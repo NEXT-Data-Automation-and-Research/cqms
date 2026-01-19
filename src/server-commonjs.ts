@@ -316,20 +316,31 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
   }
 });
 
-// Serve home-page.html with version injection (kept for backward compatibility)
-app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
+// Serve legacy-home-page.html with version injection (main home page)
+app.get('/src/features/home/presentation/legacy-home-page.html', (req: express.Request, res: express.Response): void => {
   try {
-    const html = injectVersionIntoHTML('src/features/home/presentation/home-page.html', appVersion);
+    const html = injectVersionIntoHTML('src/features/home/presentation/legacy-home-page.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing home-page.html:', error);
-    res.sendFile(path.join(__dirname, '../src/features/home/presentation/home-page.html'));
+    serverLogger.error('Error processing legacy-home-page.html:', error);
+    res.sendFile(path.join(__dirname, '../src/features/home/presentation/legacy-home-page.html'));
+  }
+});
+
+// Serve legacy-home-page.html via home-page.html route (backward compatibility)
+app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/home/presentation/legacy-home-page.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing legacy-home-page.html:', error);
+    res.sendFile(path.join(__dirname, '../src/features/home/presentation/legacy-home-page.html'));
   }
 });
 
 // Keep dashboard.html route for backward compatibility (redirects to home)
 app.get('/dashboard.html', (req: express.Request, res: express.Response): void => {
-  res.redirect('/src/features/home/presentation/home-page.html');
+  res.redirect('/src/features/home/presentation/legacy-home-page.html');
 });
 
 // Parse JSON bodies
@@ -424,9 +435,25 @@ app.get('/api/version', (req: express.Request, res: express.Response): void => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   serverLogger.info(`Server running on http://localhost:${PORT}`);
   serverLogger.info(`Serving files from: ${path.join(__dirname, '../public')}`);
   serverLogger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Handle server errors (e.g., port already in use)
+server.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    serverLogger.error(`Port ${PORT} is already in use. Please:`);
+    serverLogger.error(`  1. Stop the other process using port ${PORT}`);
+    serverLogger.error(`  2. Or set a different PORT in your .env file`);
+    serverLogger.error(`\nTo find and kill the process on Windows, run:`);
+    serverLogger.error(`  netstat -ano | findstr :${PORT}`);
+    serverLogger.error(`  taskkill /PID <PID> /F`);
+    process.exit(1);
+  } else {
+    serverLogger.error('Server error:', error);
+    process.exit(1);
+  }
 });
 

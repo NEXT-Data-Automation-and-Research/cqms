@@ -1,0 +1,1096 @@
+/**
+ * Home Page Inline Styles
+ * Extracted from home-page.html for better organization
+ */
+
+/* Home Page Specific Styles - Using Global CSS Variables */
+/* Override sidebar.css main-content styles for home page */
+.home-page .main-content {
+  background-color: var(--home-background, #F8F7F2) !important;
+  min-height: 100vh;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  padding: 0 !important;
+  margin-left: var(--sidebar-collapsed) !important;
+  width: calc(100vw - var(--sidebar-collapsed)) !important;
+  max-width: none !important;
+}
+
+/* When sidebar is expanded, adjust main-content width */
+.home-page .sidebar:not(.collapsed) ~ .main-content {
+  margin-left: var(--sidebar-width) !important;
+  width: calc(100vw - var(--sidebar-width)) !important;
+}
+
+/* Header Background - Light background for home page */
+.home-page header {
+  background-color: var(--background-white, #FFFFFF) !important;
+  border-bottom: 1px solid var(--border-light, #e5e7eb) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+.home-page header.sticky {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+}
+
+/* Header text should be black for readability on light background - override with higher specificity */
+.home-page header,
+.home-page header * {
+  color: #000000 !important; /* black */
+}
+
+.home-page header h1,
+.home-page header .text-gray-900 {
+  color: #000000 !important; /* black */
+}
+
+.home-page header p,
+.home-page header .text-gray-700 {
+  color: #000000 !important; /* black */
+}
+
+/* Override sidebar.css centering for home page */
+.home-page .main-content > * {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure main content container doesn't center content */
+.home-page .main-content > div {
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Fix the inner content wrapper */
+.home-page .main-content > div.px-4 {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: var(--main-content-padding) !important;
+  padding-right: var(--main-content-padding) !important;
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+/* Consistent section spacing */
+.home-page .main-content > div.px-4 > div {
+  margin-bottom: var(--home-section-gap) !important;
+}
+
+.home-page .main-content > div.px-4 > div:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Remove any centering from max-w-7xl mx-auto */
+.home-page .main-content .max-w-7xl,
+.home-page .main-content .mx-auto {
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Ensure all containers inside main-content stretch full width */
+.home-page .main-content > * {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Ensure grid layouts work properly */
+.home-page .grid {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Fix stats cards grid */
+.home-page #stats-cards-container .grid {
+  display: grid !important;
+  width: 100% !important;
+  gap: 1rem !important; /* 16px gap between cards */
+}
+
+/* Stats cards styling */
+.home-page #stats-cards-container .bg-white {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  box-shadow: var(--home-card-shadow) !important;
+  padding: var(--home-card-padding) !important;
+  transition: all 0.2s ease !important;
+}
+
+.home-page #stats-cards-container .bg-white:hover {
+  box-shadow: var(--home-card-shadow-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Fix filter bar container */
+.home-page .filter-bar-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  box-shadow: var(--home-card-shadow) !important;
+  padding: var(--home-card-padding) !important;
+}
+
+/* Fix user profile dashboard container */
+.home-page #user-profile-dashboard-container {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* User profile card styling */
+.home-page #userProfileDashboard .glass-card {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  box-shadow: var(--home-card-shadow) !important;
+}
+
+/* Fix updates and audits grid */
+.home-page .grid.grid-cols-1.lg\\:grid-cols-3 {
+  width: 100% !important;
+  max-width: 100% !important;
+  gap: var(--home-section-gap) !important;
+}
+
+/* Updates feed card styling */
+.home-page #updates-feed-container .glass-card {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  box-shadow: var(--home-card-shadow) !important;
+}
+
+/* Assigned audits card styling */
+.home-page #assigned-audits-container .glass-card {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  box-shadow: var(--home-card-shadow) !important;
+}
+
+/* Section headers styling */
+.home-page .glass-header h2 {
+  font-size: 0.875rem !important; /* 14px */
+  font-weight: 600 !important;
+  color: var(--text-color, #000000) !important;
+  margin: 0 !important;
+}
+
+/* Ensure consistent text colors */
+.home-page .text-gray-900 {
+  color: var(--text-color, #000000) !important;
+}
+
+.home-page .text-gray-600 {
+  color: var(--text-secondary, #333333) !important;
+}
+
+.home-page .text-gray-500 {
+  color: var(--text-muted, #6b7280) !important;
+}
+
+/* Button styling consistency */
+.home-page button.bg-primary {
+  background-color: var(--button-primary, #124f2a) !important;
+  color: var(--white, #ffffff) !important;
+}
+
+.home-page button.bg-primary:hover {
+  background-color: var(--button-primary-hover, #1a733e) !important;
+}
+
+/* Fix body layout for home page */
+body.home-page {
+  display: flex !important;
+  flex-direction: row !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure main-content takes full available width */
+.home-page .main-content {
+  flex: 1 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+/* Force header text to be black - override main-content color */
+.home-page header,
+.home-page header h1,
+.home-page header h2,
+.home-page header h3,
+.home-page header p,
+.home-page header span,
+.home-page header div,
+.home-page header .text-gray-900,
+.home-page header .text-gray-700,
+.home-page header .text-gray-600 {
+  color: #000000 !important; /* black */
+}
+
+/* Fix header icon buttons - change from white to dark colors */
+/* Override Tailwind text-white classes in header */
+.home-page header [class*="text-white"]:not(#createAuditBtn):not(#createAuditBtn *),
+.home-page header [class*="text-white"]:not(#createAuditBtn):not(#createAuditBtn *) svg {
+  color: #374151 !important; /* gray-700 - dark for visibility */
+}
+
+.home-page header button:not(#createAuditBtn) svg,
+.home-page header #notificationBtn svg,
+.home-page header #calendarBtn svg,
+.home-page header #gridBtn svg {
+  color: #374151 !important; /* gray-700 - dark for visibility */
+  fill: #374151 !important;
+  stroke: #374151 !important;
+}
+
+.home-page header button:not(#createAuditBtn):hover svg,
+.home-page header #notificationBtn:hover svg,
+.home-page header #calendarBtn:hover svg,
+.home-page header #gridBtn:hover svg {
+  color: #1F2937 !important; /* gray-900 - darker on hover */
+  fill: #1F2937 !important;
+  stroke: #1F2937 !important;
+}
+
+.home-page header button:not(#createAuditBtn):hover {
+  background-color: rgba(0, 0, 0, 0.05) !important; /* dark hover background */
+}
+
+/* Date Range Picker and Filter Styles */
+.header-actions {
+  display: flex;
+  gap: var(--spacing-sm, 0.5rem);
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: var(--spacing-md, 1rem);
+  width: 100%;
+}
+
+/* Ensure all action button groups are aligned */
+.header-actions > * {
+  display: flex;
+  align-items: center;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs, 0.375rem);
+  padding: var(--spacing-sm, 0.5rem) var(--spacing-md, 0.75rem);
+  background-color: var(--home-card-bg, #FFFFFF);
+  color: #374151;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md, 0.375rem);
+  font-size: var(--font-size-sm, 0.75rem);
+  font-weight: var(--font-weight-medium, 500);
+  font-family: var(--font-family-primary);
+  cursor: pointer;
+  transition: all var(--transition-base, 0.2s ease);
+  white-space: nowrap;
+  height: 2rem;
+  line-height: 1;
+}
+
+.action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: var(--home-primary-500, #1a733e);
+}
+
+.action-btn.active {
+  background-color: var(--home-primary-500, #1a733e) !important;
+  color: var(--color-text-inverse, white) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+}
+
+/* Week display button should be active by default */
+#weekDisplay {
+  background-color: var(--home-primary-500, #1a733e) !important;
+  color: var(--color-text-inverse, white) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+}
+
+.action-btn svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Filter Panel */
+.filter-panel {
+  display: none;
+  background: var(--home-card-bg, #FFFFFF);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md, 0.375rem);
+  padding: var(--spacing-md, 1rem);
+  margin-bottom: var(--spacing-md, 1rem);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md, 0.75rem);
+}
+
+.filter-panel.active {
+  display: grid;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs, 0.375rem);
+}
+
+.filter-label {
+  font-size: var(--font-size-xs, 0.625rem);
+  font-weight: var(--font-weight-semibold, 600);
+  color: #374151;
+}
+
+.filter-input, .filter-select {
+  padding: var(--spacing-xs, 0.375rem) var(--spacing-sm, 0.5rem);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm, 0.25rem);
+  font-size: var(--font-size-sm, 0.75rem);
+  font-family: var(--font-family-primary);
+  background-color: var(--home-card-bg, #FFFFFF);
+  color: #1F2937;
+}
+
+.filter-input:focus, .filter-select:focus {
+  outline: none;
+  border-color: var(--home-primary-500, #1a733e);
+}
+
+/* Date Range Picker */
+.date-picker-dropdown {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.date-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--spacing-xs, 0.375rem);
+  background: var(--home-card-bg, #FFFFFF);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md, 0.375rem);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: var(--spacing-md, 0.75rem);
+  z-index: 1000;
+  min-width: 250px;
+}
+
+.date-dropdown-menu.active {
+  display: block;
+}
+
+/* Ensure hidden class always wins over active */
+.date-dropdown-menu.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* When not hidden, show the dropdown */
+.date-dropdown-menu:not(.hidden) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Dark Mode Styles - Using Global CSS Variables */
+[data-theme="dark"] .main-content {
+  background-color: var(--color-background-dark, #FAFAFA);
+}
+
+[data-theme="dark"] .action-btn {
+  background-color: var(--home-card-bg, #FFFFFF);
+  color: #374151;
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .action-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: var(--home-primary-500, #635BFF);
+}
+
+[data-theme="dark"] .action-btn.active {
+  background-color: var(--home-primary-500, #1a733e) !important;
+  color: var(--color-text-inverse) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+}
+
+[data-theme="dark"] .filter-panel {
+  background: var(--home-card-bg, #FFFFFF);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] .filter-label {
+  color: #374151;
+}
+
+[data-theme="dark"] .filter-input,
+[data-theme="dark"] .filter-select {
+  background-color: var(--home-card-bg, #FFFFFF);
+  color: #1F2937;
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .date-dropdown-menu {
+  background: var(--home-card-bg, #FFFFFF);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Mode Overrides for Tailwind Classes */
+[data-theme="dark"] .bg-white,
+.home-page .bg-white {
+  background-color: var(--home-card-bg, #FFFFFF) !important;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-gray-800 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .bg-gray-200 {
+  background-color: var(--gray-200) !important;
+}
+
+[data-theme="dark"] .bg-gray-100 {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .divide-gray-200 > * {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .divide-gray-200 > * + * {
+  border-top-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] .hover\:text-gray-900:hover {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .hover\:text-gray-600:hover {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-gray-300 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .border-gray-100 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] .bg-gray-50 {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] .bg-yellow-100 {
+  background-color: rgba(251, 191, 36, 0.2) !important;
+}
+
+[data-theme="dark"] .text-yellow-800 {
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .bg-green-100 {
+  background-color: rgba(16, 185, 129, 0.2) !important;
+}
+
+[data-theme="dark"] .text-green-800 {
+  color: #10b981 !important;
+}
+
+[data-theme="dark"] .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+[data-theme="dark"] .text-red-800 {
+  color: #ef4444 !important;
+}
+
+/* User Profile Dropdown Dark Mode */
+[data-theme="dark"] #userProfileDropdown {
+  background-color: var(--background-white);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] #userProfileDropdown .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] #userProfileDropdown .bg-gray-50 {
+  background-color: var(--gray-50) !important;
+}
+
+[data-theme="dark"] #userProfileDropdown .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] #userProfileDropdown .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #userProfileDropdown .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #userProfileDropdown .from-primary\/5 {
+  background: linear-gradient(to right, rgba(26, 115, 62, 0.1), rgba(26, 115, 62, 0.15)) !important;
+}
+
+/* Ultra-Compact Profile Animation */
+@keyframes slideInFromTop {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#userProfileDashboard {
+  animation: slideInFromTop 0.3s ease-out;
+}
+
+/* Dark Mode Profile Dashboard */
+[data-theme="dark"] #userProfileDashboard .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .border-gray-200,
+[data-theme="dark"] #userProfileDashboard .border-gray-100 {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-blue-50,
+[data-theme="dark"] #userProfileDashboard .bg-purple-50,
+[data-theme="dark"] #userProfileDashboard .bg-green-50,
+[data-theme="dark"] #userProfileDashboard .bg-orange-50,
+[data-theme="dark"] #userProfileDashboard .bg-amber-50,
+[data-theme="dark"] #userProfileDashboard .bg-indigo-50 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-gray-400 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-gray-300 {
+  background-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .ring-white {
+  --tw-ring-color: var(--background-white);
+}
+
+/* Badge colors in dark mode */
+[data-theme="dark"] #userProfileDashboard .bg-blue-50 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-blue-700 {
+  color: #60a5fa !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-purple-50 {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-purple-700 {
+  color: #c084fc !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-green-50 {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-green-700 {
+  color: #4ade80 !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-orange-700 {
+  color: #fb923c !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+[data-theme="dark"] #userProfileDashboard .text-amber-700 {
+  color: #fbbf24 !important;
+}
+
+/* Notification Badge */
+#notificationBadge {
+  min-width: 18px;
+  height: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+/* Single digit - make it circular */
+#notificationBadge:not(:empty) {
+  padding: 0 5px;
+}
+
+/* Notification Badge Dark Mode */
+[data-theme="dark"] #notificationBadge {
+  background-color: #ef4444 !important;
+}
+
+/* Fix notification empty state icon size */
+.home-page #notificationsModal svg.w-12,
+.home-page #notificationsModal svg.h-12 {
+  width: 3rem !important;
+  height: 3rem !important;
+  max-width: 3rem !important;
+  max-height: 3rem !important;
+}
+
+/* Ensure notification modal content doesn't overflow */
+.home-page #notificationsModal {
+  overflow: hidden !important;
+}
+
+.home-page #notificationsList {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Fix notification empty state container */
+.home-page #notificationsList > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2rem 1rem !important;
+}
+
+.home-page #notificationsList svg {
+  flex-shrink: 0 !important;
+  width: 3rem !important;
+  height: 3rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Calendar and Grid Modals Dark Mode */
+[data-theme="dark"] #calendarModal,
+[data-theme="dark"] #gridModal,
+.home-page #calendarModal,
+.home-page #gridModal,
+.home-page #notificationsModal {
+  background-color: var(--home-card-bg, #FFFFFF) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="dark"] #calendarModal .border-gray-200,
+[data-theme="dark"] #gridModal .border-gray-200 {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] #calendarModal .text-gray-900,
+[data-theme="dark"] #gridModal .text-gray-900 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="dark"] #calendarModal .text-gray-500,
+[data-theme="dark"] #gridModal .text-gray-500 {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] #calendarModal .text-gray-600,
+[data-theme="dark"] #gridModal .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #calendarModal .text-gray-700,
+[data-theme="dark"] #gridModal .text-gray-700 {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] #calendarModal .hover\:bg-gray-50:hover,
+[data-theme="dark"] #gridModal .hover\:bg-gray-50:hover {
+  background-color: var(--gray-100) !important;
+}
+
+[data-theme="dark"] #calendarModal .divide-gray-200 > *,
+[data-theme="dark"] #gridModal .divide-gray-200 > * {
+  border-color: var(--border-light) !important;
+}
+
+/* Avatar Logout Menu Dark Mode */
+[data-theme="dark"] #avatarLogoutMenu,
+.home-page #avatarLogoutMenu {
+  background-color: var(--home-card-bg, #FFFFFF) !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="dark"] #avatarLogoutMenu .text-error {
+  color: var(--color-error, #ef4444) !important;
+}
+
+[data-theme="dark"] #avatarLogoutMenu .hover\:bg-error\/10:hover {
+  background-color: var(--color-error-light, rgba(239, 68, 68, 0.1)) !important;
+}
+
+/* Solid Card Styles for Home Page - White theme */
+.home-page .glass-card {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border: 1px solid var(--gray-200, #e5e7eb) !important;
+  box-shadow: var(--home-card-shadow) !important;
+  border-radius: var(--home-card-border-radius) !important;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Consistent card padding */
+.home-page .glass-card {
+  padding: var(--home-card-padding) !important;
+}
+
+/* Card hover effect */
+.home-page .glass-card:hover {
+  box-shadow: var(--home-card-shadow-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Ensure filter-bar-container and its dropdowns are not clipped */
+.home-page .filter-bar-container,
+.home-page .filter-bar-container * {
+  overflow: visible !important;
+}
+
+.home-page .filter-bar-container #dateDropdown {
+  overflow: visible !important;
+}
+
+/* Ensure assigned audits list has white background */
+.home-page #assignedAuditsList {
+  background: var(--home-card-bg, #FFFFFF) !important;
+}
+
+/* Force dark text colors in assigned audits section */
+.home-page #assignedAuditsList,
+.home-page #assignedAuditsList * {
+  color: inherit;
+}
+
+.home-page #assignedAuditsList h3,
+.home-page #assignedAuditsList h4,
+.home-page #assignedAuditsList .text-gray-900 {
+  color: #1F2937 !important;
+}
+
+.home-page #assignedAuditsList p,
+.home-page #assignedAuditsList span:not(.bg-primary):not(.bg-yellow-100):not(.bg-green-100):not(.bg-red-100):not(.bg-gray-100),
+.home-page #assignedAuditsList .text-gray-600,
+.home-page #assignedAuditsList .text-gray-500,
+.home-page #assignedAuditsList .text-gray-700 {
+  color: #374151 !important;
+}
+
+.home-page #assignedAuditsList .text-gray-300 {
+  color: #9CA3AF !important;
+}
+
+.home-page .glass-card::before {
+  display: none;
+}
+
+.home-page .glass-card:hover {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Update text colors inside glass-card for white background */
+.home-page .glass-card,
+.home-page .glass-card * {
+  color: inherit;
+}
+
+.home-page .glass-card .text-white,
+.home-page .glass-card h2.text-white,
+.home-page .glass-card h3.text-white,
+.home-page .glass-card span.text-white,
+.home-page .glass-card div.text-white,
+.home-page .glass-card .text-gray-900 {
+  color: #1F2937 !important;
+}
+
+.home-page .glass-card .text-white\/70,
+.home-page .glass-card .text-white\/60,
+.home-page .glass-card .text-gray-600,
+.home-page .glass-card .text-gray-500 {
+  color: #6B7280 !important;
+}
+
+.home-page .glass-card .border-white\/10,
+.home-page .glass-card .divide-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.home-page .glass-card .divide-white\/10 > * {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Solid Header for sections - white theme */
+.home-page .glass-header {
+  background: var(--home-card-bg, #FFFFFF) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* Update header text colors */
+.home-page .glass-header .text-white,
+.home-page .glass-header h2.text-white,
+.home-page .glass-header .text-gray-900 {
+  color: #1F2937 !important;
+}
+
+/* Enhance chip/badge background colors to pop more on white cards */
+.home-page #userProfileDashboard .bg-blue-50 {
+  background-color: #DBEAFE !important; /* blue-100 - more vibrant */
+}
+
+.home-page #userProfileDashboard .bg-purple-50 {
+  background-color: #E9D5FF !important; /* purple-100 - more vibrant */
+}
+
+.home-page #userProfileDashboard .bg-green-50 {
+  background-color: #D1FAE5 !important; /* green-100 - more vibrant */
+}
+
+.home-page #userProfileDashboard .bg-orange-50 {
+  background-color: #FED7AA !important; /* orange-100 - more vibrant */
+}
+
+.home-page #userProfileDashboard .bg-amber-50 {
+  background-color: #FDE68A !important; /* amber-100 - more vibrant */
+}
+
+.home-page #userProfileDashboard .bg-indigo-50 {
+  background-color: #E0E7FF !important; /* indigo-100 - more vibrant */
+}
+
+/* Fix chip/badge text colors for better contrast - make text darker */
+.home-page #userProfileDashboard .text-blue-500,
+.home-page #userProfileDashboard .text-blue-700 {
+  color: #1E40AF !important; /* blue-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-purple-500,
+.home-page #userProfileDashboard .text-purple-700 {
+  color: #6B21A8 !important; /* purple-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-green-500,
+.home-page #userProfileDashboard .text-green-700 {
+  color: #166534 !important; /* green-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-orange-500,
+.home-page #userProfileDashboard .text-orange-700 {
+  color: #9A3412 !important; /* orange-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-amber-500,
+.home-page #userProfileDashboard .text-amber-700 {
+  color: #92400E !important; /* amber-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-indigo-500,
+.home-page #userProfileDashboard .text-indigo-700 {
+  color: #3730A3 !important; /* indigo-800 - darker for better contrast */
+}
+
+/* Fix chip icon colors for better contrast */
+.home-page #userProfileDashboard .text-blue-600 {
+  color: #1E40AF !important; /* blue-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-purple-600 {
+  color: #6B21A8 !important; /* purple-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-green-600 {
+  color: #166534 !important; /* green-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-orange-600 {
+  color: #9A3412 !important; /* orange-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-amber-600 {
+  color: #92400E !important; /* amber-800 - darker for better contrast */
+}
+
+.home-page #userProfileDashboard .text-indigo-600 {
+  color: #3730A3 !important; /* indigo-800 - darker for better contrast */
+}
+
+/* Fix user profile dashboard text colors for white card background */
+.home-page #userProfileDashboard .text-white,
+.home-page #userProfileDashboard h3.text-white {
+  color: #000000 !important; /* black for better contrast on white card */
+}
+
+.home-page #userProfileDashboard .text-white\/70,
+.home-page #userProfileDashboard .text-white\/60 {
+  color: #000000 !important; /* black for better contrast on white card */
+}
+
+.home-page #userProfileDashboard .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1) !important; /* dark border for white card */
+}
+
+/* Style role badge with pleasing emerald green theme */
+.home-page #userProfileDashboard #dashboardUserRole {
+  background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%) !important; /* emerald-100 to emerald-200 gradient */
+  color: #065F46 !important; /* emerald-800 - dark green text */
+  border: 1px solid rgba(5, 150, 105, 0.2) !important; /* emerald-500 border with opacity */
+  box-shadow: 0 1px 2px 0 rgba(5, 150, 105, 0.1) !important; /* subtle shadow */
+}
+
+.home-page #userProfileDashboard #dashboardUserRole:hover {
+  background: linear-gradient(135deg, #A7F3D0 0%, #6EE7B7 100%) !important; /* slightly brighter on hover */
+  box-shadow: 0 2px 4px 0 rgba(5, 150, 105, 0.15) !important; /* enhanced shadow on hover */
+}
+
+/* CSS Variables for Home Page */
+:root {
+  --home-background: #F8F7F2;
+  --home-card-bg: #FFFFFF;
+  --home-primary-500: #1a733e;
+  --home-card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --home-card-shadow-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --home-section-gap: 1.5rem; /* 24px - consistent spacing between sections */
+  --home-card-padding: 1rem; /* 16px - consistent card padding */
+  --home-card-border-radius: 0.75rem; /* 12px - consistent border radius */
+}
+
+/* Ensure body has home-page class styling */
+body.home-page {
+  background-color: var(--home-background, #F8F7F2) !important;
+}
+
+/* Fix any potential z-index issues with header */
+.home-page header {
+  z-index: 40 !important;
+  position: sticky !important;
+  top: 0 !important;
+}
+
+/* Ensure header container is properly styled */
+.home-page #header-container {
+  background-color: transparent !important;
+  width: 100% !important;
+  margin-bottom: 0 !important;
+}
+
+.home-page #header-container > header {
+  background-color: var(--background-white, #FFFFFF) !important;
+  border-bottom: 1px solid var(--gray-200, #e5e7eb) !important;
+  box-shadow: var(--home-card-shadow) !important;
+  padding-left: var(--main-content-padding) !important;
+  padding-right: var(--main-content-padding) !important;
+}
+
+/* Header title styling */
+.home-page header h1 {
+  font-size: 1.5rem !important; /* 24px */
+  font-weight: 700 !important;
+  color: var(--text-color, #000000) !important;
+  margin: 0 !important;
+}
+
+.home-page header p {
+  font-size: 0.75rem !important; /* 12px */
+  color: var(--text-secondary, #333333) !important;
+  margin: 0 !important;
+}
+
+/* This rule is now above */
+
+/* Ensure header doesn't have dark background */
+.home-page header,
+.home-page header > div {
+  background-color: var(--background-white, #FFFFFF) !important;
+  background: var(--background-white, #FFFFFF) !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}

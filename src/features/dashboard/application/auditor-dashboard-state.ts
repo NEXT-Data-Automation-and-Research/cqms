@@ -147,7 +147,9 @@ export class AuditorDashboardState {
       this.currentWeekYear = today.getFullYear();
     }
 
-    this.currentWeek += direction;
+    // Ensure currentWeek is initialized (TypeScript type guard)
+    const week = this.currentWeek ?? 1;
+    this.currentWeek = week + direction;
 
     if (this.currentWeek > 52) {
       this.currentWeek = 1;

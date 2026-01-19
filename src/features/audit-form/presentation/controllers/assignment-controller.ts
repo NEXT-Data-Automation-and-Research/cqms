@@ -135,7 +135,7 @@ export class AssignmentController {
         .from('scorecards')
         .select(SCORECARD_AUDIT_FORM_FIELDS)
         .eq('is_active', true)
-        .execute<Scorecard[]>();
+        .execute();
 
       if (scError || !scorecards) {
         logWarn('Error loading scorecards for duration calculation:', scError);

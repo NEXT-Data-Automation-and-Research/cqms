@@ -144,13 +144,10 @@ main.main-content * {
 
 #user-profile-container span {
   color: #374151 !important;
-}
-
-/* Ensure values are darkest */
+}/* Ensure values are darkest */
 #user-profile-container div[style*="font-size: 0.875rem"],
 #user-profile-container div[style*="font-size:0.875rem"],
 #user-profile-container div[style*="word-break"] {
   color: #111827 !important;
   font-weight: 600 !important;
 }
-
