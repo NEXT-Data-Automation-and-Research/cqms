@@ -33,7 +33,11 @@ export function mapAuditData(row: any): AuditReport {
     clientName: row.client_name || row.clientName,
     agentPreStatus: row.agent_pre_status || row.agentPreStatus,
     agentPostStatus: row.agent_post_status || row.agentPostStatus,
-    passingStatus: row.passing_status || row.passingStatus || 'Not Passed',
+    passingStatus: row.passing_status !== undefined && row.passing_status !== null 
+      ? row.passing_status 
+      : (row.passingStatus !== undefined && row.passingStatus !== null 
+          ? row.passingStatus 
+          : 'Not Passed'),
     validationStatus: row.validation_status || row.validationStatus,
     averageScore: row.average_score !== undefined && row.average_score !== null 
       ? (typeof row.average_score === 'number' ? row.average_score : parseFloat(String(row.average_score)) || 0)

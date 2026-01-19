@@ -15,14 +15,22 @@ export class SidebarHTMLGenerator {
    * Generate complete sidebar HTML
    */
   generate(userInfo: UserInfo | null): string {
-    // Show all routes initially (like the old system)
-    // Role-based hiding will be done by JavaScript after sidebar loads
-    // Pass undefined when no userInfo to show all routes
-    const userRole = userInfo?.role
-    const sidebarRoutes = router.getSidebarRoutes(userRole)
-    const currentPath = router.getCurrentPath()
+    // H5 FIX: Filter routes BEFORE generating HTML to prevent menu flash
+    const userRole = userInfo?.role;
+    const sidebarRoutes = router.getSidebarRoutes(userRole);
+    const currentPath = router.getCurrentPath();
 
-    const menuItems = sidebarRoutes
+    // Filter routes by access before rendering
+    const accessibleRoutes = sidebarRoutes.filter(route => {
+      // If route allows 'all', always show it
+      if (route.meta.roles.includes('all')) return true;
+      // If no user role provided, show all routes initially (for backwards compatibility)
+      if (!userRole) return true;
+      // Check if user has access
+      return router.canAccessRoute(route.meta.roles, userRole);
+    });
+
+    const menuItems = accessibleRoutes
       .map(route => this.generateMenuItem(route, currentPath, userRole))
       .filter(item => item !== '') // Filter out empty items (e.g., submenus with no accessible items)
       .join('')
@@ -160,7 +168,19 @@ export class SidebarHTMLGenerator {
   private generateSidebarTemplate(menuItems: string): string {
     const searchItem = this.generateSearchMenuItem()
 
-    return `<!-- Sidebar Component -->
+    return `<!-- Hamburger Menu Toggle Button (Mobile Only) -->
+<button class="menu-toggle" id="mobileMenuToggle" aria-label="Toggle navigation menu" aria-expanded="false">
+    <div class="hamburger-icon">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+</button>
+
+<!-- Sidebar Overlay (Mobile Only) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Component -->
 <nav class="sidebar collapsed" role="navigation" aria-label="Main navigation">
     <!-- Sidebar Header -->
     <div class="sidebar-header">

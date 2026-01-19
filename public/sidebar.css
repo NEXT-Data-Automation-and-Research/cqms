@@ -105,13 +105,96 @@ body {
   margin-left: var(--sidebar-width);
 }
 
-/* Hamburger Menu Toggle */
+/* Hamburger Menu Toggle Button */
 .menu-toggle {
-  padding: 1rem;
-  border-bottom: 0.0625rem solid rgba(255, 255, 255, 0.08);
-  display: flex;
+  display: none; /* Hidden by default on desktop */
+  position: relative;
+  top: auto;
+  left: auto;
+  z-index: 1001; /* Above sidebar */
+  background: var(--primary-color, #1a733e);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  padding: 0.625rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
+  width: 2.5rem;
+  height: 2.5rem;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
+}
+
+.menu-toggle:hover,
+.menu-toggle:focus {
+  background: var(--primary-dark, #0d5e3a);
+  outline: none;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.3);
+}
+
+.menu-toggle svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+/* Hamburger icon - 3 lines */
+.menu-toggle .hamburger-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 1.25rem;
+  height: 1rem;
+}
+
+.menu-toggle .hamburger-icon span {
+  display: block;
+  width: 100%;
+  height: 0.125rem;
+  background-color: white;
+  border-radius: 0.0625rem;
+  transition: all 0.3s ease;
+}
+
+/* Close icon (X) when menu is open */
+.menu-toggle.active .hamburger-icon span:nth-child(1) {
+  transform: rotate(45deg) translate(0.3125rem, 0.3125rem);
+}
+
+.menu-toggle.active .hamburger-icon span:nth-child(2) {
+  opacity: 0;
+}
+
+.menu-toggle.active .hamburger-icon span:nth-child(3) {
+  transform: rotate(-45deg) translate(0.3125rem, -0.3125rem);
+}
+
+/* Mobile Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  visibility: hidden;
+  backdrop-filter: blur(0.125rem);
+}
+
+.sidebar-overlay.active {
+  display: block;
+  opacity: 1;
+  visibility: visible;
 }
 
 .search-bar-wrapper {
@@ -1306,6 +1389,220 @@ body {
   position: relative;
   min-height: 100vh;
   margin-top: 0;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES (< 768px)
+   ============================================ */
+@media screen and (max-width: 767px) {
+  /* Show hamburger menu button */
+  .menu-toggle {
+    display: flex !important;
+  }
+  
+  /* Show hamburger button in page heading container on mobile */
+  .page-heading-container .menu-toggle {
+    display: flex !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
+
+  /* Hide sidebar by default on mobile - slide off screen */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    z-index: 1000;
+    width: var(--sidebar-width);
+    max-width: 18.75rem; /* 300px max width on mobile */
+    box-shadow: 0.125rem 0 0.5rem rgba(0, 0, 0, 0.2);
+  }
+
+  /* Show sidebar when active - slide in from left */
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Remove margin from main content on mobile */
+  .main-content {
+    margin-left: 0 !important;
+    padding-top: 1rem; /* Normal padding, hamburger button is fixed */
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Sidebar should not collapse on mobile - always show full width when open */
+  .sidebar.collapsed {
+    width: var(--sidebar-width);
+    max-width: 18.75rem;
+  }
+
+  /* Disable hover expansion on mobile */
+  .sidebar.collapsed:hover {
+    width: var(--sidebar-width);
+    max-width: 18.75rem;
+    transform: translateX(-100%); /* Keep hidden unless mobile-open */
+  }
+
+  /* When mobile-open, ensure it's visible even if collapsed class is present */
+  .sidebar.collapsed.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* On mobile, always show menu item text (never collapse) */
+  .sidebar .menu-item span {
+    display: inline !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar .menu-item svg {
+    margin-right: 0.625rem !important;
+  }
+
+  .sidebar .menu-item {
+    justify-content: flex-start !important;
+    padding: 0.5rem 0.75rem !important;
+    margin: 0 0.5rem !important;
+    width: calc(100% - 1rem) !important;
+  }
+
+  /* Show section labels on mobile */
+  .sidebar .section-label {
+    display: inline !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar .menu-section-header {
+    justify-content: flex-start !important;
+    padding: 1.25rem 1rem 0.75rem 1rem !important;
+  }
+
+  /* Show brand text on mobile */
+  .sidebar .brand-text {
+    display: inline !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar .sidebar-brand-btn {
+    justify-content: flex-start !important;
+    gap: 0.625rem !important;
+  }
+
+  /* Show user info on mobile */
+  .sidebar .user-info {
+    display: block !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar .user-profile {
+    justify-content: flex-start !important;
+    gap: 0.625rem !important;
+  }
+
+  /* Show profile link text on mobile */
+  .sidebar .profile-link span {
+    display: inline !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+  }
+
+  .sidebar .profile-link {
+    justify-content: flex-start !important;
+  }
+
+  /* Show submenu items text on mobile */
+  .sidebar .submenu-item span {
+    display: inline !important;
+  }
+
+  .sidebar .submenu {
+    display: block !important;
+  }
+
+  /* Show chips and badges on mobile */
+  .sidebar .notification-badge,
+  .sidebar .coming-soon-chip,
+  .sidebar .new-chip,
+  .sidebar .status-chip {
+    display: inline-flex !important;
+    opacity: 1 !important;
+    width: auto !important;
+    max-width: none !important;
+    transform: translateX(0) !important;
+    position: static !important;
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+
+  /* Show submenu arrow on mobile */
+  .sidebar .submenu-arrow {
+    display: block !important;
+  }
+
+  /* Show overlay when sidebar is open */
+  .sidebar-overlay {
+    display: block;
+  }
+
+  /* Prevent body scroll when sidebar is open */
+  body.sidebar-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+
+  /* Ensure hamburger button stays on top */
+  .menu-toggle {
+    z-index: 1001;
+  }
+}
+
+/* ============================================
+   TABLET AND DESKTOP (> 768px)
+   ============================================ */
+@media screen and (min-width: 768px) {
+  /* Hide hamburger menu on larger screens */
+  .menu-toggle {
+    display: none !important;
+  }
+  
+  /* Hide hamburger button in page heading container on desktop */
+  .page-heading-container .menu-toggle {
+    display: none !important;
+  }
+
+  /* Hide overlay on larger screens */
+  .sidebar-overlay {
+    display: none !important;
+  }
+
+  /* Normal sidebar behavior */
+  .sidebar {
+    transform: translateX(0) !important;
+  }
+
+  /* Normal main content margin */
+  .main-content {
+    margin-left: var(--sidebar-collapsed);
+    padding-top: var(--main-content-padding);
+  }
+
+  .sidebar:not(.collapsed) ~ .main-content {
+    margin-left: var(--sidebar-width);
+  }
 }
 
 .sidebar:not(.sidebar-ready) ~ .main-content {

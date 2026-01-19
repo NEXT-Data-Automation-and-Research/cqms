@@ -3,6 +3,48 @@
  * Core styles for audit reports feature
  */
 
+/* Page Heading */
+.page-heading {
+    margin-bottom: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary, #111827);
+    font-family: 'Poppins', sans-serif;
+    flex: 1;
+}
+
+/* Page Heading Container (for hamburger + heading) */
+.page-heading-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.125rem;
+    position: relative;
+    width: 100%;
+    min-height: 2.5rem; /* Match hamburger button height */
+    pointer-events: auto; /* Ensure container allows clicks */
+}
+
+/* Hamburger on the left - absolutely positioned */
+.page-heading-container .menu-toggle {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1001; /* Match sidebar.css z-index for menu-toggle */
+    margin: 0;
+    pointer-events: auto; /* Ensure clicks work */
+    cursor: pointer;
+}
+
+/* Heading - left aligned on desktop, centered on mobile */
+.page-heading-container .page-heading {
+    margin: 0;
+    text-align: left;
+    width: 100%;
+    flex: 1;
+    pointer-events: none; /* Allow clicks to pass through to hamburger button */
+}
+
 /* Container */
 .expert-audits-container {
     display: flex;
@@ -19,7 +61,7 @@
 
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
     margin-bottom: 1.125rem;
     width: 100%;
@@ -38,9 +80,23 @@
     z-index: 50;
 }
 
+/* Keep Date Range, Filter, and Sync buttons on the same line */
+.header-actions .date-picker-dropdown,
+.header-actions #filterBtn,
+.header-actions #forceSyncBtn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
 .header-actions > * {
     pointer-events: auto;
     flex-shrink: 0;
+}
+
+/* Override flex-shrink for last sync time to allow wrapping if needed */
+.header-actions > #lastSyncTime {
+    flex-shrink: 1 !important;
+    min-width: 0;
 }
 
 .header-actions > div {
@@ -48,6 +104,11 @@
     align-items: center;
     gap: 0.375rem;
     flex-wrap: nowrap;
+}
+
+/* Hide any divs that might contain quick date buttons - check by checking if they only contain hidden buttons */
+.header-actions > div {
+    /* Will be handled by individual button hiding */
 }
 
 .action-btn {
@@ -87,7 +148,11 @@
     height: 0.75rem;
 }
 
-/* Quick Date Buttons */
+/* Quick Date Buttons - Hidden on mobile, visible on desktop */
+.quick-date-buttons-container {
+    display: none !important; /* Hidden by default (mobile) */
+}
+
 .quick-date-btn {
     padding: 0.4688rem 0.75rem;
     font-size: 0.6562rem;
@@ -100,6 +165,31 @@
     -webkit-tap-highlight-color: transparent;
     min-width: fit-content;
     flex-shrink: 0;
+}
+
+/* Hide quick date buttons on mobile and tablet */
+@media screen and (max-width: 1024px) {
+    .quick-date-buttons-container {
+        display: none !important;
+    }
+    
+    .quick-date-btn {
+        display: none !important;
+    }
+}
+
+/* Show quick date buttons on desktop */
+@media screen and (min-width: 1025px) {
+    .quick-date-buttons-container {
+        display: flex !important;
+        align-items: center;
+        gap: 0.375rem;
+        flex-wrap: nowrap;
+    }
+    
+    .quick-date-btn {
+        display: inline-flex !important;
+    }
 }
 
 .quick-date-btn:hover {
@@ -123,6 +213,7 @@
     position: relative;
     display: inline-block;
     z-index: 1001; /* Higher than filter panel to ensure dropdown appears above */
+    flex-shrink: 0; /* Prevent from taking full width */
 }
 
 .date-dropdown-menu {
@@ -157,14 +248,44 @@
     pointer-events: auto;
 }
 
-/* Ensure filter panel is clickable */
-#filterPanel {
+/* Filter Grid Layouts - matching live site compact layout */
+.filter-inputs-grid,
+.filter-multi-select-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(5.2734rem, 1fr)) !important;
+    gap: 0.375rem !important;
+    align-items: end !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.filter-inputs-grid .filter-group,
+.filter-multi-select-grid .filter-group {
+    min-width: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.375rem !important;
+}
+
+/* Filter panel is visible by default (matching live site) */
+#filterPanel.controls-section {
+    display: block !important;
+}
+
+/* Ensure filter panel is clickable when visible */
+#filterPanel:not([style*="display: none"]) {
     pointer-events: auto !important;
     z-index: 100 !important;
     position: relative !important;
-    display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
+}
+
+/* When hidden, ensure it's truly hidden */
+#filterPanel[style*="display: none"] {
+    display: none !important;
 }
 
 #filterPanel * {
@@ -299,5 +420,343 @@
 [data-theme="dark"] .date-dropdown-menu {
     background: var(--background-white);
     border-color: var(--border-light);
+}
+
+/* Participant Profile Tooltip */
+.participant-profile-tooltip {
+    animation: tooltipFadeIn 0.15s ease-out;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-0.25rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.participant-chip:hover .participant-name {
+    color: var(--primary-color, #1a733e);
+    text-decoration: underline;
+}
+
+.participant-chip:hover > div:first-child {
+    transform: scale(1.05);
+}
+
+/* View Details Button - Matching Create User button style */
+.btn-view-details {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background-color: #1A733E;
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 0.875rem;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    white-space: nowrap;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-view-details:hover {
+    background-color: #15582E;
+}
+
+.btn-view-details:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.25rem rgba(26, 115, 62, 0.3);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN - 3 BREAKPOINTS
+   Mobile: < 768px
+   Tablet: 768px - 1024px
+   Desktop: > 1024px
+   ============================================ */
+
+/* ============================================
+   MOBILE: < 768px
+   ============================================ */
+@media screen and (max-width: 767px) {
+    /* Page Heading - Centered on mobile */
+    .page-heading {
+        font-size: 1.25rem;
+    }
+    
+    .page-heading-container {
+        margin-bottom: 0.75rem;
+    }
+    
+    .page-heading-container .page-heading {
+        text-align: center;
+    }
+
+    /* Container */
+    .expert-audits-container {
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+        padding: 0 0.5rem;
+    }
+
+    /* Stats Grid - 2 columns on mobile */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    /* Date Picker Dropdown - Keep inline on mobile, don't force full width */
+    .date-picker-dropdown {
+        width: auto;
+        max-width: 100%;
+    }
+
+    .date-dropdown-menu {
+        right: 0;
+        left: 0;
+        width: 100%;
+        min-width: auto;
+    }
+
+    /* Filter Panel - Full width, adjust padding */
+    .controls-section {
+        padding: 0.625rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Filter Grid - 2 columns on mobile */
+    .filter-inputs-grid,
+    .filter-multi-select-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Filter Inputs - Adjust sizing */
+    .filter-input,
+    .filter-select {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.6875rem;
+    }
+
+    .filter-label {
+        font-size: 0.5625rem;
+    }
+
+    /* View Details Button - Full width on mobile */
+    .btn-view-details {
+        width: 100%;
+        padding: 0.625rem 1rem;
+        font-size: 0.8125rem;
+    }
+
+    /* Pagination - Stack controls */
+    #paginationContainer {
+        padding: 0.625rem;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* ============================================
+   TABLET: 768px - 1024px
+   ============================================ */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    /* Page Heading - Left aligned on tablet */
+    .page-heading {
+        font-size: 1.375rem;
+    }
+    
+    .page-heading-container {
+        margin-bottom: 1.125rem;
+    }
+    
+    .page-heading-container .page-heading {
+        text-align: left;
+    }
+
+    /* Container */
+    .expert-audits-container {
+        gap: 1rem;
+        padding: 0 0.75rem;
+    }
+
+    /* Stats Grid - 2 columns on tablet */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.625rem;
+    }
+
+    /* Filter Grid - 3 columns on tablet */
+    .filter-inputs-grid,
+    .filter-multi-select-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Filter Inputs */
+    .filter-input,
+    .filter-select {
+        padding: 0.4375rem 0.5625rem;
+        font-size: 0.6562rem;
+    }
+
+    /* Date Dropdown - Adjust positioning */
+    .date-dropdown-menu {
+        min-width: 10rem;
+    }
+}
+
+/* ============================================
+   DESKTOP: > 1024px
+   ============================================ */
+@media screen and (min-width: 1025px) {
+    /* Page Heading - Left aligned on desktop */
+    .page-heading {
+        font-size: 1.5rem;
+    }
+    
+    .page-heading-container {
+        margin-bottom: 1.125rem;
+    }
+    
+    .page-heading-container .page-heading {
+        text-align: left;
+    }
+
+    /* Container */
+    .expert-audits-container {
+        gap: 1.125rem;
+        padding: 0;
+    }
+
+    /* Stats Grid - 2 columns on desktop */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    /* Filter Grid - Auto-fit with minmax (default) */
+    .filter-inputs-grid,
+    .filter-multi-select-grid {
+        grid-template-columns: repeat(auto-fit, minmax(5.2734rem, 1fr)) !important;
+        gap: 0.375rem !important;
+    }
+
+    /* Date Dropdown - Full width option */
+    .date-dropdown-menu {
+        min-width: 9.8438rem;
+    }
+}
+
+/* ============================================
+   LARGE DESKTOP: > 1440px (Optional enhancement)
+   ============================================ */
+@media screen and (min-width: 1440px) {
+    /* Stats Grid - 2 columns on large screens */
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Filter Grid - More columns on large screens */
+    .filter-inputs-grid,
+    .filter-multi-select-grid {
+        grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)) !important;
+    }
+}
+
+/* ============================================
+   AUDIT CARD RESPONSIVE STYLES
+   ============================================ */
+
+/* Mobile: Stack audit card sections vertically */
+@media screen and (max-width: 767px) {
+    .audit-card {
+        padding: 0.5rem !important;
+        margin-bottom: 0.375rem !important;
+    }
+
+    /* Make audit card main container stack vertically on mobile */
+    .audit-card > div {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+
+    /* View Details button - full width on mobile */
+    .audit-card .btn-view-details {
+        width: 100% !important;
+        margin-top: 0.5rem;
+    }
+
+    /* Right section - full width, stack buttons */
+    .audit-card > div > div:last-child {
+        width: 100% !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+    }
+
+    /* Hide second row metadata line on mobile */
+    .audit-card > div > div:first-child > div:last-child > div:last-child {
+        display: none !important;
+    }
+
+    /* Avatar - slightly smaller on mobile */
+    .audit-card .employee-avatar {
+        width: 1.75rem !important;
+        height: 1.75rem !important;
+    }
+
+    /* Employee name - adjust size */
+    .audit-card .participant-name {
+        font-size: 0.8125rem !important;
+    }
+
+    /* Badges - smaller on mobile */
+    .audit-card span[style*="background-color"] {
+        font-size: 0.625rem !important;
+        padding: 0.125rem 0.3125rem !important;
+    }
+}
+
+/* Tablet: Adjust spacing and sizing */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+    .audit-card {
+        padding: 0.5rem !important;
+        margin-bottom: 0.375rem !important;
+    }
+
+    /* Slightly reduce gap on tablet */
+    .audit-card > div {
+        gap: 0.75rem !important;
+    }
+
+    /* Avatar - standard size */
+    .audit-card .employee-avatar {
+        width: 1.875rem !important;
+        height: 1.875rem !important;
+    }
+
+    /* View Details button - adjust size */
+    .audit-card .btn-view-details {
+        padding: 0.5rem 0.875rem !important;
+        font-size: 0.8125rem !important;
+    }
+}
+
+/* Desktop: Full layout (default styles apply) */
+@media screen and (min-width: 1025px) {
+    .audit-card {
+        padding: 0.5rem !important;
+        margin-bottom: 0.375rem !important;
+    }
 }
 

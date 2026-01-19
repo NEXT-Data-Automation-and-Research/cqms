@@ -75,10 +75,34 @@ export class UserManagementMain {
       logInfo('[UserManagementMain] Access check result:', { accessAllowed });
       if (!accessAllowed) {
         logWarn('[UserManagementMain] Access denied, stopping initialization');
+        // B1 FIX: Show clear access denied message
+        this.showAccessDeniedMessage();
         return; // Access denied, user will be redirected
       }
 
       logInfo('[UserManagementMain] Access granted, proceeding with initialization');
+      
+      // M4 FIX: Load saved filters from sessionStorage
+      try {
+        const savedFilters = sessionStorage.getItem('userManagementFilters');
+        if (savedFilters) {
+          const filters = JSON.parse(savedFilters);
+          userManagementState.setFilters(filters);
+          // Apply saved filters to UI
+          const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+          const roleFilter = document.getElementById('roleFilter') as HTMLSelectElement;
+          const departmentFilter = document.getElementById('departmentFilter') as HTMLSelectElement;
+          const statusFilter = document.getElementById('statusFilter') as HTMLSelectElement;
+          
+          if (searchInput && filters.search) searchInput.value = filters.search;
+          if (roleFilter && filters.role) roleFilter.value = filters.role;
+          if (departmentFilter && filters.department) departmentFilter.value = filters.department;
+          if (statusFilter && filters.status) statusFilter.value = filters.status;
+        }
+      } catch (error) {
+        logWarn('[UserManagementMain] Failed to load saved filters:', error);
+      }
+      
       // Setup state listener
       userManagementState.subscribe(() => this.onStateChange());
 
@@ -207,12 +231,56 @@ export class UserManagementMain {
   }
 
   /**
+   * Show access denied message
+   */
+  private showAccessDeniedMessage(): void {
+    const container = document.querySelector('.main-content') as HTMLElement;
+    if (container) {
+      safeSetHTML(container, `
+        <div style="text-align: center; padding: 3rem; max-width: 600px; margin: 0 auto;">
+          <div style="margin-bottom: 2rem;">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444; margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h2 style="font-size: 1.5rem; font-weight: 600; color: #1f2937; margin-bottom: 1rem;">Access Denied</h2>
+          <p style="font-size: 1rem; color: #6b7280; margin-bottom: 0.5rem;">You don't have permission to access this page.</p>
+          <p style="font-size: 0.875rem; color: #9ca3af; margin-bottom: 2rem;">Required role: Admin, Manager, or Super Admin</p>
+          <a href="/src/features/home/presentation/home-page.html" 
+             style="display: inline-block; padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; text-decoration: none; border-radius: 0.375rem; font-weight: 500; transition: background-color 0.2s;">
+            Return to Home
+          </a>
+        </div>
+      `);
+    }
+  }
+
+  /**
    * Show error message
+   * M2 FIX: Add retry button to error states
    */
   private showError(message: string): void {
     const container = document.getElementById('usersTableContent');
     if (container) {
-      safeSetHTML(container, `<div class="error">${escapeHtml(message)}</div>`);
+      safeSetHTML(container, `
+        <div class="error-state" style="text-align: center; padding: 2rem; max-width: 600px; margin: 0 auto;">
+          <div style="margin-bottom: 1.5rem;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444; margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.75rem;">Error</h3>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">${escapeHtml(message)}</p>
+          <button onclick="window.refreshUsers()" 
+                  style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer;">
+            Retry
+          </button>
+        </div>
+      `);
     }
   }
 
@@ -239,7 +307,28 @@ async function waitForSupabaseClient(maxWait: number = 10000): Promise<void> {
   while (!(window as any).supabaseClient && (Date.now() - startTime) < maxWait) {
     await new Promise(resolve => setTimeout(resolve, 100));
   }
+  // B2 FIX: Show error message if Supabase client fails to initialize
   if (!(window as any).supabaseClient) {
+    const container = document.getElementById('usersTableContent');
+    if (container) {
+      container.innerHTML = `
+        <div class="error" style="padding: 2rem; text-align: center; max-width: 600px; margin: 0 auto;">
+          <div style="margin-bottom: 1.5rem;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444; margin: 0 auto;">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.75rem;">Failed to Initialize</h3>
+          <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">Unable to connect to the database. Please refresh the page.</p>
+          <button onclick="window.location.reload()" 
+                  style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s;">
+            Refresh Page
+          </button>
+        </div>
+      `;
+    }
     throw new Error('Supabase client not initialized after waiting');
   }
 }

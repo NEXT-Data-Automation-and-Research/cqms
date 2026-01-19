@@ -8,7 +8,7 @@ import { logError } from '../../../utils/logging-helper.js';
 import type { AuditReportsController } from './audit-reports-controller.js';
 import type { AuditReport, AuditStats, PaginationState } from '../domain/entities.js';
 import type { ScorecardInfo } from '../infrastructure/audit-reports-repository.js';
-import { renderKPICards } from './renderers/kpi-renderer.js';
+import { renderKPICards, renderKPISkeletons } from './renderers/kpi-renderer.js';
 import { renderAuditList } from './renderers/audit-list-renderer.js';
 import { renderHeaderActions } from './renderers/header-renderer.js';
 import { renderFilterPanel } from './renderers/filter-renderer.js';
@@ -59,14 +59,30 @@ export class AuditReportsRenderer {
   }
 
   /**
-   * Render statistics (KPI cards)
+   * Show loading state for KPI cards
    */
-  renderStats(stats: AuditStats | null): void {
-    if (!stats) return;
-
+  showStatsLoading(): void {
     const container = document.getElementById('kpiGrid');
     if (!container) {
       logError('kpiGrid container not found');
+      return;
+    }
+    renderKPISkeletons(container);
+  }
+
+  /**
+   * Render statistics (KPI cards)
+   */
+  renderStats(stats: AuditStats | null): void {
+    const container = document.getElementById('kpiGrid');
+    if (!container) {
+      logError('kpiGrid container not found');
+      return;
+    }
+
+    if (!stats) {
+      // Show skeleton if no stats
+      this.showStatsLoading();
       return;
     }
 
@@ -76,7 +92,7 @@ export class AuditReportsRenderer {
   /**
    * Render audit list
    */
-  renderAudits(audits: AuditReport[], pagination: PaginationState): void {
+  renderAudits(audits: AuditReport[], pagination: PaginationState, hasActiveFilters: boolean = false): void {
     const loading = document.getElementById('loadingIndicator');
     const container = document.getElementById('auditList');
     if (!container) {
@@ -88,13 +104,54 @@ export class AuditReportsRenderer {
     if (loading) loading.style.display = 'none';
 
     if (audits.length === 0) {
-      safeSetHTML(container, '<div style="padding: 2rem; text-align: center; color: #6b7280;">No audits found.</div>');
+      this.renderEmptyState(container, hasActiveFilters);
       container.style.display = 'flex';
       return;
     }
 
     renderAuditList(container, audits, this.controller);
     container.style.display = 'flex';
+  }
+
+  /**
+   * Render empty state
+   */
+  private renderEmptyState(container: HTMLElement, hasActiveFilters: boolean): void {
+    const message = hasActiveFilters
+      ? 'No audits match your current filters.'
+      : 'No audits found.';
+    
+    const suggestion = hasActiveFilters
+      ? 'Try adjusting your filters to see more results.'
+      : 'Audits will appear here once they are created.';
+
+    safeSetHTML(container, `
+      <div style="padding: 3rem 2rem; text-align: center; color: #6b7280;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem; opacity: 0.4;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <line x1="9" y1="15" x2="15" y2="15"/>
+        </svg>
+        <p style="font-size: 0.875rem; font-weight: 600; color: #374151; margin: 0 0 0.5rem;">${escapeHtml(message)}</p>
+        <p style="font-size: 0.75rem; color: #9ca3af; margin: 0;">${escapeHtml(suggestion)}</p>
+        ${hasActiveFilters ? `
+          <button id="clearFiltersBtn" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #1A733E; color: white; border: none; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+            Clear Filters
+          </button>
+        ` : ''}
+      </div>
+    `);
+
+    // Add event listener for clear filters button
+    if (hasActiveFilters) {
+      const clearBtn = container.querySelector('#clearFiltersBtn');
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          this.controller.clearAllFilters();
+        });
+      }
+    }
   }
 
   /**

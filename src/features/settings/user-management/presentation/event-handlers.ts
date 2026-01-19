@@ -64,30 +64,92 @@ export class EventHandlers {
       refreshBtn.addEventListener('click', () => this.main.refreshUsers());
     }
 
-    // Create user button
-    const createBtn = document.querySelector('.btn-create[onclick="openCreateUserModal()"]');
+    // Create user button (new modern design)
+    const createBtn = document.querySelector('.btn-create-modern');
     if (createBtn) {
       createBtn.addEventListener('click', async () => {
         await this.modalManager.openCreateModal();
       });
     }
+    
+    // Legacy create button (if exists)
+    const legacyCreateBtn = document.querySelector('.btn-create[onclick="openCreateUserModal()"]');
+    if (legacyCreateBtn) {
+      legacyCreateBtn.addEventListener('click', async () => {
+        await this.modalManager.openCreateModal();
+      });
+    }
 
-    // Bulk upload button
+    // Actions dropdown button - use toggleDropdown function
+    const actionsDropdownBtn = document.getElementById('actionsDropdownButton');
+    if (actionsDropdownBtn) {
+      actionsDropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if ((window as any).toggleDropdown) {
+          (window as any).toggleDropdown('actionsDropdown');
+        } else {
+          // Fallback implementation
+          const dropdown = document.getElementById('actionsDropdown');
+          if (dropdown) {
+            const isShowing = dropdown.classList.contains('show');
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+              if (menu.id !== 'actionsDropdown') menu.classList.remove('show');
+            });
+            if (isShowing) {
+              dropdown.classList.remove('show');
+              actionsDropdownBtn.setAttribute('aria-expanded', 'false');
+            } else {
+              dropdown.classList.add('show');
+              actionsDropdownBtn.setAttribute('aria-expanded', 'true');
+            }
+          }
+        }
+      });
+    }
+    
+    // Filter dropdown button - use toggleDropdown function
+    const filterDropdownBtn = document.getElementById('filterDropdownButton');
+    if (filterDropdownBtn) {
+      filterDropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if ((window as any).toggleDropdown) {
+          (window as any).toggleDropdown('filterDropdown');
+        } else {
+          // Fallback implementation
+          const dropdown = document.getElementById('filterDropdown');
+          if (dropdown) {
+            const isShowing = dropdown.classList.contains('show');
+            document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+              if (menu.id !== 'filterDropdown') menu.classList.remove('show');
+            });
+            if (isShowing) {
+              dropdown.classList.remove('show');
+              filterDropdownBtn.setAttribute('aria-expanded', 'false');
+            } else {
+              dropdown.classList.add('show');
+              filterDropdownBtn.setAttribute('aria-expanded', 'true');
+            }
+          }
+        }
+      });
+    }
+
+    // Bulk upload button (legacy)
     const bulkUploadBtn = document.querySelector('.btn-secondary[onclick="openBulkUploadModal()"]');
     if (bulkUploadBtn) {
       bulkUploadBtn.addEventListener('click', () => this.main.openBulkUploadModal());
     }
 
-    // User row click handler - navigate to profile page
+    // User row click handler - open edit modal (updated for new design)
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       
-      // Don't navigate if clicking on checkbox, edit button, or their children
+      // Don't navigate if clicking on checkbox, dropdown, or their children
       if (target.closest('.user-checkbox') || 
-          target.closest('.btn-edit') ||
+          target.closest('.action-dropdown-wrapper') ||
+          target.closest('.dropdown-menu') ||
           target.closest('input') ||
-          target.closest('button') ||
-          target.closest('svg')) {
+          (target.closest('button') && !target.closest('.user-row'))) {
         return;
       }
       
@@ -96,19 +158,46 @@ export class EventHandlers {
       if (userRow) {
         const email = userRow.getAttribute('data-email');
         if (email) {
-          // Navigate to user profile page (same as audit distribution)
-          const profileUrl = `/src/features/audit-distribution/presentation/user-profile-page.html?email=${encodeURIComponent(email)}`;
-          window.location.href = profileUrl;
+          // Open edit modal instead of navigating
+          const state = userManagementState.getState();
+          const user = state.allUsers.find(u => u.email === email);
+          if (user) {
+            this.modalManager.openEditModal(user);
+          }
         }
       }
     });
 
-    // Edit buttons (delegated)
+    // Action dropdown items (delegated)
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const dropdownItem = target.closest('.action-dropdown-item');
+      if (dropdownItem) {
+        e.stopPropagation();
+        const email = dropdownItem.getAttribute('data-email');
+        if (email) {
+          const state = userManagementState.getState();
+          const user = state.allUsers.find(u => u.email === email);
+          if (user) {
+            this.modalManager.openEditModal(user);
+          }
+        }
+        // Close dropdown
+        const dropdown = dropdownItem.closest('.action-dropdown-menu');
+        if (dropdown) {
+          dropdown.classList.remove('show');
+          const button = document.querySelector(`[data-dropdown-toggle="${dropdown.id}"]`);
+          if (button) button.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+
+    // Legacy edit buttons (delegated) - for backward compatibility
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const editBtn = target.closest('.btn-edit');
       if (editBtn) {
-        e.stopPropagation(); // Prevent row click navigation
+        e.stopPropagation();
         const email = editBtn.getAttribute('data-email');
         if (email) {
           const state = userManagementState.getState();
@@ -121,7 +210,7 @@ export class EventHandlers {
     });
 
     // Bulk apply button
-    const bulkApplyBtn = document.querySelector('.btn-bulk-apply[onclick="applyBulkEdit()"]');
+    const bulkApplyBtn = document.getElementById('bulkApplyButton') || document.querySelector('.btn-bulk-apply');
     if (bulkApplyBtn) {
       bulkApplyBtn.addEventListener('click', () => this.main.applyBulkEdit());
     }

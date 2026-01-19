@@ -8,6 +8,7 @@ import { clearAuthCache } from './secure-supabase.js';
 import { saveUserProfileToDatabase } from './auth-user-profile.js';
 import { storeDeviceFingerprint } from './auth-device.js';
 import { logError, logWarn, logInfo } from './logging-helper.js';
+import { showLoadingOverlay, hideLoadingOverlay } from './loading-overlay.js';
 
 /**
  * Sign in with Google using Supabase OAuth
@@ -43,6 +44,9 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     logError('Supabase not initialized');
     return;
   }
+
+  // Show loading overlay immediately
+  showLoadingOverlay('Completing sign in...');
 
   try {
     // Get the current session (Supabase processes OAuth callback automatically)
@@ -158,10 +162,32 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Redirect to home page (wrapper page for authenticated users)
-    window.location.href = '/src/features/home/presentation/legacy-home-page.html';
+    // Check for stored redirect path, otherwise go to home
+    const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/src/features/home/presentation/home-page.html';
+    sessionStorage.removeItem('redirectAfterLogin');
+    
+    // Use navigation utility for consistency
+    const { redirectAfterAction } = await import('./navigation.js');
+    redirectAfterAction(redirectPath);
   } catch (error) {
     logError('Error in handleGoogleOAuthCallback:', error);
+    hideLoadingOverlay();
+    // Show error to user
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: #ef4444;
+      color: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      z-index: 10001;
+      max-width: 400px;
+    `;
+    errorDiv.textContent = 'Sign in failed. Please try again.';
+    document.body.appendChild(errorDiv);
+    setTimeout(() => errorDiv.remove(), 5000);
   }
 }
 

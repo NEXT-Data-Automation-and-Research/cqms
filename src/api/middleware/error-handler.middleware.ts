@@ -86,3 +86,23 @@ export function asyncHandler(
   };
 }
 
+/**
+ * Handle API error and send response
+ * Helper function for route handlers
+ */
+export function handleApiError(res: Response, error: any, message: string = 'An error occurred'): Response {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const sanitized = sanitizeError(error, isDevelopment);
+  
+  logger.error('API Error:', {
+    message: error.message,
+    stack: error.stack,
+    code: error.code,
+  });
+  
+  return res.status(error.status || 500).json({
+    error: sanitized.error || message,
+    code: sanitized.code || 'INTERNAL_ERROR'
+  });
+}
+

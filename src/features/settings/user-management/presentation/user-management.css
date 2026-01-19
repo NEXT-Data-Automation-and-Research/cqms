@@ -21,6 +21,60 @@
     box-sizing: border-box;
 }
 
+/* Mobile: Reduce padding */
+@media (max-width: 639px) {
+    .user-management-container {
+        gap: 0.875rem;
+        padding: 0 0.5rem;
+    }
+
+    .page-heading {
+        font-size: 1.25rem;
+        padding: 0 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .page-heading-spacer {
+        margin-bottom: 0.75rem;
+    }
+
+    .user-management-container {
+        margin-top: 1rem;
+    }
+}
+
+/* Tablet: Standard padding */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .user-management-container {
+        gap: 1rem;
+        padding: 0 0.75rem;
+    }
+
+    .page-heading-spacer {
+        margin-bottom: 1rem;
+    }
+
+    .user-management-container {
+        margin-top: 1.5rem;
+    }
+}
+
+/* Desktop: Full padding */
+@media (min-width: 1024px) {
+    .user-management-container {
+        gap: 1.125rem;
+        padding: 0;
+    }
+
+    .page-heading-spacer {
+        margin-bottom: 1.125rem;
+    }
+
+    .user-management-container {
+        margin-top: 2rem;
+    }
+}
+
 .user-management-container * {
     box-sizing: border-box;
 }
@@ -33,6 +87,53 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
+}
+
+/* Mobile: 2 columns, hide subtitle */
+@media (max-width: 639px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+
+    .stat-card {
+        padding: 0.625rem;
+    }
+
+    .stat-value {
+        font-size: 1rem;
+    }
+    
+    /* Hide stat subtitle on mobile */
+    .stat-subtitle {
+        display: none;
+    }
+    
+    /* Simplify stat header */
+    .stat-header {
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-icon {
+        width: 0.75rem;
+        height: 0.75rem;
+    }
+}
+
+/* Tablet: 3-4 columns */
+@media (min-width: 640px) and (max-width: 1023px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+        gap: 0.625rem;
+    }
+}
+
+/* Desktop: Auto-fit with larger min */
+@media (min-width: 1024px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(6.3281rem, 1fr));
+        gap: 0.75rem;
+    }
 }
 
 .stat-card {

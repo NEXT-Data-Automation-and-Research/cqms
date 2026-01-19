@@ -12,6 +12,7 @@ import { createLogger } from '../../utils/logger.js';
 import { PEOPLE_USER_MANAGEMENT_FIELDS } from '../../core/constants/field-whitelists.js';
 import { sanitizeString, isValidEmail } from '../utils/validation.js';
 import { generateDefaultPasswordHash } from '../../utils/password-utils.js';
+import { validateRequestBody, VALIDATION_RULES, validateRequestSize } from '../middleware/validation.middleware.js';
 
 const router = Router();
 const logger = createLogger('PeopleAPI');
@@ -77,7 +78,18 @@ router.get('/:email', verifyAuth, requireAdmin, async (req: AuthenticatedRequest
  * Create a new person/user
  * Requires Admin access (uses service role key, bypasses RLS)
  */
-router.post('/', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', 
+  verifyAuth, 
+  requireAdmin, 
+  validateRequestSize(1024 * 1024), // 1MB limit
+  validateRequestBody({
+    email: VALIDATION_RULES.email,
+    name: VALIDATION_RULES.name,
+    role: VALIDATION_RULES.role,
+    department: VALIDATION_RULES.department,
+    employee_id: VALIDATION_RULES.employee_id
+  }),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const supabase = getServerSupabase();
     const userData = req.body;

@@ -51,14 +51,36 @@ export class UserOperationsHandler {
     const teamValue = (document.getElementById('editUserTeam') as HTMLInputElement)?.value;
     const teamSupervisorValue = (document.getElementById('editUserTeamSupervisor') as HTMLSelectElement)?.value;
     const qualityMentorValue = (document.getElementById('editUserQualitySupervisor') as HTMLSelectElement)?.value;
-    const designationValue = (document.getElementById('editUserDesignation') as HTMLInputElement)?.value;
+    const designationValue = (document.getElementById('editUserDesignation') as HTMLSelectElement)?.value;
     const employeeIdValue = (document.getElementById('editUserEmployeeId') as HTMLInputElement)?.value;
+    const countryValue = (document.getElementById('editUserCountry') as HTMLSelectElement)?.value;
 
     // Convert channel ID to name (database stores channel names, not IDs)
     let channelName: string | null = null;
     if (channelValue) {
       const channel = state.channels.find(c => c.id === channelValue);
       channelName = channel ? channel.name : channelValue; // Fallback to value if not found
+    }
+
+    // Validate form before submission
+    const { validateForm } = await import('../../../../utils/form-validation.js');
+    const validation = validateForm('editUserForm');
+    
+    if (!validation.isValid) {
+      // Show specific error messages
+      if (validation.errors.length > 0) {
+        const errorMessages = validation.errors.join('\n');
+        alert(`Please fix the following errors:\n\n${errorMessages}`);
+      }
+      
+      // Validation errors are already shown on individual fields
+      // Scroll to first error field
+      const firstErrorField = document.querySelector('input[style*="border-color: rgb(239, 68, 68)"], select[style*="border-color: rgb(239, 68, 68)"]') as HTMLElement;
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorField.focus();
+      }
+      return;
     }
 
     const updateData: UpdateUserData = {
@@ -71,15 +93,11 @@ export class UserOperationsHandler {
       quality_mentor: qualityMentorValue ? qualityMentorValue : null,
       designation: designationValue ? designationValue : null,
       employee_id: employeeIdValue ? employeeIdValue : null,
+      country: (document.getElementById('editUserCountry') as HTMLSelectElement)?.value || null,
       is_active: (document.getElementById('editUserStatus') as HTMLSelectElement)?.value === 'true',
       intercom_admin_id: intercomAdminId && selectedAdmin ? intercomAdminId : null,
       intercom_admin_alias: intercomAdminId && selectedAdmin ? selectedAdmin.name : null
     };
-
-    if (!updateData.name || !updateData.role) {
-      alert('Please fill in all required fields (Name, Role)');
-      return;
-    }
 
     try {
       await this.service.updateUser(email, updateData);
@@ -143,6 +161,27 @@ export class UserOperationsHandler {
       return value && value !== '' ? value : undefined;
     };
 
+    // Validate form before submission
+    const { validateForm } = await import('../../../../utils/form-validation.js');
+    const validation = validateForm('createUserForm');
+    
+    if (!validation.isValid) {
+      // Show specific error messages
+      if (validation.errors.length > 0) {
+        const errorMessages = validation.errors.join('\n');
+        alert(`Please fix the following errors:\n\n${errorMessages}`);
+      }
+      
+      // Validation errors are already shown on individual fields
+      // Scroll to first error field
+      const firstErrorField = document.querySelector('input[style*="border-color: rgb(239, 68, 68)"], select[style*="border-color: rgb(239, 68, 68)"]') as HTMLElement;
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstErrorField.focus();
+      }
+      return;
+    }
+
     const createData = {
       name: getName(),
       email: getEmail(),
@@ -159,11 +198,6 @@ export class UserOperationsHandler {
       intercom_admin_id: intercomAdminId && selectedAdmin ? intercomAdminId : undefined,
       intercom_admin_alias: intercomAdminId && selectedAdmin ? selectedAdmin.name || undefined : undefined
     };
-
-    if (!createData.name || !createData.email || !createData.role) {
-      alert('Please fill in all required fields (Name, Email, Role)');
-      return;
-    }
 
     try {
       const newUser = await this.service.createUser(createData);

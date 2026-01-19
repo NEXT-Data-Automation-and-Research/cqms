@@ -120,12 +120,55 @@ async function apiRequest<T>(
 
     const json = await response.json();
 
-    if (!response.ok) {
-      return {
-        data: null,
-        error: json.error || { message: 'Request failed', code: response.status },
-      };
-    }
+      if (!response.ok) {
+        // Extract error message from various response formats
+        let errorMessage = 'Request failed';
+        let errorCode = response.status;
+        
+        // Try multiple ways to extract error message
+        if (json.error) {
+          if (typeof json.error === 'string') {
+            errorMessage = json.error;
+          } else {
+            errorMessage = json.error.message || json.error.error || errorMessage;
+            errorCode = json.error.code || json.error.status || errorCode;
+          }
+        } else if (json.message) {
+          errorMessage = json.message;
+        } else if (json.details?.message) {
+          errorMessage = json.details.message;
+        } else if (json.details?.error) {
+          errorMessage = json.details.error;
+        }
+        
+        // Log the full response for debugging
+        logger.error('API request failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          response: json,
+          endpoint,
+        });
+        
+        // Include all error details from the response
+        const errorResponse: any = { 
+          message: errorMessage, 
+          code: errorCode, 
+          status: response.status,
+          statusText: response.statusText,
+        };
+        
+        // Include details if available
+        if (json.details) {
+          errorResponse.details = json.details;
+        } else {
+          errorResponse.details = json;
+        }
+        
+        return {
+          data: null,
+          error: errorResponse,
+        };
+      }
 
     return { data: json.data || json, error: null };
   } catch (error: any) {
@@ -346,6 +389,58 @@ export const apiClient = {
         method: 'POST',
         body: JSON.stringify({ emails, updates }),
       });
+    },
+  },
+
+  /**
+   * Google Meet operations
+   */
+  googleMeet: {
+    /**
+     * Generate a Google Meet link
+     * @param options - Options for generating the Meet link
+     * @returns Promise with meetLink and optional calendarEventId
+     */
+    async generate(options?: {
+      title?: string;
+      startTime?: string;
+      endTime?: string;
+      description?: string;
+      attendees?: string[];
+    }): Promise<{ success: boolean; meetLink: string; calendarEventId?: string }> {
+      const result = await apiRequest<{ success: boolean; meetLink: string; calendarEventId?: string }>('/api/google-meet/generate', {
+        method: 'POST',
+        body: JSON.stringify(options || {}),
+      });
+      
+      if (result.error) {
+        // Create error with all available details
+        const errorMessage = result.error.message || result.error.error || 'Failed to generate Meet link';
+        const error = new Error(errorMessage);
+        
+        // Attach all error properties
+        (error as any).code = result.error.code;
+        (error as any).status = result.error.status;
+        (error as any).statusText = result.error.statusText;
+        (error as any).details = result.error.details;
+        (error as any).error = result.error; // Include full error object
+        
+        // Log the error for debugging
+        logger.error('[APIClient] Google Meet generation error:', {
+          message: errorMessage,
+          code: result.error.code,
+          status: result.error.status,
+          details: result.error.details,
+        });
+        
+        throw error;
+      }
+      
+      if (!result.data) {
+        throw new Error('No data returned from Meet link generation');
+      }
+      
+      return result.data;
     },
   },
 };

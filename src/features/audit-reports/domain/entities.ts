@@ -87,6 +87,12 @@ export interface AuditFilters {
   endDate?: string;
   searchQuery?: string;
   auditId?: string;
+  interactionId?: string;
+  week?: number;
+  minScore?: number;
+  maxScore?: number;
+  minErrors?: number;
+  maxErrors?: number;
 }
 
 export interface DateRange {

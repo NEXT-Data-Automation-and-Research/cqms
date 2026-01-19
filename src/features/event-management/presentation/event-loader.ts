@@ -25,11 +25,17 @@ async function initializeEventManagement(): Promise<void> {
     // Create controller
     eventController = new EventController();
     
+    // Set loading state before initialization
+    eventController.getStateManager().setLoading(true);
+    
+    // Create renderer early to show loading state
+    eventRenderer = new EventRenderer(eventController.getStateManager());
+    
+    // Initial render to show loading state
+    eventRenderer.render();
+    
     // Initialize controller (loads data)
     await eventController.initialize();
-    
-    // Create renderer
-    eventRenderer = new EventRenderer(eventController.getStateManager());
     
     // Create event handlers
     eventHandlers = new EventEventHandlers(
@@ -57,15 +63,28 @@ async function initializeEventManagement(): Promise<void> {
     (window as any).eventRenderer = eventRenderer;
     (window as any).eventHandlers = eventHandlers;
     
+    // Ensure handlers are available immediately for any already-rendered HTML
+    if (eventHandlers) {
+      // Re-render to attach event listeners to any existing HTML
+      eventRenderer.render();
+    }
+    
     logInfo('[EventLoader] Event management initialized');
   } catch (error) {
     logError('[EventLoader] Error initializing event management:', error);
     const eventsList = document.getElementById('eventsList');
     if (eventsList) {
+      // H4: Add error state with retry button
       eventsList.innerHTML = `
         <div class="px-4 py-12 text-center">
+          <svg class="w-16 h-16 mx-auto mb-4 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
           <p class="text-sm font-semibold text-red-600 mb-1">Error loading events</p>
-          <p class="text-xs text-gray-500">Please refresh the page</p>
+          <p class="text-xs text-gray-500 mb-4">Please check your connection and try again</p>
+          <button onclick="window.location.reload()" class="px-4 py-2 bg-primary text-white text-xs font-semibold rounded hover:bg-primary-dark transition-colors">
+            Retry
+          </button>
         </div>
       `;
     }

@@ -360,12 +360,14 @@ import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
+import googleMeetRouter from './api/routes/google-meet.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
+app.use('/api/google-meet', googleMeetRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

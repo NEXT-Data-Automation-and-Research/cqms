@@ -178,36 +178,74 @@
         // Initialize on page load
         await initializeSupabase();
         
+        // H2 FIX: Import loading overlay utility
+        let showLoadingOverlay, hideLoadingOverlay;
+        import('/js/utils/loading-overlay.js').then(module => {
+            showLoadingOverlay = module.showLoadingOverlay;
+            hideLoadingOverlay = module.hideLoadingOverlay;
+        }).catch(() => {
+            // Fallback if module not available
+            showLoadingOverlay = (msg) => {
+                const overlay = document.createElement('div');
+                overlay.id = 'oauth-loading';
+                overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000; color: white; font-size: 1.2rem;';
+                overlay.textContent = msg || 'Loading...';
+                document.body.appendChild(overlay);
+            };
+            hideLoadingOverlay = () => {
+                const overlay = document.getElementById('oauth-loading');
+                if (overlay) overlay.remove();
+            };
+        });
+
         // Handle OAuth callback (when user returns from Google)
         // Supabase automatically processes OAuth callbacks, so we check for session
         async function checkAndHandleCallback() {
             const supabase = getSupabase();
             if (!supabase) {
-                return;
+                return false;
             }
             
-            // Check for session (Supabase processes OAuth callback automatically)
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-                // User has a session, handle the callback
-                await handleGoogleOAuthCallback();
-                return true; // Callback handled
-            }
-            
-            // Also check URL parameters/hash (fallback detection)
+            // H2 FIX: Show loading overlay immediately during callback processing
             const urlParams = new URLSearchParams(window.location.search);
             const urlHash = window.location.hash;
-            if (urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code')) {
-                // Wait a bit for Supabase to process the callback
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const { data: { session: retrySession } } = await supabase.auth.getSession();
-                if (retrySession && retrySession.user) {
-                    await handleGoogleOAuthCallback();
-                    return true; // Callback handled
+            const isCallback = urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code');
+            
+            if (isCallback) {
+                if (showLoadingOverlay) {
+                    showLoadingOverlay('Completing sign in...');
                 }
             }
             
-            return false; // No callback detected
+            try {
+                // Check for session (Supabase processes OAuth callback automatically)
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && session.user) {
+                    // User has a session, handle the callback
+                    await handleGoogleOAuthCallback();
+                    if (hideLoadingOverlay) hideLoadingOverlay();
+                    return true; // Callback handled
+                }
+                
+                // Also check URL parameters/hash (fallback detection)
+                if (isCallback) {
+                    // Wait a bit for Supabase to process the callback
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const { data: { session: retrySession } } = await supabase.auth.getSession();
+                    if (retrySession && retrySession.user) {
+                        await handleGoogleOAuthCallback();
+                        if (hideLoadingOverlay) hideLoadingOverlay();
+                        return true; // Callback handled
+                    }
+                }
+                
+                if (hideLoadingOverlay) hideLoadingOverlay();
+                return false; // No callback detected
+            } catch (error) {
+                if (hideLoadingOverlay) hideLoadingOverlay();
+                console.error('Error during OAuth callback:', error);
+                return false;
+            }
         }
         
         // Check for callback on page load
