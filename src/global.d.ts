@@ -2,6 +2,11 @@
  * Global type declarations for window object extensions
  */
 
+interface AccessControl {
+  enforcePageAccess(pageName: string): Promise<boolean> | boolean;
+  loadRulesFromDatabase?(): Promise<void>;
+}
+
 interface Window {
   // Dhaka timezone utility functions
   getDhakaNow?: () => Date;
@@ -16,4 +21,7 @@ interface Window {
   parseDhakaDate?: (dateString: string) => Date;
   dhakaDateToUTCISO?: (date: Date) => string;
   toDhakaTime?: (utcString: string) => Date;
+  
+  // Access control
+  accessControl?: AccessControl;
 }

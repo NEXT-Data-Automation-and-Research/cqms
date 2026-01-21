@@ -118,7 +118,7 @@ async function initAuthCheck(): Promise<void> {
         if (user) {
           logInfo('User authenticated, redirecting to home page...');
           // Use replace to prevent back button issues
-          window.location.replace('/src/features/home/presentation/legacy-home-page.html');
+          window.location.replace('/src/features/home/presentation/home-page.html');
         } else {
           // Token appeared valid but user fetch failed - redirect to login
           logInfo('Token validation failed, redirecting to auth page...');

@@ -140,9 +140,7 @@ main.main-content * {
 #user-profile-container div[style*="uppercase"],
 #user-profile-container div[style*="text-transform: uppercase"] {
   color: #374151 !important;
-}
-
-#user-profile-container span {
+}#user-profile-container span {
   color: #374151 !important;
 }/* Ensure values are darkest */
 #user-profile-container div[style*="font-size: 0.875rem"],

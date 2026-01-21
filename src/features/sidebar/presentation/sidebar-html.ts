@@ -35,7 +35,7 @@ export const SIDEBAR_HTML_TEMPLATE = `<!-- Sidebar Component -->
         </li>
 
         <li role="none">
-            <a href="/src/features/home/presentation/legacy-home-page.html" class="menu-item" role="menuitem" tabindex="0" aria-label="Home">
+            <a href="/src/features/home/presentation/home-page.html" class="menu-item" role="menuitem" tabindex="0" aria-label="Home">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
                 </svg>
@@ -44,7 +44,7 @@ export const SIDEBAR_HTML_TEMPLATE = `<!-- Sidebar Component -->
         </li>
 
         <li role="none">
-            <a href="/src/features/dashboard/presentation/auditor-dashboard-page.html" class="menu-item" role="menuitem" tabindex="0" aria-label="Auditor's Dashboard">
+            <a href="/src/features/dashboard/presentation/new-auditors-dashboard.html" class="menu-item" role="menuitem" tabindex="0" aria-label="Auditor's Dashboard">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
                 </svg>

@@ -1,0 +1,336 @@
+================================================================================
+HOME PAGE - FILTERS AND SORTING FUNCTIONALITIES
+================================================================================
+
+Generated: 2025-01-XX
+Location: src/features/home/
+
+================================================================================
+1. DATE FILTERS
+================================================================================
+
+1.1 WEEK NAVIGATION
+   - Component: Week Navigation Buttons
+   - Location: action-buttons.html
+   - Elements:
+     * Previous Week Button (id: prevWeekBtn)
+     * Week Display Button (id: weekDisplay)
+     * Next Week Button (id: nextWeekBtn)
+   - Functionality:
+     * Navigate between weeks
+     * Default: Current week
+     * Updates week number display
+     * Filters all data by selected week
+   - Implementation: DateFilterManager.navigateWeek()
+
+1.2 DATE RANGE PICKER
+   - Component: Date Range Dropdown
+   - Location: action-buttons.html
+   - Elements:
+     * Date Button (id: dateBtn)
+     * Date Dropdown Menu (id: dateDropdown)
+     * Start Date Input (id: startDate)
+     * End Date Input (id: endDate)
+     * Apply Button (onclick: applyDateFilter())
+     * Clear Button (onclick: clearDateFilter())
+   - Functionality:
+     * Select custom date range
+     * Filters all data by selected date range
+     * Overrides week filter when active
+   - Implementation: DateFilterManager.applyDateFilter()
+   - Clear Function: DateFilterManager.clearDateFilter()
+
+1.3 QUICK DATE FILTERS
+   - Component: Quick Date Filter Buttons
+   - Location: action-buttons.html
+   - Buttons:
+     * Today (id: todayBtn, onclick: applyQuickDateFilter('today'))
+     * Yesterday (id: yesterdayBtn, onclick: applyQuickDateFilter('yesterday'))
+     * This Month (id: thisMonthBtn, onclick: applyQuickDateFilter('thisMonth'))
+     * Last Month (id: lastMonthBtn, onclick: applyQuickDateFilter('lastMonth'))
+   - Functionality:
+     * One-click date filtering
+     * Sets date range automatically
+     * Updates all dashboard data
+   - Implementation: window.applyQuickDateFilter()
+
+1.4 DEFAULT DATE FILTER
+   - Default Behavior: Today's week (current week)
+   - Implementation: DateFilterManager.getCurrentPeriodDates()
+   - Uses Dhaka timezone for date calculations
+
+================================================================================
+2. DATA FILTERS
+================================================================================
+
+2.1 CHANNEL FILTER
+   - Component: Filter Panel - Channel Dropdown
+   - Location: action-buttons.html
+   - Element: filterChannel (select dropdown)
+   - Options:
+     * "All Channels" (default, value: "")
+     * Dynamic channels loaded from database
+   - Data Source:
+     * For Agents: From scorecard tables (employee_email matches)
+     * For Auditors: From audit_assignments table + scorecard tables
+   - Functionality:
+     * Filters audits by channel
+     * Applies to: Assigned Audits, Stats, Updates
+   - Implementation: FilterManager.populateFilters()
+   - Apply Function: ActionHandlers.applyFilters()
+
+2.2 STATUS FILTER
+   - Component: Filter Panel - Status Dropdown
+   - Location: action-buttons.html
+   - Element: filterStatus (select dropdown)
+   - Options:
+     * "All Statuses" (default, value: "")
+     * "Pending" (value: "pending")
+     * "In Progress" (value: "in_progress")
+     * "Completed" (value: "completed")
+   - Functionality:
+     * Filters audits by status
+     * Applies to: Assigned Audits, Stats
+   - Implementation: ActionHandlers.applyFilters()
+
+2.3 AGENT FILTER
+   - Component: Filter Panel - Agent Dropdown
+   - Location: action-buttons.html
+   - Element: filterAgent (select dropdown)
+   - Visibility: Only visible for Auditors (not Agents)
+   - Element: filterAgentGroup (container, hidden for agents)
+   - Options:
+     * "All Agents" (default, value: "")
+     * Dynamic agents loaded from database
+   - Data Source:
+     * From audit_assignments table (employee_email field)
+     * From scorecard tables (for auditors)
+   - Functionality:
+     * Filters audits by assigned agent/employee
+     * Applies to: Assigned Audits, Stats
+   - Implementation: FilterManager.populateFilters()
+   - Format: Agent names formatted from email addresses
+
+2.4 FILTER PANEL
+   - Component: Filter Panel Container
+   - Location: action-buttons.html
+   - Element: filterPanel (div)
+   - Toggle Button: filterBtn
+   - Functionality:
+     * Click "Filter" button to show/hide panel
+     * Click outside to close panel
+     * Apply Filters button applies all selected filters
+     * Clear button resets all filters
+   - Apply Function: window.applyFilters()
+   - Clear Function: window.clearFilters()
+
+================================================================================
+3. SORTING FUNCTIONALITIES
+================================================================================
+
+3.1 ASSIGNED AUDITS SORTING
+   - Component: Sort Menu Dropdown
+   - Location: assigned-audits.html
+   - Toggle Button: sortBtn (onclick: toggleSortMenu())
+   - Sort Menu: sortMenu (hidden by default)
+   - Sort Dropdown: auditSortBy (select, onchange: sortAssignedAudits())
+   - Sort Options:
+     * Name (A-Z) - value: "name_asc"
+       - Sorts by employee_name or employee_email (for auditors)
+       - Sorts by auditor_name or auditor_email (for agents)
+       - Case-insensitive alphabetical order
+     * Name (Z-A) - value: "name_desc"
+       - Reverse alphabetical order
+       - Same field selection as name_asc
+     * Status (Ascending) - value: "status_asc"
+       - For assignments: pending (0) < in_progress (1)
+       - For completed audits: passing_status alphabetically
+     * Status (Descending) - value: "status_desc"
+       - Reverse status order
+       - Same logic as status_asc but reversed
+     * Date (Newest) - value: "date_desc" (DEFAULT)
+       - Sorts by submitted_at or created_at
+       - Most recent first
+     * Date (Oldest) - value: "date_asc"
+       - Sorts by submitted_at or created_at
+       - Oldest first
+   - Functionality:
+     * Sorts the assigned audits list
+     * Updates display immediately
+     * Does not reload data from server (client-side sort)
+     * Handles both assignments and completed audits
+   - Implementation: 
+     * ActionHandlers.sortAssignedAudits() - Updates state
+     * AuditRenderer.sortAudits() - Performs actual sorting
+   - State: Stored in homeState.sortBy
+   - Sorting Logic: Differentiates between assignments (_isAssignment flag) and completed audits
+
+================================================================================
+4. FILTER APPLICATION SCOPE
+================================================================================
+
+4.1 WHAT GETS FILTERED BY DATE FILTERS:
+   - Stats Cards (all statistics)
+   - Assigned Audits List
+   - Recent Updates Feed
+   - Upcoming Events
+   - Notifications
+
+4.2 WHAT GETS FILTERED BY DATA FILTERS (Channel/Status/Agent):
+   - Assigned Audits List
+   - Statistics (where applicable)
+   - Recent Updates (where applicable)
+
+4.3 WHAT GETS SORTED:
+   - Assigned Audits List (only)
+
+================================================================================
+5. FILTER STATE MANAGEMENT
+================================================================================
+
+5.1 FILTER STATE
+   - Location: homeState.currentFilters
+   - Structure:
+     {
+       channel: string,    // Selected channel or ""
+       status: string,     // Selected status or ""
+       agent: string       // Selected agent email or ""
+     }
+
+5.2 DATE FILTER STATE
+   - Location: DateFilterManager
+   - Properties:
+     * dateFilter.start: Date | null
+     * dateFilter.end: Date | null
+     * currentWeek: number | null
+     * currentWeekYear: number | null
+     * useWeekFilter: boolean
+
+5.3 SORT STATE
+   - Location: homeState.sortBy
+   - Default: "date_desc"
+   - Values: "name_asc", "name_desc", "status_asc", "status_desc", "date_desc", "date_asc"
+
+================================================================================
+6. FILTER REFRESH BEHAVIOR
+================================================================================
+
+6.1 WHEN FILTERS ARE APPLIED:
+   - Dashboard refreshes automatically
+   - All data reloaded with new filters
+   - Uses Promise.allSettled() to prevent blocking
+   - Stats, Audits, Updates, and Notifications reload
+
+6.2 WHEN DATE FILTER IS APPLIED:
+   - Dashboard refreshes automatically
+   - All components reload with new date range
+   - Week filter is overridden if date range is set
+
+6.3 WHEN FILTERS ARE CLEARED:
+   - All filter dropdowns reset to "All"
+   - Filter panel closes
+   - Dashboard refreshes with no filters
+   - Returns to default (current week)
+
+================================================================================
+7. FILTER DATA SOURCES
+================================================================================
+
+7.1 CHANNEL FILTER DATA:
+   - Source Tables:
+     * audit_assignments (for auditors)
+     * scorecard tables (dynamic tables, for both agents and auditors)
+   - Field: channel
+   - Filtered by: Current user's assignments/audits
+   - Sorted: Alphabetically
+
+7.2 AGENT FILTER DATA:
+   - Source Tables:
+     * audit_assignments (for auditors)
+     * scorecard tables (for auditors)
+   - Field: employee_email
+   - Filtered by: Current auditor's assignments
+   - Format: Email addresses formatted as names
+   - Sorted: Alphabetically
+
+7.3 STATUS FILTER DATA:
+   - Source: Static options
+   - Values: pending, in_progress, completed
+   - Applied to: audit_assignments.status field
+
+================================================================================
+8. GLOBAL FUNCTIONS EXPOSED
+================================================================================
+
+8.1 FILTER FUNCTIONS:
+   - window.applyFilters() - Applies all selected filters
+   - window.clearFilters() - Clears all filters and refreshes
+
+8.2 DATE FILTER FUNCTIONS:
+   - window.applyDateFilter() - Applies date range filter
+   - window.clearDateFilter() - Clears date filter
+   - window.applyQuickDateFilter(period) - Applies quick date filter
+     * period values: 'today', 'yesterday', 'thisMonth', 'lastMonth'
+
+8.3 SORT FUNCTIONS:
+   - window.sortAssignedAudits() - Sorts assigned audits list
+   - window.toggleSortMenu() - Shows/hides sort menu
+
+================================================================================
+9. IMPLEMENTATION FILES
+================================================================================
+
+9.1 FILTER COMPONENTS:
+   - HTML: src/features/home/components/action-buttons/action-buttons.html
+   - Manager: src/features/home/infrastructure/modules/filter-manager.ts
+   - Handlers: src/features/home/infrastructure/modules/action-handlers.ts
+
+9.2 DATE FILTER COMPONENTS:
+   - Manager: src/features/home/infrastructure/date-filter-manager.ts
+   - Handlers: src/features/home/infrastructure/modules/action-handlers.ts
+
+9.3 SORT COMPONENTS:
+   - HTML: src/features/home/components/assigned-audits/assigned-audits.html
+   - Renderer: src/features/home/infrastructure/modules/audit-renderer.ts
+   - Handlers: src/features/home/infrastructure/modules/action-handlers.ts
+
+9.4 STATE MANAGEMENT:
+   - State: src/features/home/infrastructure/state.ts
+   - Main Orchestrator: src/features/home/infrastructure/home-main.ts
+
+================================================================================
+10. FILTER WORKFLOW
+================================================================================
+
+10.1 FILTER APPLICATION FLOW:
+   1. User selects filter options in Filter Panel
+   2. User clicks "Apply Filters" button
+   3. applyFilters() function called
+   4. Filter values stored in homeState.currentFilters
+   5. Filter panel closes automatically
+   6. refreshDashboard() called
+   7. All data reloaded with filters:
+      - Stats recalculated
+      - Audits reloaded and filtered
+      - Updates reloaded and filtered
+      - Notifications reloaded
+
+10.2 DATE FILTER APPLICATION FLOW:
+   1. User selects date range OR clicks quick date button
+   2. applyDateFilter() or applyQuickDateFilter() called
+   3. DateFilterManager updates date filter state
+   4. refreshDashboard() called
+   5. All data reloaded with new date range
+
+10.3 SORT APPLICATION FLOW:
+   1. User clicks sort button
+   2. Sort menu toggles visibility
+   3. User selects sort option
+   4. sortAssignedAudits() called
+   5. homeState.sortBy updated
+   6. AuditRenderer re-renders with new sort order
+   7. No data reload from server (client-side sort)
+
+================================================================================
+END OF DOCUMENT
+================================================================================

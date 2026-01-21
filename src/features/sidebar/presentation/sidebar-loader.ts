@@ -423,7 +423,7 @@ export class SidebarLoader {
 
     // Hide menu items that employees shouldn't see
     const itemsToHide = [
-      'auditor-dashboard-page.html',
+      'new-auditors-dashboard.html',
       'audit-distribution-page.html',
       'create-audit.html'
     ]

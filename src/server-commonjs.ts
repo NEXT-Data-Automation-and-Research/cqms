@@ -282,9 +282,21 @@ app.get('/src/auth/presentation/auth-page.html', (req: express.Request, res: exp
   }
 });
 
+// Serve home-page.html with version injection (main home page) - MUST be before generic route
+app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/home/presentation/home-page.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    serverLogger.error('Error processing home-page.html:', error);
+    res.sendFile(path.join(__dirname, '../src/features/home/presentation/home-page.html'));
+  }
+});
+
 // ✅ SECURITY: Serve all HTML files from src directory with version injection and auto auth-checker
 // This catches all feature pages automatically - route must be BEFORE express.static
 // Using a more specific pattern that Express supports
+// NOTE: Specific routes above must be defined BEFORE this generic route
 app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void => {
   const htmlPath = req.path.replace('/src/', 'src/');
   
@@ -316,31 +328,9 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
   }
 });
 
-// Serve legacy-home-page.html with version injection (main home page)
-app.get('/src/features/home/presentation/legacy-home-page.html', (req: express.Request, res: express.Response): void => {
-  try {
-    const html = injectVersionIntoHTML('src/features/home/presentation/legacy-home-page.html', appVersion);
-    res.send(html);
-  } catch (error) {
-    serverLogger.error('Error processing legacy-home-page.html:', error);
-    res.sendFile(path.join(__dirname, '../src/features/home/presentation/legacy-home-page.html'));
-  }
-});
-
-// Serve legacy-home-page.html via home-page.html route (backward compatibility)
-app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
-  try {
-    const html = injectVersionIntoHTML('src/features/home/presentation/legacy-home-page.html', appVersion);
-    res.send(html);
-  } catch (error) {
-    serverLogger.error('Error processing legacy-home-page.html:', error);
-    res.sendFile(path.join(__dirname, '../src/features/home/presentation/legacy-home-page.html'));
-  }
-});
-
 // Keep dashboard.html route for backward compatibility (redirects to home)
 app.get('/dashboard.html', (req: express.Request, res: express.Response): void => {
-  res.redirect('/src/features/home/presentation/legacy-home-page.html');
+  res.redirect('/src/features/home/presentation/home-page.html');
 });
 
 // Parse JSON bodies
@@ -360,14 +350,12 @@ import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
-import googleMeetRouter from './api/routes/google-meet.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
-app.use('/api/google-meet', googleMeetRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -10,7 +10,7 @@ import type { RouteConfig } from './route-types.js'
  */
 export const routes: RouteConfig[] = [
   {
-    path: '/src/features/home/presentation/legacy-home-page.html',
+    path: '/src/features/home/presentation/home-page.html',
     meta: {
       label: 'Home',
       icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>',
@@ -20,7 +20,7 @@ export const routes: RouteConfig[] = [
     }
   },
   {
-    path: '/src/features/dashboard/presentation/auditor-dashboard-page.html',
+    path: '/src/features/dashboard/presentation/new-auditors-dashboard.html',
     meta: {
       label: "Auditors' Dashboard",
       icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>',
@@ -30,7 +30,7 @@ export const routes: RouteConfig[] = [
     }
   },
   {
-    path: '/src/features/audit-distribution/presentation/audit-distribution-page.html',
+    path: '/src/features/audit-distribution/presentation/new-audit-distribution.html',
     meta: {
       label: 'Audit Distribution',
       icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>',
@@ -40,7 +40,7 @@ export const routes: RouteConfig[] = [
     }
   },
   {
-    path: '/src/features/create-audit/presentation/create-audit.html',
+    path: '/src/features/create-audit/presentation/new-create-audit.html',
     meta: {
       label: 'Create Audit',
       icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>',
