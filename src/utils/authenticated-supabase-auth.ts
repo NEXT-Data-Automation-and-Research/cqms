@@ -256,10 +256,17 @@ export function clearAuthCache(): void {
 /**
  * Initialize auth state change listener
  * Clears cache on token refresh to prevent stale auth status
+ * ✅ FIX: Only sets up listener once to prevent duplicate registrations
  */
 export function initializeAuthStateListener(): void {
   if (typeof window === 'undefined') {
     return; // Server-side, no listener needed
+  }
+
+  // ✅ FIX: Check if listener is already set up to prevent duplicates
+  if ((window as any).__authCacheListenerSetup) {
+    logger.debug('Auth cache listener already set up, skipping');
+    return;
   }
 
   const supabase = getSupabase();
@@ -279,9 +286,18 @@ export function initializeAuthStateListener(): void {
 
 /**
  * Setup auth state change listener
+ * ✅ FIX: Only sets up listener once using singleton pattern
  */
 function setupListener(supabase: any): void {
-  supabase.auth.onAuthStateChange((event: string, session: any) => {
+  // ✅ FIX: Double-check to prevent race conditions
+  if ((window as any).__authCacheListenerSetup) {
+    logger.debug('Auth cache listener already set up, skipping');
+    return;
+  }
+  
+  (window as any).__authCacheListenerSetup = true;
+  
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
     if (event === 'TOKEN_REFRESHED') {
       if (session) {
         clearAuthCache();
@@ -297,5 +313,8 @@ function setupListener(supabase: any): void {
       logger.debug('User signed in - cleared auth cache');
     }
   });
+  
+  // Store subscription for potential cleanup (though we keep it active for the session)
+  (window as any).__authCacheListenerSubscription = subscription;
 }
 

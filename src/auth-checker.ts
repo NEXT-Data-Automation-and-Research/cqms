@@ -177,6 +177,7 @@ async function initAuthCheck(): Promise<void> {
   // User is authenticated - allow access to the page
   
   // Set up auth state listener to handle token expiration in real-time
+  // ✅ FIX: Only set up listener once to prevent multiple registrations causing login/logout loops
   const supabase = getSupabase();
   if (supabase) {
     // H3 FIX: Start session monitoring for expiry warnings
@@ -188,39 +189,66 @@ async function initAuthCheck(): Promise<void> {
         // Ignore if module not loaded yet
       });
 
-    supabase.auth.onAuthStateChange((event: string, session: any) => {
-      if (event === 'SIGNED_OUT') {
-        // H3 FIX: Handle session expiry with auto-save
-        import('./utils/session-warning.js')
-          .then((module) => {
-            module.handleSessionExpiry();
-          })
-          .catch(() => {
-            redirectToLogin();
-          });
-      } else if (event === 'TOKEN_REFRESHED') {
-        if (!session) {
-          logError('Auth Checker: Token refresh failed - redirecting to login');
+    // ✅ FIX: Store subscription to prevent duplicate listeners
+    // Check if listener is already set up (using a global flag)
+    if (!(window as any).__authStateListenerSetup) {
+      (window as any).__authStateListenerSetup = true;
+      
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+        // ✅ FIX: Don't interfere with login process on auth page
+        const currentPath = window.location.pathname;
+        const isAuthPage = currentPath === '/src/auth/presentation/auth-page.html' || currentPath.endsWith('auth-page.html');
+        
+        // On auth page, only handle SIGNED_OUT (user manually logged out)
+        // Don't interfere with SIGNED_IN or TOKEN_REFRESHED during login
+        if (isAuthPage && event !== 'SIGNED_OUT') {
+          return;
+        }
+        
+        if (event === 'SIGNED_OUT') {
           // H3 FIX: Handle session expiry with auto-save
           import('./utils/session-warning.js')
             .then((module) => {
               module.handleSessionExpiry();
             })
             .catch(() => {
-              redirectToLogin();
+              // Only redirect if not already on auth page
+              if (!isAuthPage) {
+                redirectToLogin();
+              }
             });
-        } else {
-          // Clear auth cache to get fresh verification with new token
-          import('./utils/authenticated-supabase.js')
-            .then((module) => {
-              module.clearAuthCache();
-            })
-            .catch(() => {
-              // Ignore if module not loaded yet
-            });
+        } else if (event === 'TOKEN_REFRESHED') {
+          if (!session) {
+            logError('Auth Checker: Token refresh failed - redirecting to login');
+            // H3 FIX: Handle session expiry with auto-save
+            import('./utils/session-warning.js')
+              .then((module) => {
+                module.handleSessionExpiry();
+              })
+              .catch(() => {
+                // Only redirect if not already on auth page
+                if (!isAuthPage) {
+                  redirectToLogin();
+                }
+              });
+          } else {
+            // Clear auth cache to get fresh verification with new token
+            import('./utils/authenticated-supabase.js')
+              .then((module) => {
+                module.clearAuthCache();
+              })
+              .catch(() => {
+                // Ignore if module not loaded yet
+              });
+          }
         }
-      }
-    });
+        // ✅ FIX: Ignore SIGNED_IN event to prevent redirect loops during login
+        // The OAuth callback handler will manage redirects after successful login
+      });
+      
+      // Store subscription for potential cleanup (though we keep it active for the session)
+      (window as any).__authStateSubscription = subscription;
+    }
   } else {
     logError('Auth Checker: Supabase client not available');
   }

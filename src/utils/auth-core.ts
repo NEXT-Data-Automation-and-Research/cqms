@@ -190,7 +190,10 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
     const accessToken = currentSession.access_token || '';
     const userId = user?.id || currentSession.user?.id;
     
-    if (accessToken && userId) {
+    // ✅ FIX: Skip fingerprint validation immediately after login to prevent race conditions
+    const loginJustCompleted = sessionStorage.getItem('loginJustCompleted') === 'true';
+    
+    if (accessToken && userId && !loginJustCompleted) {
       if (!validateDeviceFingerprint(accessToken, userId)) {
         logError('🚨 SECURITY VIOLATION: Token appears to be copied to different device!');
         logError('Invalidating session for security.');
@@ -211,6 +214,11 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
         clearDeviceFingerprints();
         
         return false;
+      }
+    } else if (loginJustCompleted) {
+      // Ensure fingerprint is stored during grace period
+      if (accessToken && userId) {
+        validateDeviceFingerprint(accessToken, userId); // This will store if missing
       }
     }
 

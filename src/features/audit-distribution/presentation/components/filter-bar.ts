@@ -5,7 +5,6 @@
 
 import type { Employee, FilterOptions } from '../../domain/types.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
-import { FilterSelectionModal } from './filter-selection-modal.js';
 import { getActiveFilterChips } from './filter-chip-utils.js';
 import { getFilterBarHTML } from './filter-bar-template.js';
 
@@ -13,15 +12,13 @@ export interface FilterBarConfig {
   employees: Employee[];
   filters: FilterOptions;
   onFilterChange: (filters: FilterOptions) => void;
-  onSelectAll?: () => void;
-  onDeselectAll?: () => void;
 }
 
 export class FilterBar {
   private container: HTMLElement;
   private config: FilterBarConfig;
-  private filterModal: FilterSelectionModal | null = null;
   private searchInputHandler: ((e: Event) => void) | null = null;
+  private searchKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
   private searchDebounceTimer: number | null = null;
 
   constructor(container: HTMLElement, config: FilterBarConfig) {
@@ -38,10 +35,17 @@ export class FilterBar {
     }
 
     // Remove existing event listeners before replacing HTML
+    // Note: safeSetHTML replaces the entire HTML, so old event listeners are automatically removed
     const searchInput = this.container.querySelector('#employeeSearch') as HTMLInputElement;
-    if (searchInput && this.searchInputHandler) {
-      searchInput.removeEventListener('input', this.searchInputHandler);
-      this.searchInputHandler = null;
+    if (searchInput) {
+      if (this.searchInputHandler) {
+        searchInput.removeEventListener('input', this.searchInputHandler);
+        this.searchInputHandler = null;
+      }
+      if (this.searchKeydownHandler) {
+        searchInput.removeEventListener('keydown', this.searchKeydownHandler);
+        this.searchKeydownHandler = null;
+      }
     }
 
     const { filters, employees } = this.config;
@@ -52,36 +56,15 @@ export class FilterBar {
       filters.search || '',
       activeFilterChips,
       hasActiveFilters,
-      !!this.config.onSelectAll,
-      !!this.config.onDeselectAll
+      false,
+      false,
+      this.config.employees,
+      this.config.filters
     );
 
     safeSetHTML(this.container, html);
 
     this.attachEventListeners();
-    this.initializeFilterModal();
-  }
-
-  private initializeFilterModal(): void {
-    this.filterModal = new FilterSelectionModal({
-      employees: this.config.employees,
-      filters: this.config.filters,
-      onApply: (filters) => {
-        this.config.onFilterChange(filters);
-      },
-      onClose: () => {
-        this.filterModal?.hide();
-      }
-    });
-  }
-
-  private updateFilterModal(): void {
-    if (this.filterModal) {
-      this.filterModal.update({
-        employees: this.config.employees,
-        filters: this.config.filters
-      });
-    }
   }
 
   private attachEventListeners(): void {
@@ -94,7 +77,7 @@ export class FilterBar {
       }
 
       // Create new handler and store it
-      this.searchInputHandler = () => {
+      const performSearch = () => {
         // Clear any existing debounce timer
         if (this.searchDebounceTimer !== null) {
           clearTimeout(this.searchDebounceTimer);
@@ -121,22 +104,33 @@ export class FilterBar {
         }, 150); // 150ms debounce
       };
 
+      this.searchInputHandler = performSearch;
       searchInput.addEventListener('input', this.searchInputHandler);
+      
+      // Also trigger search on Enter key for immediate results
+      this.searchKeydownHandler = (e: KeyboardEvent) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Clear debounce and perform immediate search
+          if (this.searchDebounceTimer !== null) {
+            clearTimeout(this.searchDebounceTimer);
+            this.searchDebounceTimer = null;
+          }
+          const searchValue = searchInput.value.trim();
+          const filters: FilterOptions = {
+            ...this.config.filters,
+            search: searchValue || undefined
+          };
+          if (!searchValue) {
+            delete filters.search;
+          }
+          this.config.filters = filters;
+          this.config.onFilterChange(filters);
+        }
+      };
+      searchInput.addEventListener('keydown', this.searchKeydownHandler);
     }
 
-    // Open filter modal
-    const addFiltersBtn = this.container.querySelector('[data-action="open-filters"]');
-    if (addFiltersBtn) {
-      addFiltersBtn.addEventListener('click', () => {
-        if (this.filterModal) {
-          this.filterModal.update({
-            employees: this.config.employees,
-            filters: this.config.filters
-          });
-          this.filterModal.show();
-        }
-      });
-    }
 
     // Remove individual filter chips
     const removeButtons = this.container.querySelectorAll('[data-action="remove-filter"]');
@@ -194,25 +188,6 @@ export class FilterBar {
       });
     }
 
-    // Select All button
-    const selectAllBtn = this.container.querySelector('[data-action="select-all"]');
-    if (selectAllBtn && this.config.onSelectAll) {
-      selectAllBtn.addEventListener('click', () => {
-        if (this.config.onSelectAll) {
-          this.config.onSelectAll();
-        }
-      });
-    }
-
-    // Deselect All button
-    const deselectAllBtn = this.container.querySelector('[data-action="deselect-all"]');
-    if (deselectAllBtn && this.config.onDeselectAll) {
-      deselectAllBtn.addEventListener('click', () => {
-        if (this.config.onDeselectAll) {
-          this.config.onDeselectAll();
-        }
-      });
-    }
   }
 
   update(config: Partial<FilterBarConfig>): void {
@@ -252,11 +227,6 @@ export class FilterBar {
     // Only re-render if filters changed (not just search) or employees changed
     if (config.employees || (config.filters && !onlySearchChanged)) {
       this.render();
-      // Update filter modal with new config
-      this.updateFilterModal();
-    } else if (config.filters && onlySearchChanged && !isSearchInputFocused) {
-      // Just update filter modal, don't re-render (only if input is not focused)
-      this.updateFilterModal();
     }
   }
 }

@@ -1,43 +1,52 @@
 /**
  * Audit Distribution Page Specific Styles
- * Custom background (#100A28) and primary color (#635BFF) for the audit distribution page
+ * White background with green accent touches (#1a733e) matching the dashboard
  */
 
-/* Audit Distribution Page Color Overrides */
+/* Audit Distribution Page Color Overrides - Green Accents on White */
 :root {
-  /* Primary Colors - Based on #635BFF */
-  --home-primary-50: #f0efff;
-  --home-primary-100: #e0deff;
-  --home-primary-200: #c7c3ff;
-  --home-primary-300: #a59eff;
-  --home-primary-400: #8b7cff;
-  --home-primary-500: #635BFF;
-  --home-primary-600: #5a4fe8;
-  --home-primary-700: #4d42d1;
-  --home-primary-800: #4036b4;
-  --home-primary-900: #352d96;
+  /* Primary Colors - Based on #1a733e (Green theme matching dashboard) */
+  --home-primary-50: #f0fdf4;
+  --home-primary-100: #dcfce7;
+  --home-primary-200: #bbf7d0;
+  --home-primary-300: #86efac;
+  --home-primary-400: #4ade80;
+  --home-primary-500: #1a733e;
+  --home-primary-600: #15803d;
+  --home-primary-700: #0d5e3a;
+  --home-primary-800: #0a4d2f;
+  --home-primary-900: #032816;
   
-  /* Home Page Background */
-  --home-background: #100A28;
+  /* Home Page Background - Matching homepage background */
+  --home-background: #F8F7F2;
   
-  /* Contrast Color for Cards and White Elements */
-  --home-contrast: #28233E;
+  /* Contrast Color for Cards - White */
+  --home-contrast: #ffffff;
 }
 
 /* Apply to audit distribution page only */
 body.audit-distribution-page,
 .audit-distribution-page .main-content {
-  background-color: var(--home-background) !important;
-  color: var(--color-text-light, #ffffff);
+  background-color: var(--home-background, #F8F7F2) !important;
+  color: var(--color-text-primary, #1f2937);
 }
 
-/* Ensure text is readable on dark background */
+/* Ensure text is readable on white background */
 .audit-distribution-page .main-content,
-.audit-distribution-page .main-content h1,
-.audit-distribution-page .main-content h2,
-.audit-distribution-page .main-content h3,
 .audit-distribution-page .main-content p {
-  color: var(--color-text-light, #ffffff);
+  color: var(--color-text-primary, #1f2937);
+}
+
+/* Page heading styling - matching homepage */
+.audit-distribution-page .main-content h1.text-gray-900,
+.audit-distribution-page h1.text-gray-900 {
+  color: #000000 !important;
+  font-weight: 700;
+}
+
+.audit-distribution-page .main-content h2,
+.audit-distribution-page .main-content h3 {
+  color: var(--color-text-primary, #1f2937);
 }
 
 /* Improve subtitle and description visibility */
@@ -98,30 +107,33 @@ body.audit-distribution-page,
   background: rgba(255, 255, 255, 0.3);
 }
 
-.audit-distribution-page .text-gray-400,
-.audit-distribution-page .text-gray-500 {
-  color: rgba(255, 255, 255, 0.75) !important;
+.audit-distribution-page .text-gray-400 {
+  color: var(--color-text-secondary, #6b7280) !important;
 }
 
-/* Glassmorphism card overrides - ensure proper styling */
+.audit-distribution-page .text-gray-500 {
+  color: var(--color-text-secondary, #4b5563) !important;
+}
+
+/* Glassmorphism card overrides - white cards with visible borders */
 .audit-distribution-page .glass-card {
-  background: rgba(40, 35, 62, 0.4) !important;
+  background: #ffffff !important;
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border: 1px solid #d1d5db !important;
   box-shadow: 
-    0 8px 32px 0 rgba(0, 0, 0, 0.37),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+    0 1px 3px 0 rgba(0, 0, 0, 0.1),
+    0 1px 2px 0 rgba(0, 0, 0, 0.06);
   position: relative;
   overflow: visible;
 }
 
 .audit-distribution-page .glass-card:hover {
-  background: rgba(40, 35, 62, 0.5) !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  background: #ffffff !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
   box-shadow: 
-    0 12px 40px 0 rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
   transform: translateY(-2px);
   transition: all 0.3s ease;
   z-index: 10;
@@ -129,9 +141,8 @@ body.audit-distribution-page,
 }
 
 .audit-distribution-page .glass-header {
-  background: rgba(255, 255, 255, 0.05) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: #f9fafb !important;
+  border-bottom: 1px solid #d1d5db !important;
 }
 
 /* Compact section header styling */
@@ -165,23 +176,24 @@ body.audit-distribution-page,
   overflow: hidden;
 }
 
-/* Tab Navigation - Matching dashboard style */
+/* Tab Navigation - White background with green slider */
 .audit-distribution-page .tab-navigation {
   position: relative;
   display: flex;
-  background-color: var(--home-contrast, #28233E);
+  background-color: var(--dark-forest, #032816);
   border-radius: var(--radius-lg, 0.5rem);
   overflow: hidden;
   width: 100%;
   max-width: 15rem;
   padding: 0.2344rem;
+  margin: 0 auto;
 }
 
 .audit-distribution-page .tab-slider {
   position: absolute;
   top: 0.2344rem;
   height: calc(100% - 0.4688rem);
-  background-color: var(--home-primary-500, #635BFF);
+  background-color: var(--button-primary, #124f2a);
   border-radius: var(--radius-sm, 0.25rem);
   transition: all 0.3s ease;
   left: 0.2344rem;
@@ -195,8 +207,8 @@ body.audit-distribution-page,
   cursor: pointer;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 700;
   transition: color 0.2s ease;
   z-index: 2;
   position: relative;
@@ -204,7 +216,7 @@ body.audit-distribution-page,
 }
 
 .audit-distribution-page .tab-button.active {
-  color: rgba(255, 255, 255, 1);
+  color: #ffffff;
 }
 
 .audit-distribution-page .tab-content {
@@ -224,26 +236,36 @@ body.audit-distribution-page,
 
 /* Date filter button active state */
 .audit-distribution-page .date-filter-btn.active {
-  background-color: var(--home-primary-500, #635BFF) !important;
-  border-color: var(--home-primary-500, #635BFF) !important;
+  background-color: var(--home-primary-500, #1a733e) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
   color: white !important;
 }
 
 /* Table improvements */
 .audit-distribution-page table {
-  color: white;
+  color: var(--color-text-primary, #1f2937);
 }
 
 .audit-distribution-page table thead {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: #f9fafb !important;
+  border-bottom: 2px solid var(--home-primary-500, #1a733e) !important;
+}
+
+.audit-distribution-page table thead th {
+  color: var(--color-text-primary, #1f2937) !important;
+  font-weight: 600;
 }
 
 .audit-distribution-page table tbody tr {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #d1d5db !important;
+}
+
+.audit-distribution-page table tbody td {
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: rgba(26, 115, 62, 0.05) !important;
 }
 
 /* Status badge improvements */
@@ -301,76 +323,74 @@ body.audit-distribution-page,
 
 .audit-distribution-page .text-gray-900,
 .audit-distribution-page .text-gray-800 {
-  color: var(--color-text-light, #ffffff) !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .text-gray-600,
 .audit-distribution-page .text-gray-500 {
-  color: rgba(255, 255, 255, 0.75) !important;
+  color: var(--color-text-secondary, #4b5563) !important;
 }
 
 .audit-distribution-page .text-gray-400 {
-  color: rgba(255, 255, 255, 0.65) !important;
+  color: var(--color-text-secondary, #6b7280) !important;
 }
 
 /* Improve label visibility */
 .audit-distribution-page label {
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page label.text-gray-700,
 .audit-distribution-page label.text-gray-600 {
-  color: rgba(255, 255, 255, 0.85) !important;
+  color: var(--color-text-secondary, #6b7280) !important;
 }
 
-/* Filter Bar Standardization */
+/* Filter Bar Standardization - White inputs with green focus */
 .audit-distribution-page .filter-input,
 .audit-distribution-page .filter-select {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: rgba(255, 255, 255, 1) !important;
+  background: #ffffff !important;
+  border: 1px solid #9ca3af !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .filter-input::placeholder {
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: var(--color-text-tertiary, #6b7280) !important;
 }
 
 .audit-distribution-page .filter-input:focus,
 .audit-distribution-page .filter-select:focus {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: var(--home-primary-500, #635BFF) !important;
-  box-shadow: 0 0 0 2px rgba(99, 91, 255, 0.3) !important;
+  background: #ffffff !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1) !important;
+  outline: none;
 }
 
 /* Custom dropdown arrow for selects */
 .audit-distribution-page .filter-select {
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4L6 8L10 4' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.7'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 4L6 8L10 4' stroke='%231a733e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
   background-repeat: no-repeat !important;
   background-position: right 0.75rem center !important;
   padding-right: 2.5rem !important;
 }
 
 .audit-distribution-page .filter-select option {
-  background-color: rgba(40, 35, 62, 0.95) !important;
-  color: rgba(255, 255, 255, 1) !important;
+  background-color: #ffffff !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
-/* Filter action buttons */
+/* Filter action buttons - white with green hover */
 .audit-distribution-page .filter-action-btn {
-  background: rgba(255, 255, 255, 0.1) !important;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: rgba(255, 255, 255, 1) !important;
+  background: #ffffff !important;
+  border: 1px solid #d1d5db !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .filter-action-btn:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: rgba(99, 91, 255, 0.5) !important;
+  background: var(--home-primary-500, #1a733e) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+  color: #ffffff !important;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(26, 115, 62, 0.2);
 }
 
 /* Override primary color for audit distribution page */
@@ -406,10 +426,10 @@ body.audit-distribution-page,
   border-color: var(--home-primary-500) !important;
 }
 
-/* Update sidebar for audit distribution page */
+/* Update sidebar for audit distribution page - white background */
 body.audit-distribution-page .sidebar,
 body.audit-distribution-page nav.sidebar {
-  background-color: var(--home-primary-500) !important;
+  background-color: #ffffff !important;
 }
 
 /* Update sidebar hover states */
@@ -429,13 +449,14 @@ body.audit-distribution-page .sidebar .profile-section {
 }
 
 body.audit-distribution-page .sidebar .search-input {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background-color: #ffffff;
+  border-color: #9ca3af;
+  color: var(--color-text-primary, #1f2937);
 }
 
 body.audit-distribution-page .sidebar .search-input:focus {
-  background-color: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.3);
+  background-color: #ffffff;
+  border-color: var(--home-primary-500, #1a733e);
 }
 
 /* Update filter inputs and selects - but keep white background for inputs inside cards */
@@ -461,33 +482,34 @@ body.audit-distribution-page .sidebar .search-input:focus {
 .audit-distribution-page .filter-select:not(.bg-white *),
 .audit-distribution-page input:not(.bg-white *),
 .audit-distribution-page select:not(.bg-white *) {
-  background-color: var(--home-contrast, #28233E) !important;
-  color: var(--color-text-light, #ffffff) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  background-color: #ffffff !important;
+  color: var(--color-text-primary, #1f2937) !important;
+  border-color: #d1d5db !important;
 }
 
 .audit-distribution-page .filter-input:not(.bg-white *):focus,
 .audit-distribution-page .filter-select:not(.bg-white *):focus,
 .audit-distribution-page input:not(.bg-white *):focus,
 .audit-distribution-page select:not(.bg-white *):focus {
-  border-color: var(--home-primary-500) !important;
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1) !important;
 }
 
 /* Update border colors */
 .audit-distribution-page .border-gray-200,
 .audit-distribution-page .border-gray-300 {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #e5e7eb !important;
 }
 
 /* Update hover states */
 .audit-distribution-page .hover\:bg-gray-50:hover,
 .audit-distribution-page .hover\:bg-gray-100:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(26, 115, 62, 0.05) !important;
 }
 
 .audit-distribution-page .hover\:text-gray-900:hover {
-  color: var(--color-text-light, #ffffff) !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 /* Update card hover shadow effects */
@@ -501,18 +523,18 @@ body.audit-distribution-page .sidebar .search-input:focus {
 .audit-distribution-page .bg-white h1,
 .audit-distribution-page .bg-white h2,
 .audit-distribution-page .bg-white h3 {
-  color: var(--color-text-light, #ffffff) !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .bg-white .text-gray-600,
 .audit-distribution-page .bg-white .text-gray-500,
 .audit-distribution-page .bg-white .text-gray-400 {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: var(--color-text-secondary, #4b5563) !important;
 }
 
-/* Update icon backgrounds for dark theme */
+/* Update icon backgrounds - light green tint */
 .audit-distribution-page .bg-primary\/10 {
-  background-color: rgba(99, 91, 255, 0.1) !important;
+  background-color: rgba(26, 115, 62, 0.1) !important;
 }
 
 .audit-distribution-page .bg-success\/10 {
@@ -528,7 +550,7 @@ body.audit-distribution-page .sidebar .search-input:focus {
 }
 
 .audit-distribution-page .group-hover\:bg-primary\/20:hover {
-  background-color: rgba(99, 91, 255, 0.2) !important;
+  background-color: rgba(26, 115, 62, 0.2) !important;
 }
 
 /* Update badge colors for dark theme */
@@ -550,38 +572,104 @@ body.audit-distribution-page .sidebar .search-input:focus {
 
 /* Update table backgrounds */
 .audit-distribution-page table {
-  color: var(--color-text-light, #ffffff);
+  color: var(--color-text-primary, #1f2937);
 }
 
 .audit-distribution-page thead {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+  background-color: #f9fafb !important;
+  border-bottom: 2px solid var(--home-primary-500, #1a733e) !important;
 }
 
 .audit-distribution-page tbody tr {
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: #e5e7eb !important;
 }
 
-/* Audit Distribution Sidebar */
+/* Audit Distribution Sidebar - No background container */
 .audit-distribution-sidebar {
-  background-color: var(--home-background, #100A28) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: transparent !important;
+  border-right: 1px solid #d1d5db !important;
+}
+
+/* Sidebar Page Heading */
+.audit-distribution-sidebar h1 {
+  font-size: 1.25rem !important; /* text-xl */
+  font-weight: 700 !important;
+  color: #000000 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Create Audit Button - Prominent styling */
+.audit-distribution-page #assignAuditsButton {
+  background-color: var(--home-primary-500, #1a733e) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.audit-distribution-page #assignAuditsButton:hover:not(:disabled) {
+  background-color: var(--home-primary-600, #15803d) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 115, 62, 0.3) !important;
+}
+
+.audit-distribution-page #assignAuditsButton:disabled {
+  background-color: #9ca3af !important;
+  color: #ffffff !important;
+  opacity: 0.6;
+}
+
+/* Auditor Selection Pane - Right Side */
+.audit-distribution-page #auditorModalContainer {
+  transition: width 0.3s ease;
+}
+
+.audit-distribution-page #auditorSelectionModal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide spinner controls on number input */
+.audit-distribution-page .audit-count-input::-webkit-inner-spin-button,
+.audit-distribution-page .audit-count-input::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+.audit-distribution-page .audit-count-input {
+  -moz-appearance: textfield !important;
 }
 
 .audit-distribution-sidebar .sidebar-menu-item {
   transition: all 0.2s ease;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-sidebar .sidebar-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(26, 115, 62, 0.05) !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-sidebar .sidebar-menu-item.bg-primary {
-  background-color: var(--home-primary-500, #635BFF) !important;
+  background-color: var(--home-primary-500, #1a733e) !important;
+  color: #ffffff !important;
+}
+
+.audit-distribution-sidebar .sidebar-menu-item.bg-primary span {
+  color: #ffffff !important;
+}
+
+.audit-distribution-sidebar .sidebar-menu-item:not(.bg-primary) span {
+  color: var(--color-text-primary, #1f2937) !important;
+}
+
+.audit-distribution-sidebar .sidebar-menu-item:not(.bg-primary) svg {
+  color: var(--color-text-secondary, #4b5563) !important;
 }
 
 /* Ensure main content area has proper background */
 .audit-distribution-page .main-content {
-  background-color: var(--home-background, #100A28) !important;
+  background-color: var(--home-background, #F8F7F2) !important;
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -597,7 +685,7 @@ body.audit-distribution-page .sidebar .search-input:focus {
 
 .audit-distribution-page .employee-item:hover,
 .audit-distribution-page .auditor-item:hover {
-  z-index: 5;
+  z-index: 1;
   position: relative;
 }
 
@@ -685,53 +773,69 @@ body.audit-distribution-page .sidebar .search-input:focus {
   padding-right: 1rem !important;
 }
 
-/* Improve employee list item backgrounds for better visibility */
+/* Simple list view - matching homepage style */
 .audit-distribution-page .employee-item {
-  background-color: rgba(40, 35, 62, 0.3) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important;
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .employee-item:hover {
-  background-color: rgba(40, 35, 62, 0.5) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: #f9fafb !important;
 }
 
-/* Improve grouped list styling */
+/* Ensure all text in employee items is readable */
+.audit-distribution-page .employee-item h4 {
+  color: var(--color-text-primary, #1f2937) !important;
+}
+
+.audit-distribution-page .employee-item p {
+  color: var(--color-text-secondary, #6b7280) !important;
+}
+
+/* Simple grouped list styling - matching homepage */
 .audit-distribution-page .bg-gradient-to-br.from-gray-50.to-gray-100 {
-  background: rgba(40, 35, 62, 0.4) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: #f9fafb !important;
+  border-color: #e5e7eb !important;
 }
 
-.audit-distribution-page .group-content.bg-white {
-  background-color: rgba(40, 35, 62, 0.2) !important;
+.audit-distribution-page .group-content {
+  background-color: #ffffff !important;
 }
 
-/* Improve auditor panel card styling */
+.audit-distribution-page .group-content .employee-item {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.audit-distribution-page .group-content .employee-item:last-child {
+  border-bottom: none !important;
+}
+
+/* Improve auditor panel card styling - white cards with visible borders */
 .audit-distribution-page .bg-white.rounded-xl.border.border-gray-200 {
-  background-color: rgba(40, 35, 62, 0.4) !important;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-color: rgba(255, 255, 255, 0.18) !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
 }
 
 .audit-distribution-page .bg-white.border.border-gray-200.rounded-lg {
-  background-color: rgba(40, 35, 62, 0.3) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: #ffffff !important;
+  border-color: #d1d5db !important;
 }
 
 .audit-distribution-page .bg-white.border.border-gray-200.rounded-lg:hover {
-  background-color: rgba(40, 35, 62, 0.5) !important;
-  border-color: rgba(99, 91, 255, 0.5) !important;
+  background-color: #ffffff !important;
+  border-color: rgba(26, 115, 62, 0.4) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* Dark mode adjustments */
 [data-theme="dark"] .audit-distribution-page .main-content {
-  background-color: var(--home-background) !important;
+  background-color: var(--home-background, #F8F7F2) !important;
 }
 
 [data-theme="dark"] body.audit-distribution-page .sidebar,
 [data-theme="dark"] body.audit-distribution-page nav.sidebar {
-  background-color: var(--home-primary-500) !important;
+  background-color: var(--home-primary-500, #1a733e) !important;
 }
 
 /* Custom Dropdown Styles - Matching Screenshot */
@@ -745,12 +849,10 @@ body.audit-distribution-page .sidebar .search-input:focus {
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #9ca3af;
   border-radius: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: rgba(255, 255, 255, 1);
+  background: #ffffff;
+  color: var(--color-text-primary, #1f2937);
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -758,8 +860,9 @@ body.audit-distribution-page .sidebar .search-input:focus {
 }
 
 .audit-distribution-page .custom-dropdown-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(99, 91, 255, 0.5);
+  background: #f9fafb;
+  border-color: var(--home-primary-500, #1a733e);
+  color: var(--home-primary-500, #1a733e);
 }
 
 .audit-distribution-page .custom-dropdown-icon {
@@ -804,12 +907,10 @@ body.audit-distribution-page .sidebar .search-input:focus {
   left: 0 !important;
   right: auto !important;
   margin-top: 0.5rem !important;
-  background: rgba(40, 35, 62, 0.95) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
+  background: #ffffff !important;
   border-radius: 0.75rem !important;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 8px 16px rgba(0, 0, 0, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  border: 1px solid #e5e7eb !important;
   min-width: 200px !important;
   z-index: 10000 !important;
   max-height: 400px !important;
@@ -838,11 +939,42 @@ body.audit-distribution-page .sidebar .search-input:focus {
   overflow: visible !important;
 }
 
-/* Filter Bar Improvements - Compact Horizontal Bar */
+/* Filter Bar Improvements - Compact Horizontal Bar - No container styling (inside People section) */
 .audit-distribution-page .filter-bar {
-  background: rgba(40, 35, 62, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  min-height: 64px;
+  background: transparent !important;
+  border: none !important;
+  min-height: auto;
+}
+
+/* Filter bar text colors - dark text */
+.audit-distribution-page .filter-bar input {
+  color: var(--color-text-primary, #1f2937) !important;
+}
+
+.audit-distribution-page .filter-bar button {
+  color: var(--color-text-primary, #1f2937) !important;
+}
+
+/* Filter bar icon buttons - green outline on hover */
+.audit-distribution-page .filter-bar #addFiltersButton:hover,
+.audit-distribution-page .filter-bar #selectAllButton:hover,
+.audit-distribution-page .filter-bar #deselectAllButton:hover {
+  outline: 2px solid var(--home-primary-500, #1a733e) !important;
+  outline-offset: 0px !important;
+  border-color: var(--home-primary-500, #1a733e) !important;
+}
+
+/* Search bar icon visibility */
+.audit-distribution-page .filter-bar .relative svg {
+  color: #4b5563 !important;
+}
+
+.audit-distribution-page .filter-bar .filter-chip {
+  color: var(--color-text-primary, #1f2937) !important;
+}
+
+.audit-distribution-page .filter-bar .filter-chip span {
+  color: var(--color-text-primary, #1f2937) !important;
 }
 
 .audit-distribution-page .filter-bar .filter-item {
@@ -902,8 +1034,8 @@ body.audit-distribution-page .sidebar .search-input:focus {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: rgba(40, 35, 62, 0.98) !important;
-  backdrop-filter: blur(12px);
+  background: #ffffff !important;
+  border-bottom: 1px solid #d1d5db;
 }
 
 /* Responsive filter bar */
@@ -933,17 +1065,17 @@ body.audit-distribution-page .sidebar .search-input:focus {
 }
 
 .audit-distribution-page .custom-dropdown-menu::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #f3f4f6;
   border-radius: 3px;
 }
 
 .audit-distribution-page .custom-dropdown-menu::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: #d1d5db;
   border-radius: 3px;
 }
 
 .audit-distribution-page .custom-dropdown-menu::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--home-primary-500, #1a733e);
 }
 
 .audit-distribution-page .custom-dropdown-option {
@@ -953,7 +1085,7 @@ body.audit-distribution-page .sidebar .search-input:focus {
   gap: 0.75rem !important;
   padding: 0.75rem 1rem !important;
   font-size: 0.875rem !important;
-  color: rgba(255, 255, 255, 0.9) !important;
+  color: var(--color-text-primary, #1f2937) !important;
   background: transparent !important;
   border: none !important;
   text-align: left !important;
@@ -963,13 +1095,13 @@ body.audit-distribution-page .sidebar .search-input:focus {
 }
 
 .audit-distribution-page .custom-dropdown-option:hover:not(:disabled) {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: rgba(255, 255, 255, 1) !important;
+  background-color: rgba(26, 115, 62, 0.1) !important;
+  color: var(--home-primary-500, #1a733e) !important;
 }
 
 .audit-distribution-page .custom-dropdown-option.bg-primary\/20 {
-  background-color: rgba(99, 91, 255, 0.2) !important;
-  color: var(--home-primary-500, #635BFF) !important;
+  background-color: rgba(26, 115, 62, 0.1) !important;
+  color: var(--home-primary-500, #1a733e) !important;
 }
 
 .audit-distribution-page .custom-dropdown-option.border-l-2 {
@@ -994,13 +1126,14 @@ body.audit-distribution-page .sidebar .search-input:focus {
   padding: 0.5rem 1rem;
   font-size: 0.75rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: var(--color-text-secondary, #6b7280) !important;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .audit-distribution-page .custom-dropdown-divider {
-  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-top: 1px solid #d1d5db !important;
   margin: 0.25rem 0;
 }
+
 

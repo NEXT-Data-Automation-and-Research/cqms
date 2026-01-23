@@ -569,16 +569,16 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
               <!-- Split Chip: Passing Status + Score (merged) -->
               <span style="display: inline-flex; align-items: center; border-radius: 0.25rem; overflow: hidden; white-space: nowrap; font-size: 0.625rem; font-weight: 600; box-shadow: 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.1);">
                 ${status === 'Passed' ? `
-                  <!-- Status Side (Left) -->
-                  <span style="background-color: var(--primary-color, #1a733e); color: white; padding: 0.125rem 0.3125rem; display: inline-flex; align-items: center; gap: 0.1875rem;">
+                  <!-- Status Side (Left) - Using #1A733E as requested -->
+                  <span style="background-color: #1A733E; color: white; padding: 0.125rem 0.3125rem; display: inline-flex; align-items: center; gap: 0.1875rem;">
                     <svg style="width: 0.6875rem; height: 0.6875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    <span>Passed</span>
+                    <span style="color: white !important;">Passed</span>
                   </span>
-                  <!-- Score Side (Right) - Darker shade of primary color -->
-                  <span style="background-color: var(--primary-dark, #0d5e3a); color: white; padding: 0.125rem 0.3125rem; border-left: 0.0469rem solid rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center;">
-                    ${typeof averageScore === 'number' ? averageScore.toFixed(0) : averageScore}%
+                  <!-- Score Side (Right) - Darker shade of #1A733E -->
+                  <span style="background-color: #0d5e3a; color: white; padding: 0.125rem 0.3125rem; border-left: 0.0469rem solid rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center;">
+                    <span style="color: white !important;">${typeof averageScore === 'number' ? averageScore.toFixed(0) : averageScore}%</span>
                   </span>
                 ` : `
                   <!-- Status Side (Left) - Darker red -->
@@ -586,11 +586,11 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
                     <svg style="width: 0.6875rem; height: 0.6875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
-                    <span>Not Passed</span>
+                    <span style="color: white !important;">Not Passed</span>
                   </span>
                   <!-- Score Side (Right) - Even darker red -->
                   <span style="background-color: #b91c1c; color: white; padding: 0.125rem 0.3125rem; border-left: 0.0469rem solid rgba(255, 255, 255, 0.2); display: inline-flex; align-items: center;">
-                    ${typeof averageScore === 'number' ? averageScore.toFixed(0) : averageScore}%
+                    <span style="color: white !important;">${typeof averageScore === 'number' ? averageScore.toFixed(0) : averageScore}%</span>
                   </span>
                 `}
               </span>

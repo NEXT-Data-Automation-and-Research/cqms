@@ -74,11 +74,21 @@ export function validateDeviceFingerprint(sessionToken: string, userId?: string)
 
 /**
  * Store device fingerprint for a session
+ * ✅ FIX: Also stores using user-based key to match validation logic
  */
-export function storeDeviceFingerprint(accessToken: string): void {
+export function storeDeviceFingerprint(accessToken: string, userId?: string): void {
   const fingerprint = generateDeviceFingerprint();
-  const storedFingerprintKey = `device_fingerprint_${accessToken.substring(0, 20)}`;
-  localStorage.setItem(storedFingerprintKey, fingerprint);
+  
+  // Store using user-based key (persists across token refreshes) if userId available
+  if (userId) {
+    const userFingerprintKey = `device_fingerprint_user_${userId}`;
+    localStorage.setItem(userFingerprintKey, fingerprint);
+    logInfo('✅ Device fingerprint stored for user (persists across token refreshes)');
+  }
+  
+  // Also store using token-based key for backward compatibility
+  const tokenFingerprintKey = `device_fingerprint_${accessToken.substring(0, 20)}`;
+  localStorage.setItem(tokenFingerprintKey, fingerprint);
   logInfo('✅ Device fingerprint stored for session security');
 }
 

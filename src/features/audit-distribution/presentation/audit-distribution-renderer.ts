@@ -147,12 +147,19 @@ export class AuditDistributionRenderer {
    * Render schedule audit view
    */
   private renderScheduleAuditView(container: HTMLElement): void {
+    if (!this.service) {
+      logError('[Renderer] Service not available for schedule audit view');
+      return;
+    }
     container.textContent = '';
     const viewContainer = document.createElement('div');
     viewContainer.id = 'scheduleAuditViewContainer';
     container.appendChild(viewContainer);
     if (viewContainer) {
-      this.scheduleAuditView = new ScheduleAuditView(viewContainer);
+      this.scheduleAuditView = new ScheduleAuditView(viewContainer, {
+        stateManager: this.stateManager,
+        service: this.service
+      });
     }
   }
 
@@ -183,6 +190,15 @@ export class AuditDistributionRenderer {
         this.renderCurrentView();
       } else if (this.manualAuditViewRenderer) {
         this.manualAuditViewRenderer.refresh();
+      }
+    } else if (this.currentView === 'schedule' && this.service) {
+      if (this.scheduleAuditView) {
+        this.scheduleAuditView.update();
+      } else {
+        const contentContainer = document.getElementById('auditDistributionContent');
+        if (contentContainer) {
+          this.renderCurrentView();
+        }
       }
     }
   }

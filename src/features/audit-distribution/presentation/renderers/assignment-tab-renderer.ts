@@ -11,6 +11,9 @@ import { Pagination } from '../components/pagination.js';
 import { AuditDistributionService } from '../../application/audit-distribution-service.js';
 import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 import { logInfo, logError } from '../../../../utils/logging-helper.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+import { getActiveFilterChips, escapeHtml } from '../components/filter-chip-utils.js';
+import type { Employee } from '../../domain/types.js';
 
 export interface AssignmentTabRendererConfig {
   stateManager: AuditDistributionStateManager;
@@ -27,7 +30,6 @@ export class AssignmentTabRenderer {
   private employeeList: EmployeeList | null = null;
   private auditorModal: AuditorSelectionModal | null = null;
   private pagination: Pagination | null = null;
-  private assignButtonClickHandler: ((e: Event) => void) | null = null;
 
   constructor(config: AssignmentTabRendererConfig) {
     this.stateManager = config.stateManager;
@@ -38,10 +40,9 @@ export class AssignmentTabRenderer {
   render(): void {
     this.initializeFilterBar();
     this.initializePagination();
+    this.initializeSelectionActions();
     this.updateEmployeeList();
     this.initializeAuditorModal();
-    this.initializeAssignButton();
-    this.updateAssignButtonState();
   }
 
   private initializeFilterBar(): void {
@@ -65,26 +66,6 @@ export class AssignmentTabRenderer {
           });
         }
         this.updateEmployeeList();
-        if (this.config.onEmployeeListUpdate) {
-          this.config.onEmployeeListUpdate();
-        }
-      },
-      onSelectAll: () => {
-        const state = this.stateManager.getState();
-        const auditCount = state.bulkAuditCount > 0 ? state.bulkAuditCount : 1;
-        state.filteredEmployees.forEach(emp => {
-          this.stateManager.toggleEmployeeSelection(emp.email, true, auditCount);
-        });
-        this.updateEmployeeList();
-        this.updateAuditorModal();
-        if (this.config.onEmployeeListUpdate) {
-          this.config.onEmployeeListUpdate();
-        }
-      },
-      onDeselectAll: () => {
-        state.selectedEmployees.clear();
-        this.updateEmployeeList();
-        this.updateAssignButtonState();
         if (this.config.onEmployeeListUpdate) {
           this.config.onEmployeeListUpdate();
         }
@@ -119,51 +100,500 @@ export class AssignmentTabRenderer {
     });
   }
 
-  private initializeAssignButton(): void {
-    // Remove existing listener if it exists
-    const existingButton = document.getElementById('assignAuditsButton');
-    if (existingButton && this.assignButtonClickHandler) {
-      existingButton.removeEventListener('click', this.assignButtonClickHandler);
-      this.assignButtonClickHandler = null;
+
+  private getActiveFilterChips(): any[] {
+    const state = this.stateManager.getState();
+    return getActiveFilterChips(state.filters, state.employees);
+  }
+
+  private attachFilterDropdownListeners(container: HTMLElement): void {
+    // Filter button toggle
+    const addFiltersBtn = container.querySelector('[data-action="toggle-filters"]');
+    const filterDropdown = container.querySelector('#filterDropdown') as HTMLElement;
+    
+    if (addFiltersBtn && filterDropdown) {
+      // Remove existing listeners to avoid duplicates
+      const newAddFiltersBtn = addFiltersBtn.cloneNode(true) as HTMLElement;
+      addFiltersBtn.parentNode?.replaceChild(newAddFiltersBtn, addFiltersBtn);
+      
+      newAddFiltersBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isHidden = filterDropdown.classList.contains('hidden');
+        if (isHidden) {
+          filterDropdown.classList.remove('hidden');
+          // Close dropdown when clicking outside
+          const closeOnOutsideClick = (event: MouseEvent) => {
+            if (!filterDropdown.contains(event.target as Node) && event.target !== newAddFiltersBtn) {
+              filterDropdown.classList.add('hidden');
+              document.removeEventListener('click', closeOnOutsideClick);
+            }
+          };
+          setTimeout(() => document.addEventListener('click', closeOnOutsideClick), 0);
+        } else {
+          filterDropdown.classList.add('hidden');
+        }
+      });
     }
 
-    // Use setTimeout to ensure DOM is fully ready
-    setTimeout(() => {
-      const assignButton = document.getElementById('assignAuditsButton');
-      if (assignButton) {
-        // Create the click handler
-        this.assignButtonClickHandler = (e: Event) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Get fresh state from state manager
-          const state = this.stateManager.getState();
-          
-          // Check if any employees are selected
-          if (state.selectedEmployees.size === 0) {
-            alert('Please select at least one employee first.');
-            return;
-          }
-          
-          this.showAuditorModal();
-        };
+    // Apply filters button
+    const applyFiltersBtn = container.querySelector('[data-action="apply-filters"]');
+    if (applyFiltersBtn) {
+      // Remove existing listener to avoid duplicates
+      const newApplyBtn = applyFiltersBtn.cloneNode(true) as HTMLElement;
+      applyFiltersBtn.parentNode?.replaceChild(newApplyBtn, applyFiltersBtn);
+      
+      newApplyBtn.addEventListener('click', () => {
+        const newFilters = { ...this.stateManager.getState().filters };
         
-        // Attach the listener
-        assignButton.addEventListener('click', this.assignButtonClickHandler);
+        // Get values from dropdowns
+        const groupBy = (container.querySelector('#filterGroupBy') as HTMLSelectElement)?.value;
+        const channel = (container.querySelector('#filterChannel') as HTMLSelectElement)?.value;
+        const team = (container.querySelector('#filterTeam') as HTMLSelectElement)?.value;
+        const department = (container.querySelector('#filterDepartment') as HTMLSelectElement)?.value;
+        const country = (container.querySelector('#filterCountry') as HTMLSelectElement)?.value;
+        const qualitySupervisor = (container.querySelector('#filterQualitySupervisor') as HTMLSelectElement)?.value;
+        const teamSupervisor = (container.querySelector('#filterTeamSupervisor') as HTMLSelectElement)?.value;
         
-        logInfo('[AssignmentTabRenderer] Assign button initialized successfully');
-      } else {
-        logError('[AssignmentTabRenderer] Assign button not found in DOM');
+        // Update filters
+        if (groupBy && groupBy !== 'none') {
+          newFilters.groupBy = groupBy as any;
+        } else {
+          delete newFilters.groupBy;
+        }
+        
+        if (channel) {
+          newFilters.channel = channel;
+        } else {
+          delete newFilters.channel;
+        }
+        
+        if (team) {
+          newFilters.team = team;
+        } else {
+          delete newFilters.team;
+        }
+        
+        if (department) {
+          newFilters.department = department;
+        } else {
+          delete newFilters.department;
+        }
+        
+        if (country) {
+          newFilters.country = country;
+        } else {
+          delete newFilters.country;
+        }
+        
+        if (qualitySupervisor) {
+          newFilters.qualitySupervisor = qualitySupervisor;
+        } else {
+          delete newFilters.qualitySupervisor;
+        }
+        
+        if (teamSupervisor) {
+          newFilters.teamSupervisor = teamSupervisor;
+        } else {
+          delete newFilters.teamSupervisor;
+        }
+        
+        // Close dropdown
+        if (filterDropdown) {
+          filterDropdown.classList.add('hidden');
+        }
+        
+        // Apply filters
+        this.stateManager.replaceFilters(newFilters);
+        if (this.filterBar) {
+          this.filterBar.update({
+            employees: this.stateManager.getState().employees,
+            filters: newFilters
+          });
+        }
+        this.updateEmployeeList();
+        this.updateSelectionActions();
+        if (this.config.onEmployeeListUpdate) {
+          this.config.onEmployeeListUpdate();
+        }
+      });
+    }
+  }
+
+  private getFilterDropdownHTML(): string {
+    const state = this.stateManager.getState();
+    // Use filteredEmployees to show only options from currently rendered list
+    const employeesToUse = state.filteredEmployees.length > 0 ? state.filteredEmployees : state.employees;
+    const { filters } = state;
+    
+    const isValidValue = (val: string | null | undefined): val is string => {
+      return Boolean(val && val.trim() !== '' && val.toLowerCase() !== 'null');
+    };
+    
+    const channels = [...new Set(employeesToUse.map(e => e.channel).filter(isValidValue))].sort();
+    const teams = [...new Set(employeesToUse.map(e => e.team).filter(isValidValue))].sort();
+    const departments = [...new Set(employeesToUse.map(e => e.department).filter(isValidValue))].sort();
+    const countries = [...new Set(employeesToUse.map(e => e.country).filter(isValidValue))].sort();
+    const qualitySupervisors = [...new Set(employeesToUse.map(e => e.quality_mentor).filter(isValidValue))].sort();
+    const teamSupervisors = [...new Set(employeesToUse.map(e => e.team_supervisor).filter(isValidValue))].sort();
+
+    const groupByValue = filters.groupBy || 'none';
+    const channelValue = filters.channel || '';
+    const teamValue = filters.team || '';
+    const departmentValue = filters.department || '';
+    const countryValue = filters.country || '';
+    const qualitySupervisorValue = filters.qualitySupervisor || '';
+    const teamSupervisorValue = filters.teamSupervisor || '';
+
+    return `
+      <div id="filterDropdown" class="hidden absolute right-0 top-full mt-1 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+        <div class="p-3 space-y-3">
+          <!-- Group By -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Group By</label>
+            <select id="filterGroupBy" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="none" ${groupByValue === 'none' ? 'selected' : ''}>None</option>
+              <option value="channel" ${groupByValue === 'channel' ? 'selected' : ''}>Channel</option>
+              <option value="team" ${groupByValue === 'team' ? 'selected' : ''}>Team</option>
+              <option value="quality_mentor" ${groupByValue === 'quality_mentor' ? 'selected' : ''}>Quality Mentor</option>
+              <option value="team_supervisor" ${groupByValue === 'team_supervisor' ? 'selected' : ''}>Team Supervisor</option>
+              <option value="department" ${groupByValue === 'department' ? 'selected' : ''}>Department</option>
+              <option value="country" ${groupByValue === 'country' ? 'selected' : ''}>Country</option>
+            </select>
+          </div>
+          
+          <!-- Channel -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Channel</label>
+            <select id="filterChannel" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Channels</option>
+              ${channels.map(ch => `<option value="${escapeHtml(ch)}" ${channelValue === ch ? 'selected' : ''}>${escapeHtml(ch)}</option>`).join('')}
+            </select>
+          </div>
+          
+          <!-- Team -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Team</label>
+            <select id="filterTeam" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Teams</option>
+              ${teams.map(team => `<option value="${escapeHtml(team)}" ${teamValue === team ? 'selected' : ''}>${escapeHtml(team)}</option>`).join('')}
+            </select>
+          </div>
+          
+          <!-- Department -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Department</label>
+            <select id="filterDepartment" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Departments</option>
+              ${departments.map(dept => `<option value="${escapeHtml(dept)}" ${departmentValue === dept ? 'selected' : ''}>${escapeHtml(dept)}</option>`).join('')}
+            </select>
+          </div>
+          
+          <!-- Country -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Country</label>
+            <select id="filterCountry" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Countries</option>
+              ${countries.map(country => `<option value="${escapeHtml(country)}" ${countryValue === country ? 'selected' : ''}>${escapeHtml(country)}</option>`).join('')}
+            </select>
+          </div>
+          
+          <!-- Quality Mentor -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Quality Mentor</label>
+            <select id="filterQualitySupervisor" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Quality Mentors</option>
+              ${qualitySupervisors.map(qs => {
+                const emp = state.employees.find(e => e.email === qs);
+                const displayName = emp?.name || qs;
+                return `<option value="${escapeHtml(qs)}" ${qualitySupervisorValue === qs ? 'selected' : ''}>${escapeHtml(displayName)}</option>`;
+              }).join('')}
+            </select>
+          </div>
+          
+          <!-- Team Supervisor -->
+          <div>
+            <label class="text-[10px] font-semibold text-gray-700 mb-1 block">Team Supervisor</label>
+            <select id="filterTeamSupervisor" class="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+              <option value="">All Team Supervisors</option>
+              ${teamSupervisors.map(ts => {
+                const emp = state.employees.find(e => e.email === ts);
+                const displayName = emp?.name || ts;
+                return `<option value="${escapeHtml(ts)}" ${teamSupervisorValue === ts ? 'selected' : ''}>${escapeHtml(displayName)}</option>`;
+              }).join('')}
+            </select>
+          </div>
+          
+          <!-- Apply Button -->
+          <div class="pt-2 border-t border-gray-200">
+            <button
+              id="applyFiltersBtn"
+              class="w-full px-3 py-1.5 text-xs bg-primary text-white rounded-md font-semibold hover:bg-primary-dark transition-all"
+              data-action="apply-filters"
+              style="background-color: var(--home-primary-500, #1a733e);"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private initializeSelectionActions(): void {
+    const container = document.getElementById('selectionActionsContainer');
+    if (!container) return;
+
+    const state = this.stateManager.getState();
+    const hasSelectedEmployees = state.selectedEmployees.size > 0;
+    const activeFilterChips = this.getActiveFilterChips();
+    const hasActiveFilters = activeFilterChips.length > 0;
+
+    safeSetHTML(container, `
+      <div class="flex items-center justify-between w-full gap-4">
+        <div class="flex items-center gap-2">
+          <button
+            id="selectAllButton"
+            class="px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 hover:border-primary transition-all font-medium flex items-center gap-1.5"
+            title="Select all visible employees"
+            data-action="select-all"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <span>Select All</span>
+          </button>
+          ${hasSelectedEmployees ? `
+            <button
+              id="deselectAllButton"
+              class="px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 hover:border-primary transition-all font-medium flex items-center gap-1.5"
+              title="Deselect all employees"
+              data-action="deselect-all"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+              <span>Clear Selection</span>
+            </button>
+          ` : ''}
+        </div>
+        
+        <!-- Filter Button with Dropdown -->
+        <div class="relative">
+          <button
+            id="addFiltersButton"
+            class="relative px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 hover:border-primary transition-all font-medium flex items-center gap-1.5"
+            title="Add filters"
+            data-action="toggle-filters"
+            style="color: #4b5563;"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="21" x2="4" y2="14"/>
+              <line x1="4" y1="10" x2="4" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12" y2="3"/>
+              <line x1="20" y1="21" x2="20" y2="16"/>
+              <line x1="20" y1="12" x2="20" y2="3"/>
+              <line x1="1" y1="14" x2="7" y2="14"/>
+              <line x1="9" y1="8" x2="15" y2="8"/>
+              <line x1="17" y1="16" x2="23" y2="16"/>
+            </svg>
+            <span>Filters</span>
+            ${hasActiveFilters ? `<span class="ml-1 px-1.5 py-0.5 bg-primary rounded-full text-[8px] text-white font-bold leading-none">${activeFilterChips.length}</span>` : ''}
+          </button>
+          
+          <!-- Filter Dropdown -->
+          ${this.getFilterDropdownHTML()}
+        </div>
+      </div>
+    `);
+
+    // Attach event listeners
+    const selectAllBtn = container.querySelector('[data-action="select-all"]');
+    if (selectAllBtn) {
+      selectAllBtn.addEventListener('click', () => {
+        const state = this.stateManager.getState();
+        const auditCount = state.bulkAuditCount > 0 ? state.bulkAuditCount : 1;
+        state.filteredEmployees.forEach(emp => {
+          this.stateManager.toggleEmployeeSelection(emp.email, true, auditCount);
+        });
+        this.updateEmployeeList();
+        this.updateSelectionActions();
+        this.updateAuditorModal();
+        if (this.config.onEmployeeListUpdate) {
+          this.config.onEmployeeListUpdate();
+        }
+      });
+    }
+
+    const deselectAllBtn = container.querySelector('[data-action="deselect-all"]');
+    if (deselectAllBtn) {
+      deselectAllBtn.addEventListener('click', () => {
+        const state = this.stateManager.getState();
+        state.selectedEmployees.clear();
+        this.updateEmployeeList();
+        this.updateSelectionActions();
+        this.hideAuditorModal();
+        if (this.config.onEmployeeListUpdate) {
+          this.config.onEmployeeListUpdate();
+        }
+      });
+    }
+
+    // Attach filter dropdown listeners
+    this.attachFilterDropdownListeners(container);
+  }
+
+  private updateSelectionActions(): void {
+    const container = document.getElementById('selectionActionsContainer');
+    if (!container) return;
+
+    const state = this.stateManager.getState();
+    const hasSelectedEmployees = state.selectedEmployees.size > 0;
+    const activeFilterChips = this.getActiveFilterChips();
+    const hasActiveFilters = activeFilterChips.length > 0;
+
+    // Update filter count badge if it exists
+    const filterButton = container.querySelector('#addFiltersButton');
+    if (filterButton) {
+      const badge = filterButton.querySelector('span.bg-primary');
+      if (hasActiveFilters) {
+        if (!badge) {
+          const newBadge = document.createElement('span');
+          newBadge.className = 'ml-1 px-1.5 py-0.5 bg-primary rounded-full text-[8px] text-white font-bold leading-none';
+          newBadge.textContent = activeFilterChips.length.toString();
+          filterButton.appendChild(newBadge);
+        } else {
+          badge.textContent = activeFilterChips.length.toString();
+        }
+      } else if (badge) {
+        badge.remove();
       }
-    }, 0);
+    }
+
+    // Update filter dropdown options based on filteredEmployees
+    this.updateFilterDropdownOptions(container);
+
+    const deselectBtn = container.querySelector('[data-action="deselect-all"]');
+    if (hasSelectedEmployees && !deselectBtn) {
+      // Add clear button if not present
+      const selectAllBtn = container.querySelector('[data-action="select-all"]');
+      if (selectAllBtn && selectAllBtn.parentElement) {
+        const clearBtn = document.createElement('button');
+        clearBtn.id = 'deselectAllButton';
+        clearBtn.className = 'px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 hover:border-primary transition-all font-medium flex items-center gap-1.5';
+        clearBtn.setAttribute('title', 'Deselect all employees');
+        clearBtn.setAttribute('data-action', 'deselect-all');
+        clearBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          <span>Clear Selection</span>
+        `;
+        clearBtn.addEventListener('click', () => {
+          const state = this.stateManager.getState();
+          state.selectedEmployees.clear();
+          this.updateEmployeeList();
+          this.updateSelectionActions();
+          this.hideAuditorModal();
+          if (this.config.onEmployeeListUpdate) {
+            this.config.onEmployeeListUpdate();
+          }
+        });
+        selectAllBtn.parentElement.appendChild(clearBtn);
+      }
+    } else if (!hasSelectedEmployees && deselectBtn) {
+      // Remove clear button if no selections
+      deselectBtn.remove();
+    }
+  }
+
+  private updateFilterDropdownOptions(container: HTMLElement): void {
+    const filterDropdown = container.querySelector('#filterDropdown');
+    if (!filterDropdown) return;
+
+    const state = this.stateManager.getState();
+    // Use filteredEmployees to show only options from currently rendered list
+    const employeesToUse = state.filteredEmployees.length > 0 ? state.filteredEmployees : state.employees;
+    
+    const isValidValue = (val: string | null | undefined): val is string => {
+      return Boolean(val && val.trim() !== '' && val.toLowerCase() !== 'null');
+    };
+    
+    // Update each select dropdown with new options
+    const updateSelectOptions = (selectId: string, values: string[], currentValue: string, getDisplayName?: (val: string) => string) => {
+      const select = filterDropdown.querySelector(`#${selectId}`) as HTMLSelectElement;
+      if (!select) return;
+      
+      const currentSelected = select.value;
+      select.innerHTML = '';
+      
+      // Add "All" option
+      const allOption = document.createElement('option');
+      allOption.value = '';
+      if (selectId === 'filterGroupBy') {
+        allOption.textContent = 'None';
+      } else if (selectId === 'filterChannel') {
+        allOption.textContent = 'All Channels';
+      } else if (selectId === 'filterTeam') {
+        allOption.textContent = 'All Teams';
+      } else if (selectId === 'filterDepartment') {
+        allOption.textContent = 'All Departments';
+      } else if (selectId === 'filterCountry') {
+        allOption.textContent = 'All Countries';
+      } else if (selectId === 'filterQualitySupervisor') {
+        allOption.textContent = 'All Quality Mentors';
+      } else if (selectId === 'filterTeamSupervisor') {
+        allOption.textContent = 'All Team Supervisors';
+      }
+      select.appendChild(allOption);
+      
+      // Add options for each value
+      values.forEach(val => {
+        const option = document.createElement('option');
+        option.value = val;
+        option.textContent = getDisplayName ? getDisplayName(val) : val;
+        if (val === currentValue) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      });
+      
+      // Restore selection if it still exists
+      if (currentSelected && Array.from(select.options).some(opt => opt.value === currentSelected)) {
+        select.value = currentSelected;
+      } else if (currentValue) {
+        select.value = currentValue;
+      }
+    };
+    
+    const channels = [...new Set(employeesToUse.map(e => e.channel).filter(isValidValue))].sort();
+    const teams = [...new Set(employeesToUse.map(e => e.team).filter(isValidValue))].sort();
+    const departments = [...new Set(employeesToUse.map(e => e.department).filter(isValidValue))].sort();
+    const countries = [...new Set(employeesToUse.map(e => e.country).filter(isValidValue))].sort();
+    const qualitySupervisors = [...new Set(employeesToUse.map(e => e.quality_mentor).filter(isValidValue))].sort();
+    const teamSupervisors = [...new Set(employeesToUse.map(e => e.team_supervisor).filter(isValidValue))].sort();
+    
+    updateSelectOptions('filterChannel', channels, state.filters.channel || '');
+    updateSelectOptions('filterTeam', teams, state.filters.team || '');
+    updateSelectOptions('filterDepartment', departments, state.filters.department || '');
+    updateSelectOptions('filterCountry', countries, state.filters.country || '');
+    updateSelectOptions('filterQualitySupervisor', qualitySupervisors, state.filters.qualitySupervisor || '', (val) => {
+      const emp = state.employees.find(e => e.email === val);
+      return emp?.name || val;
+    });
+    updateSelectOptions('filterTeamSupervisor', teamSupervisors, state.filters.teamSupervisor || '', (val) => {
+      const emp = state.employees.find(e => e.email === val);
+      return emp?.name || val;
+    });
   }
 
   private initializeAuditorModal(): void {
-    let modalContainer = document.getElementById('auditorModalContainer');
+    const modalContainer = document.getElementById('auditorModalContainer');
     if (!modalContainer) {
-      modalContainer = document.createElement('div');
-      modalContainer.id = 'auditorModalContainer';
-      document.body.appendChild(modalContainer);
+      logError('[AssignmentTabRenderer] Auditor modal container not found');
+      return;
     }
 
     const state = this.stateManager.getState();
@@ -301,7 +731,6 @@ export class AssignmentTabRenderer {
 
       // Update UI
       this.updateEmployeeList();
-      this.updateAssignButtonState();
       
       if (this.config.onAssignmentComplete) {
         this.config.onAssignmentComplete();
@@ -349,17 +778,19 @@ export class AssignmentTabRenderer {
         const auditCount = currentState.bulkAuditCount > 0 ? currentState.bulkAuditCount : 1;
         this.stateManager.toggleEmployeeSelection(email, selected, auditCount);
         
-        // Update button state after selection change
-        this.updateAssignButtonState();
+        // Show auditor pane when employees are selected
+        const updatedState = this.stateManager.getState();
+        if (updatedState.selectedEmployees.size > 0) {
+          this.showAuditorModal();
+        } else {
+          this.hideAuditorModal();
+        }
+        
+        this.updateSelectionActions();
         
         if (this.config.onEmployeeListUpdate) {
           this.config.onEmployeeListUpdate();
         }
-      },
-      onEmployeeClick: (email) => {
-        // Navigate to user profile page
-        const profileUrl = `/src/features/audit-distribution/presentation/user-profile-page.html?email=${encodeURIComponent(email)}`;
-        window.location.href = profileUrl;
       }
     });
 
@@ -386,64 +817,14 @@ export class AssignmentTabRenderer {
       this.initializeFilterBar();
     }
     this.updateEmployeeList();
+    this.updateSelectionActions();
     this.updateAuditorModal();
-    this.updateAssignButtonState();
-  }
-
-  /**
-   * Update the visual state of the Create audit button based on selected employees
-   */
-  private updateAssignButtonState(): void {
-    const assignButton = document.getElementById('assignAuditsButton');
-    if (!assignButton) return;
-
-    const state = this.stateManager.getState();
-    const hasSelectedEmployees = state.selectedEmployees.size > 0;
-
-    // Show/hide button based on selection
-    if (hasSelectedEmployees) {
-      assignButton.classList.remove('hidden');
+    
+    // Show/hide auditor pane based on selection
+    if (state.selectedEmployees.size > 0) {
+      this.showAuditorModal();
     } else {
-      assignButton.classList.add('hidden');
-      return; // Early return when hidden
-    }
-
-    // Remove existing highlight classes
-    assignButton.classList.remove(
-      'ring-2',
-      'ring-primary',
-      'ring-offset-2',
-      'ring-offset-transparent',
-      'shadow-primary/50',
-      'shadow-2xl',
-      'scale-105',
-      'animate-pulse'
-    );
-
-    // Add highlight effect when employees are selected
-    assignButton.classList.add(
-      'ring-2',
-      'ring-primary',
-      'ring-offset-2',
-      'ring-offset-transparent',
-      'shadow-primary/50',
-      'shadow-2xl',
-      'scale-105'
-    );
-    
-    // Add subtle pulse animation (removed after 3 seconds to avoid distraction)
-    assignButton.classList.add('animate-pulse');
-    setTimeout(() => {
-      assignButton.classList.remove('animate-pulse');
-    }, 3000);
-    
-    // Update button text to show count
-    const countSpan = assignButton.querySelector('span');
-    if (countSpan) {
-      const selectedCount = state.selectedEmployees.size;
-      countSpan.textContent = selectedCount > 1 
-        ? `Create audit (${selectedCount})` 
-        : 'Create audit';
+      this.hideAuditorModal();
     }
   }
 }

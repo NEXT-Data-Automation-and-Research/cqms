@@ -69,11 +69,11 @@ export class AuditDistributionSidebar {
           class="sidebar-menu-item w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-left ${
             isActive
               ? 'bg-primary text-white shadow-sm'
-              : 'text-gray-300 hover:bg-white/10 hover:text-white'
+              : 'text-gray-900 hover:bg-gray-100'
           }"
           data-view="${item.id}"
         >
-          <div class="flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-400'}">
+          <div class="flex-shrink-0 ${isActive ? 'text-white' : 'text-gray-700'}">
             ${item.icon}
           </div>
           <span class="text-sm font-medium">${item.label}</span>
@@ -82,11 +82,12 @@ export class AuditDistributionSidebar {
     }).join('');
 
     safeSetHTML(this.container, `
-      <div class="audit-distribution-sidebar bg-dark-forest border-r border-white/10 w-64 flex flex-col h-full">
-        <div class="p-4 border-b border-white/10 flex-shrink-0">
-          <h2 class="text-lg font-bold text-white">Audit Distribution</h2>
-          <p class="text-xs text-gray-400 mt-1">Manage audit assignments</p>
+      <div class="audit-distribution-sidebar border-r border-gray-200 w-64 flex flex-col h-full">
+        <!-- Page Heading -->
+        <div class="px-4 pt-4 pb-2">
+          <h1 class="text-xl font-bold text-gray-900 m-0">Audit Distribution</h1>
         </div>
+        
         <nav class="flex-1 p-4 space-y-2 overflow-y-auto min-h-0">
           ${menuItemsHtml}
         </nav>

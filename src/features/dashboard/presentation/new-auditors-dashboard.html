@@ -346,6 +346,14 @@
         #stat5Card:active {
             transform: translateY(0);
         }
+        
+        /* Page heading styling - black color like other pages */
+        .page-heading {
+            color: #000000 !important;
+            font-size: 1.5rem;
+            font-weight: 700;
+            font-family: var(--font-family);
+        }
     </style>
 
 </head>
@@ -360,8 +368,8 @@
             <!-- Tab Navigation -->
             <div style="position: relative; display: flex; background-color: var(--dark-forest); border-radius: 0.4688rem; overflow: hidden; width: 100%; max-width: 15rem; margin: 0.9375rem auto; padding: 0.2344rem; margin-top: 2rem;">
                 <div style="position: absolute; top: 0.2344rem; height: calc(100% - 0.4688rem); background-color: var(--button-primary); border-radius: 0.2344rem; transition: all 0.3s ease; left: 0.2344rem; width: calc(50% - 0.2344rem);"></div>
-                <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" class="active" onclick="switchTab(this, 0)">Team Stats</button>
-                <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" onclick="switchTab(this, 1)">Standup View</button>
+                <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" class="active" id="teamStatsTabBtn" data-tab-index="0">Team Stats</button>
+                <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" id="standupViewTabBtn" data-tab-index="1">Standup View</button>
             </div>
 
     <!-- Action Buttons -->
@@ -410,10 +418,10 @@
         </div>
         <!-- Quick Date Filters -->
         <div style="display: flex; align-items: center; gap: 0.375rem;">
-            <button class="action-btn quick-date-btn active" id="todayBtn" onclick="applyQuickDateFilter('today')">Today</button>
-            <button class="action-btn quick-date-btn" id="yesterdayBtn" onclick="applyQuickDateFilter('yesterday')">Yesterday</button>
-            <button class="action-btn quick-date-btn" id="thisMonthBtn" onclick="applyQuickDateFilter('thisMonth')">This Month</button>
-            <button class="action-btn quick-date-btn" id="lastMonthBtn" onclick="applyQuickDateFilter('lastMonth')">Last Month</button>
+            <button class="action-btn quick-date-btn active" id="todayBtn">Today</button>
+            <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
+            <button class="action-btn quick-date-btn" id="thisMonthBtn">This Month</button>
+            <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
         </div>
         <div class="filter-dropdown">
             <button class="action-btn" id="filterBtn">
@@ -426,7 +434,7 @@
             <div class="filter-dropdown-menu" id="filterDropdown">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5625rem; padding-bottom: 0.375rem; border-bottom: 0.0469rem solid var(--border-light);">
                     <div style="font-size: 0.6562rem; font-weight: 600; color: var(--button-primary);">Filters</div>
-                    <button onclick="clearFilters()" style="padding: 0.2812rem 0.5625rem; background-color: var(--gray-50); color: var(--text-color); border: 0.0469rem solid var(--border-light); border-radius: 0.1875rem; font-size: 0.5156rem; font-family: var(--font-family); cursor: pointer; transition: all 0.2s ease;">Clear All</button>
+                    <button id="clearFiltersBtn" style="padding: 0.2812rem 0.5625rem; background-color: var(--gray-50); color: var(--text-color); border: 0.0469rem solid var(--border-light); border-radius: 0.1875rem; font-size: 0.5156rem; font-family: var(--font-family); cursor: pointer; transition: all 0.2s ease;">Clear All</button>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.75rem;">
                     <!-- Status Filter -->
@@ -576,10 +584,10 @@
                 </div>
             </div>
 
-            <!-- Dynamic/Realtime Hourly Breakdown Container -->
-            <div id="dynamicHourlyBreakdownTable" style="background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; max-width: 80%; width: fit-content; min-width: 100%; margin-top: 1.5rem;">
+            <!-- Dynamic Hourly Breakdown Container -->
+            <div id="dynamicHourlyBreakdownTable" style="display: none; background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; max-width: 80%; width: fit-content; min-width: 100%; margin-top: 1.5rem;">
                 <div style="background-color: var(--gray-50); padding: 0.5625rem 0.75rem; border-bottom: 0.0469rem solid var(--border-light);">
-                    <h3 style="font-size: 0.8438rem; font-weight: 600; color: var(--text-color);">Dynamic/Realtime Hourly Breakdown</h3>
+                    <h3 style="font-size: 0.8438rem; font-weight: 600; color: var(--text-color);">Dynamic Hourly Breakdown</h3>
                 </div>
                 <div class="hourly-content">
                     <!-- Chart on the left -->
@@ -596,7 +604,7 @@
             </div>
 
             <!-- Hourly Breakdown Container -->
-            <div id="hourlyBreakdownTable" style="background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; max-width: 80%; width: fit-content; min-width: 100%; margin-top: 1.5rem;">
+            <div id="hourlyBreakdownTable" style="display: none; background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; max-width: 80%; width: fit-content; min-width: 100%; margin-top: 1.5rem;">
                 <div style="background-color: var(--gray-50); padding: 0.5625rem 0.75rem; border-bottom: 0.0469rem solid var(--border-light);">
                     <h3 style="font-size: 0.8438rem; font-weight: 600; color: var(--text-color);">Hourly Breakdown</h3>
                 </div>
@@ -734,8 +742,8 @@ async function initializeDashboard() {
             isInitialLoad = false;
         }, 500);
         
-        // Hide loading state
-        hideLoadingState();
+        // Load initial dashboard data
+        await updateDashboard();
         
     } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -1850,23 +1858,22 @@ async function fetchAndCacheTeamStats(period) {
             console.log('Updating UI with fresh team stats');
             await renderTeamStats(statsData);
             
-            // Show hourly breakdown in Team Stats view
+            // Hide hourly breakdown in Team Stats view (section is hidden)
             const hourlyBreakdownTable = document.getElementById('hourlyBreakdownTable');
             if (hourlyBreakdownTable) {
-                hourlyBreakdownTable.style.display = 'block';
-            }
-            
-            // Show dynamic hourly breakdown in Team Stats view
-            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
-            if (dynamicHourlyBreakdownTable) {
-                dynamicHourlyBreakdownTable.style.display = 'block';
+                hourlyBreakdownTable.style.display = 'none';
             }
             
             // Load and render dynamic hourly breakdown (only if we have data)
+            // The function will show/hide the element based on conditions
             if (period && statsData.auditorStats && statsData.auditorStats.length > 0) {
                 await renderDynamicHourlyBreakdown(period, statsData.auditorStats, statsData.totalAssigned);
             } else {
-                // Set empty state if no data
+                // Hide and set empty state if no data
+                const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+                if (dynamicHourlyBreakdownTable) {
+                    dynamicHourlyBreakdownTable.style.display = 'none';
+                }
                 const dynamicHourlyTableBody = document.getElementById('dynamicHourlyTableBody');
                 if (dynamicHourlyTableBody) {
                     dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No data available</div>';
@@ -1947,6 +1954,12 @@ async function fetchAndCacheTeamStats(period) {
 }
 
 async function renderTeamStats(statsData) {
+    // Only proceed if we're still on Team Stats tab
+    if (currentTab !== 0) {
+        console.log('Skipping renderTeamStats - not on Team Stats tab, currentTab:', currentTab);
+        return;
+    }
+    
     const {
         totalAssigned,
         completed,
@@ -2171,6 +2184,10 @@ async function renderTeamStats(statsData) {
     
     // Update table header
     const tableHeader = document.getElementById('tableHeader');
+    if (!tableHeader) {
+        console.error('tableHeader element not found');
+        return;
+    }
     tableHeader.style.gridTemplateColumns = 'minmax(5.2734rem, 2fr) minmax(3.5156rem, 1fr) minmax(3.5156rem, 1fr) minmax(3.5156rem, 1fr) minmax(4.5rem, 1.2fr) minmax(7.0312rem, 2fr)';
     tableHeader.style.display = 'grid';
     tableHeader.style.gap = '0.75rem';
@@ -3206,8 +3223,11 @@ function calculateDynamicHourlyTargets(totalAssigned, completedSoFar, currentHou
 
 async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned = 0) {
     try {
+        console.log('renderDynamicHourlyBreakdown called', { currentTab, hasPeriod: !!period, hasAuditorStats: !!auditorStats, auditorStatsLength: auditorStats?.length });
+        
         // Only show dynamic hourly breakdown in Team Stats view
         if (currentTab !== 0) {
+            console.log('Dynamic hourly breakdown hidden: not in Team Stats view (currentTab:', currentTab, ')');
             const dynamicHourlyTableBody = document.getElementById('dynamicHourlyTableBody');
             if (dynamicHourlyTableBody) {
                 dynamicHourlyTableBody.innerHTML = '';
@@ -3226,35 +3246,37 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         }
         
         if (!auditorStats || !Array.isArray(auditorStats) || auditorStats.length === 0) {
-            dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No auditors found</div>';
+            console.log('Dynamic hourly breakdown hidden: no auditor stats');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
             return;
         }
         
         if (!period) {
-            dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No date range selected</div>';
+            console.log('Dynamic hourly breakdown hidden: no period');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
             return;
         }
         
-        // Only show for today's data
-        try {
-            const today = window.getDhakaNow ? window.getDhakaNow() : new Date();
-            const todayStr = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(today) : today.toISOString().split('T')[0];
-            const periodStartStr = period.start ? (window.formatDhakaDateForInput ? window.formatDhakaDateForInput(period.start) : period.start.toISOString().split('T')[0]) : null;
-            const periodEndStr = period.end ? (window.formatDhakaDateForInput ? window.formatDhakaDateForInput(period.end) : period.end.toISOString().split('T')[0]) : null;
-            
-            if (periodStartStr !== todayStr || periodEndStr !== todayStr) {
-                dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">Dynamic breakdown available only for today</div>';
-                if (dynamicHourlyChartInstance) {
-                    dynamicHourlyChartInstance.destroy();
-                    dynamicHourlyChartInstance = null;
-                }
-                return;
-            }
-        } catch (dateError) {
-            console.error('Error checking date for dynamic breakdown:', dateError);
-            dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">Error checking date range</div>';
-            return;
-        }
+        // Show for any date range (removed "today only" restriction)
+        // For historical data, all hours will be treated as past hours
+        console.log('Dynamic hourly breakdown date check:', {
+            periodStart: period.start ? (window.formatDhakaDateForInput ? window.formatDhakaDateForInput(period.start) : period.start.toISOString().split('T')[0]) : null,
+            periodEnd: period.end ? (window.formatDhakaDateForInput ? window.formatDhakaDateForInput(period.end) : period.end.toISOString().split('T')[0]) : null
+        });
         
         // Only show loading state when actually fetching data
         dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">Loading...</div>';
@@ -3282,7 +3304,15 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         }
         
         if (tablesToQuery.length === 0) {
-            dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No audit data available</div>';
+            console.log('Dynamic hourly breakdown hidden: no tables to query');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
             return;
         }
         
@@ -3329,9 +3359,39 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         const allAuditResults = await Promise.all(auditPromises);
         const allAudits = allAuditResults.flat();
         
+        // Check if there's any data - if not, hide the section
+        if (!allAudits || allAudits.length === 0) {
+            console.log('Dynamic hourly breakdown hidden: no audit data found');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
+            return;
+        }
+        
         const now = toDhakaTime(new Date());
-        const currentHour = now.getHours();
-        const currentMinutes = now.getMinutes();
+        const today = window.getDhakaNow ? window.getDhakaNow() : new Date();
+        const todayStr = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(today) : today.toISOString().split('T')[0];
+        const periodEndStr = period.end ? (window.formatDhakaDateForInput ? window.formatDhakaDateForInput(period.end) : period.end.toISOString().split('T')[0]) : null;
+        
+        // Check if this is historical data (period end is before today)
+        const isHistoricalData = periodEndStr && periodEndStr < todayStr;
+        
+        // For historical data, all hours are past; for today, use current time
+        const currentHour = isHistoricalData ? 22 : now.getHours(); // Use 22 (10 PM) to mark all hours as past for historical data
+        const currentMinutes = isHistoricalData ? 59 : now.getMinutes();
+        
+        console.log('Dynamic hourly breakdown time context:', {
+            isHistoricalData,
+            periodEndStr,
+            todayStr,
+            currentHour,
+            currentMinutes
+        });
         
         const hourlyData = {};
         allAudits.forEach(audit => {
@@ -3352,6 +3412,25 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
             hourlyData[hourKey][auditorEmail]++;
         });
         
+        // Check if hourlyData has any actual data after processing
+        const hasAnyData = Object.keys(hourlyData).length > 0 && 
+                          Object.values(hourlyData).some(hourData => 
+                              Object.values(hourData).some(count => count > 0)
+                          );
+        
+        if (!hasAnyData) {
+            console.log('Dynamic hourly breakdown hidden: no hourly data after processing');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
+            return;
+        }
+        
         const auditorMap = {};
         auditorStats.forEach(stat => {
             auditorMap[stat.email] = stat.name;
@@ -3369,7 +3448,15 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         }
         
         if (sortedHours.length === 0) {
-            dynamicHourlyTableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No audit activity in the selected period</div>';
+            console.log('Dynamic hourly breakdown hidden: no sorted hours');
+            const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+            if (dynamicHourlyBreakdownTable) {
+                dynamicHourlyBreakdownTable.style.display = 'none';
+            }
+            if (dynamicHourlyChartInstance) {
+                dynamicHourlyChartInstance.destroy();
+                dynamicHourlyChartInstance = null;
+            }
             return;
         }
         
@@ -3402,7 +3489,8 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         const workingHours = ['10:30', '11:30', '12:30', '13:30', '15:30', '16:30', '17:30', '18:30'];
         
         // Find current hour index in working hours
-        const currentHourIndex = workingHours.findIndex(h => {
+        // For historical data, set to -1 to indicate all hours are past
+        const currentHourIndex = isHistoricalData ? -1 : workingHours.findIndex(h => {
             const hour = parseInt(h.split(':')[0]);
             return hour >= currentHour;
         });
@@ -3423,8 +3511,12 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
             const index = workingHours.indexOf(hour);
             if (index < 0) return null; // Non-working hour
             
+            // For historical data, treat all hours as past hours
+            // For today's data, only treat hours before current as past
+            const isPastHour = isHistoricalData || (currentHourIndex >= 0 && index < currentHourIndex);
+            
             // For past hours, calculate what the dynamic target was FOR that hour when it was current
-            if (currentHourIndex >= 0 && index < currentHourIndex) {
+            if (isPastHour) {
                 // Calculate completed so far up to (but not including) this hour
                 let completedUpToThisHour = 0;
                 const thisHourNum = parseInt(hour.split(':')[0]);
@@ -3483,8 +3575,8 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
                 return null;
             }
             
-            // For current and future hours, calculate dynamic target based on current state
-            if (index >= currentHourIndex) {
+            // For current and future hours (only for today's data), calculate dynamic target based on current state
+            if (!isHistoricalData && currentHourIndex >= 0 && index >= currentHourIndex) {
                 const dynamicTargets = calculateDynamicHourlyTargets(totalAssigned, completedSoFar, currentHour, workingHours);
                 if (dynamicTargets && dynamicTargets[index] !== undefined && dynamicTargets[index] > 0) {
                     return dynamicTargets[index];
@@ -3502,8 +3594,10 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
             const actual = chartData[hourIndex] || 0;
             const target = chartDynamicTargets[hourIndex];
             
-            // Only calculate deficiency for past working hours where we had a target
-            if (currentHourIndex >= 0 && index < currentHourIndex && target !== null && target > 0) {
+            // Calculate deficiency for past working hours where we had a target
+            // For historical data, all hours are past; for today, only hours before current
+            const isPastHour = isHistoricalData || (currentHourIndex >= 0 && index < currentHourIndex);
+            if (isPastHour && target !== null && target > 0) {
                 const deficiency = target - actual;
                 return deficiency > 0 ? deficiency : 0; // Only show positive deficiency (shortfall)
             }
@@ -3536,7 +3630,8 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
             // This ensures table and chart show the exact same values
             const dynamicTarget = chartDynamicTargets[hourIndex];
             const workingHourIndex = workingHours.indexOf(hour);
-            const isPastHour = currentHourIndex >= 0 && workingHourIndex >= 0 && workingHourIndex < currentHourIndex;
+            // For historical data, all hours are past; for today, only hours before current
+            const isPastHour = isHistoricalData || (currentHourIndex >= 0 && workingHourIndex >= 0 && workingHourIndex < currentHourIndex);
             const deficiency = deficiencies && deficiencies[hourIndex];
             const targetMet = (dynamicTarget !== null && dynamicTarget !== undefined && dynamicTarget > 0) ? (hourTotal >= dynamicTarget) : null;
             const lunchBreakIndicator = isLunchBreak ? '<span class="lunch-break-text" style="font-size: 0.5rem; color: #f59e0b; opacity: 0; transition: opacity 0.2s;">Lunch</span>' : '';
@@ -3568,9 +3663,27 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         
         dynamicHourlyTableBody.innerHTML = tableHTML;
         
+        // Show the section when data is successfully rendered
+        console.log('Dynamic hourly breakdown rendered successfully, showing table');
+        const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+        if (dynamicHourlyBreakdownTable) {
+            dynamicHourlyBreakdownTable.style.display = 'block';
+        } else {
+            console.warn('Dynamic hourly breakdown table element not found when trying to show it');
+        }
+        
     } catch (error) {
         console.error('Error rendering dynamic hourly breakdown:', error);
         console.error('Error stack:', error.stack);
+        // Hide the section on error
+        const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+        if (dynamicHourlyBreakdownTable) {
+            dynamicHourlyBreakdownTable.style.display = 'none';
+        }
+        if (dynamicHourlyChartInstance) {
+            dynamicHourlyChartInstance.destroy();
+            dynamicHourlyChartInstance = null;
+        }
         const dynamicHourlyTableBody = document.getElementById('dynamicHourlyTableBody');
         if (dynamicHourlyTableBody) {
             dynamicHourlyTableBody.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">Error loading dynamic hourly breakdown: ${error.message || 'Unknown error'}</div>`;
@@ -3609,6 +3722,17 @@ async function updateStandupView() {
 
 // Render the UI structure immediately (cards, table headers) - no data needed
 function renderStandupViewStructure() {
+    console.log('renderStandupViewStructure called, currentTab:', currentTab);
+    
+    // Ensure the table container is visible
+    const performanceTable = document.getElementById('performanceTable');
+    if (performanceTable) {
+        performanceTable.style.display = 'block';
+        console.log('Performance table set to visible');
+    } else {
+        console.error('performanceTable element not found!');
+    }
+    
     // Update table header for standup view immediately
     const tableHeader = document.getElementById('tableHeader');
     if (tableHeader) {
@@ -4526,9 +4650,10 @@ async function fetchAndCacheStandupView(period) {
 // Tab Switching
 // ============================================================================
     async function switchTab(tabElement, index) {
+    console.log('switchTab called with index:', index);
     currentTab = index;
     
-        const tabs = document.querySelectorAll('button[onclick*="switchTab"]');
+        const tabs = document.querySelectorAll('#teamStatsTabBtn, #standupViewTabBtn');
         const slider = document.querySelector('div[style*="position: absolute"]');
         const tabBar = document.querySelector('div[style*="position: relative"]');
         
@@ -4545,16 +4670,10 @@ async function fetchAndCacheStandupView(period) {
         slider.style.left = `${sliderLeft}px`;
         slider.style.width = `${tabWidth}px`;
         
-    // Show/hide hourly breakdown based on tab
+    // Hide hourly breakdown (section is hidden)
     const hourlyBreakdownTable = document.getElementById('hourlyBreakdownTable');
     if (hourlyBreakdownTable) {
-        if (index === 0) {
-            // Team Stats - show hourly breakdown
-            hourlyBreakdownTable.style.display = 'block';
-        } else {
-            // Standup View - hide hourly breakdown
-            hourlyBreakdownTable.style.display = 'none';
-        }
+        hourlyBreakdownTable.style.display = 'none';
     }
     
     // Show/hide dynamic hourly breakdown based on tab
@@ -4567,6 +4686,12 @@ async function fetchAndCacheStandupView(period) {
             // Standup View - hide dynamic hourly breakdown
             dynamicHourlyBreakdownTable.style.display = 'none';
         }
+    }
+    
+    // Ensure the main table is visible for both tabs
+    const performanceTable = document.getElementById('performanceTable');
+    if (performanceTable) {
+        performanceTable.style.display = 'block';
     }
     
     // Show loading state when switching tabs
@@ -5043,6 +5168,72 @@ function setupEventListeners() {
         });
     }
 
+    // Quick date filter buttons (CSP-safe: no inline onclick)
+    const todayBtn = document.getElementById('todayBtn');
+    if (todayBtn) {
+        todayBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            applyQuickDateFilter('today');
+        });
+    }
+    
+    const yesterdayBtn = document.getElementById('yesterdayBtn');
+    if (yesterdayBtn) {
+        yesterdayBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            applyQuickDateFilter('yesterday');
+        });
+    }
+    
+    const thisMonthBtn = document.getElementById('thisMonthBtn');
+    if (thisMonthBtn) {
+        thisMonthBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            applyQuickDateFilter('thisMonth');
+        });
+    }
+    
+    const lastMonthBtn = document.getElementById('lastMonthBtn');
+    if (lastMonthBtn) {
+        lastMonthBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            applyQuickDateFilter('lastMonth');
+        });
+    }
+
+    // Tab buttons (CSP-safe: no inline onclick)
+    const teamStatsTabBtn = document.getElementById('teamStatsTabBtn');
+    if (teamStatsTabBtn) {
+        teamStatsTabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            switchTab(teamStatsTabBtn, 0);
+        });
+    }
+    
+    const standupViewTabBtn = document.getElementById('standupViewTabBtn');
+    if (standupViewTabBtn) {
+        standupViewTabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            switchTab(standupViewTabBtn, 1);
+        });
+    }
+
+    // Clear filters button (CSP-safe: no inline onclick)
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            clearFilters();
+        });
+    }
+
     // Filter button
     const filterBtn = document.getElementById('filterBtn');
     if (filterBtn) {
@@ -5166,81 +5357,113 @@ window.clearDateFilter = async function() {
 };
 
 // Quick date filter function - implemented inline since date-filter-utils.js doesn't exist
-window.applyQuickDateFilter = function(period) {
-    // Cancel any ongoing fetches by incrementing the fetch ID
-    currentFetchId++;
-    
-    // Reset loading and render states to allow new fetch to start
-    isLoading = false;
-    renderInProgress = false;
-    
-    // Show loading state when quick date filter changes
-    showLoadingState();
-    
-    // Get today's date in Dhaka timezone
-    const today = window.getDhakaNow ? window.getDhakaNow() : new Date();
-    let startDate, endDate;
-    
-    switch(period) {
-        case 'today':
-            startDate = window.getDhakaStartOfDay ? window.getDhakaStartOfDay(today) : new Date(today.setHours(0,0,0,0));
-            endDate = window.getDhakaEndOfDay ? window.getDhakaEndOfDay(today) : new Date(today.setHours(23,59,59,999));
-            break;
-        case 'yesterday':
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            startDate = window.getDhakaStartOfDay ? window.getDhakaStartOfDay(yesterday) : new Date(yesterday.setHours(0,0,0,0));
-            endDate = window.getDhakaEndOfDay ? window.getDhakaEndOfDay(yesterday) : new Date(yesterday.setHours(23,59,59,999));
-            break;
-        case 'thisMonth':
-            startDate = window.getDhakaFirstDayOfMonth ? window.getDhakaFirstDayOfMonth(today) : new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = window.getDhakaLastDayOfMonth ? window.getDhakaLastDayOfMonth(today) : new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            break;
-        case 'lastMonth':
-            const lastMonth = new Date(today);
-            lastMonth.setMonth(lastMonth.getMonth() - 1);
-            startDate = window.getDhakaFirstDayOfMonth ? window.getDhakaFirstDayOfMonth(lastMonth) : new Date(lastMonth.getFullYear(), lastMonth.getMonth(), 1);
-            endDate = window.getDhakaLastDayOfMonth ? window.getDhakaLastDayOfMonth(lastMonth) : new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0);
-            break;
-        default:
-            console.warn('Unknown quick date filter period:', period);
+window.applyQuickDateFilter = async function(period) {
+    try {
+        console.log('🔄 [Quick Date Filter] Applying period:', period);
+        
+        // Cancel any ongoing fetches by incrementing the fetch ID
+        currentFetchId++;
+        
+        // Reset loading and render states to allow new fetch to start
+        isLoading = false;
+        renderInProgress = false;
+        
+        // Show loading state when quick date filter changes
+        showLoadingState();
+        
+        // Get today's date in Dhaka timezone (create a fresh copy to avoid mutations)
+        const today = window.getDhakaNow ? window.getDhakaNow() : new Date();
+        let startDate, endDate;
+        
+        switch(period) {
+            case 'today':
+                const todayCopy = new Date(today);
+                startDate = window.getDhakaStartOfDay ? window.getDhakaStartOfDay(todayCopy) : new Date(todayCopy.setHours(0,0,0,0));
+                endDate = window.getDhakaEndOfDay ? window.getDhakaEndOfDay(todayCopy) : new Date(todayCopy.setHours(23,59,59,999));
+                break;
+            case 'yesterday':
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                startDate = window.getDhakaStartOfDay ? window.getDhakaStartOfDay(yesterday) : new Date(yesterday.setHours(0,0,0,0));
+                endDate = window.getDhakaEndOfDay ? window.getDhakaEndOfDay(yesterday) : new Date(yesterday.setHours(23,59,59,999));
+                break;
+            case 'thisMonth':
+                const thisMonthCopy = new Date(today);
+                startDate = window.getDhakaFirstDayOfMonth ? window.getDhakaFirstDayOfMonth(thisMonthCopy) : new Date(thisMonthCopy.getFullYear(), thisMonthCopy.getMonth(), 1);
+                endDate = window.getDhakaLastDayOfMonth ? window.getDhakaLastDayOfMonth(thisMonthCopy) : new Date(thisMonthCopy.getFullYear(), thisMonthCopy.getMonth() + 1, 0);
+                break;
+            case 'lastMonth':
+                const lastMonth = new Date(today);
+                lastMonth.setMonth(lastMonth.getMonth() - 1);
+                // Ensure we have valid dates
+                const lastMonthYear = lastMonth.getFullYear();
+                const lastMonthMonth = lastMonth.getMonth();
+                startDate = window.getDhakaFirstDayOfMonth ? window.getDhakaFirstDayOfMonth(lastMonth) : new Date(lastMonthYear, lastMonthMonth, 1);
+                endDate = window.getDhakaLastDayOfMonth ? window.getDhakaLastDayOfMonth(lastMonth) : new Date(lastMonthYear, lastMonthMonth + 1, 0);
+                console.log('📅 [Last Month] Calculated dates:', { startDate, endDate, lastMonthYear, lastMonthMonth });
+                break;
+            default:
+                console.warn('Unknown quick date filter period:', period);
+                return;
+        }
+        
+        if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            console.error('❌ [Quick Date Filter] Invalid dates calculated:', { startDate, endDate, period });
+            hideLoadingState();
             return;
-    }
+        }
     
-    // Update date filter state
-    dateFilter.start = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(startDate) : startDate.toISOString().split('T')[0];
-    dateFilter.end = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(endDate) : endDate.toISOString().split('T')[0];
-    useWeekFilter = false;
-    
-    // Update date input fields
-    const startDateEl = document.getElementById('startDate');
-    const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
-    if (startDateEl) startDateEl.value = dateFilter.start;
-    if (endDateEl) endDateEl.value = dateFilter.end;
-    
-    // Update date button text
-    if (dateBtnTextEl) {
-        const start = window.formatDhakaDate ? window.formatDhakaDate(startDate, { month: 'short', day: 'numeric' }) : startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        const end = window.formatDhakaDate ? window.formatDhakaDate(endDate, { month: 'short', day: 'numeric' }) : endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        dateBtnTextEl.textContent = `${start} - ${end}`;
-    }
-    
-    // Update active state of quick filter buttons
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    const activeBtn = document.getElementById(period + 'Btn');
-    if (activeBtn) activeBtn.classList.add('active');
-    
-    // Update week display
-    if (typeof updateWeekDisplay === 'function') {
-        updateWeekDisplay();
-    }
-    
-    // Reload assignments with new date filter
-    if (typeof loadAssignments === 'function') {
-        loadAssignments();
+        // Update date filter state
+        dateFilter.start = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(startDate) : startDate.toISOString().split('T')[0];
+        dateFilter.end = window.formatDhakaDateForInput ? window.formatDhakaDateForInput(endDate) : endDate.toISOString().split('T')[0];
+        useWeekFilter = false;
+        
+        console.log('📅 [Quick Date Filter] Date range set:', { start: dateFilter.start, end: dateFilter.end });
+        
+        // Update date input fields
+        const startDateEl = document.getElementById('startDate');
+        const endDateEl = document.getElementById('endDate');
+        const dateBtnTextEl = document.getElementById('dateBtnText');
+        
+        if (startDateEl) startDateEl.value = dateFilter.start;
+        if (endDateEl) endDateEl.value = dateFilter.end;
+        
+        // Update date button text
+        if (dateBtnTextEl) {
+            const start = window.formatDhakaDate ? window.formatDhakaDate(startDate, { month: 'short', day: 'numeric' }) : startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const end = window.formatDhakaDate ? window.formatDhakaDate(endDate, { month: 'short', day: 'numeric' }) : endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            dateBtnTextEl.textContent = `${start} - ${end}`;
+        }
+        
+        // Update active state of quick filter buttons
+        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
+        quickDateButtons.forEach(btn => btn.classList.remove('active'));
+        const activeBtnId = period + 'Btn';
+        const activeBtn = document.getElementById(activeBtnId);
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+            console.log('✅ [Quick Date Filter] Activated button:', activeBtnId);
+        } else {
+            console.warn('⚠️ [Quick Date Filter] Button not found:', activeBtnId);
+        }
+        
+        // Update week display
+        if (typeof updateWeekDisplay === 'function') {
+            updateWeekDisplay();
+        }
+        
+        // Update dashboard with new date filter (this will call updateTeamStats or updateStandupView based on current tab)
+        // This matches the behavior of applyDateFilter - quick buttons only set the date range
+        if (typeof updateDashboard === 'function') {
+            console.log('🔄 [Quick Date Filter] Calling updateDashboard...');
+            await updateDashboard();
+            console.log('✅ [Quick Date Filter] Dashboard updated');
+        } else {
+            console.error('❌ [Quick Date Filter] updateDashboard function not found');
+        }
+    } catch (error) {
+        console.error('❌ [Quick Date Filter] Error applying quick date filter:', error);
+        hideLoadingState();
     }
 };
 

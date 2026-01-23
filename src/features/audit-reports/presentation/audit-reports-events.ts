@@ -175,7 +175,8 @@ export class AuditReportsEventHandlers {
         e.stopPropagation();
         const dropdown = document.getElementById('dateDropdown');
         if (dropdown) {
-          dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+          // Toggle using CSS class like auditor's dashboard
+          dropdown.classList.toggle('active');
         }
       });
     }
@@ -184,14 +185,23 @@ export class AuditReportsEventHandlers {
     document.addEventListener('click', (e) => {
       if (!(e.target as HTMLElement).closest('.date-picker-dropdown')) {
         const dropdown = document.getElementById('dateDropdown');
-        if (dropdown) dropdown.style.display = 'none';
+        if (dropdown) dropdown.classList.remove('active');
       }
     });
+
+    // Prevent clicks inside dropdown from closing it
+    const dropdown = document.getElementById('dateDropdown');
+    if (dropdown) {
+      dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
 
     // Apply date filter
     const applyDateFilter = document.getElementById('applyDateFilter');
     if (applyDateFilter) {
-      applyDateFilter.addEventListener('click', () => {
+      applyDateFilter.addEventListener('click', (e) => {
+        e.stopPropagation();
         const startDate = (document.getElementById('startDate') as HTMLInputElement)?.value;
         const endDate = (document.getElementById('endDate') as HTMLInputElement)?.value;
         
@@ -205,13 +215,18 @@ export class AuditReportsEventHandlers {
           
           this.controller.setDateRange({ startDate, endDate });
         }
+        
+        // Close the dropdown after applying (like auditor's dashboard)
+        const dateDropdown = document.getElementById('dateDropdown');
+        if (dateDropdown) dateDropdown.classList.remove('active');
       });
     }
 
     // Clear date filter
     const clearDateFilter = document.getElementById('clearDateFilter');
     if (clearDateFilter) {
-      clearDateFilter.addEventListener('click', () => {
+      clearDateFilter.addEventListener('click', (e) => {
+        e.stopPropagation();
         const startDateInput = document.getElementById('startDate') as HTMLInputElement;
         const endDateInput = document.getElementById('endDate') as HTMLInputElement;
         if (startDateInput) startDateInput.value = '';
@@ -228,6 +243,23 @@ export class AuditReportsEventHandlers {
         const dateBtnText = document.getElementById('dateBtnText');
         if (dateBtnText) dateBtnText.textContent = 'Date Range';
         
+        // Close the dropdown after clearing (like auditor's dashboard)
+        const dateDropdown = document.getElementById('dateDropdown');
+        if (dateDropdown) dateDropdown.classList.remove('active');
+      });
+    }
+    
+    // Prevent date inputs from closing dropdown
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    if (startDateInput) {
+      startDateInput.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+    if (endDateInput) {
+      endDateInput.addEventListener('click', (e) => {
+        e.stopPropagation();
       });
     }
 
