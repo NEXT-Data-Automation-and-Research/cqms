@@ -21,7 +21,7 @@ export function renderHeaderActions(
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
         </svg>
       </button>
-      <div class="date-dropdown-menu" id="dateDropdown" style="display: none; z-index: 1002 !important;">
+      <div class="date-dropdown-menu" id="dateDropdown">
         <div class="filter-group">
           <label class="filter-label">Start Date</label>
           <input type="date" class="filter-input" id="startDate">

@@ -152,8 +152,12 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     logInfo('✅ Updated localStorage with full user profile data');
 
     // ✅ SECURITY: Store device fingerprint for this session to prevent token copying
+    // ✅ FIX: Pass userId to ensure fingerprint is stored with user-based key
     if (session?.access_token) {
-      storeDeviceFingerprint(session.access_token);
+      storeDeviceFingerprint(session.access_token, user.id);
+      // ✅ FIX: Small delay to ensure fingerprint is persisted before redirect
+      // This prevents race conditions where auth-checker validates before fingerprint is stored
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     // Clear any OAuth parameters from URL
@@ -165,6 +169,12 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     // Check for stored redirect path, otherwise go to home
     const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/src/features/home/presentation/home-page.html';
     sessionStorage.removeItem('redirectAfterLogin');
+    
+    // ✅ FIX: Set a flag to indicate login just completed (prevents immediate validation failures)
+    sessionStorage.setItem('loginJustCompleted', 'true');
+    setTimeout(() => {
+      sessionStorage.removeItem('loginJustCompleted');
+    }, 5000); // Remove flag after 5 seconds
     
     // Use navigation utility for consistency
     const { redirectAfterAction } = await import('./navigation.js');

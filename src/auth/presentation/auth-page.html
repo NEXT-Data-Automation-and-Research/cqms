@@ -286,41 +286,83 @@
         // Initialize on page load
         await initializeSupabase();
         
+        // ✅ FIX: Prevent multiple callback handling attempts
+        let callbackHandlingInProgress = false;
+        let callbackHandled = false;
+        
         // Handle OAuth callback (when user returns from Google)
         // Supabase automatically processes OAuth callbacks, so we check for session
         async function checkAndHandleCallback() {
+            // ✅ FIX: Prevent multiple simultaneous callback handling attempts
+            if (callbackHandlingInProgress || callbackHandled) {
+                return false;
+            }
+            
             const supabase = getSupabase();
             if (!supabase) {
-                return;
+                return false;
             }
             
-            // Check for session (Supabase processes OAuth callback automatically)
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-                // User has a session, handle the callback
-                await handleGoogleOAuthCallback();
-                return true; // Callback handled
-            }
-            
-            // Also check URL parameters/hash (fallback detection)
+            // ✅ FIX: Only handle callback if OAuth parameters are present in URL
+            // This prevents redirect loops when user already has a session
             const urlParams = new URLSearchParams(window.location.search);
             const urlHash = window.location.hash;
-            if (urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code')) {
-                // Wait a bit for Supabase to process the callback
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                const { data: { session: retrySession } } = await supabase.auth.getSession();
-                if (retrySession && retrySession.user) {
-                    await handleGoogleOAuthCallback();
-                    return true; // Callback handled
+            const hasOAuthParams = urlParams.get('code') || 
+                                  urlParams.get('access_token') || 
+                                  urlHash.includes('access_token') || 
+                                  urlHash.includes('code');
+            
+            if (!hasOAuthParams) {
+                // No OAuth parameters - check if user has a valid session and redirect
+                // (but don't call callback handler to avoid loops)
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session && session.user) {
+                    // User has a session but no OAuth params - likely already logged in
+                    // Redirect to home page (but mark as handled to prevent callback)
+                    const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/src/features/home/presentation/home-page.html';
+                    sessionStorage.removeItem('redirectAfterLogin');
+                    window.location.replace(redirectPath);
+                    callbackHandled = true;
+                    return true;
                 }
+                return false;
             }
             
-            return false; // No callback detected
+            // OAuth parameters present - handle callback
+            callbackHandlingInProgress = true;
+            
+            try {
+                // Wait a bit for Supabase to process the callback
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    console.error('Error getting session after OAuth:', error);
+                    callbackHandlingInProgress = false;
+                    return false;
+                }
+                
+                if (session && session.user) {
+                    // User has a session after OAuth - handle the callback
+                    await handleGoogleOAuthCallback();
+                    callbackHandled = true;
+                    callbackHandlingInProgress = false;
+                    return true; // Callback handled
+                }
+                
+                callbackHandlingInProgress = false;
+                return false;
+            } catch (error) {
+                console.error('Error handling OAuth callback:', error);
+                callbackHandlingInProgress = false;
+                return false;
+            }
         }
         
         // Check for callback on page load
-        const callbackHandled = await checkAndHandleCallback();
-        if (!callbackHandled) {
+        const callbackHandledResult = await checkAndHandleCallback();
+        if (!callbackHandledResult) {
             // No callback detected, continue with normal page setup
             
             // Google Sign-In button handler

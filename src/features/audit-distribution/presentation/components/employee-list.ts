@@ -31,16 +31,16 @@ export class EmployeeList {
     if (employees.length === 0) {
       safeSetHTML(this.container, `
         <div class="text-center py-12 px-4">
-          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
-            <svg class="w-8 h-8 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+            <svg class="w-8 h-8 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="8.5" cy="7" r="4"/>
               <line x1="20" y1="8" x2="20" y2="14"/>
               <line x1="23" y1="11" x2="17" y2="11"/>
             </svg>
           </div>
-          <p class="text-base font-bold text-white mb-2">No employees found</p>
-          <p class="text-sm text-white/60">Try adjusting your filters to see more results</p>
+          <p class="text-base font-bold text-gray-900 mb-2">No employees found</p>
+          <p class="text-sm text-gray-600">Try adjusting your filters to see more results</p>
         </div>
       `);
       return;
@@ -70,7 +70,7 @@ export class EmployeeList {
     const items = sortedEmployees.map(emp => this.renderEmployeeItem(emp, selectedEmployees, auditStats)).join('');
 
     safeSetHTML(this.container, `
-      <div class="flex flex-col w-full gap-2.5">
+      <div class="bg-white rounded border border-gray-200 divide-y divide-gray-200">
         ${items}
       </div>
     `);
@@ -112,43 +112,34 @@ export class EmployeeList {
       const items = sortedEmployees.map(emp => this.renderEmployeeItem(emp, selectedEmployees, auditStats)).join('');
 
       return `
-        <div class="border border-white/10 rounded-xl overflow-hidden mb-3 bg-white/5 backdrop-blur-sm">
-          <div class="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-3 flex items-center justify-between cursor-pointer hover:from-primary/15 hover:via-primary/10 transition-all border-b border-white/10" onclick="this.dispatchEvent(new CustomEvent('toggleGroup', { detail: '${groupName}' }))">
+        <div class="bg-white rounded border border-gray-200 mb-3 overflow-hidden">
+          <div class="bg-gray-50 px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors border-b border-gray-200" onclick="this.dispatchEvent(new CustomEvent('toggleGroup', { detail: '${groupName}' }))">
             <div class="flex items-center gap-3 flex-1">
               <div class="relative">
                 <input
                   type="checkbox"
-                  class="w-4 h-4 cursor-pointer accent-primary rounded border-2 border-white/30 bg-white/10 checked:bg-primary checked:border-primary transition-all"
+                  class="w-4 h-4 cursor-pointer accent-primary rounded border-2 border-gray-300 checked:bg-primary checked:border-primary transition-all"
                   ${allSelected ? 'checked' : ''}
                   data-action="toggle-group-selection"
                   data-group-name="${this.escapeHtml(groupName)}"
                 />
-                ${allSelected ? `
-                  <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  </div>
-                ` : ''}
               </div>
-              <h3 class="text-sm font-bold text-white m-0">${this.escapeHtml(groupName)}</h3>
-              <span class="bg-primary text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm">${sortedEmployees.length}</span>
+              <h3 class="text-sm font-semibold text-gray-900 m-0">${this.escapeHtml(groupName)}</h3>
+              <span class="bg-primary text-white px-2.5 py-1 rounded text-xs font-semibold">${sortedEmployees.length}</span>
             </div>
-            <svg class="w-5 h-5 text-white/60 transition-transform flex-shrink-0 group-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg class="w-5 h-5 text-gray-600 transition-transform flex-shrink-0 group-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="6 9 12 15 18 9"/>
             </svg>
           </div>
-          <div class="group-content bg-white/5 hidden p-2" data-group="${this.escapeHtml(groupName)}">
-            <div class="flex flex-col gap-2">
-              ${items}
-            </div>
+          <div class="group-content hidden divide-y divide-gray-200" data-group="${this.escapeHtml(groupName)}">
+            ${items}
           </div>
         </div>
       `;
     }).join('');
 
     safeSetHTML(this.container, `
-      <div class="flex flex-col w-full gap-2">
+      <div class="flex flex-col w-full">
         ${groupElements}
       </div>
     `);
@@ -178,88 +169,76 @@ export class EmployeeList {
 
     return `
       <div
-        class="employee-item group flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
-          isSelected 
-            ? 'bg-primary/15 border-primary/40 shadow-sm shadow-primary/20' 
-            : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-primary/30'
+        class="employee-item px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0 ${
+          isSelected ? 'bg-primary/5' : ''
         }"
         data-email="${this.escapeHtml(employee.email)}"
-        data-action="employee-click"
+        data-action="employee-select"
       >
-        <!-- Checkbox -->
-        <div class="relative flex-shrink-0">
-          <input
-            type="checkbox"
-            class="employee-checkbox w-5 h-5 cursor-pointer accent-primary flex-shrink-0 rounded border-2 border-white/30 bg-white/10 checked:bg-primary checked:border-primary transition-all"
-            data-email="${this.escapeHtml(employee.email)}"
-            ${isSelected ? 'checked' : ''}
-          />
-          ${isSelected ? `
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" class="text-primary">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <!-- Checkbox -->
+            <input
+              type="checkbox"
+              class="employee-checkbox w-4 h-4 cursor-pointer accent-primary rounded border-2 border-gray-300 checked:bg-primary checked:border-primary transition-all flex-shrink-0"
+              data-email="${this.escapeHtml(employee.email)}"
+              ${isSelected ? 'checked' : ''}
+              onclick="event.stopPropagation()"
+            />
+            
+            <!-- Avatar -->
+            <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0 overflow-hidden">
+              ${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined'
+                ? `<img src="${this.escapeHtml(employee.avatar_url)}" alt="${this.escapeHtml(employee.name)}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />`
+                : ''
+              }
+              <div class="${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined' ? 'hidden' : 'flex'} items-center justify-center w-full h-full">
+                ${initials}
+              </div>
             </div>
-          ` : ''}
-        </div>
-
-        <!-- Avatar -->
-        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md overflow-hidden ${isSelected ? 'ring-2 ring-primary ring-offset-2 ring-offset-transparent' : ''}">
-          ${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined'
-            ? `<img src="${this.escapeHtml(employee.avatar_url)}" alt="${this.escapeHtml(employee.name)}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />`
-            : ''
-          }
-          <div class="${employee.avatar_url && employee.avatar_url.trim() !== '' && employee.avatar_url !== 'null' && employee.avatar_url !== 'undefined' ? 'hidden' : 'flex'} items-center justify-center w-full h-full">
-            ${initials}
-          </div>
-        </div>
-
-        <!-- Employee Info -->
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1">
-            <p class="text-sm font-bold text-white m-0 truncate">${this.escapeHtml(employee.name || 'Unknown')}</p>
-            ${hasPendingAudits ? `
-              <span class="w-2 h-2 rounded-full bg-warning animate-pulse flex-shrink-0" title="Has pending audits"></span>
-            ` : allCompleted ? `
-              <span class="w-2 h-2 rounded-full bg-success flex-shrink-0" title="All audits completed"></span>
-            ` : ''}
-          </div>
-          <div class="flex items-center gap-2 flex-wrap">
-            ${channelIcon ? `
-              <div class="flex items-center gap-1 text-xs text-white/70">
-                ${channelIcon}
-                <span class="font-medium">${this.escapeHtml(employee.channel || '-')}</span>
+            
+            <!-- Employee Info -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5 mb-0.5">
+                <h4 class="text-xs font-semibold text-gray-900 truncate m-0">
+                  ${this.escapeHtml(employee.name || 'Unknown')}
+                </h4>
+                ${hasPendingAudits ? `
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500 flex-shrink-0" title="Has pending audits"></span>
+                ` : allCompleted ? `
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="All audits completed"></span>
+                ` : ''}
               </div>
-            ` : ''}
-            ${employee.team ? `
-              <span class="text-xs text-white/60">•</span>
-              <span class="text-xs text-white/70 font-medium">${this.escapeHtml(employee.team)}</span>
-            ` : ''}
-            ${employee.designation ? `
-              <span class="text-xs text-white/60">•</span>
-              <span class="text-xs text-white/70 font-medium">${this.escapeHtml(employee.designation)}</span>
-            ` : ''}
+              <p class="text-[10px] text-gray-600 flex items-center gap-1 flex-wrap m-0">
+                ${employee.channel ? `
+                  <span class="font-medium text-gray-700">${this.escapeHtml(employee.channel)}</span>
+                ` : ''}
+                ${employee.channel && employee.team ? `
+                  <span class="text-gray-300">•</span>
+                ` : ''}
+                ${employee.team ? `
+                  <span>${this.escapeHtml(employee.team)}</span>
+                ` : ''}
+                ${(employee.channel || employee.team) && employee.department ? `
+                  <span class="text-gray-300">•</span>
+                ` : ''}
+                ${employee.department ? `
+                  <span>${this.escapeHtml(employee.department)}</span>
+                ` : ''}
+              </p>
+            </div>
           </div>
-        </div>
-
-        <!-- Stats -->
-        <div class="flex items-center gap-3 flex-shrink-0">
-          <div class="flex items-center gap-3">
-            <div class="flex flex-col items-end gap-1">
-              <div class="flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/60">
-                  <path d="M9 11l3 3L22 4"/>
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-                </svg>
-                <span class="text-xs text-white/60 font-medium">Assigned</span>
-                <span class="text-xs font-bold text-primary min-w-[1.5rem] text-right">${stats.assigned}</span>
+          
+          <!-- Stats -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <div class="text-right">
+                <div class="text-xs font-semibold text-primary">${stats.assigned}</div>
+                <div class="text-[10px] text-gray-500">Assigned</div>
               </div>
-              <div class="flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-white/60">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span class="text-xs text-white/60 font-medium">Completed</span>
-                <span class="text-xs font-bold ${stats.completed > 0 ? 'text-success' : 'text-white/50'} min-w-[1.5rem] text-right">${stats.completed}</span>
+              <div class="text-right">
+                <div class="text-xs font-semibold ${stats.completed > 0 ? 'text-green-600' : 'text-gray-400'}">${stats.completed}</div>
+                <div class="text-[10px] text-gray-500">Completed</div>
               </div>
             </div>
           </div>
@@ -294,15 +273,25 @@ export class EmployeeList {
   }
 
   private attachEventListeners(): void {
-    // ✅ SECURITY: Set up event listeners for employee clicks (prevents XSS)
-    this.container.querySelectorAll('[data-action="employee-click"]').forEach(element => {
+    // ✅ SECURITY: Set up event listeners for employee item clicks to toggle selection (prevents XSS)
+    this.container.querySelectorAll('[data-action="employee-select"]').forEach(element => {
       if (element.hasAttribute('data-listener-attached')) return;
       element.setAttribute('data-listener-attached', 'true');
       
       element.addEventListener('click', (e) => {
+        // Don't trigger if clicking on the checkbox (it handles its own click)
+        if ((e.target as HTMLElement).closest('.employee-checkbox')) {
+          return;
+        }
+        
         const email = element.getAttribute('data-email');
         if (email) {
-          element.dispatchEvent(new CustomEvent('employeeClick', { detail: email }));
+          // Toggle selection
+          const checkbox = element.querySelector('.employee-checkbox') as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new CustomEvent('employeeSelect', { detail: { email, checked: checkbox.checked } }));
+          }
         }
       });
     });
@@ -328,16 +317,6 @@ export class EmployeeList {
       el.addEventListener('employeeSelect', ((e: CustomEvent) => {
         const { email, checked } = e.detail;
         this.config.onEmployeeSelect(email, checked);
-      }) as EventListener);
-    });
-
-    const employeeClicks = this.container.querySelectorAll('.employee-item');
-    employeeClicks.forEach(el => {
-      el.addEventListener('employeeClick', ((e: CustomEvent) => {
-        const email = e.detail;
-        if (this.config.onEmployeeClick) {
-          this.config.onEmployeeClick(email);
-        }
       }) as EventListener);
     });
 

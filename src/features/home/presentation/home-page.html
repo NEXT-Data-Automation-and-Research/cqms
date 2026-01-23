@@ -175,8 +175,8 @@
 
   /* Screenshot Color Matching - Green Primary Color */
   :root {
-    --primary-green: #1f9e4b; /* Main green from screenshot */
-    --primary-green-dark: #1a733e; /* Darker green for hover */
+    --primary-green: #1a733e; /* Dark green theme color */
+    --primary-green-dark: #0d5e3a; /* Darker green for hover */
     --primary-green-light: #e8f5e9; /* Light green for backgrounds */
   }
 
@@ -194,11 +194,11 @@
   }
   
   .bg-primary\/10 {
-    background-color: rgba(31, 158, 75, 0.1) !important;
+    background-color: rgba(26, 115, 62, 0.1) !important;
   }
   
   .bg-primary\/20 {
-    background-color: rgba(31, 158, 75, 0.2) !important;
+    background-color: rgba(26, 115, 62, 0.2) !important;
   }
   
   .hover\:bg-primary-dark:hover {
@@ -265,11 +265,11 @@
   }
   
   .bg-success\/10 {
-    background-color: rgba(31, 158, 75, 0.1) !important;
+    background-color: rgba(26, 115, 62, 0.1) !important;
   }
   
   .bg-success\/20 {
-    background-color: rgba(31, 158, 75, 0.2) !important;
+    background-color: rgba(26, 115, 62, 0.2) !important;
   }
 
   /* In Progress card icon - green lightning */
@@ -800,15 +800,22 @@
   [data-theme="dark"] #avatarLogoutMenu .hover\:bg-error\/10:hover {
     background-color: rgba(239, 68, 68, 0.1) !important;
   }
+
+  /* Page heading styling - black color like other pages */
+  h1.text-gray-900 {
+    color: #000000 !important;
+    font-weight: 700;
+  }
 </style>
 </head>
 
 <body class="home-page">
 <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
  <main class="main-content" role="main">
-  <!-- Header Bar -->
-  <header class="sticky top-0 z-40">
-    <div class="flex items-center justify-between px-4 py-2">
+  <!-- Main Dashboard Content -->
+  <div class="px-4 py-4 max-w-7xl mx-auto w-full">
+    <!-- Action Icons - Directly in main content -->
+    <div class="flex items-center justify-between mb-4">
       <!-- Left: Logo -->
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2">
@@ -1064,10 +1071,6 @@
         </div>
       </div>
     </div>
-  </header>
-
-  <!-- Main Dashboard Content -->
-  <div class="px-4 py-4 max-w-7xl mx-auto w-full">
     <h1 class="text-xl font-bold text-gray-900 mb-4">Home</h1>
 
     <!-- User Profile Card (Matching Screenshot) -->
@@ -1076,7 +1079,7 @@
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <!-- Left: Avatar + Name + Role + Channel -->
           <div class="flex items-center gap-3">
-            <div id="dashboardAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-green-600 flex items-center justify-center text-white text-sm font-bold shadow ring-1 ring-gray-200 flex-shrink-0">
+            <div id="dashboardAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white text-sm font-bold shadow ring-1 ring-gray-200 flex-shrink-0">
               <!-- Avatar -->
             </div>
             <div class="flex flex-col gap-1.5">
@@ -1107,11 +1110,11 @@
                   <span class="text-purple-700 font-bold" id="displayChannel">-</span>
                 </div>
                 <div id="pillTeam" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded text-[10px]">
-                  <svg class="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
                   </svg>
-                  <span class="text-green-500 font-medium">Team:</span>
-                  <span class="text-green-700 font-bold" id="displayTeam">-</span>
+                  <span class="text-primary font-medium">Team:</span>
+                  <span class="text-primary font-bold" id="displayTeam">-</span>
                 </div>
                 <div id="pillSupervisor" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-orange-50 rounded text-[10px]">
                   <svg class="w-3 h-3 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1299,7 +1302,7 @@
             <div class="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
           </div>
           <div class="flex flex-col gap-1">
-            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-semibold bg-green-100 text-green-800" id="statsPassingCount">
+            <div class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[8px] font-semibold bg-primary/10 text-primary" id="statsPassingCount">
               <svg class="icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
@@ -2921,11 +2924,35 @@ async function initializeDashboard() {
     // Populate filter options after loading data (non-blocking)
     populateFilters().catch(err => console.error('Error populating filters:', err));
 
-    // Auto-refresh page every minute (60,000 ms)
-    setInterval(() => {
-      console.log('Auto-refreshing page...');
-      window.location.reload();
-    }, 60000);
+    // Initialize intelligent data refresh service
+    // This replaces full page reloads with selective section updates
+    (async () => {
+      try {
+        const { dataRefreshService } = await import('/js/features/home/infrastructure/data-refresh-service.js');
+        
+        // Register refresh functions for each section
+        dataRefreshService.registerSection('stats', updateYourStats);
+        dataRefreshService.registerSection('assignedAudits', loadAssignedAudits);
+        dataRefreshService.registerSection('recentUpdates', loadRecentUpdates);
+        dataRefreshService.registerSection('notifications', loadNotifications);
+        dataRefreshService.registerSection('events', loadUpcomingEvents);
+        
+        // Start automatic refresh (every 2 minutes)
+        dataRefreshService.start(120000);
+      } catch (err) {
+        console.warn('Data refresh service not available, using fallback:', err);
+        // Fallback to simple interval refresh
+        setInterval(() => {
+          if (!document.hidden) {
+            Promise.all([
+              updateYourStats().catch(err => console.warn('Error refreshing stats:', err)),
+              loadAssignedAudits().catch(err => console.warn('Error refreshing audits:', err))
+            ]);
+            loadRecentUpdates().catch(err => console.warn('Error refreshing updates:', err));
+          }
+        }, 120000);
+      }
+    })();
 
   } catch (error) {
     console.error('Error initializing dashboard:', error);
@@ -3112,42 +3139,69 @@ async function populatePremiumDashboard() {
     const supabase = await getAuthenticatedSupabase();
     const { data: userData, error } = await supabase
       .from('people')
-      .select('email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_alias')
+      .select('email, name, role, channel, team, team_supervisor, quality_mentor, employee_id, intercom_admin_id, intercom_admin_alias')
       .eq('email', currentUserEmail)
       .maybeSingle();
     
+    if (error) {
+      console.error('Error fetching user data from people table:', error);
+    }
+    
     if (!error && userData) {
+      console.log('User data fetched from people table:', {
+        email: userData.email,
+        role: userData.role,
+        employee_id: userData.employee_id,
+        channel: userData.channel,
+        team: userData.team,
+        team_supervisor: userData.team_supervisor,
+        intercom_admin_id: userData.intercom_admin_id,
+        intercom_admin_alias: userData.intercom_admin_alias
+      });
       const isEmployee = userData.role === 'Employee';
       const isAdmin = userData.role === 'Admin' || userData.role === 'Super Admin' || userData.role === 'Quality Analyst';
       
-      // Show Intercom Alias for all users
-      if (userData.intercom_admin_alias) {
-        const pillIntercomAlias = document.getElementById('pillIntercomAlias');
-        if (pillIntercomAlias) {
-          pillIntercomAlias.classList.remove('hidden');
-          const displayIntercomAlias = document.getElementById('displayIntercomAlias');
-          if (displayIntercomAlias) displayIntercomAlias.textContent = userData.intercom_admin_alias;
+      // Show Intercom pill for all users (show even if null to display the value)
+      const pillIntercomAlias = document.getElementById('pillIntercomAlias');
+      if (pillIntercomAlias) {
+        pillIntercomAlias.classList.remove('hidden');
+        const displayIntercomAlias = document.getElementById('displayIntercomAlias');
+        if (displayIntercomAlias) {
+          // Show intercom_admin_alias if available, otherwise intercom_admin_id, otherwise "null"
+          const intercomValue = userData.intercom_admin_alias || userData.intercom_admin_id || null;
+          displayIntercomAlias.textContent = intercomValue !== null ? String(intercomValue) : 'null';
         }
       }
       
-      // Show/hide employee pills
-      if (isEmployee) {
+      // Show employee pills if user has employee-related data (not just for "Employee" role)
+      // This allows showing data for users with other roles who have employee fields populated
+      const hasEmployeeData = userData.employee_id || userData.channel || userData.team || userData.team_supervisor;
+      if (isEmployee || hasEmployeeData) {
         const pillEmployeeId = document.getElementById('pillEmployeeId');
         const pillChannel = document.getElementById('pillChannel');
         const pillTeam = document.getElementById('pillTeam');
         const pillSupervisor = document.getElementById('pillSupervisor');
         
+        // Show ID pill if employee_id exists in query result (even if null/empty)
         if (pillEmployeeId) {
           pillEmployeeId.classList.remove('hidden');
           const displayEmployeeId = document.getElementById('displayEmployeeId');
-          if (displayEmployeeId) displayEmployeeId.textContent = userData.employee_id || '-';
+          if (displayEmployeeId) {
+            // Show the value even if it's null/empty (will show "-")
+            displayEmployeeId.textContent = userData.employee_id || '-';
+          }
         }
+        
+        // Show Channel pill if channel exists in query result (even if null/empty)
         if (pillChannel) {
           pillChannel.classList.remove('hidden');
           const displayChannel = document.getElementById('displayChannel');
-          if (displayChannel) displayChannel.textContent = userData.channel || '-';
+          if (displayChannel) {
+            displayChannel.textContent = userData.channel || '-';
+          }
         }
-        // Also show channel tag for employees
+        
+        // Also show channel tag
         const profileChannelTag = document.getElementById('profileChannelTag');
         const displayChannelText = document.getElementById('displayChannelText');
         if (profileChannelTag && displayChannelText) {
@@ -3155,32 +3209,43 @@ async function populatePremiumDashboard() {
           displayChannelText.textContent = channelText;
           profileChannelTag.classList.remove('hidden');
         }
+        
+        // Show Team pill if team exists in query result (even if null/empty)
         if (pillTeam) {
           pillTeam.classList.remove('hidden');
           const displayTeam = document.getElementById('displayTeam');
-          if (displayTeam) displayTeam.textContent = userData.team || '-';
+          if (displayTeam) {
+            displayTeam.textContent = userData.team || '-';
+          }
         }
-        if (pillSupervisor && userData.team_supervisor) {
+        
+        // Show Supervisor pill if team_supervisor exists in query result (even if null/empty)
+        if (pillSupervisor) {
           pillSupervisor.classList.remove('hidden');
           const displaySupervisor = document.getElementById('displaySupervisor');
           
-          // Fetch supervisor name from users table
-          try {
-            const { data: supervisorData, error: supervisorError } = await window.supabaseClient
-              .from('users')
-              .select('name')
-              .eq('email', userData.team_supervisor)
-              .single();
-            
-            if (!supervisorError && supervisorData && supervisorData.name) {
-              if (displaySupervisor) displaySupervisor.textContent = supervisorData.name;
-            } else {
-              // Fallback to email if name not found
+          if (userData.team_supervisor) {
+            // Fetch supervisor name from people table (not users table, as supervisor should be in people table)
+            try {
+              const { data: supervisorData, error: supervisorError } = await window.supabaseClient
+                .from('people')
+                .select('name')
+                .eq('email', userData.team_supervisor)
+                .maybeSingle();
+              
+              if (!supervisorError && supervisorData && supervisorData.name) {
+                if (displaySupervisor) displaySupervisor.textContent = supervisorData.name;
+              } else {
+                // Fallback to email if name not found
+                if (displaySupervisor) displaySupervisor.textContent = userData.team_supervisor || '-';
+              }
+            } catch (err) {
+              console.warn('Could not fetch supervisor name:', err);
               if (displaySupervisor) displaySupervisor.textContent = userData.team_supervisor || '-';
             }
-          } catch (err) {
-            console.warn('Could not fetch supervisor name:', err);
-            if (displaySupervisor) displaySupervisor.textContent = userData.team_supervisor || '-';
+          } else {
+            // Show "-" if no supervisor
+            if (displaySupervisor) displaySupervisor.textContent = '-';
           }
         }
       }
@@ -3208,9 +3273,16 @@ async function populatePremiumDashboard() {
           pillQualityMentor.classList.remove('hidden');
         }
       }
+    } else if (!error && !userData) {
+      console.warn('No user data found in people table for email:', currentUserEmail);
     }
   } catch (error) {
     console.error('Error loading profile dashboard:', error);
+    console.error('Error details:', {
+      message: error?.message,
+      stack: error?.stack,
+      currentUserEmail
+    });
   }
 }
 
@@ -3282,46 +3354,61 @@ async function loadAllUsers() {
 }
 
 async function loadRecentUpdates() {
-  try {
-    const updatesFeed = document.getElementById('updatesFeed');
-    if (!updatesFeed) return;
+  // Use request deduplication to prevent multiple simultaneous calls
+  const period = getCurrentPeriodDates();
+  const requestKey = `loadRecentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+  
+  return deduplicateRequest(requestKey, async () => {
+    try {
+      const updatesFeed = document.getElementById('updatesFeed');
+      if (!updatesFeed) return;
 
-    const period = getCurrentPeriodDates();
-    
-    // Check cache first
-    const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-    const cachedData = sessionStorage.getItem(cacheKey);
-    const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-    const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
-    
-    if (cachedData && cacheAge < 60000) { // 1 minute cache
-      console.log('Loading recent updates from cache');
-      const allUpdates = JSON.parse(cachedData);
-      renderRecentUpdatesFromData(allUpdates);
-      return;
+      // Check cache first
+      const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      
+      // Extended cache TTL to 2 minutes for better performance
+      if (cachedData && cacheAge < 120000) { // 2 minutes cache (extended from 1 minute)
+        console.log('Loading recent updates from cache');
+        const allUpdates = JSON.parse(cachedData);
+        renderRecentUpdatesFromData(allUpdates);
+        return;
+      }
+      
+      // Show loader
+      showLoader('updatesFeed');
+      
+      await fetchAndCacheRecentUpdates(period);
+    } catch (error) {
+      console.error('Error loading recent updates:', error);
+      const updatesFeed = document.getElementById('updatesFeed');
+      if (updatesFeed) {
+        updatesFeed.innerHTML = `
+          <div class="px-4 py-8 text-center text-red-500 text-xs">
+            <p class="font-medium mb-1">Error loading updates</p>
+            <p class="text-gray-500">Please try again</p>
+          </div>
+        `;
+      }
     }
-    
-    // Show loader
-    showLoader('updatesFeed');
-    
-    await fetchAndCacheRecentUpdates(period);
-  } catch (error) {
-    console.error('Error loading recent updates:', error);
-    const updatesFeed = document.getElementById('updatesFeed');
-    if (updatesFeed) {
-      updatesFeed.innerHTML = `
-        <div class="px-4 py-8 text-center text-red-500 text-xs">
-          <p class="font-medium mb-1">Error loading updates</p>
-          <p class="text-gray-500">Please try again</p>
-        </div>
-      `;
-    }
-  }
+  });
 }
 
 async function fetchAndCacheRecentUpdates(period) {
   try {
     let allUpdates = [];
+
+    // Use unified query service for better performance
+    let queryService;
+    try {
+      const serviceModule = await import('/js/features/home/infrastructure/scorecard-query-service.js');
+      queryService = serviceModule.scorecardQueryService;
+    } catch (err) {
+      console.warn('Query service not available, using fallback:', err);
+      queryService = null;
+    }
 
     if (isAgent) {
       // For agents: Only show completed audits and reversals (not pending/in_progress assignments)
@@ -3329,72 +3416,134 @@ async function fetchAndCacheRecentUpdates(period) {
       // 1. Load completed audits from scorecard tables
       const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
       const supabase = await getAuthenticatedSupabase();
-      const { data: scorecards, error: scError } = await supabase
-        .from('scorecards')
-        .select('id, name, table_name')
-        .eq('is_active', true);
       
-      if (!scError && scorecards) {
+      let scorecards;
+      if (queryService) {
+        scorecards = await queryService.getScorecards(supabase);
+      } else {
+        const { data, error: scError } = await supabase
+          .from('scorecards')
+          .select('id, name, table_name')
+          .eq('is_active', true);
+        if (scError) {
+          console.error('Error loading scorecards:', scError);
+          return;
+        }
+        scorecards = data || [];
+      }
+      
+      if (scorecards && scorecards.length > 0) {
         const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
         
-        // Parallelize all scorecard queries
-        const auditPromises = scorecards.map(async (scorecard) => {
-          try {
-            const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
-            const supabase = await getAuthenticatedSupabase();
-            const { data: audits, error } = await supabase
-              .from(scorecard.table_name)
-              .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status')
-              .eq('employee_email', currentUserEmail)
-              .order('submitted_at', { ascending: false })
-              .limit(20);
-            
-            if (!error && audits && audits.length > 0) {
-              // No client-side filtering needed - already filtered server-side
-              return audits.map(audit => {
-                // Don't fetch auditor info for agents - they shouldn't see it
-                
-                return {
+        // Use query service if available, otherwise fallback
+        let auditResults;
+        if (queryService) {
+          const periodEndISO = new Date(period.end.getTime() + 24 * 60 * 60 * 1000).toISOString();
+          const results = await queryService.queryMultipleScorecards(supabase, scorecards, {
+            limit: 20,
+            orderBy: 'submitted_at',
+            orderDirection: 'desc',
+            dateFilter: {
+              field: 'submitted_at',
+              start: period.start,
+              end: period.end
+            },
+            emailFilter: {
+              field: 'employee_email',
+              email: currentUserEmail
+            }
+          });
+          
+          auditResults = results.map(result => {
+            if (result.error || !result.data || result.data.length === 0) {
+              return [];
+            }
+            return result.data.map(audit => ({
+              id: `audit-${audit.id}`,
+              type: 'audit_completed',
+              displayName: null,
+              displayEmail: null,
+              timestamp: audit.submitted_at,
+              status: 'completed',
+              interactionId: audit.interaction_id,
+              scorecardId: result.scorecard.id,
+              scorecardTable: result.scorecard.table_name,
+              auditId: audit.id
+            }));
+          }).flat();
+        } else {
+          // Fallback to original implementation
+          const auditPromises = scorecards.map(async (scorecard) => {
+            try {
+              const periodStartISO = period.start.toISOString();
+              const periodEndISO = new Date(period.end.getTime() + 24 * 60 * 60 * 1000).toISOString();
+              const { data: audits, error } = await supabase
+                .from(scorecard.table_name)
+                .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status')
+                .eq('employee_email', currentUserEmail)
+                .gte('submitted_at', periodStartISO)
+                .lte('submitted_at', periodEndISO)
+                .order('submitted_at', { ascending: false })
+                .limit(20);
+              
+              if (!error && audits && audits.length > 0) {
+                return audits.map(audit => ({
                   id: `audit-${audit.id}`,
                   type: 'audit_completed',
-                  displayName: null, // Don't show auditor name for agents
-                  displayEmail: null, // Don't show auditor email for agents
+                  displayName: null,
+                  displayEmail: null,
                   timestamp: audit.submitted_at,
                   status: 'completed',
                   interactionId: audit.interaction_id,
                   scorecardId: scorecard.id,
                   scorecardTable: scorecard.table_name,
                   auditId: audit.id
-                };
-              });
+                }));
+              }
+              return [];
+            } catch (err) {
+              console.warn(`Error loading audits from ${scorecard.table_name}:`, err);
+              return [];
             }
-            return [];
-          } catch (err) {
-            console.warn(`Error loading audits from ${scorecard.table_name}:`, err);
-            return [];
-          }
-        });
+          });
+          auditResults = await Promise.all(auditPromises);
+          auditResults = auditResults.flat();
+        }
         
-        const auditResults = await Promise.all(auditPromises);
-        allUpdates.push(...auditResults.flat());
+        allUpdates.push(...auditResults);
       }
       
-      // 2. Load reversals (both requested and responded) - parallelized
-      if (!scError && scorecards) {
+      // 2. Load reversals (both requested and responded) - using query service
+      if (scorecards && scorecards.length > 0) {
         const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
         const reversalFilterField = 'employee_email';
         
-        // Parallelize all reversal queries
-        const reversalPromises = scorecards.map(async (scorecard) => {
-          try {
-            // Query reversals - filter by employee_email server-side for agents
-            const { data: reversals, error } = await window.supabaseClient
-              .from(scorecard.table_name)
-              .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, interaction_id, submitted_at')
-              .eq('employee_email', currentUserEmail)
-              .not('reversal_requested_at', 'is', null)
-              .order('reversal_requested_at', { ascending: false })
-              .limit(200);
+        let reversalResults;
+        if (queryService) {
+          const results = await queryService.queryReversals(window.supabaseClient, scorecards, {
+            limit: 30,
+            emailFilter: {
+              field: 'employee_email',
+              email: currentUserEmail
+            },
+            reversalFilterField: 'employee_email'
+          });
+          
+          reversalResults = results.map(result => result.data || []).flat();
+        } else {
+          // Fallback to original implementation
+          const reversalPromises = scorecards.map(async (scorecard) => {
+            try {
+              const thirtyDaysAgo = new Date();
+              thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+              const { data: reversals, error } = await window.supabaseClient
+                .from(scorecard.table_name)
+                .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, interaction_id, submitted_at')
+                .eq('employee_email', currentUserEmail)
+                .not('reversal_requested_at', 'is', null)
+                .gte('reversal_requested_at', thirtyDaysAgo.toISOString())
+                .order('reversal_requested_at', { ascending: false })
+                .limit(30);
             
             if (!error && reversals && reversals.length > 0) {
               // Sort reversals: prioritize those with recent responses
@@ -3560,10 +3709,15 @@ async function fetchAndCacheRecentUpdates(period) {
           try {
             // Query scorecard tables (all audits in scorecard tables are completed by default)
             // Use submitted_at for ordering since assignment_created_at doesn't exist in scorecard tables
+            // Add date range filter at database level to reduce data transfer
+            const periodStartISO = period.start.toISOString();
+            const periodEndISO = new Date(period.end.getTime() + 24 * 60 * 60 * 1000).toISOString(); // Add 1 day to include end date
             let { data: audits, error } = await window.supabaseClient
               .from(scorecard.table_name)
               .select('*')
               .eq('auditor_email', currentUserEmail)
+              .gte('submitted_at', periodStartISO)
+              .lte('submitted_at', periodEndISO)
               .order('submitted_at', { ascending: false })
               .limit(20);
             
@@ -3942,40 +4096,45 @@ function renderRecentUpdatesFromData(allUpdates) {
 }
 
 async function loadAssignedAudits() {
-  try {
-    console.log('Loading audits for user:', currentUserEmail, 'Role:', currentUserRole, 'IsAgent:', isAgent);
-    
-    const period = getCurrentPeriodDates();
-    
-    // Check cache first
-    const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
-    const cachedData = sessionStorage.getItem(cacheKey);
-    const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-    const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
-    
-    if (cachedData && cacheAge < 60000) { // 1 minute cache
-      console.log('Loading assigned audits from cache');
-      assignedAudits = JSON.parse(cachedData);
-      renderAssignedAudits();
-      return;
+  // Use request deduplication to prevent multiple simultaneous calls
+  const period = getCurrentPeriodDates();
+  const requestKey = `loadAssignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+  
+  return deduplicateRequest(requestKey, async () => {
+    try {
+      console.log('Loading audits for user:', currentUserEmail, 'Role:', currentUserRole, 'IsAgent:', isAgent);
+      
+      // Check cache first
+      const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      
+      // Extended cache TTL to 2 minutes for better performance
+      if (cachedData && cacheAge < 120000) { // 2 minutes cache (extended from 1 minute)
+        console.log('Loading assigned audits from cache');
+        assignedAudits = JSON.parse(cachedData);
+        renderAssignedAudits();
+        return;
+      }
+      
+      // Show loader
+      showLoader('assignedAuditsList');
+      
+      await fetchAndCacheAssignedAudits(period);
+    } catch (error) {
+      console.error('Error loading assigned audits:', error);
+      const list = document.getElementById('assignedAuditsList');
+      if (list) {
+        list.innerHTML = `
+          <div class="px-4 py-8 text-center text-red-500 text-xs">
+            <p class="font-medium mb-1">Error loading audits</p>
+            <p class="text-gray-500">Please try again</p>
+          </div>
+        `;
+      }
     }
-    
-    // Show loader
-    showLoader('assignedAuditsList');
-    
-    await fetchAndCacheAssignedAudits(period);
-  } catch (error) {
-    console.error('Error loading assigned audits:', error);
-    const list = document.getElementById('assignedAuditsList');
-    if (list) {
-      list.innerHTML = `
-        <div class="px-4 py-8 text-center text-red-500 text-xs">
-          <p class="font-medium mb-1">Error loading audits</p>
-          <p class="text-gray-500">Please try again</p>
-        </div>
-      `;
-    }
-  }
+  });
 }
 
 async function fetchAndCacheAssignedAudits(period) {
@@ -4030,7 +4189,7 @@ async function loadCompletedAuditsForEmployee() {
         .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status, average_score, total_errors_count, audit_duration, reversal_requested_at, reversal_approved, acknowledgement_status')
         .eq('employee_email', currentUserEmail)
         .order('submitted_at', { ascending: false })
-        .limit(500);
+        .limit(100); // Reduced from 500 to 100 for better performance
       
       if (error) {
         console.warn(`Error loading from ${scorecard.table_name}:`, error);
@@ -4172,6 +4331,10 @@ async function loadPendingAssignmentsForAuditor() {
   allAssignments = assignedAudits;
 }
 
+// Pagination state for assigned audits
+let assignedAuditsPageSize = 20;
+let assignedAuditsDisplayed = assignedAuditsPageSize;
+
 function renderAssignedAudits() {
   const list = document.getElementById('assignedAuditsList');
   const countEl = document.getElementById('pendingCount');
@@ -4201,7 +4364,11 @@ function renderAssignedAudits() {
   const sorted = [...assignedAudits];
   sortAudits(sorted);
 
-  list.innerHTML = sorted.map(audit => {
+  // Pagination: only show first N items
+  const toDisplay = sorted.slice(0, assignedAuditsDisplayed);
+  const hasMore = sorted.length > assignedAuditsDisplayed;
+
+  list.innerHTML = toDisplay.map(audit => {
     // Check if this is an assignment (pending audit) or a completed audit
     const isAssignment = audit._isAssignment === true;
     
@@ -4290,7 +4457,7 @@ function renderAssignedAudits() {
       // Get passing status
       const passingStatus = audit.passing_status || audit.passingStatus || 'Unknown';
       const normalizedStatus = passingStatus === 'Passing' ? 'Passed' : (passingStatus === 'Not Passing' ? 'Not Passed' : passingStatus);
-      const statusColor = normalizedStatus === 'Passed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+      const statusColor = normalizedStatus === 'Passed' ? 'bg-primary/10 text-primary' : 'bg-red-100 text-red-800';
       const statusIcon = normalizedStatus === 'Passed' ? '✓' : '✗';
       
       const submittedDate = formatTimestamp(audit.submitted_at);
@@ -4402,7 +4569,18 @@ function renderAssignedAudits() {
         </div>
       `;
     }
-  }).join('');
+  }).join('') + (hasMore ? `
+    <div class="px-4 py-3 border-t border-gray-200">
+      <button onclick="loadMoreAssignedAudits()" class="w-full px-4 py-2 text-xs font-medium text-primary hover:bg-primary/10 rounded transition-colors">
+        Load More (${sorted.length - assignedAuditsDisplayed} remaining)
+      </button>
+    </div>
+  ` : '');
+}
+
+function loadMoreAssignedAudits() {
+  assignedAuditsDisplayed += assignedAuditsPageSize;
+  renderAssignedAudits();
 }
 
 function sortAudits(audits) {
@@ -4478,42 +4656,66 @@ document.addEventListener('click', function(event) {
 
 // Removed event listener for closing user profile dropdown - no longer needed
 
+// Request deduplication: prevent multiple simultaneous calls to the same function
+const activeRequests = new Map();
+
+function deduplicateRequest(key, requestFn) {
+  // If there's already an active request for this key, return the existing promise
+  if (activeRequests.has(key)) {
+    return activeRequests.get(key);
+  }
+  
+  // Create new request and store it
+  const promise = requestFn()
+    .finally(() => {
+      // Remove from active requests when done
+      activeRequests.delete(key);
+    });
+  
+  activeRequests.set(key, promise);
+  return promise;
+}
+
 // Update your stats (assignment progress)
 async function updateYourStats() {
-  try {
-    if (!currentUserEmail) {
-      console.log('No user email found for stats');
-      return;
-    }
-    
-    const period = getCurrentPeriodDates();
-    
-    // Check cache first
-    const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-    const cachedData = sessionStorage.getItem(cacheKey);
-    const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-    const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
-    
-    if (cachedData && cacheAge < 60000) { // 1 minute cache
-      console.log('Loading stats from cache');
-      const statsData = JSON.parse(cachedData);
-      renderStatsFromData(statsData);
-      return;
-    }
-    
-    // Show loader
-    showStatsLoader();
-    
-    await fetchAndCacheStats(period);
-  } catch (error) {
-    console.error('Error loading stats:', error);
-    // Show error state in stats
-    showStatsLoader();
-    const errorMsg = document.createElement('div');
-    errorMsg.className = 'text-xs text-red-500 text-center mt-2';
-    errorMsg.textContent = 'Error loading stats';
-    // Stats will show loading state, error is logged
+  // Use request deduplication to prevent multiple simultaneous calls
+  if (!currentUserEmail) {
+    console.log('No user email found for stats');
+    return;
   }
+  
+  const period = getCurrentPeriodDates();
+  const requestKey = `updateYourStats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+  
+  return deduplicateRequest(requestKey, async () => {
+    try {
+      // Check cache first
+      const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+      const cachedData = sessionStorage.getItem(cacheKey);
+      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      
+      if (cachedData && cacheAge < 60000) { // 1 minute cache
+        console.log('Loading stats from cache');
+        const statsData = JSON.parse(cachedData);
+        renderStatsFromData(statsData);
+        return;
+      }
+      
+      // Show loader
+      showStatsLoader();
+      
+      await fetchAndCacheStats(period);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+      // Show error state in stats
+      showStatsLoader();
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'text-xs text-red-500 text-center mt-2';
+      errorMsg.textContent = 'Error loading stats';
+      // Stats will show loading state, error is logged
+    }
+  });
 }
 
 async function fetchAndCacheStats(period) {
@@ -4842,7 +5044,7 @@ async function fetchAndCacheStats(period) {
                 .select('*')
                 .eq('employee_email', currentUserEmail)
                 .order('submitted_at', { ascending: false })
-                .limit(500);
+                .limit(100); // Reduced from 500 to 100 for better performance
               
               if (!error && audits && audits.length > 0) {
                 // No client-side filtering needed - already filtered server-side
@@ -4924,7 +5126,7 @@ async function fetchAndCacheStats(period) {
                 .from(scorecard.table_name)
                 .select('*')
                 .order('submitted_at', { ascending: false })
-                .limit(500);
+                .limit(100); // Reduced from 500 to 100 for better performance
               
               if (!error && audits && audits.length > 0) {
                 // Filter by auditor email (case-insensitive) - same logic as agents use for employee_email
@@ -5088,7 +5290,7 @@ async function fetchAndCacheStats(period) {
               query = query.eq('auditor_email', currentUserEmail);
             }
             
-            let { data: allReversals, error: allError } = await query.limit(500);
+            let { data: allReversals, error: allError } = await query.limit(30); // Reduced from 500 to 30 for better performance
             
             // If error, table might not have reversal_requested_at column - skip this table silently
             if (allError) {
@@ -5525,7 +5727,34 @@ function getReversalStatusChip(audit) {
 // Notifications
 async function loadNotifications() {
   try {
-    if (!currentUserEmail) return;
+    if (!currentUserEmail) {
+      const notificationsList = document.getElementById('notificationsList');
+      if (notificationsList) {
+        notificationsList.innerHTML = `
+          <div class="px-4 py-8 text-center text-gray-500 text-xs">
+            <p>No user logged in</p>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    // Wait for Supabase to be ready
+    if (!window.supabaseClient || !window.supabaseReady) {
+      const ready = await waitForSupabase(3000);
+      if (!ready) {
+        const notificationsList = document.getElementById('notificationsList');
+        if (notificationsList) {
+          notificationsList.innerHTML = `
+            <div class="px-4 py-8 text-center text-red-500 text-xs">
+              <p class="font-medium mb-1">Unable to load notifications</p>
+              <p class="text-gray-500">Please refresh the page</p>
+            </div>
+          `;
+        }
+        return;
+      }
+    }
 
     // Check cache first
     const cacheKey = `notifications_${currentUserEmail}`;
@@ -5533,7 +5762,7 @@ async function loadNotifications() {
     const cachedTime = sessionStorage.getItem(cacheKey + '_time');
     const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
     
-    if (cachedData && cacheAge < 30000) { // 30 seconds cache (notifications should be fresher)
+    if (cachedData && cacheAge < 60000) { // 1 minute cache (extended from 30 seconds for better performance)
       console.log('Loading notifications from cache');
       notifications = JSON.parse(cachedData);
       const cachedUnread = sessionStorage.getItem(cacheKey + '_unread');
@@ -5650,7 +5879,7 @@ async function fetchAndCacheNotifications() {
           
           let { data: auditReversals, error } = await query
             .order('reversal_requested_at', { ascending: false })
-            .limit(200);
+            .limit(30); // Reduced from 200 to 30 for better performance
 
           // If error, table might not have reversal_requested_at column - skip this table silently
           if (error) {
@@ -5942,14 +6171,21 @@ function updateNotificationBadge() {
   const badge = document.getElementById('notificationBadge');
   if (!badge) return;
 
+  // Only show badge if there are unread notifications (count > 0)
   if (unreadNotificationCount > 0) {
     badge.classList.remove('hidden');
     badge.textContent = unreadNotificationCount > 9 ? '9+' : unreadNotificationCount;
+    badge.classList.add('bg-error');
   } else {
+    // Hide badge when no notifications
     badge.classList.add('hidden');
     badge.textContent = '';
   }
 }
+
+// Lazy loading flag for notifications
+let notificationsLoaded = false;
+let notificationsLoading = false;
 
 function showNotifications() {
   const modal = document.getElementById('notificationsModal');
@@ -5959,8 +6195,30 @@ function showNotifications() {
   unreadNotificationCount = 0;
   updateNotificationBadge();
   
-  // Load notifications when showing
-  loadNotifications();
+  // Load notifications only once (lazy loading) - but allow retry if it failed
+  if (!notificationsLoaded && !notificationsLoading) {
+    notificationsLoading = true;
+    loadNotifications()
+      .then(() => {
+        notificationsLoaded = true;
+        notificationsLoading = false;
+      })
+      .catch(err => {
+        console.error('Error loading notifications:', err);
+        notificationsLoading = false;
+        // Don't set notificationsLoaded = true on error, so it can retry
+        const notificationsList = document.getElementById('notificationsList');
+        if (notificationsList) {
+          notificationsList.innerHTML = `
+            <div class="px-4 py-8 text-center text-red-500 text-xs">
+              <p class="font-medium mb-1">Error loading notifications</p>
+              <p class="text-gray-500">Please try again</p>
+            </div>
+          `;
+        }
+      });
+  }
+  
   modal.classList.remove('opacity-0', 'invisible');
   modal.classList.add('opacity-100', 'visible');
 }
@@ -6106,12 +6364,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Calendar modal functions
+// Lazy loading flag for events
+let eventsLoaded = false;
+
 function showCalendar() {
   const modal = document.getElementById('calendarModal');
   if (!modal) return;
   
-  // Load events when showing calendar
-  loadUpcomingEvents();
+  // Load events only once (lazy loading)
+  if (!eventsLoaded) {
+    eventsLoaded = true;
+    loadUpcomingEvents().catch(err => console.error('Error loading events:', err));
+  }
   
   modal.classList.remove('opacity-0', 'invisible');
   modal.classList.add('opacity-100', 'visible');
@@ -6302,7 +6566,7 @@ function renderEventsList(events) {
   const typeColors = {
     session: 'bg-blue-100 text-blue-800',
     meeting: 'bg-purple-100 text-purple-800',
-    feedback: 'bg-green-100 text-green-800',
+    feedback: 'bg-primary/10 text-primary',
     training: 'bg-orange-100 text-orange-800'
   };
 

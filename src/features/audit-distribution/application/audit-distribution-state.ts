@@ -139,11 +139,54 @@ export class AuditDistributionStateManager {
       filtered = filtered.filter(e => e.team_supervisor === filters.teamSupervisor);
     }
     if (filters.search) {
-      const searchLower = filters.search.toLowerCase();
-      filtered = filtered.filter(e =>
-        e.name?.toLowerCase().includes(searchLower) ||
-        e.email?.toLowerCase().includes(searchLower)
-      );
+      const searchLower = filters.search.toLowerCase().trim();
+      
+      // Create a lookup map for employee names by email for efficient searching
+      const employeeNameMap = new Map<string, string>();
+      this.state.employees.forEach(emp => {
+        if (emp.email && emp.name) {
+          employeeNameMap.set(emp.email.toLowerCase(), emp.name);
+        }
+      });
+      
+      filtered = filtered.filter(e => {
+        // Search across all relevant fields - case-insensitive partial match
+        const nameMatch = e.name?.toLowerCase().includes(searchLower) || false;
+        const emailMatch = e.email?.toLowerCase().includes(searchLower) || false;
+        const departmentMatch = e.department?.toLowerCase().includes(searchLower) || false;
+        const teamMatch = e.team?.toLowerCase().includes(searchLower) || false;
+        const channelMatch = e.channel?.toLowerCase().includes(searchLower) || false;
+        const countryMatch = e.country?.toLowerCase().includes(searchLower) || false;
+        const designationMatch = e.designation?.toLowerCase().includes(searchLower) || false;
+        
+        // Search quality mentor email and name
+        let qualityMentorMatch = false;
+        let qualityMentorNameMatch = false;
+        if (e.quality_mentor) {
+          qualityMentorMatch = e.quality_mentor.toLowerCase().includes(searchLower);
+          const mentorName = employeeNameMap.get(e.quality_mentor.toLowerCase());
+          if (mentorName) {
+            qualityMentorNameMatch = mentorName.toLowerCase().includes(searchLower);
+          }
+        }
+        
+        // Search team supervisor email and name
+        let teamSupervisorMatch = false;
+        let teamSupervisorNameMatch = false;
+        if (e.team_supervisor) {
+          teamSupervisorMatch = e.team_supervisor.toLowerCase().includes(searchLower);
+          const supervisorName = employeeNameMap.get(e.team_supervisor.toLowerCase());
+          if (supervisorName) {
+            teamSupervisorNameMatch = supervisorName.toLowerCase().includes(searchLower);
+          }
+        }
+        
+        // Return true if any field matches
+        return nameMatch || emailMatch || departmentMatch || teamMatch || 
+               channelMatch || countryMatch || designationMatch ||
+               qualityMentorMatch || qualityMentorNameMatch || 
+               teamSupervisorMatch || teamSupervisorNameMatch;
+      });
     }
 
     this.state.filteredEmployees = filtered;
