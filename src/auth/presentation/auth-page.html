@@ -22,6 +22,111 @@
             height: 100vh;
             overflow: hidden;
         }
+        
+        /* Green primary color overrides for auth page */
+        :root {
+            --auth-primary-green: #1f9e4b;
+            --auth-primary-green-dark: #1a733e;
+            --auth-primary-green-darker: #124f2a;
+        }
+        
+        /* Primary button - green */
+        .auth-page-override .primary-button {
+            background: linear-gradient(135deg, var(--auth-primary-green-dark) 0%, var(--auth-primary-green) 100%) !important;
+            box-shadow: 0 2px 4px rgba(31, 158, 75, 0.2) !important;
+        }
+        
+        .auth-page-override .primary-button:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 100%) !important;
+            box-shadow: 0 4px 8px rgba(31, 158, 75, 0.3) !important;
+        }
+        
+        .auth-page-override .primary-button:active:not(:disabled) {
+            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 100%) !important;
+            box-shadow: 0 2px 4px rgba(31, 158, 75, 0.2) !important;
+        }
+        
+        .auth-page-override .primary-button:focus-visible {
+            outline: 2px solid var(--auth-primary-green) !important;
+            box-shadow: 0 0 0 4px rgba(31, 158, 75, 0.1) !important;
+        }
+        
+        /* Link primary - green */
+        .auth-page-override .link-primary {
+            color: var(--auth-primary-green-dark) !important;
+        }
+        
+        .auth-page-override .link-primary::after {
+            background-color: var(--auth-primary-green-dark) !important;
+        }
+        
+        .auth-page-override .link-primary:hover {
+            color: var(--auth-primary-green-darker) !important;
+        }
+        
+        /* Dev bypass button - green */
+        .auth-page-override #devBypassButton {
+            background: var(--auth-primary-green) !important;
+        }
+        
+        .auth-page-override #devBypassButton:hover {
+            background: var(--auth-primary-green-dark) !important;
+        }
+        
+        /* Left panel - green background and scrollable */
+        .auth-page-override .auth-left-panel {
+            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 50%, var(--auth-primary-green) 100%) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+        }
+        
+        /* Ensure main content can scroll */
+        .auth-page-override .auth-left-panel .main-content {
+            flex: 1;
+        }
+        
+        /* Right panel - offwhite background matching home page */
+        .auth-page-override .auth-right-panel {
+            background-color: #FAF9F6 !important;
+        }
+        
+        /* Google button styling - ensure it uses green primary button style */
+        .auth-page-override #googleSignInButton {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 10px !important;
+        }
+        
+        /* Ensure button text is white */
+        .auth-page-override #googleSignInButton .primary-button__text {
+            color: white !important;
+        }
+        
+        /* Hide email login form - only Google OAuth available */
+        .auth-page-override .divider {
+            display: none !important;
+        }
+        
+        /* Hide email form group */
+        .auth-page-override .form-group:has(#email) {
+            display: none !important;
+        }
+        
+        /* Hide password form group */
+        .auth-page-override .form-group:has(#password) {
+            display: none !important;
+        }
+        
+        /* Hide login submit button */
+        .auth-page-override #loginForm button[type="submit"] {
+            display: none !important;
+        }
+        
+        /* Hide forgot password link */
+        .auth-page-override #forgotPasswordLink {
+            display: none !important;
+        }
     </style>
 </head>
 <body class="auth-page-override">
@@ -34,7 +139,7 @@
             </div>
             <div class="auth-branding">
                 <img src="https://careers.recruiteecdn.com/image/upload/production/images/BpRN/wCefCTnrj5fG.png" alt="QMS Logo" class="auth-logo">
-                <div class="auth-brand-text">Quality Management System</div>
+                <div class="auth-brand-text">Communication Quality Management System</div>
             </div>
         </div>
         
@@ -79,44 +184,47 @@
                         type="button" 
                         id="devBypassButton"
                         class="primary-button primary-button--sm primary-button--full"
-                        style="background: #6366f1; font-size: 0.875rem;">
+                        style="font-size: 0.875rem;">
                         <span class="primary-button__text">Bypass Auth (Dev Only)</span>
                     </button>
                 </div>
                 
-                <!-- Divider Component -->
-                <div class="divider">
-                    <span>or</span>
+                <!-- Email Login Section (Hidden - Email login disabled) -->
+                <div id="emailLoginSection" style="display: none;">
+                    <!-- Divider Component -->
+                    <div class="divider">
+                        <span>or</span>
+                    </div>
+                    
+                    <!-- Email Text Field Component -->
+                    <div class="form-group">
+                        <label for="email" class="textfield-label">Email</label>
+                        <input type="email" 
+                               id="email" 
+                               class="textfield" 
+                               placeholder="Enter your email address" 
+                               required>
+                    </div>
+                    
+                    <!-- Password Text Field Component -->
+                    <div class="form-group">
+                        <label for="password" class="textfield-label">Password</label>
+                        <input type="password" 
+                               id="password" 
+                               class="textfield" 
+                               placeholder="Enter your password" 
+                               required>
+                        <div id="passwordError" class="password-error"></div>
+                    </div>
+                    
+                    <!-- Submit Button Component -->
+                    <button type="submit" class="primary-button primary-button--md primary-button--full">
+                        <span class="primary-button__text">Login</span>
+                    </button>
+                    
+                    <!-- Link Component -->
+                    <a href="#" class="link-primary" id="forgotPasswordLink">Forgot your password?</a>
                 </div>
-                
-                <!-- Email Text Field Component -->
-                <div class="form-group">
-                    <label for="email" class="textfield-label">Email</label>
-                    <input type="email" 
-                           id="email" 
-                           class="textfield" 
-                           placeholder="Enter your email address" 
-                           required>
-                </div>
-                
-                <!-- Password Text Field Component -->
-                <div class="form-group">
-                    <label for="password" class="textfield-label">Password</label>
-                    <input type="password" 
-                           id="password" 
-                           class="textfield" 
-                           placeholder="Enter your password" 
-                           required>
-                    <div id="passwordError" class="password-error"></div>
-                </div>
-                
-                <!-- Submit Button Component -->
-                <button type="submit" class="primary-button primary-button--md primary-button--full">
-                    <span class="primary-button__text">Login</span>
-                </button>
-                
-                <!-- Link Component -->
-                <a href="#" class="link-primary" id="forgotPasswordLink">Forgot your password?</a>
             </form>
             
             <!-- Reset Password Form Component -->

@@ -102,7 +102,8 @@ app.use(helmet({
         "'self'", // Allows CSS from same origin (including /src/... paths)
         "'unsafe-inline'", // Allow inline styles for Tailwind and dynamic styles
         "https://fonts.googleapis.com", // Allow Google Fonts
-        "https://cdn.jsdelivr.net" // Allow jsDelivr CDN for Quill CSS and other libraries
+        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for Quill CSS and other libraries
+        "https://cdn.quilljs.com" // Allow Quill.js CDN for rich text editor CSS
       ],
       scriptSrc: [
         "'self'", 
@@ -110,7 +111,8 @@ app.use(helmet({
         "'unsafe-eval'", // Required for some ES module features
         "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
         "https://cdn.tailwindcss.com", // Allow Tailwind CDN
-        "https://accounts.google.com" // Allow Google Sign-In script
+        "https://accounts.google.com", // Allow Google Sign-In script
+        "https://cdn.quilljs.com" // Allow Quill.js CDN for rich text editor
       ],
       imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
       connectSrc: [
@@ -350,12 +352,14 @@ import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
+import permissionsRouter from './api/routes/permissions.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
+app.use('/api/permissions', permissionsRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

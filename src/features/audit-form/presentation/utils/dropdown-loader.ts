@@ -220,10 +220,10 @@ export class DropdownLoader {
     try {
       const supabase = await getReadySupabaseClient();
 
-      // Load employee details
+      // Load employee details securely using authenticated Supabase client
       const result = await supabase
         .from('people')
-        .select('email, name, role, department, country, employee_type')
+        .select('email, name, role, department, country, designation, channel')
         .eq('email', employeeEmail)
         .eq('is_active', true)
         .single();
@@ -232,21 +232,73 @@ export class DropdownLoader {
       const error = result?.error;
 
       if (error || !employee) {
-        logWarn('Employee not found:', employeeEmail);
+        logWarn('Employee not found:', { email: employeeEmail, error });
         return;
       }
+
+      console.log('📋 [handleEmployeeChange] Employee data loaded:', {
+        email: employee.email,
+        channel: employee.channel,
+        department: employee.department,
+        designation: employee.designation
+      });
 
       // Update form fields
       const employeeEmailField = document.getElementById('employeeEmail') as HTMLInputElement;
       const employeeTypeField = document.getElementById('employeeType') as HTMLInputElement;
+      const employeeDepartmentField = document.getElementById('employeeDepartment') as HTMLInputElement;
+      const employeeChannelField = document.getElementById('employeeChannel') as HTMLInputElement;
       const countryField = document.getElementById('countryOfEmployee') as HTMLInputElement;
 
       if (employeeEmailField) {
         employeeEmailField.value = employee.email || '';
       }
-      if (employeeTypeField && employee.employee_type) {
-        employeeTypeField.value = employee.employee_type;
+      // Use designation for employee type (since employee_type doesn't exist in people table)
+      if (employeeTypeField && employee.designation) {
+        employeeTypeField.value = employee.designation;
       }
+      if (employeeDepartmentField && employee.department) {
+        employeeDepartmentField.value = employee.department;
+      }
+      if (employeeChannelField) {
+        employeeChannelField.value = employee.channel || '';
+        console.log('✅ [handleEmployeeChange] Channel field populated:', employee.channel);
+      } else {
+        console.warn('⚠️ [handleEmployeeChange] employeeChannel field not found in DOM');
+      }
+      
+      // Also populate channel dropdown in Error Details section
+      const channelSelect = document.getElementById('channel') as HTMLSelectElement;
+      if (channelSelect && employee.channel) {
+        // Ensure channels are loaded first
+        if (channelSelect.options.length <= 1) {
+          console.log('⏳ [handleEmployeeChange] Channels not loaded yet, loading...');
+          await this.loadChannels();
+          // Wait a bit for DOM to update
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Find channel by name (text content) since dropdown uses IDs as values
+        let channelFound = false;
+        for (let i = 0; i < channelSelect.options.length; i++) {
+          const option = channelSelect.options[i];
+          // Match by text content (channel name) since employee.channel is a name, not an ID
+          if (option.textContent && option.textContent.trim() === employee.channel.trim()) {
+            channelSelect.selectedIndex = i;
+            channelSelect.value = option.value;
+            channelFound = true;
+            console.log('✅ [handleEmployeeChange] Channel dropdown set to:', option.textContent, 'ID:', option.value);
+            // Trigger change event to auto-select matching scorecard
+            channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            break;
+          }
+        }
+        
+        if (!channelFound) {
+          console.warn('⚠️ [handleEmployeeChange] Channel not found in dropdown:', employee.channel, 'Available:', Array.from(channelSelect.options).map(opt => opt.textContent));
+        }
+      }
+      
       if (countryField && employee.country) {
         countryField.value = employee.country;
       }

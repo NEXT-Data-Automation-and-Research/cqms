@@ -1226,6 +1226,37 @@ export class ConversationsPanel {
       const idStr = String(conv.id);
       const shortId = idStr.length > 12 ? idStr.substring(idStr.length - 8) : idStr;
       
+      // Get assignment ID from selected audit (prefer pending assignments)
+      const getAssignmentId = (): string | null => {
+        if (!this.selectedAudit || !this.selectedAudit.audits || !Array.isArray(this.selectedAudit.audits)) {
+          return null;
+        }
+        // Prefer pending assignments, then in_progress, then any
+        const pending = this.selectedAudit.audits.find((a: any) => a.status === 'pending');
+        if (pending && pending.id) return pending.id;
+        const inProgress = this.selectedAudit.audits.find((a: any) => a.status === 'in_progress');
+        if (inProgress && inProgress.id) return inProgress.id;
+        const first = this.selectedAudit.audits[0];
+        return first && first.id ? first.id : null;
+      };
+      
+      const assignmentId = getAssignmentId();
+      const playButtonHtml = assignmentId ? `
+        <button 
+          class="conversation-play-button"
+          data-conversation-id="${this.escapeHtml(conv.id)}"
+          data-assignment-id="${this.escapeHtml(assignmentId)}"
+          title="Start audit for this conversation"
+          style="display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: linear-gradient(135deg, #1A733E 0%, #15582E 100%); border: none; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; flex-shrink: 0;"
+          onmouseover="this.style.background='linear-gradient(135deg, #15582E 0%, #0f3d1f 100%)'; this.style.transform='scale(1.05)'"
+          onmouseout="this.style.background='linear-gradient(135deg, #1A733E 0%, #15582E 100%)'; this.style.transform='scale(1)'"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </button>
+      ` : '';
+      
       return `
         <div class="conversation-card ${isSelected ? 'conversation-card-selected' : ''}" data-conversation-id="${this.escapeHtml(conv.id)}">
           <!-- Card Header -->
@@ -1257,6 +1288,7 @@ export class ConversationsPanel {
               </div>
             </div>
             <div class="flex items-center gap-2 flex-shrink-0">
+              ${playButtonHtml}
               <span class="ai-status-badge-compact ${aiStatusClass}" title="${this.escapeHtml(conv.aiStatus)}">${this.escapeHtml(conv.aiStatus.charAt(0))}</span>
             </div>
           </div>
@@ -1345,9 +1377,9 @@ export class ConversationsPanel {
     // Attach card click listeners (for selection)
     cardsContainer.querySelectorAll('.conversation-card').forEach(card => {
       card.addEventListener('click', (e) => {
-        // Don't toggle if clicking checkbox or copy button
+        // Don't toggle if clicking checkbox, copy button, or play button
         const target = e.target as HTMLElement;
-        if (target.closest('.conversation-checkbox') || target.closest('.conversation-id-tile')) {
+        if (target.closest('.conversation-checkbox') || target.closest('.conversation-id-tile') || target.closest('.conversation-play-button')) {
           return;
         }
         const convId = card.getAttribute('data-conversation-id');
@@ -1357,6 +1389,24 @@ export class ConversationsPanel {
             checkbox.checked = !checkbox.checked;
             this.toggleConversation(convId, checkbox.checked);
           }
+        }
+      });
+    });
+    
+    // Attach play button listeners
+    cardsContainer.querySelectorAll('.conversation-play-button').forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent card click
+        const conversationId = button.getAttribute('data-conversation-id');
+        const assignmentId = button.getAttribute('data-assignment-id');
+        
+        if (conversationId && assignmentId) {
+          // Navigate to audit form with assignment and conversation IDs
+          const auditFormUrl = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${encodeURIComponent(conversationId)}`;
+          logInfo('🎬 Opening audit form', { assignmentId, conversationId, url: auditFormUrl });
+          window.location.href = auditFormUrl;
+        } else {
+          logWarn('Cannot open audit form: missing assignment or conversation ID', { conversationId, assignmentId });
         }
       });
     });

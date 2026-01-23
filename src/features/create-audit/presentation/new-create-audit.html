@@ -761,16 +761,16 @@
         </div>
 
         <!-- Filter Panel -->
-        <div class="filter-panel" id="filterPanel">
+        <div class="filter-panel" id="filterPanel" style="display: none;">
             <div class="filter-group">
                 <label class="filter-label">Channel</label>
-                <select class="filter-select" id="filterChannel" onchange="applyStatsFilters()">
+                <select class="filter-select" id="filterChannel">
                     <option value="">All Channels</option>
                 </select>
             </div>
             <div class="filter-group">
                 <label class="filter-label">Status</label>
-                <select class="filter-select" id="filterStatus" onchange="applyStatsFilters()">
+                <select class="filter-select" id="filterStatus">
                     <option value="">All Statuses</option>
                     <option value="pending">Pending</option>
                     <option value="in_progress">In Progress</option>
@@ -779,7 +779,7 @@
             </div>
             <div class="filter-group" id="filterAgentGroup" style="display: none;">
                 <label class="filter-label">Agent</label>
-                <select class="filter-select" id="filterAgent" onchange="applyStatsFilters()">
+                <select class="filter-select" id="filterAgent">
                     <option value="">All Agents</option>
                 </select>
             </div>
@@ -940,6 +940,8 @@
                 </svg>
                 <span id="auditsViewTitle">My Assigned Audits</span>
                 <span id="pendingCount" style="background-color: #1A733E; color: white; padding: 0.0808rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4852rem; font-weight: 600; min-width: 0.9704rem; text-align: center;">0</span>
+                <!-- 🔍 DEBUG: Manual reload button (HIDDEN) -->
+                <!-- <button id="debugReloadAudits" onclick="if(window.loadPendingAudits){window.loadPendingAudits();}else{console.error('loadPendingAudits not available');}" style="margin-left: 0.5rem; padding: 0.2rem 0.4rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; font-size: 0.5rem; cursor: pointer;" title="Debug: Reload audits">🔄</button> -->
                 <div style="display: flex; align-items: center; gap: 0.1617rem;">
                     <div style="position: relative; display: inline-block;">
                         <button id="sortIconBtn" onclick="toggleSortMenu()" style="background: none; border: none; padding: 0.1617rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #1A733E; opacity: 0.7; transition: opacity 0.2s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'" title="Sort audits">
@@ -1018,7 +1020,7 @@
                 <!-- Search Filter -->
                 <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.2425rem;">
                     <label class="filter-label" style="font-size: 0.4852rem; font-weight: 600; color: #6b7280;">Search</label>
-                    <input type="text" id="filterSearch" class="filter-input" placeholder="Search by name..." oninput="applyFilters()" style="padding: 0.2425rem 0.3234rem; border: 0.0405rem solid var(--border-light); border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; background-color: var(--background-white); color: var(--text-color);">
+                    <input type="text" id="filterSearch" class="filter-input" placeholder="Search by name..." style="padding: 0.2425rem 0.3234rem; border: 0.0405rem solid var(--border-light); border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; background-color: var(--background-white); color: var(--text-color);">
                 </div>
             </div>
             <div style="display: flex; gap: 0.3234rem; align-items: center; justify-content: flex-end;">
@@ -2163,7 +2165,7 @@
         </div>
         
         <!-- Audit Metadata Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(4.2451rem, 1fr)); gap: 0.3234rem;">
+        <div id="headerMetadataCards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(4.2451rem, 1fr)); gap: 0.3234rem;">
         </div>
     </div>
 
@@ -3604,7 +3606,7 @@ async function groupAuditsByEmployee(audits) {
     // First, collect all unique employee emails
     const employeeEmails = [...new Set(audits.map(audit => audit.employee_email).filter(Boolean))];
     
-    // Fetch intercom_admin_alias for all employees from people table
+    // Fetch intercom_admin_alias for all employees in one query from people table
     let aliasMap = {};
     if (employeeEmails.length > 0 && window.supabaseClient) {
         try {
@@ -3616,15 +3618,13 @@ async function groupAuditsByEmployee(audits) {
             if (!error && people) {
                 people.forEach(person => {
                     const normalizedEmail = (person.email || '').toLowerCase().trim();
-                    // Handle both null and string "null" cases
-                    const alias = person.intercom_admin_alias;
-                    if (alias && alias !== 'null' && alias.trim() !== '') {
-                        aliasMap[normalizedEmail] = alias.trim();
+                    if (person.intercom_admin_alias) {
+                        aliasMap[normalizedEmail] = person.intercom_admin_alias;
                     }
                 });
             }
         } catch (error) {
-            console.warn('⚠️ Error fetching admin aliases from people table:', error);
+            console.warn('⚠️ Error fetching admin aliases:', error);
         }
     }
     
@@ -4141,9 +4141,12 @@ function updateAuditButtonsState() {
 
 // Load pending audits for current user from audit_assignments table
 async function loadPendingAudits() {
+    console.log('%c🚀 loadPendingAudits() STARTED', 'color: #10b981; font-weight: bold; font-size: 16px; background: #1f2937; padding: 4px 8px; border-radius: 4px;');
+    
     try {
         // Wait for Supabase client to be ready
         if (!window.supabaseClient) {
+            console.log('⏳ Waiting for Supabase client to initialize...');
             // Wait up to 5 seconds for Supabase to initialize
             let waitCount = 0;
             while (!window.supabaseClient && waitCount < 50) {
@@ -4166,6 +4169,8 @@ async function loadPendingAudits() {
             }
         }
         
+        console.log('✅ Supabase client available:', !!window.supabaseClient);
+        
         // Get current user email from Supabase session (most reliable)
         let currentUserEmail = '';
         let currentUserRole = '';
@@ -4175,20 +4180,25 @@ async function loadPendingAudits() {
             const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
             if (user && !userError && user.email) {
                 currentUserEmail = user.email.toLowerCase().trim();
+                console.log('✅ Got email from Supabase session:', currentUserEmail);
             } else {
+                console.warn('⚠️ Could not get user from Supabase session, trying localStorage');
                 // Fallback to localStorage
                 const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
                 if (userInfo.email) {
                     currentUserEmail = (userInfo.email || '').toLowerCase().trim();
                     currentUserRole = userInfo.role || '';
+                    console.log('✅ Got email from localStorage:', currentUserEmail);
                 }
             }
         } catch (error) {
+            console.warn('⚠️ Error getting user from Supabase, trying localStorage:', error);
             // Fallback to localStorage
             const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
             if (userInfo.email) {
                 currentUserEmail = (userInfo.email || '').toLowerCase().trim();
                 currentUserRole = userInfo.role || '';
+                console.log('✅ Got email from localStorage (fallback):', currentUserEmail);
             }
         }
         
@@ -4213,6 +4223,8 @@ async function loadPendingAudits() {
         }
         
         const isAgent = currentUserRole === 'Employee';
+        
+        console.log('📊 Loading assigned audits for:', currentUserEmail, 'Role:', currentUserRole || 'Unknown');
         
         // Determine status filter
         const statusFilter = showAllAudits ? ['completed'] : ['pending', 'in_progress'];
@@ -4242,25 +4254,64 @@ async function loadPendingAudits() {
             query = query.in('status', statusFilter);
         }
         
+        console.log('🔍 Executing Supabase query...');
+        console.log('🔍 Query details:', {
+            table: 'audit_assignments',
+            filterField: filterField,
+            filterValue: currentUserEmail,
+            statusFilter: statusFilter,
+            showAllAudits: showAllAudits
+        });
+        
         const { data, error } = await query;
         
+        // 🔍 DEBUG: Check what scorecard data came from the query
+        if (data && data.length > 0) {
+            console.log('📦 Raw query results - scorecard data check:');
+            data.slice(0, 3).forEach((item, idx) => {
+                console.log(`  Item ${idx + 1}:`, {
+                    id: item.id?.substring(0, 8),
+                    employee: item.employee_email,
+                    scorecard_id: item.scorecard_id,
+                    scorecards_from_query: item.scorecards
+                });
+            });
+        }
+        
         if (error) {
-            console.error('❌ Error loading assignments:', error);
+            console.error('%c❌ Error loading assignments:', 'color: #ef4444; font-weight: bold;', error);
+            console.error('❌ Error details:', {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code
+            });
             throw error;
         }
         
+        console.log('%c📊 Raw assignments from database:', 'color: #3b82f6; font-weight: bold;', data?.length || 0, 'assignments');
+        
         if (!data || data.length === 0) {
-            // Show empty state
+            console.warn('%c⚠️ No assignments returned from database', 'color: #f59e0b; font-weight: bold;');
+            console.warn('⚠️ This might be correct if you have no assignments, or there might be an RLS policy issue');
+            console.warn('⚠️ Checking RLS policies...');
+            
+            // Show helpful error message
             const list = document.getElementById('pendingAuditsList');
             if (list) {
                 list.innerHTML = `
-                    <div class="px-4 py-8 text-center text-gray-500 text-xs">
+                    <div class="px-4 py-8 text-center text-yellow-600 text-xs">
                         <p class="font-medium mb-1">No assignments found</p>
-                        <p class="text-gray-400">No audits have been assigned to you yet.</p>
+                        <p class="text-gray-500">Query executed but returned 0 results.</p>
+                        <p class="text-gray-400 text-xs mt-2">Email used: ${currentUserEmail}</p>
+                        <p class="text-gray-400 text-xs">Filter field: ${filterField}</p>
+                        <button onclick="window.loadPendingAudits()" class="mt-2 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-xs">
+                            Retry Query
+                        </button>
                     </div>
                 `;
             }
-            return;
+            return; // Exit early if no data
         }
         
         // Sort client-side to handle null created_at values
@@ -4282,13 +4333,350 @@ async function loadPendingAudits() {
             return emailToCheck.toLowerCase().trim() === normalizedCurrentEmail;
         });
         
+        console.log('✅ Filtered assignments for', normalizedCurrentEmail + ':', finalFiltered.length, 'assignments');
+        
+        // 🔍 DEBUG: Print full data structure to console
+        console.log('%c🔍 ===== FULL ASSIGNMENTS DATA =====', 'color: #10b981; font-weight: bold; font-size: 14px;');
+        console.log('Total assignments:', finalFiltered.length);
+        console.log('%c📋 Assignments Table:', 'color: #3b82f6; font-weight: bold;');
+        console.table(finalFiltered.map(a => ({
+            id: a.id?.substring(0, 8) + '...',
+            employee: a.employee_name,
+            email: a.employee_email,
+            status: a.status,
+            scheduled_date: a.scheduled_date,
+            created_at: a.created_at || 'NULL',
+            scorecard: a.scorecards?.name || 'No scorecard',
+            scorecard_id: a.scorecard_id || 'NULL'
+        })));
+        console.log('%c📦 Full JSON Data:', 'color: #8b5cf6; font-weight: bold;');
+        console.log(JSON.stringify(finalFiltered, null, 2));
+        console.log('%c🔍 ===== END DATA DUMP =====', 'color: #10b981; font-weight: bold; font-size: 14px;');
+        
+        // Also log to window for easy access
+        window.debugAssignments = finalFiltered;
+        console.log('💡 Tip: Check window.debugAssignments for full data');
+        
+        if (finalFiltered.length > 0) {
+            console.log('📋 Sample assignment:', {
+                id: finalFiltered[0].id,
+                employee: finalFiltered[0].employee_name,
+                status: finalFiltered[0].status,
+                scorecard: finalFiltered[0].scorecards?.name || 'No scorecard',
+                created_at: finalFiltered[0].created_at || 'NULL'
+            });
+        }
+        
+        // ✅ FIX: Ensure scorecard data is loaded for all assignments
+        // Step 1: Check if any assignments are missing scorecard data but have a scorecard_id
+        const assignmentsMissingScorecard = finalFiltered.filter(a => 
+            a.scorecard_id && (!a.scorecards || !a.scorecards.name)
+        );
+        
+        if (assignmentsMissingScorecard.length > 0) {
+            console.log('⚠️ Found', assignmentsMissingScorecard.length, 'assignments with missing scorecard data. Fetching...');
+            
+            // Get unique scorecard IDs that need to be fetched
+            const scorecardIdsToFetch = [...new Set(
+                assignmentsMissingScorecard
+                    .map(a => a.scorecard_id)
+                    .filter(Boolean)
+            )];
+            
+            if (scorecardIdsToFetch.length > 0) {
+                // Fetch scorecards from database
+                const { data: scorecardsData, error: scorecardError } = await window.supabaseClient
+                    .from('scorecards')
+                    .select('id, name, table_name')
+                    .in('id', scorecardIdsToFetch);
+                
+                if (!scorecardError && scorecardsData) {
+                    // Create a map of scorecard_id -> scorecard data
+                    const scorecardMap = new Map();
+                    scorecardsData.forEach(scorecard => {
+                        scorecardMap.set(scorecard.id, {
+                            id: scorecard.id,
+                            name: scorecard.name || 'Unknown Scorecard',
+                            table_name: scorecard.table_name || ''
+                        });
+                    });
+                    
+                    // Update assignments with scorecard data
+                    finalFiltered.forEach(assignment => {
+                        if (assignment.scorecard_id && (!assignment.scorecards || !assignment.scorecards.name)) {
+                            const scorecard = scorecardMap.get(assignment.scorecard_id);
+                            if (scorecard) {
+                                assignment.scorecards = scorecard;
+                                console.log('✅ Loaded scorecard for assignment', assignment.id, ':', scorecard.name);
+                            } else {
+                                // Scorecard not found in database - set default
+                                assignment.scorecards = {
+                                    id: assignment.scorecard_id,
+                                    name: 'Unknown Scorecard',
+                                    table_name: ''
+                                };
+                                console.warn('⚠️ Scorecard not found for assignment', assignment.id, 'scorecard_id:', assignment.scorecard_id);
+                            }
+                        }
+                    });
+                } else if (scorecardError) {
+                    console.error('❌ Error fetching scorecards:', scorecardError);
+                }
+            }
+        }
+        
+        // Step 2: Handle assignments with null scorecard_id - find scorecard based on employee's channel from people table
+        const assignmentsWithoutScorecardId = finalFiltered.filter(a => !a.scorecard_id);
+        
+        if (assignmentsWithoutScorecardId.length > 0) {
+            console.log('⚠️ Found', assignmentsWithoutScorecardId.length, 'assignments without scorecard_id. Finding scorecard based on employee channel...');
+            
+            // Get unique employee emails to fetch their channel from people table
+            const employeeEmails = [...new Set(assignmentsWithoutScorecardId.map(a => a.employee_email).filter(Boolean))];
+            
+            if (employeeEmails.length > 0) {
+                // Fetch employee channels from people table
+                const { data: peopleData, error: peopleError } = await window.supabaseClient
+                    .from('people')
+                    .select('email, channel')
+                    .in('email', employeeEmails);
+                
+                if (!peopleError && peopleData) {
+                    // Create a map of email -> channel
+                    const employeeChannelMap = new Map();
+                    peopleData.forEach(person => {
+                        if (person.email && person.channel) {
+                            employeeChannelMap.set(person.email.toLowerCase(), person.channel);
+                        }
+                    });
+                    
+                    // Fetch all active scorecards
+                    const { data: activeScorecards, error: scorecardError } = await window.supabaseClient
+                        .from('scorecards')
+                        .select('id, name, table_name, channels, is_active')
+                        .eq('is_active', true)
+                        .order('created_at', { ascending: false });
+                    
+                    if (!scorecardError && activeScorecards && activeScorecards.length > 0) {
+                        // Helper function to find applicable scorecard for a channel (matches business logic)
+                        const getApplicableScorecardForChannel = (channel) => {
+                            if (!channel) return null;
+                            
+                            // Find scorecards where the channel matches
+                            const matchingScorecards = activeScorecards.filter(scorecard => {
+                                if (!scorecard.channels) return false;
+                                // Split channels by comma and trim, then check if employee's channel is included
+                                const scorecardChannels = scorecard.channels.split(',').map(c => c.trim());
+                                return scorecardChannels.includes(channel);
+                            });
+                            
+                            // Return the first matching scorecard (as per business logic)
+                            return matchingScorecards.length > 0 ? matchingScorecards[0] : null;
+                        };
+                        
+                        // Update assignments without scorecard_id based on employee channel
+                        assignmentsWithoutScorecardId.forEach(assignment => {
+                            const employeeEmail = assignment.employee_email?.toLowerCase();
+                            const employeeChannel = employeeChannelMap.get(employeeEmail);
+                            
+                            if (employeeChannel) {
+                                const applicableScorecard = getApplicableScorecardForChannel(employeeChannel);
+                                
+                                if (applicableScorecard) {
+                                    assignment.scorecards = {
+                                        id: applicableScorecard.id,
+                                        name: applicableScorecard.name || 'Unknown Scorecard',
+                                        table_name: applicableScorecard.table_name || ''
+                                    };
+                                    console.log(`✅ Found scorecard for ${assignment.employee_email} (channel: ${employeeChannel}): ${applicableScorecard.name}`);
+                                } else {
+                                    console.warn(`⚠️ No matching scorecard found for ${assignment.employee_email} with channel: ${employeeChannel}`);
+                                    assignment.scorecards = {
+                                        id: null,
+                                        name: 'Unknown Scorecard',
+                                        table_name: ''
+                                    };
+                                }
+                            } else {
+                                console.warn(`⚠️ No channel found in people table for employee: ${assignment.employee_email}`);
+                                assignment.scorecards = {
+                                    id: null,
+                                    name: 'Unknown Scorecard',
+                                    table_name: ''
+                                };
+                            }
+                        });
+                    } else if (scorecardError) {
+                        console.error('❌ Error fetching active scorecards:', scorecardError);
+                        // Fallback: Try to assign a default scorecard even if there's an error
+                        if (activeScorecards && activeScorecards.length > 0) {
+                            const defaultScorecard = activeScorecards[0];
+                            assignmentsWithoutScorecardId.forEach(assignment => {
+                                if (!assignment.scorecards || !assignment.scorecards.name) {
+                                    assignment.scorecards = {
+                                        id: defaultScorecard.id,
+                                        name: defaultScorecard.name || 'Unknown Scorecard',
+                                        table_name: defaultScorecard.table_name || ''
+                                    };
+                                    console.log(`✅ Assigned fallback scorecard to ${assignment.employee_email}: ${defaultScorecard.name}`);
+                                }
+                            });
+                        }
+                    }
+                } else if (peopleError) {
+                    console.error('❌ Error fetching employee channels from people table:', peopleError);
+                    // Fallback: Try to fetch scorecards anyway and assign first one
+                    const { data: fallbackScorecards, error: fallbackError } = await window.supabaseClient
+                        .from('scorecards')
+                        .select('id, name, table_name')
+                        .eq('is_active', true)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+                    
+                    if (!fallbackError && fallbackScorecards && fallbackScorecards.length > 0) {
+                        const defaultScorecard = fallbackScorecards[0];
+                        assignmentsWithoutScorecardId.forEach(assignment => {
+                            if (!assignment.scorecards || !assignment.scorecards.name) {
+                                assignment.scorecards = {
+                                    id: defaultScorecard.id,
+                                    name: defaultScorecard.name || 'Unknown Scorecard',
+                                    table_name: defaultScorecard.table_name || ''
+                                };
+                                console.log(`✅ Assigned fallback scorecard (no channel lookup) to ${assignment.employee_email}: ${defaultScorecard.name}`);
+                            }
+                        });
+                    }
+                }
+            } else {
+                // No employee emails to look up - try to assign a default scorecard
+                console.log('⚠️ No employee emails found, trying to assign default scorecard...');
+                const { data: defaultScorecards, error: defaultError } = await window.supabaseClient
+                    .from('scorecards')
+                    .select('id, name, table_name')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (!defaultError && defaultScorecards && defaultScorecards.length > 0) {
+                    const defaultScorecard = defaultScorecards[0];
+                    assignmentsWithoutScorecardId.forEach(assignment => {
+                        if (!assignment.scorecards || !assignment.scorecards.name) {
+                            assignment.scorecards = {
+                                id: defaultScorecard.id,
+                                name: defaultScorecard.name || 'Unknown Scorecard',
+                                table_name: defaultScorecard.table_name || ''
+                            };
+                            console.log(`✅ Assigned default scorecard to ${assignment.employee_email}: ${defaultScorecard.name}`);
+                        }
+                    });
+                }
+            }
+        }
+        
+        // ✅ FINAL SAFETY CHECK: Ensure ALL assignments have scorecard data (even if previous steps failed)
+        const assignmentsStillMissingScorecard = finalFiltered.filter(a => !a.scorecards || !a.scorecards.name);
+        if (assignmentsStillMissingScorecard.length > 0) {
+            console.warn(`⚠️ ${assignmentsStillMissingScorecard.length} assignments still missing scorecard data. Attempting final fallback...`);
+            
+            // Final fallback: Fetch ANY active scorecard and assign it
+            try {
+                const { data: fallbackScorecards, error: fallbackError } = await window.supabaseClient
+                    .from('scorecards')
+                    .select('id, name, table_name')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (!fallbackError && fallbackScorecards && fallbackScorecards.length > 0) {
+                    const fallbackScorecard = fallbackScorecards[0];
+                    assignmentsStillMissingScorecard.forEach(assignment => {
+                        assignment.scorecards = {
+                            id: fallbackScorecard.id,
+                            name: fallbackScorecard.name || 'Unknown Scorecard',
+                            table_name: fallbackScorecard.table_name || ''
+                        };
+                        console.log(`✅ Final fallback: Assigned scorecard "${fallbackScorecard.name}" to ${assignment.employee_email}`);
+                    });
+                } else {
+                    console.error('❌ Final fallback failed - no active scorecards found');
+                }
+            } catch (error) {
+                console.error('❌ Error in final fallback:', error);
+            }
+        }
+        
+        // ✅ FINAL VERIFICATION: Ensure all assignments have scorecard data
+        console.log('🔍 Final verification of scorecard data:');
+        finalFiltered.forEach((assignment, index) => {
+            if (!assignment.scorecards || !assignment.scorecards.name) {
+                console.error(`❌ Assignment ${index + 1} (${assignment.employee_email}) STILL missing scorecard data:`, {
+                    id: assignment.id,
+                    employee_email: assignment.employee_email,
+                    scorecard_id: assignment.scorecard_id,
+                    scorecards: assignment.scorecards
+                });
+                // Force set a default even if it's just "Unknown Scorecard"
+                assignment.scorecards = {
+                    id: null,
+                    name: 'Unknown Scorecard',
+                    table_name: ''
+                };
+            } else {
+                console.log(`✅ Assignment ${index + 1} (${assignment.employee_email}): ${assignment.scorecards.name}`);
+            }
+        });
+        
         allPendingAudits = finalFiltered; // Store all audits
+        console.log('💾 Stored', allPendingAudits.length, 'assignments in allPendingAudits');
+        console.log('📊 Scorecard summary:', {
+            total: allPendingAudits.length,
+            withScorecards: allPendingAudits.filter(a => a.scorecards?.name && a.scorecards.name !== 'Unknown Scorecard').length,
+            withUnknownScorecard: allPendingAudits.filter(a => a.scorecards?.name === 'Unknown Scorecard').length,
+            withoutScorecards: allPendingAudits.filter(a => !a.scorecards?.name).length
+        });
+        
+        // 🔍 DEBUG: Log first assignment's scorecard data structure
+        if (allPendingAudits.length > 0) {
+            console.log('🔍 Sample assignment scorecard structure:', {
+                employee: allPendingAudits[0].employee_email,
+                scorecard_id: allPendingAudits[0].scorecard_id,
+                scorecards: allPendingAudits[0].scorecards,
+                scorecard_name: allPendingAudits[0].scorecards?.name
+            });
+        }
         
         // Apply filters
+        console.log('🔍 Applying filters...');
+        console.log('🔍 Active filters:', activeFilters);
+        console.log('🔍 allPendingAudits before filter:', allPendingAudits.length);
+        console.log('🔍 Scorecards before filter:', allPendingAudits.filter(a => a.scorecards?.name).length, 'out of', allPendingAudits.length);
         applyFiltersToAudits();
+        console.log('🔍 pendingAudits after filter:', pendingAudits.length);
+        console.log('🔍 Scorecards after filter:', pendingAudits.filter(a => a.scorecards?.name).length, 'out of', pendingAudits.length);
         
         // Apply sorting
+        console.log('🔍 Applying sorting...');
         sortPendingAudits();
+        console.log('🔍 pendingAudits after sort:', pendingAudits.length);
+        console.log('🔍 Scorecards after sort:', pendingAudits.filter(a => a.scorecards?.name).length, 'out of', pendingAudits.length);
+        
+        // 🔍 FINAL CHECK: Verify scorecards are present in pendingAudits
+        if (pendingAudits.length > 0) {
+            const missingScorecards = pendingAudits.filter(a => !a.scorecards?.name);
+            if (missingScorecards.length > 0) {
+                console.error(`❌ CRITICAL: ${missingScorecards.length} audits in pendingAudits are missing scorecards!`);
+                missingScorecards.forEach(audit => {
+                    console.error('  Missing scorecard:', {
+                        id: audit.id,
+                        employee: audit.employee_email,
+                        scorecard_id: audit.scorecard_id,
+                        scorecards: audit.scorecards
+                    });
+                });
+            } else {
+                console.log('✅ All audits in pendingAudits have scorecard data!');
+            }
+        }
         
         // Reset pagination to first page when audits reload
         pendingCurrentPage = 1;
@@ -4296,14 +4684,61 @@ async function loadPendingAudits() {
         // Clear selection when audits reload
         selectedAuditId = null;
         
+        // 🔍 DEBUG: Create visual debug panel (HIDDEN)
+        // const debugPanel = document.getElementById('debugPanel') || document.createElement('div');
+        // debugPanel.id = 'debugPanel';
+        // debugPanel.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #1f2937; color: #fff; padding: 1rem; border-radius: 0.5rem; font-size: 0.75rem; z-index: 99999; max-width: 400px; max-height: 80vh; overflow-y: auto; font-family: monospace;';
+        // debugPanel.innerHTML = `
+        //     <div style="font-weight: bold; margin-bottom: 0.5rem; border-bottom: 1px solid #374151; padding-bottom: 0.5rem;">
+        //         🔍 DEBUG PANEL
+        //     </div>
+        //     <div><strong>Email:</strong> ${currentUserEmail}</div>
+        //     <div><strong>Role:</strong> ${currentUserRole || 'Unknown'}</div>
+        //     <div><strong>Raw Data:</strong> ${data?.length || 0} assignments</div>
+        //     <div><strong>Filtered:</strong> ${finalFiltered.length} assignments</div>
+        //     <div><strong>After Filters:</strong> <span id="debugAfterFilters">-</span></div>
+        //     <div><strong>After Sort:</strong> <span id="debugAfterSort">-</span></div>
+        //     <div><strong>Displaying:</strong> <span id="debugDisplaying">-</span></div>
+        //     <div style="margin-top: 0.5rem; border-top: 1px solid #374151; padding-top: 0.5rem;">
+        //         <strong>Assignments:</strong>
+        //         <pre id="debugAssignments" style="font-size: 0.65rem; max-height: 200px; overflow-y: auto; background: #111827; padding: 0.5rem; border-radius: 0.25rem; margin-top: 0.25rem;"></pre>
+        //     </div>
+        //     <button onclick="this.parentElement.remove()" style="margin-top: 0.5rem; padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 0.25rem; cursor: pointer;">Close</button>
+        // `;
+        // if (!document.getElementById('debugPanel')) {
+        //     document.body.appendChild(debugPanel);
+        // }
+        
+        // Update debug panel with assignments (HIDDEN)
+        // const debugAssignmentsEl = document.getElementById('debugAssignments');
+        // if (debugAssignmentsEl) {
+        //     debugAssignmentsEl.textContent = JSON.stringify(finalFiltered.map(a => ({
+        //         id: a.id?.substring(0, 8) + '...',
+        //         employee: a.employee_name,
+        //         status: a.status,
+        //         created_at: a.created_at || 'NULL'
+        //     })), null, 2);
+        // }
+        
         // Display pending audits
         await displayPendingAudits();
+        
+        // Update debug panel after display (HIDDEN)
+        // const debugAfterFiltersEl = document.getElementById('debugAfterFilters');
+        // const debugAfterSortEl = document.getElementById('debugAfterSort');
+        // const debugDisplayingEl = document.getElementById('debugDisplaying');
+        // if (debugAfterFiltersEl) debugAfterFiltersEl.textContent = pendingAudits.length + ' (check console)';
+        // if (debugAfterSortEl) debugAfterSortEl.textContent = pendingAudits.length + ' (check console)';
+        // if (debugDisplayingEl) debugDisplayingEl.textContent = pendingAudits.length;
         
         // Ensure section is visible after loading (unless editing)
         if (!isEditingPendingAudit) {
             const section = document.getElementById('pendingAuditsSection');
             if (section) {
                 section.style.display = 'block';
+                console.log('✅ Made pendingAuditsSection visible');
+            } else {
+                console.error('❌ pendingAuditsSection element not found!');
             }
         }
         
@@ -4330,14 +4765,27 @@ async function loadPendingAudits() {
 
 // Display pending audits in the UI
 async function displayPendingAudits() {
+    console.log('🎨 displayPendingAudits() called');
+    console.log('🎨 pendingAudits.length =', pendingAudits.length);
+    console.log('🎨 pendingAudits data:', pendingAudits);
+    
     const section = document.getElementById('pendingAuditsSection');
     const list = document.getElementById('pendingAuditsList');
     const countBadge = document.getElementById('pendingCount');
     const paginationContainer = document.getElementById('pendingAuditsPagination');
     
+    console.log('🎨 DOM elements:', {
+        section: !!section,
+        list: !!list,
+        countBadge: !!countBadge,
+        paginationContainer: !!paginationContainer
+    });
+    
     // Check if elements exist
     if (!section || !list) {
-        console.error('pendingAuditsSection or pendingAuditsList not found');
+        console.error('❌ pendingAuditsSection or pendingAuditsList not found');
+        console.error('❌ Section:', section);
+        console.error('❌ List:', list);
         return;
     }
     
@@ -4348,14 +4796,14 @@ async function displayPendingAudits() {
     
     // Update count badge - show total audits or total employees based on grouping
     if (countBadge) {
-        // Default to showing total audits count if config not available
-        if (typeof ASSIGNED_AUDITS_CONFIG !== 'undefined' && ASSIGNED_AUDITS_CONFIG && ASSIGNED_AUDITS_CONFIG.groupByEmployee) {
+        if (ASSIGNED_AUDITS_CONFIG.groupByEmployee) {
             const grouped = groupAuditsByEmployee(pendingAudits);
-            const employeeCount = Object.keys(grouped).length;
-            countBadge.textContent = employeeCount;
+            countBadge.textContent = Object.keys(grouped).length; // Count of unique employees
         } else {
-            countBadge.textContent = pendingAudits.length;
+            countBadge.textContent = pendingAudits.length; // Count of total audits
         }
+    } else {
+        console.warn('⚠️ countBadge element (pendingCount) not found - count will not be updated');
     }
     
     // Show empty state if no audits
@@ -4425,6 +4873,61 @@ async function displayPendingAudits() {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         input.blur(); // This will trigger onchange
+                    }
+                });
+            });
+            
+            // Add event listeners for group expansion/collapse
+            const groupHeaders = list.querySelectorAll('.audit-group-header-container[data-toggle-group="true"]');
+            groupHeaders.forEach(header => {
+                // Check if listener already attached
+                if (header.hasAttribute('data-listener-attached')) return;
+                header.setAttribute('data-listener-attached', 'true');
+                
+                // Add click listener to header container (but not to group-header-content)
+                header.addEventListener('click', function(e) {
+                    // Don't trigger if clicking on group-header-content (it has its own handler)
+                    if (!e.target.closest('.group-header-content')) {
+                        e.stopPropagation();
+                        const email = this.getAttribute('data-email');
+                        if (email) {
+                            toggleAuditGroup(email);
+                        }
+                    }
+                });
+            });
+            
+            // Add event listeners for group-header-content clicks
+            const groupHeaderContents = list.querySelectorAll('.group-header-content[data-toggle-group="true"]');
+            groupHeaderContents.forEach(content => {
+                // Check if listener already attached
+                if (content.hasAttribute('data-listener-attached')) return;
+                content.setAttribute('data-listener-attached', 'true');
+                
+                content.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const headerContainer = this.closest('.audit-group-header-container');
+                    if (headerContainer) {
+                        const email = headerContainer.getAttribute('data-email');
+                        if (email) {
+                            toggleAuditGroup(email);
+                        }
+                    }
+                });
+            });
+            
+            // Add event listeners for expand buttons
+            const expandButtons = list.querySelectorAll('.expand-group-button');
+            expandButtons.forEach(button => {
+                // Check if listener already attached
+                if (button.hasAttribute('data-listener-attached')) return;
+                button.setAttribute('data-listener-attached', 'true');
+                
+                button.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const email = this.getAttribute('data-email');
+                    if (email) {
+                        toggleAuditGroup(email);
                     }
                 });
             });
@@ -4531,16 +5034,16 @@ async function displayPendingAudits() {
     let aliasMap = {};
     if (employeeEmails.length > 0 && window.supabaseClient) {
         try {
-            const { data: users, error } = await window.supabaseClient
-                .from('users')
+            const { data: people, error } = await window.supabaseClient
+                .from('people')
                 .select('email, intercom_admin_alias')
                 .in('email', employeeEmails.map(e => e.toLowerCase().trim()));
             
-            if (!error && users) {
-                users.forEach(user => {
-                    const normalizedEmail = (user.email || '').toLowerCase().trim();
-                    if (user.intercom_admin_alias) {
-                        aliasMap[normalizedEmail] = user.intercom_admin_alias;
+            if (!error && people) {
+                people.forEach(person => {
+                    const normalizedEmail = (person.email || '').toLowerCase().trim();
+                    if (person.intercom_admin_alias) {
+                        aliasMap[normalizedEmail] = person.intercom_admin_alias;
                     }
                 });
             }
@@ -4593,6 +5096,97 @@ async function displayPendingAudits() {
     
     // Update pagination UI
     updatePendingPaginationUI();
+    
+    // Add event delegation for Continue/Start Audit buttons (CSP-compliant)
+    attachAuditButtonEventListeners();
+}
+
+/**
+ * Attach event listeners for audit action buttons using event delegation
+ * This is CSP-compliant and works with dynamically rendered buttons
+ */
+function attachAuditButtonEventListeners() {
+    const list = document.getElementById('pendingAuditsList');
+    if (!list) return;
+    
+    // Remove existing listeners if any (to prevent duplicates)
+    const existingHandler = list.__auditButtonHandler;
+    if (existingHandler) {
+        list.removeEventListener('click', existingHandler);
+    }
+    
+    // Create new event handler
+    const handler = (e) => {
+        const target = e.target;
+        
+        // Handle Continue button clicks
+        const continueBtn = target.closest('.continue-audit-btn');
+        if (continueBtn) {
+            e.stopPropagation();
+            const assignmentId = continueBtn.getAttribute('data-assignment-id');
+            if (assignmentId && window.navigateToAssignment) {
+                window.navigateToAssignment(assignmentId);
+            }
+            return;
+        }
+        
+        // Handle Start Audit button clicks
+        const startBtn = target.closest('.start-audit-btn');
+        if (startBtn) {
+            e.stopPropagation();
+            const assignmentId = startBtn.getAttribute('data-assignment-id');
+            if (assignmentId && window.navigateToAssignment) {
+                window.navigateToAssignment(assignmentId);
+            }
+            return;
+        }
+        
+        // Handle navigation to assignment (card click)
+        const navBtn = target.closest('.navigate-to-assignment-btn');
+        if (navBtn) {
+            e.stopPropagation();
+            const assignmentId = navBtn.getAttribute('data-assignment-id');
+            if (assignmentId && window.navigateToAssignment) {
+                window.navigateToAssignment(assignmentId);
+            }
+            return;
+        }
+        
+        // Handle view completed audit button clicks
+        const viewBtn = target.closest('.view-completed-audit-btn');
+        if (viewBtn) {
+            e.stopPropagation();
+            const auditId = viewBtn.getAttribute('data-audit-id');
+            const scorecardId = viewBtn.getAttribute('data-scorecard-id');
+            const tableName = viewBtn.getAttribute('data-table-name');
+            if (auditId && scorecardId && tableName && window.viewCompletedAudit) {
+                window.viewCompletedAudit(auditId, scorecardId, tableName);
+            }
+            return;
+        }
+        
+        // Handle nested card clicks (for selection)
+        const nestedCard = target.closest('.select-nested-audit-card');
+        if (nestedCard) {
+            // Don't trigger if clicking on interactive elements
+            if (target.closest('button, input, a')) {
+                return;
+            }
+            const auditId = nestedCard.getAttribute('data-audit-id');
+            if (auditId && window.selectNestedAudit) {
+                window.selectNestedAudit(auditId);
+            }
+            return;
+        }
+    };
+    
+    // Store handler reference for cleanup
+    list.__auditButtonHandler = handler;
+    
+    // Attach event listener using event delegation
+    list.addEventListener('click', handler);
+    
+    console.log('✅ Event listeners attached for audit action buttons');
 }
 
 /**
@@ -4615,7 +5209,8 @@ function createGroupedAuditCard(group, isAgent, isExpanded) {
     // Expand/collapse button
     const expandButtonHTML = ASSIGNED_AUDITS_CONFIG.allowExpandCollapse
         ? `<button 
-            onclick="event.stopPropagation(); toggleAuditGroup('${escapeHtml(displayEmail).replace(/'/g, "\\'")}')" 
+            class="expand-group-button"
+            data-email="${escapeHtml(displayEmail)}"
             style="background: none; border: none; padding: 0.1617rem; cursor: pointer; color: #6b7280; transition: transform 0.2s; transform: rotate(${isExpanded ? '90deg' : '0deg'});"
             title="${isExpanded ? 'Collapse' : 'Expand'}"
         >
@@ -4628,12 +5223,12 @@ function createGroupedAuditCard(group, isAgent, isExpanded) {
     card.innerHTML = `
         <div style="background: #f9fafb; border: 0.0405rem solid #e5e7eb; border-radius: 0.1617rem; padding: 0; margin-bottom: 0.3234rem; overflow: hidden;">
             <!-- Group Header -->
-            <div class="audit-group-header-container ${isExpanded ? 'group-expanded' : ''}" style="display: flex; align-items: stretch; height: 2.5rem; flex-shrink: 0; position: relative;" 
+            <div class="audit-group-header-container ${isExpanded ? 'group-expanded' : ''}" style="display: flex; align-items: stretch; height: 2.5rem; flex-shrink: 0; position: relative; cursor: pointer;" 
                  data-email="${escapeHtml(displayEmail)}"
                  data-name="${escapeHtml(displayName)}"
                  data-expanded="${isExpanded}"
-                 onclick="if(!event.target.closest('.group-header-content')) { event.stopPropagation(); const isExpanded = this.classList.contains('group-expanded'); if(isExpanded) { toggleAuditGroup('${escapeHtml(displayEmail).replace(/'/g, "\\'")}'); } else { if(window.pullConversationsForEmployee && typeof window.pullConversationsForEmployee === 'function') { window.pullConversationsForEmployee('${escapeHtml(displayEmail).replace(/'/g, "\\'")}', '${escapeHtml(displayName).replace(/'/g, "\\'")}'); } } }"
-                 title="${isExpanded ? 'Click to collapse group' : 'Click to pull conversations for ' + escapeHtml(displayName)}">
+                 data-toggle-group="true"
+                 title="${isExpanded ? 'Click to collapse group' : 'Click to expand group and pull conversations for ' + escapeHtml(displayName)}">
                 <div class="pull-conversations-hover-text ${isExpanded ? 'hidden' : ''}">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -4649,7 +5244,7 @@ function createGroupedAuditCard(group, isAgent, isExpanded) {
                     </svg>
                     <span>Close</span>
                 </div>
-                <div class="group-header-content" style="display: flex; align-items: center; gap: 0.4852rem; flex: 1; cursor: pointer; padding: 0.3234rem 0.4852rem; position: relative; z-index: 3;" onclick="event.stopPropagation(); toggleAuditGroup('${escapeHtml(displayEmail).replace(/'/g, "\\'")}')">
+                <div class="group-header-content" style="display: flex; align-items: center; gap: 0.4852rem; flex: 1; cursor: pointer; padding: 0.3234rem 0.4852rem; position: relative; z-index: 3;" data-toggle-group="true">
                     ${expandButtonHTML}
                     <div style="width: 1.6171rem; height: 1.6171rem; border-radius: 0.1617rem; background: #1A733E; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.5659rem; flex-shrink: 0;">
                         ${getInitials(displayName)}
@@ -4744,10 +5339,9 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
             statusBadge = `<span style="background-color: #e9d5ff; color: #6b21a8; padding: ${isNested ? '0.1617rem 0.4852rem' : badgePadding}; border-radius: 9999px; font-size: ${isNested ? '0.4852rem' : badgeSize}; font-weight: 500; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; height: 1.2935rem;">In Progress</span>`;
             if (canEdit && conversationId) {
                 actionButton = `<button 
-                    onclick="event.stopPropagation(); navigateToAssignment('${audit.id}')" 
+                    class="continue-audit-btn"
+                    data-assignment-id="${audit.id}"
                     style="padding: ${isNested ? '0.2425rem 0.4043rem' : '0.3234rem 0.6469rem'}; background-color: #1A733E; color: white; border: none; border-radius: ${isNested ? '0.2425rem' : '0.1617rem'}; font-size: ${isNested ? '0.4447rem' : '0.4852rem'}; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: ${isNested ? '1.6169rem' : 'auto'}; display: flex; align-items: center;"
-                    onmouseover="this.style.backgroundColor='#15582E'"
-                    onmouseout="this.style.backgroundColor='#1A733E'"
                 >
                     Continue
                 </button>`;
@@ -4766,12 +5360,9 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                 const shouldHideStartButton = isNested && isEmployeeConversationsVisible;
                 
                 actionButton = `<button 
-                    class="nested-start-audit-btn"
-                    data-audit-id="${audit.id}"
-                    onclick="event.stopPropagation(); navigateToAssignment('${audit.id}')" 
+                    class="nested-start-audit-btn start-audit-btn"
+                    data-assignment-id="${audit.id}"
                     style="padding: ${isNested ? '0.2425rem 0.4043rem' : '0.3234rem 0.6469rem'}; background-color: #1A733E; color: white; border: none; border-radius: ${isNested ? '0.2425rem' : '0.1617rem'}; font-size: ${isNested ? '0.4447rem' : '0.4852rem'}; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; height: ${isNested ? '1.6169rem' : 'auto'}; display: ${shouldHideStartButton ? 'none' : 'flex'}; align-items: center;"
-                    onmouseover="this.style.backgroundColor='#15582E'"
-                    onmouseout="this.style.backgroundColor='#1A733E'"
                 >
                     Start Audit
                 </button>`;
@@ -4781,10 +5372,10 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
     // Conversation link
     const conversationLinkHTML = buildConversationLinkHTML(audit);
     
-    // Click handler
+    // Click handler - use data attributes instead of inline onclick for CSP compliance
         const clickHandler = audit.status === 'completed' && audit.audit_id 
-            ? `onclick="event.stopPropagation(); viewCompletedAudit('${audit.audit_id}', '${audit.scorecard_id}', '${audit.scorecards?.table_name || ''}')"`
-            : canEdit ? `onclick="navigateToAssignment('${audit.id}')"` : '';
+            ? `class="view-completed-audit-btn" data-audit-id="${audit.audit_id}" data-scorecard-id="${audit.scorecard_id}" data-table-name="${audit.scorecards?.table_name || ''}"`
+            : canEdit ? `class="navigate-to-assignment-btn" data-assignment-id="${audit.id}"` : '';
         
     // Check if this audit is selected
     const isSelected = selectedAuditId === audit.id;
@@ -4840,24 +5431,19 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
         // Get employee name
         const employeeName = audit.employee_name || audit.employee_email?.split('@')[0] || 'Unknown';
         
-        // Get intercom alias if available
-        const intercomAlias = adminAlias || audit.intercom_admin_alias || null;
-        const aliasDisplay = intercomAlias ? `<span style="font-size: 0.4852rem; color: #1A733E; font-weight: 500; background: #f0fdf4; padding: 0.0808rem 0.2425rem; border-radius: 0.1617rem; border: 0.0304rem solid #86efac; white-space: nowrap; margin-left: 0.2425rem;" title="Intercom Admin Alias">${escapeHtml(intercomAlias)}</span>` : '';
-        
         return `
-            <div class="nested-audit-card" data-audit-id="${audit.id}" data-drop-target="true" style="${cardStyle} display: flex; align-items: center; gap: 0.8086rem; padding: 0.4043rem 0.8086rem; height: 2.5rem; max-height: 2.5rem; ${isNested ? 'cursor: pointer;' : ''}" ${isNested ? `onclick="selectNestedAudit('${audit.id}')"` : clickHandler}>
+            <div class="nested-audit-card ${isNested ? 'select-nested-audit-card' : ''}" data-audit-id="${audit.id}" data-drop-target="true" style="${cardStyle} display: flex; align-items: center; gap: 0.8086rem; padding: 0.4043rem 0.8086rem; height: 2.5rem; max-height: 2.5rem; ${isNested ? 'cursor: pointer;' : ''}" ${clickHandler}>
                 <!-- Left: Basic Info (Radio + Scorecard Name) -->
                 <div style="display: flex; align-items: center; gap: 0.4852rem; flex-shrink: 0; min-width: 0;">
                     ${radioButtonHTML}
                     <span style="font-size: 0.6069rem; font-weight: 600; color: #111827; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 10rem;">${escapeHtml(audit.scorecards?.name || 'Unknown Scorecard')}</span>
                 </div>
                 
-                <!-- Middle: Crucial Info (Status Chip, Date, Alias) -->
+                <!-- Middle: Crucial Info (Status Chip, Date) -->
                 <div style="display: flex; align-items: center; gap: 0.4852rem; flex: 1; min-width: 0; overflow: hidden;">
                     ${statusBadge}
                     <span style="font-size: 0.5252rem; color: #6b7280; white-space: nowrap; margin: 0 0.1617rem;">•</span>
                     <span style="font-size: 0.5252rem; color: #6b7280; white-space: nowrap;">${dateFormatted}</span>
-                    ${aliasDisplay}
                 </div>
                 
                 <!-- Right: Conversation ID Input and Actions -->
@@ -5002,12 +5588,17 @@ function getPaginatedPendingAudits() {
 
 // Apply filters to audits
 function applyFiltersToAudits() {
-    let filtered = [...allPendingAudits];
+    console.log('🔍 applyFiltersToAudits() called');
+    console.log('🔍 Input: allPendingAudits.length =', allPendingAudits.length);
     
-    // Date range filter - Handle null created_at values
+    let filtered = [...allPendingAudits];
+    console.log('🔍 Starting with', filtered.length, 'assignments');
+    
+    // Date range filter - FIX: Handle null created_at values
     if (activeFilters.startDate) {
         const startDate = new Date(activeFilters.startDate);
         startDate.setHours(0, 0, 0, 0);
+        const beforeFilter = filtered.length;
         filtered = filtered.filter(audit => {
             // If created_at is null, use scheduled_date or include it anyway
             if (!audit.created_at) {
@@ -5023,11 +5614,13 @@ function applyFiltersToAudits() {
             auditDate.setHours(0, 0, 0, 0);
             return auditDate >= startDate;
         });
+        console.log('🔍 After startDate filter:', beforeFilter, '->', filtered.length);
     }
     
     if (activeFilters.endDate) {
         const endDate = new Date(activeFilters.endDate);
         endDate.setHours(23, 59, 59, 999);
+        const beforeFilter = filtered.length;
         filtered = filtered.filter(audit => {
             // If created_at is null, use scheduled_date or include it anyway
             if (!audit.created_at) {
@@ -5041,20 +5634,26 @@ function applyFiltersToAudits() {
             const auditDate = new Date(audit.created_at);
             return auditDate <= endDate;
         });
+        console.log('🔍 After endDate filter:', beforeFilter, '->', filtered.length);
     }
     
     // Status filter
     if (activeFilters.status) {
+        const beforeFilter = filtered.length;
         filtered = filtered.filter(audit => audit.status === activeFilters.status);
+        console.log('🔍 After status filter:', beforeFilter, '->', filtered.length);
     }
     
     // Scorecard filter
     if (activeFilters.scorecard) {
+        const beforeFilter = filtered.length;
         filtered = filtered.filter(audit => audit.scorecard_id === activeFilters.scorecard);
+        console.log('🔍 After scorecard filter:', beforeFilter, '->', filtered.length);
     }
     
     // Search filter
     if (activeFilters.search) {
+        const beforeFilter = filtered.length;
         const searchTerm = activeFilters.search.toLowerCase().trim();
         filtered = filtered.filter(audit => {
             const employeeName = (audit.employee_name || '').toLowerCase();
@@ -5066,9 +5665,16 @@ function applyFiltersToAudits() {
                    auditorEmail.includes(searchTerm) ||
                    scorecardName.includes(searchTerm);
         });
+        console.log('🔍 After search filter:', beforeFilter, '->', filtered.length);
     }
     
     pendingAudits = filtered;
+    console.log('🔍 Final result: pendingAudits.length =', pendingAudits.length);
+    console.log('🔍 Filtered assignments:', pendingAudits.map(a => ({
+        id: a.id?.substring(0, 8),
+        employee: a.employee_name,
+        status: a.status
+    })));
 }
 
 // Update active filter count badge
@@ -5500,8 +6106,8 @@ window.createManualAudit = async function() {
         intercomAliasContainer.style.display = 'none';
     }
     
-    // Navigate to new-audit-form.html for manual audit creation with manual parameter
-    window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
+    // Navigate to new-audit-form.html for manual audit creation
+    window.location.href = '/src/features/audit-form/presentation/new-audit-form.html';
 }
 
 // ============================================================================
@@ -5560,6 +6166,61 @@ async function cacheAdminAsync(supabaseClient, admin) {
     }
 }
 
+/**
+ * Get Supabase configuration with fallbacks
+ * This ensures SupabaseConfig is always available
+ */
+async function ensureSupabaseConfig() {
+    // If already set, return it
+    if (window.SupabaseConfig && window.SupabaseConfig.url && window.SupabaseConfig.anonKey) {
+        return window.SupabaseConfig;
+    }
+    
+    // Try to get from environment variables (set by server via /api/env)
+    let supabaseUrl = '';
+    let supabaseAnonKey = '';
+    
+    // First, try to fetch from /api/env endpoint
+    try {
+        const envResponse = await fetch('/api/env');
+        if (envResponse.ok) {
+            const env = await envResponse.json();
+            supabaseUrl = env.SUPABASE_URL || '';
+            supabaseAnonKey = env.SUPABASE_ANON_KEY || '';
+        }
+    } catch (envError) {
+        console.warn('Could not fetch env from server, trying window.env:', envError);
+    }
+    
+    // Fallback: Try to get from window.env if available
+    if ((!supabaseUrl || !supabaseAnonKey) && window.env) {
+        supabaseUrl = window.env.SUPABASE_URL || supabaseUrl;
+        supabaseAnonKey = window.env.SUPABASE_ANON_KEY || supabaseAnonKey;
+    }
+    
+    // If still not found, try to extract from existing SupabaseConfig or client
+    if ((!supabaseUrl || !supabaseAnonKey) && window.SupabaseConfig) {
+        supabaseUrl = window.SupabaseConfig.url || supabaseUrl;
+        supabaseAnonKey = window.SupabaseConfig.anonKey || supabaseAnonKey;
+    }
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+        console.error('❌ Supabase configuration not found. Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your .env file');
+        throw new Error('Supabase configuration missing. Please configure SUPABASE_URL and SUPABASE_ANON_KEY in your .env file');
+    }
+    
+    console.log('🔧 Using Supabase configuration from environment:', supabaseUrl);
+    
+    // Create or update SupabaseConfig with environment credentials
+    window.SupabaseConfig = {
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+        getClient: () => window.supabaseClient || null
+    };
+    
+    return window.SupabaseConfig;
+}
+
 // View employee conversations - show conversations on the same page
 window.viewEmployeeConversations = async function(employeeEmail, employeeName) {
     if (!employeeEmail || !employeeEmail.trim()) {
@@ -5568,12 +6229,19 @@ window.viewEmployeeConversations = async function(employeeEmail, employeeName) {
     }
     
     try {
-        // Get Supabase configuration
-        const supabaseUrl = window.SupabaseConfig?.url || '';
-        const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+        // Ensure Supabase configuration is available
+        const config = await ensureSupabaseConfig();
+        const supabaseUrl = config.url;
+        const supabaseAnonKey = config.anonKey;
         
         if (!supabaseUrl || !supabaseAnonKey) {
-            alert('Configuration error: Supabase credentials not found.');
+            alert('Configuration error: Supabase credentials not found. Please refresh the page.');
+            console.error('Supabase configuration missing:', {
+                hasSupabaseConfig: !!window.SupabaseConfig,
+                hasWindowEnv: !!window.env,
+                supabaseUrl: supabaseUrl ? 'present' : 'missing',
+                supabaseAnonKey: supabaseAnonKey ? 'present' : 'missing'
+            });
             return;
         }
         
@@ -6030,14 +6698,14 @@ window.pullConversationsFromIntercom = async function() {
         // Fetch admin alias from Supabase
         if (window.supabaseClient) {
             try {
-                const { data: userData, error: aliasError } = await window.supabaseClient
-                    .from('users')
+                const { data: personData, error: aliasError } = await window.supabaseClient
+                    .from('people')
                     .select('intercom_admin_alias')
                     .eq('email', currentUserEmail)
                     .single();
                 
-                if (!aliasError && userData && userData.intercom_admin_alias) {
-                    pullConversationsAdminAlias = userData.intercom_admin_alias;
+                if (!aliasError && personData && personData.intercom_admin_alias) {
+                    pullConversationsAdminAlias = personData.intercom_admin_alias;
                     console.log('✅ Found admin alias:', pullConversationsAdminAlias);
                 }
             } catch (error) {
@@ -6266,14 +6934,14 @@ window.pullConversationsForEmployee = async function(employeeEmail, employeeName
         if (employeeEmail && window.supabaseClient) {
             try {
                 const normalizedEmail = (employeeEmail || '').toLowerCase().trim();
-                const { data: userData, error: aliasError } = await window.supabaseClient
-                    .from('users')
+                const { data: personData, error: aliasError } = await window.supabaseClient
+                    .from('people')
                     .select('intercom_admin_alias')
                     .eq('email', normalizedEmail)
                     .single();
                 
-                if (!aliasError && userData && userData.intercom_admin_alias) {
-                    pullConversationsAdminAlias = userData.intercom_admin_alias;
+                if (!aliasError && personData && personData.intercom_admin_alias) {
+                    pullConversationsAdminAlias = personData.intercom_admin_alias;
                     console.log('✅ Found admin alias:', pullConversationsAdminAlias);
                 }
             } catch (error) {
@@ -6387,48 +7055,50 @@ async function findAdminIdForEmployee(employeeEmail) {
     let adminId = null;
     let adminFound = false;
     
-    // Get Supabase configuration
-    const supabaseUrl = window.SupabaseConfig?.url || '';
-    const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+    // Get Supabase configuration with fallbacks
+    const config = await ensureSupabaseConfig();
+    const supabaseUrl = config.url;
+    const supabaseAnonKey = config.anonKey;
     
     if (!supabaseUrl || !supabaseAnonKey) {
         showPullConversationsError('Configuration error: Supabase credentials not found.');
         return false;
     }
     
-    const supabaseClient = window.SupabaseConfig?.getClient?.();
+    const supabaseClient = config.getClient();
     if (!supabaseClient) {
         showPullConversationsError('Supabase client not available.');
         return false;
     }
     
     // ============================================
-    // OPTIMIZATION: Check users table FIRST (fastest lookup)
+    // OPTIMIZATION: Check people table FIRST (most likely to have intercom fields)
     // ============================================
     try {
-        console.log('🔍 Looking up admin ID in users table for email:', normalizedEmail);
-        const { data: user, error: userError } = await supabaseClient
-            .from('users')
+        console.log('🔍 Looking up admin ID in people table for email:', normalizedEmail);
+        const { data: person, error: peopleError } = await supabaseClient
+            .from('people')
             .select('intercom_admin_id, intercom_admin_alias, email')
             .eq('email', normalizedEmail)
             .limit(1)
             .maybeSingle();
         
-        if (!userError && user && user.intercom_admin_id) {
-            adminId = user.intercom_admin_id;
+        if (!peopleError && person && person.intercom_admin_id) {
+            adminId = person.intercom_admin_id;
             adminFound = true;
-            console.log('✅ Admin ID found in users table:', adminId);
+            console.log('✅ Admin ID found in people table:', adminId);
             
-            // Store admin alias from users table if available
-            if (user.intercom_admin_alias && !pullConversationsAdminName) {
-                pullConversationsAdminName = user.intercom_admin_alias;
+            // Store admin alias from people table if available
+            if (person.intercom_admin_alias && !pullConversationsAdminName) {
+                pullConversationsAdminName = person.intercom_admin_alias;
             }
-        } else if (userError) {
-            console.warn('⚠️ Error querying users table:', userError);
+        } else if (peopleError) {
+            console.warn('⚠️ Error querying people table:', peopleError);
         }
-    } catch (userTableError) {
-        console.warn('⚠️ Error accessing users table:', userTableError);
+    } catch (peopleTableError) {
+        console.warn('⚠️ Error accessing people table:', peopleTableError);
     }
+    
     
     // ============================================
     // FALLBACK 1: Check intercom_admin_cache
@@ -6665,9 +7335,10 @@ window.searchIntercomAdmins = async function() {
         return;
     }
     
-    // Get Supabase configuration
-    const supabaseUrl = window.SupabaseConfig?.url || '';
-    const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+    // Get Supabase configuration with fallbacks
+    const config = await ensureSupabaseConfig();
+    const supabaseUrl = config.url;
+    const supabaseAnonKey = config.anonKey;
     
     if (!supabaseUrl || !supabaseAnonKey) {
         errorDiv.style.display = 'block';
@@ -6822,11 +7493,11 @@ async function selectAdminFromSearch(admin) {
     }
     
     try {
-        console.log('💾 Updating users table with admin info:', { employeeEmail, adminId, adminName });
+        console.log('💾 Updating people table with admin info:', { employeeEmail, adminId, adminName });
         
         // Update users table
-        const { data: updatedUser, error: updateError } = await supabaseClient
-            .from('users')
+        const { data: updatedPerson, error: updateError } = await supabaseClient
+            .from('people')
             .update({
                 intercom_admin_id: String(adminId),
                 intercom_admin_alias: adminName || null
@@ -6836,15 +7507,15 @@ async function selectAdminFromSearch(admin) {
             .maybeSingle();
         
         if (updateError) {
-            console.error('❌ Error updating users table:', updateError);
-            throw new Error(`Failed to update user: ${updateError.message}`);
+            console.error('❌ Error updating people table:', updateError);
+            throw new Error(`Failed to update person: ${updateError.message}`);
         }
         
-        if (!updatedUser) {
-            throw new Error('User not found in database');
+        if (!updatedPerson) {
+            throw new Error('Person not found in database');
         }
         
-        console.log('✅ Successfully updated users table:', updatedUser);
+        console.log('✅ Successfully updated people table:', updatedPerson);
         
         // Also cache the admin in intercom_admin_cache (async, don't wait)
         if (admin) {
@@ -6935,18 +7606,47 @@ async function findAdminIdForCurrentUser(userEmail) {
     let adminId = null;
     let adminFound = false;
     
-    // Get Supabase configuration
-    const supabaseUrl = window.SupabaseConfig?.url || '';
-    const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+    // Get Supabase configuration with fallbacks
+    const config = await ensureSupabaseConfig();
+    const supabaseUrl = config.url;
+    const supabaseAnonKey = config.anonKey;
     
     if (!supabaseUrl || !supabaseAnonKey) {
         showPullConversationsError('Configuration error: Supabase credentials not found.');
         return;
     }
     
-    // First, try to find admin in Supabase cache
-    const supabaseClient = window.SupabaseConfig?.getClient?.();
+    // First, try to find admin in people table (most direct lookup)
+    const supabaseClient = config.getClient();
     if (supabaseClient) {
+        try {
+            console.log('🔍 Looking up admin ID in people table for email:', normalizedEmail);
+            const { data: person, error: peopleError } = await supabaseClient
+                .from('people')
+                .select('intercom_admin_id, intercom_admin_alias, email')
+                .eq('email', normalizedEmail)
+                .limit(1)
+                .maybeSingle();
+            
+            if (!peopleError && person && person.intercom_admin_id) {
+                adminId = person.intercom_admin_id;
+                adminFound = true;
+                console.log('✅ Admin ID found in people table:', adminId);
+                
+                // Store admin alias from people table if available
+                if (person.intercom_admin_alias && !pullConversationsAdminName) {
+                    pullConversationsAdminName = person.intercom_admin_alias;
+                }
+            } else if (peopleError) {
+                console.warn('⚠️ Error querying people table:', peopleError);
+            }
+        } catch (peopleTableError) {
+            console.warn('⚠️ Error accessing people table:', peopleTableError);
+        }
+    }
+    
+    // Fallback: Check intercom_admin_cache
+    if (!adminFound && supabaseClient) {
         try {
             console.log('🔍 Looking up admin in Supabase cache...');
             const { data: cachedAdmins, error: queryError } = await supabaseClient
@@ -7496,6 +8196,36 @@ function clearAllConversationCaches() {
     }
 }
 
+// Test edge function connectivity
+async function testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey) {
+    try {
+        const testUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
+        console.log('🧪 Testing edge function connectivity:', testUrl);
+        
+        const response = await fetch(testUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'apikey': supabaseAnonKey,
+                'Accept': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+        });
+        
+        console.log('🧪 Test response:', {
+            status: response.status,
+            ok: response.ok,
+            statusText: response.statusText
+        });
+        
+        return response.ok;
+    } catch (error) {
+        console.error('🧪 Connectivity test failed:', error);
+        return false;
+    }
+}
+
 // Fetch conversations for date range
 async function fetchConversationsForDateRange(startDate, endDate) {
     if (!pullConversationsAdminId) {
@@ -7515,9 +8245,22 @@ async function fetchConversationsForDateRange(startDate, endDate) {
     if (errorDiv) errorDiv.style.display = 'none';
     if (listDiv) listDiv.style.display = 'none';
     
-    // Get Supabase configuration
-    const supabaseUrl = window.SupabaseConfig?.url || '';
-    const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+    // Get Supabase configuration with fallbacks
+    const config = await ensureSupabaseConfig();
+    const supabaseUrl = config.url;
+    const supabaseAnonKey = config.anonKey;
+    
+    // Test connectivity first
+    updateProgressIndicator(5, 'Testing connection...');
+    const isConnected = await testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey);
+    if (!isConnected) {
+        showPullConversationsError(`Cannot connect to edge function. Please check:
+1. Your internet connection
+2. Edge function URL: ${supabaseUrl}/functions/v1/intercom-proxy
+3. Browser console (F12) for detailed error messages`);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        return;
+    }
     
     // Normalize adminId and dates
     const normalizedAdminId = String(pullConversationsAdminId || '').trim();
@@ -7553,10 +8296,20 @@ async function fetchConversationsForDateRange(startDate, endDate) {
     updateProgressIndicator(10, 'Pulling from Intercom...');
     
     try {
+        // Validate configuration first
+        if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Supabase configuration is missing. Please refresh the page.');
+        }
+        
         // Build edge function URL with date range
         const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}`;
         
-        console.log('📡 Calling:', edgeFunctionUrl);
+        console.log('📡 Calling edge function:', edgeFunctionUrl);
+        console.log('📡 Supabase URL:', supabaseUrl);
+        console.log('📡 Admin ID:', pullConversationsAdminId);
+        console.log('📡 Date range:', updatedSince, 'to', updatedBefore);
+        console.log('📡 Anon key present:', !!supabaseAnonKey);
+        console.log('📡 Anon key length:', supabaseAnonKey ? supabaseAnonKey.length : 0);
         
         // Update progress: Searching
         updateProgressIndicator(20, 'Searching conversations in Intercom...');
@@ -7572,18 +8325,50 @@ async function fetchConversationsForDateRange(startDate, endDate) {
                 headers: {
                     'Authorization': `Bearer ${supabaseAnonKey}`,
                     'apikey': supabaseAnonKey,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                signal: controller.signal
+                signal: controller.signal,
+                mode: 'cors', // Explicitly enable CORS
+                credentials: 'omit' // Don't send cookies
+            });
+            
+            console.log('📡 Response received:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
             });
         } catch (fetchError) {
             clearTimeout(timeoutId);
             
+            console.error('❌ Fetch error details:', {
+                name: fetchError.name,
+                message: fetchError.message,
+                stack: fetchError.stack,
+                url: edgeFunctionUrl,
+                supabaseUrl: supabaseUrl,
+                hasAnonKey: !!supabaseAnonKey
+            });
+            
             // Handle timeout and network errors
             if (fetchError.name === 'AbortError') {
                 throw new Error('Request timed out. The Intercom API is taking too long to respond. Please try again or check your internet connection.');
-            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION')) {
-                throw new Error('Connection failed. Please check your internet connection and try again. If the problem persists, the Intercom service may be temporarily unavailable.');
+            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION') || fetchError.message.includes('NetworkError') || fetchError.message.includes('Network request failed')) {
+                // More detailed error message with troubleshooting
+                const errorMsg = `Connection failed. Details:
+- Edge Function URL: ${edgeFunctionUrl}
+- Supabase URL: ${supabaseUrl}
+- Anon Key: ${supabaseAnonKey ? 'Present (' + supabaseAnonKey.length + ' chars)' : 'Missing'}
+
+Please check:
+1. Your internet connection
+2. Open browser console (F12) for detailed logs
+3. Try accessing: ${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins
+4. Check if the edge function is deployed and active
+
+Error: ${fetchError.message}`;
+                throw new Error(errorMsg);
             } else {
                 throw new Error(`Network error: ${fetchError.message}`);
             }
@@ -7683,9 +8468,22 @@ async function fetchConversationsForCurrentUser(selectedDate) {
     if (errorDiv) errorDiv.style.display = 'none';
     if (listDiv) listDiv.style.display = 'none';
     
-    // Get Supabase configuration
-    const supabaseUrl = window.SupabaseConfig?.url || '';
-    const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
+    // Get Supabase configuration with fallbacks
+    const config = await ensureSupabaseConfig();
+    const supabaseUrl = config.url;
+    const supabaseAnonKey = config.anonKey;
+    
+    // Test connectivity first
+    updateProgressIndicator(5, 'Testing connection...');
+    const isConnected = await testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey);
+    if (!isConnected) {
+        showPullConversationsError(`Cannot connect to edge function. Please check:
+1. Your internet connection
+2. Edge function URL: ${supabaseUrl}/functions/v1/intercom-proxy
+3. Browser console (F12) for detailed error messages`);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        return;
+    }
     
     // Normalize adminId and date for cache lookup
     const normalizedAdminId = String(pullConversationsAdminId || '').trim();
@@ -7782,10 +8580,20 @@ async function fetchConversationsForCurrentUser(selectedDate) {
     updateProgressIndicator(10, 'Pulling from Intercom...');
     
     try {
+        // Validate configuration first
+        if (!supabaseUrl || !supabaseAnonKey) {
+            throw new Error('Supabase configuration is missing. Please refresh the page.');
+        }
+        
         // Build edge function URL
         const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_date=${encodeURIComponent(selectedDate)}`;
         
-        console.log('📡 Calling:', edgeFunctionUrl);
+        console.log('📡 Calling edge function:', edgeFunctionUrl);
+        console.log('📡 Supabase URL:', supabaseUrl);
+        console.log('📡 Admin ID:', pullConversationsAdminId);
+        console.log('📡 Selected date:', selectedDate);
+        console.log('📡 Anon key present:', !!supabaseAnonKey);
+        console.log('📡 Anon key length:', supabaseAnonKey ? supabaseAnonKey.length : 0);
         
         // Update progress: Searching
         updateProgressIndicator(20, 'Searching conversations in Intercom...');
@@ -7801,18 +8609,50 @@ async function fetchConversationsForCurrentUser(selectedDate) {
                 headers: {
                     'Authorization': `Bearer ${supabaseAnonKey}`,
                     'apikey': supabaseAnonKey,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 },
-                signal: controller.signal
+                signal: controller.signal,
+                mode: 'cors', // Explicitly enable CORS
+                credentials: 'omit' // Don't send cookies
+            });
+            
+            console.log('📡 Response received:', {
+                status: response.status,
+                statusText: response.statusText,
+                ok: response.ok,
+                headers: Object.fromEntries(response.headers.entries())
             });
         } catch (fetchError) {
             clearTimeout(timeoutId);
             
+            console.error('❌ Fetch error details:', {
+                name: fetchError.name,
+                message: fetchError.message,
+                stack: fetchError.stack,
+                url: edgeFunctionUrl,
+                supabaseUrl: supabaseUrl,
+                hasAnonKey: !!supabaseAnonKey
+            });
+            
             // Handle timeout and network errors
             if (fetchError.name === 'AbortError') {
                 throw new Error('Request timed out. The Intercom API is taking too long to respond. Please try again or check your internet connection.');
-            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION')) {
-                throw new Error('Connection failed. Please check your internet connection and try again. If the problem persists, the Intercom service may be temporarily unavailable.');
+            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION') || fetchError.message.includes('NetworkError') || fetchError.message.includes('Network request failed')) {
+                // More detailed error message with troubleshooting
+                const errorMsg = `Connection failed. Details:
+- Edge Function URL: ${edgeFunctionUrl}
+- Supabase URL: ${supabaseUrl}
+- Anon Key: ${supabaseAnonKey ? 'Present (' + supabaseAnonKey.length + ' chars)' : 'Missing'}
+
+Please check:
+1. Your internet connection
+2. Open browser console (F12) for detailed logs
+3. Try accessing: ${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins
+4. Check if the edge function is deployed and active
+
+Error: ${fetchError.message}`;
+                throw new Error(errorMsg);
             } else {
                 throw new Error(`Network error: ${fetchError.message}`);
             }
@@ -10837,18 +11677,18 @@ async function loadAIAuditScorecards() {
     if (!activeSelect) return;
     
     try {
-        // Get employee's channel from users table
+        // Get employee's channel from people table
         let employeeChannel = null;
         if (aiAuditEmployeeEmail) {
             try {
-                const { data: userData, error: userError } = await window.supabaseClient
-                    .from('users')
+                const { data: personData, error: personError } = await window.supabaseClient
+                    .from('people')
                     .select('channel')
                     .eq('email', aiAuditEmployeeEmail)
                     .single();
                 
-                if (!userError && userData && userData.channel) {
-                    employeeChannel = userData.channel.trim();
+                if (!personError && personData && personData.channel) {
+                    employeeChannel = personData.channel.trim();
                     console.log('✅ Found employee channel:', employeeChannel, 'for', aiAuditEmployeeEmail);
                 } else {
                     console.warn('⚠️ Could not find channel for employee:', aiAuditEmployeeEmail);
@@ -13087,9 +13927,77 @@ window.conversationsGoToPage = function(page) {
     displayEmployeeConversations();
 };
 
-window.navigateToAssignment = function(assignmentId) {
-    // Navigate to new-audit-form.html with assignment parameter
-    window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${assignmentId}`;
+window.navigateToAssignment = async function(assignmentId) {
+    try {
+        console.log('🚀 Navigating to assignment:', assignmentId);
+        
+        // Get Supabase client
+        const supabaseClient = window.SupabaseConfig?.getClient?.();
+        if (!supabaseClient) {
+            console.error('❌ Supabase client not available');
+            // Fallback to direct navigation
+            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+            return;
+        }
+        
+        // Fetch assignment details
+        const { data: assignment, error: fetchError } = await supabaseClient
+            .from('audit_assignments')
+            .select('id, employee_email, employee_name, conversation_id, status, scorecard_id')
+            .eq('id', assignmentId)
+            .single();
+        
+        if (fetchError || !assignment) {
+            console.error('❌ Error fetching assignment:', fetchError);
+            await window.confirmationDialog?.show({
+                title: 'Error',
+                message: 'Failed to load assignment details: ' + (fetchError?.message || 'Assignment not found'),
+                confirmText: 'OK',
+                type: 'error'
+            });
+            return;
+        }
+        
+        console.log('📋 Assignment details:', {
+            id: assignment.id,
+            employee_email: assignment.employee_email,
+            employee_name: assignment.employee_name,
+            conversation_id: assignment.conversation_id,
+            status: assignment.status
+        });
+        
+        // If assignment already has a conversation_id, navigate directly with both parameters
+        if (assignment.conversation_id) {
+            console.log('✅ Assignment already has conversation linked, navigating directly');
+            const conversationId = encodeURIComponent(String(assignment.conversation_id));
+            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${conversationId}`;
+            return;
+        }
+        
+        // If no conversation_id, fetch Intercom conversations for this employee
+        if (!assignment.employee_email) {
+            console.warn('⚠️ Assignment has no employee_email, navigating without conversation');
+            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+            return;
+        }
+        
+        console.log('🔍 No conversation linked, fetching Intercom conversations for:', assignment.employee_email);
+        
+        // Set the selected audit ID so conversation linking will work
+        selectedAuditId = assignmentId;
+        
+        // Fetch conversations using existing viewEmployeeConversations flow
+        // This will show the conversations section and allow user to select one
+        await window.viewEmployeeConversations(assignment.employee_email, assignment.employee_name);
+        
+        // Note: After user selects a conversation and clicks "Start Audit" button,
+        // the startAuditFromConversation function will handle linking and navigation
+        
+    } catch (error) {
+        console.error('❌ Error in navigateToAssignment:', error);
+        // Fallback to direct navigation on error
+        window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+    }
 };
 
 // Remove conversation link from audit
@@ -13098,13 +14006,18 @@ async function removeConversationFromAudit(auditId, conversationId) {
         console.log('🗑️ Removing conversation link from audit:', { conversationId, auditId });
         
         // Show confirmation dialog
-        const proceed = await window.confirmationDialog.show({
-            title: 'Remove Conversation Link',
-            message: `Are you sure you want to remove the conversation link (ID: ${conversationId}) from this audit assignment?`,
-            confirmText: 'Remove',
-            cancelText: 'Cancel',
-            type: 'warning'
-        });
+        let proceed = false;
+        if (window.confirmationDialog) {
+            proceed = await window.confirmationDialog.show({
+                title: 'Remove Conversation Link',
+                message: `Are you sure you want to remove the conversation link (ID: ${conversationId}) from this audit assignment?`,
+                confirmText: 'Remove',
+                cancelText: 'Cancel',
+                type: 'warning'
+            });
+        } else {
+            proceed = confirm(`Are you sure you want to remove the conversation link (ID: ${conversationId}) from this audit assignment?`);
+        }
         
         if (!proceed) {
             return;
@@ -13113,12 +14026,16 @@ async function removeConversationFromAudit(auditId, conversationId) {
         // Get Supabase client
         const supabaseClient = window.SupabaseConfig?.getClient?.();
         if (!supabaseClient) {
-            await window.confirmationDialog.show({
-                title: 'Error',
-                message: 'Database connection not available',
-                confirmText: 'OK',
-                type: 'error'
-            });
+            if (window.confirmationDialog) {
+                await window.confirmationDialog.show({
+                    title: 'Error',
+                    message: 'Database connection not available',
+                    confirmText: 'OK',
+                    type: 'error'
+                });
+            } else {
+                alert('Database connection not available');
+            }
             return;
         }
         
@@ -13131,24 +14048,32 @@ async function removeConversationFromAudit(auditId, conversationId) {
             .eq('id', auditId);
         
         if (updateError) {
-            await window.confirmationDialog.show({
-                title: 'Error',
-                message: 'Failed to remove conversation link: ' + updateError.message,
-                confirmText: 'OK',
-                type: 'error'
-            });
+            if (window.confirmationDialog) {
+                await window.confirmationDialog.show({
+                    title: 'Error',
+                    message: 'Failed to remove conversation link: ' + updateError.message,
+                    confirmText: 'OK',
+                    type: 'error'
+                });
+            } else {
+                alert('Failed to remove conversation link: ' + updateError.message);
+            }
             return;
         }
         
         console.log('✅ Successfully removed conversation link from audit');
         
         // Show success message
-        await window.confirmationDialog.show({
-            title: 'Success',
-            message: `Conversation link has been removed from the audit assignment.`,
-            confirmText: 'OK',
-            type: 'success'
-        });
+        if (window.confirmationDialog) {
+            await window.confirmationDialog.show({
+                title: 'Success',
+                message: `Conversation link has been removed from the audit assignment.`,
+                confirmText: 'OK',
+                type: 'success'
+            });
+        } else {
+            alert('Conversation link has been removed from the audit assignment.');
+        }
         
         // Update input field to make it editable
         const input = document.getElementById(`conversationIdInput_${auditId}`);
@@ -13168,12 +14093,16 @@ async function removeConversationFromAudit(auditId, conversationId) {
         
     } catch (error) {
         console.error('Error removing conversation link:', error);
-        await window.confirmationDialog.show({
-            title: 'Error',
-            message: 'Failed to remove conversation link: ' + error.message,
-            confirmText: 'OK',
-            type: 'error'
-        });
+        if (window.confirmationDialog) {
+            await window.confirmationDialog.show({
+                title: 'Error',
+                message: 'Failed to remove conversation link: ' + error.message,
+                confirmText: 'OK',
+                type: 'error'
+            });
+        } else {
+            alert('Failed to remove conversation link: ' + error.message);
+        }
     }
 }
 
@@ -13654,12 +14583,16 @@ window.quickStartAuditFromConversation = async function(conversation, auditId) {
         await window.startAuditFromConversation(conversation);
     } catch (error) {
         console.error('Error in quickStartAuditFromConversation:', error);
-        await window.confirmationDialog.show({
-            title: 'Error',
-            message: 'Failed to start audit: ' + error.message,
-            confirmText: 'OK',
-            type: 'error'
-        });
+        if (window.confirmationDialog) {
+            await window.confirmationDialog.show({
+                title: 'Error',
+                message: 'Failed to start audit: ' + error.message,
+                confirmText: 'OK',
+                type: 'error'
+            });
+        } else {
+            alert('Failed to start audit: ' + error.message);
+        }
     }
 };
 
@@ -13673,17 +14606,43 @@ window.startAssignedAudit = async function(assignmentId, employeeEmail, scorecar
         
         if (updateError) throw updateError;
         
-        // Navigate to new-audit-form.html with assignment parameter
-        window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${assignmentId}`;
+        // Fetch assignment to get conversation_id if available
+        const supabaseClient = window.SupabaseConfig?.getClient?.() || window.supabaseClient;
+        let conversationId = null;
+        if (supabaseClient) {
+            try {
+                const { data: assignment } = await supabaseClient
+                    .from('audit_assignments')
+                    .select('conversation_id')
+                    .eq('id', assignmentId)
+                    .single();
+                if (assignment?.conversation_id) {
+                    conversationId = String(assignment.conversation_id);
+                }
+            } catch (err) {
+                console.warn('Could not fetch conversation_id, proceeding without it:', err);
+            }
+        }
+        
+        // Navigate to new-audit-form.html with assignment parameter and conversation_id if available
+        let url = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+        if (conversationId) {
+            url += `&conversation_id=${encodeURIComponent(conversationId)}`;
+        }
+        window.location.href = url;
         
     } catch (error) {
         console.error('Error starting assigned audit:', error);
-        await window.confirmationDialog.show({
-            title: 'Error',
-            message: 'Failed to start audit: ' + error.message,
-            confirmText: 'OK',
-            type: 'error'
-        });
+        if (window.confirmationDialog) {
+            await window.confirmationDialog.show({
+                title: 'Error',
+                message: 'Failed to start audit: ' + error.message,
+                confirmText: 'OK',
+                type: 'error'
+            });
+        } else {
+            alert('Failed to start audit: ' + error.message);
+        }
     }
 };
 
@@ -13699,12 +14658,16 @@ window.startAuditFromConversation = async function(conversation) {
         const adminInfo = extractAdminFromConversation(conversation);
         
         if (!adminInfo || !adminInfo.id) {
-            await window.confirmationDialog.show({
-                title: 'Admin Not Found',
-                message: 'Could not find admin information in this conversation. Please select the employee manually.',
-                confirmText: 'OK',
-                type: 'warning'
-            });
+            if (window.confirmationDialog) {
+                await window.confirmationDialog.show({
+                    title: 'Admin Not Found',
+                    message: 'Could not find admin information in this conversation. Please select the employee manually.',
+                    confirmText: 'OK',
+                    type: 'warning'
+                });
+            } else {
+                alert('Could not find admin information in this conversation. Please select the employee manually.');
+            }
         }
         
         // If admin email is not available, try to look it up
@@ -13797,23 +14760,31 @@ window.startAuditFromConversation = async function(conversation) {
                     
                     if (fetchError || !currentAssignment) {
                         console.error('Error fetching assignment:', fetchError);
-                        await window.confirmationDialog.show({
-                            title: 'Error',
-                            message: 'Failed to load assignment details: ' + (fetchError?.message || 'Assignment not found'),
-                            confirmText: 'OK',
-                            type: 'error'
-                        });
+                        if (window.confirmationDialog) {
+                            await window.confirmationDialog.show({
+                                title: 'Error',
+                                message: 'Failed to load assignment details: ' + (fetchError?.message || 'Assignment not found'),
+                                confirmText: 'OK',
+                                type: 'error'
+                            });
+                        } else {
+                            alert('Failed to load assignment details: ' + (fetchError?.message || 'Assignment not found'));
+                        }
                         return;
                     }
                     
                     const conversationId = conversation.id || null;
                     if (!conversationId) {
-                        await window.confirmationDialog.show({
-                            title: 'Error',
-                            message: 'Invalid conversation: No conversation ID found',
-                            confirmText: 'OK',
-                            type: 'error'
-                        });
+                        if (window.confirmationDialog) {
+                            await window.confirmationDialog.show({
+                                title: 'Error',
+                                message: 'Invalid conversation: No conversation ID found',
+                                confirmText: 'OK',
+                                type: 'error'
+                            });
+                        } else {
+                            alert('Invalid conversation: No conversation ID found');
+                        }
                         return;
                     }
                     
@@ -13825,21 +14796,26 @@ window.startAuditFromConversation = async function(conversation) {
                         // If it's the same conversation, just proceed (no need to warn)
                         if (existingConvId === newConvId) {
                             console.log('✅ Same conversation already linked, proceeding...');
-                            // Just navigate to the assignment
-                            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${selectedAuditId}`;
+                            // Navigate to the assignment with conversation_id
+                            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(selectedAuditId)}&conversation_id=${encodeURIComponent(existingConvId)}`;
                             return;
                         }
                         
                         // Different conversation - show warning
-                        const proceed = await window.confirmationDialog.show({
-                            title: 'Warning: Conversation Already Linked',
-                            message: `This assignment already has a conversation linked (ID: ${existingConvId}).\n\n` +
-                                    `You are trying to link a different conversation (ID: ${newConvId}).\n\n` +
-                                    `Do you want to replace the existing conversation?`,
-                            confirmText: 'Replace',
-                            cancelText: 'Cancel',
-                            type: 'warning'
-                        });
+                        let proceed = false;
+                        if (window.confirmationDialog) {
+                            proceed = await window.confirmationDialog.show({
+                                title: 'Warning: Conversation Already Linked',
+                                message: `This assignment already has a conversation linked (ID: ${existingConvId}).\n\n` +
+                                        `You are trying to link a different conversation (ID: ${newConvId}).\n\n` +
+                                        `Do you want to replace the existing conversation?`,
+                                confirmText: 'Replace',
+                                cancelText: 'Cancel',
+                                type: 'warning'
+                            });
+                        } else {
+                            proceed = confirm(`This assignment already has a conversation linked (ID: ${existingConvId}).\n\nYou are trying to link a different conversation (ID: ${newConvId}).\n\nDo you want to replace the existing conversation?`);
+                        }
                         
                         if (!proceed) {
                             console.log('User cancelled conversation replacement');
@@ -13865,16 +14841,20 @@ window.startAuditFromConversation = async function(conversation) {
                             ? `${existingAssignment.employee_name} (${existingAssignment.employee_email})`
                             : existingAssignment.employee_email || 'Unknown';
                         
-                        await window.confirmationDialog.show({
-                            title: 'Error: Conversation Already Linked to Another Assignment',
-                            message: `This conversation (ID: ${conversationId}) is already linked to another audit assignment:\n\n` +
-                                    `• Employee: ${assignmentInfo}\n` +
-                                    `• Status: ${existingAssignment.status || 'Unknown'}\n` +
-                                    `• Assignment ID: ${existingAssignment.id}\n\n` +
-                                    `You cannot link the same conversation to multiple assignments. Please select a different conversation.`,
-                            confirmText: 'OK',
-                            type: 'error'
-                        });
+                        if (window.confirmationDialog) {
+                            await window.confirmationDialog.show({
+                                title: 'Error: Conversation Already Linked to Another Assignment',
+                                message: `This conversation (ID: ${conversationId}) is already linked to another audit assignment:\n\n` +
+                                        `• Employee: ${assignmentInfo}\n` +
+                                        `• Status: ${existingAssignment.status || 'Unknown'}\n` +
+                                        `• Assignment ID: ${existingAssignment.id}\n\n` +
+                                        `You cannot link the same conversation to multiple assignments. Please select a different conversation.`,
+                                confirmText: 'OK',
+                                type: 'error'
+                            });
+                        } else {
+                            alert(`This conversation (ID: ${conversationId}) is already linked to another audit assignment:\n\n• Employee: ${assignmentInfo}\n• Status: ${existingAssignment.status || 'Unknown'}\n• Assignment ID: ${existingAssignment.id}\n\nYou cannot link the same conversation to multiple assignments. Please select a different conversation.`);
+                        }
                         
                         console.log('❌ Blocked: Conversation already linked to another assignment - cannot proceed');
                         return;
@@ -13954,12 +14934,16 @@ window.startAuditFromConversation = async function(conversation) {
                     
                     if (updateError) {
                         console.error('Error updating assignment:', updateError);
-                        await window.confirmationDialog.show({
-                            title: 'Error',
-                            message: 'Failed to link conversation to assignment: ' + updateError.message,
-                            confirmText: 'OK',
-                            type: 'error'
-                        });
+                        if (window.confirmationDialog) {
+                            await window.confirmationDialog.show({
+                                title: 'Error',
+                                message: 'Failed to link conversation to assignment: ' + updateError.message,
+                                confirmText: 'OK',
+                                type: 'error'
+                            });
+                        } else {
+                            alert('Failed to link conversation to assignment: ' + updateError.message);
+                        }
                         return;
                     }
                     
@@ -13971,17 +14955,21 @@ window.startAuditFromConversation = async function(conversation) {
                     // Clear selection
                     selectedAuditId = null;
                     
-                    // Navigate to assignment (which will load the conversation automatically)
-                    window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${assignmentIdToNavigate}`;
+                    // Navigate to assignment with conversation_id parameter
+                    window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentIdToNavigate)}&conversation_id=${encodeURIComponent(String(conversationId))}`;
                     return;
                 } catch (error) {
                     console.error('Exception updating assignment:', error);
-                    await window.confirmationDialog.show({
-                        title: 'Error',
-                        message: 'Failed to link conversation to assignment: ' + error.message,
-                        confirmText: 'OK',
-                        type: 'error'
-                    });
+                    if (window.confirmationDialog) {
+                        await window.confirmationDialog.show({
+                            title: 'Error',
+                            message: 'Failed to link conversation to assignment: ' + error.message,
+                            confirmText: 'OK',
+                            type: 'error'
+                        });
+                    } else {
+                        alert('Failed to link conversation to assignment: ' + error.message);
+                    }
                     return;
                 }
             } else {
@@ -16449,6 +17437,92 @@ document.addEventListener('DOMContentLoaded', function() {
         const employeeType = document.getElementById('employeeType');
         const countryOfEmployee = document.getElementById('countryOfEmployee');
         
+        // Handle employee selection change - auto-populate fields
+        if (employeeSelect) {
+            const handleEmployeeChange = function() {
+                const selectedOption = this.options[this.selectedIndex];
+                
+                if (selectedOption && selectedOption.value) {
+                    // Auto-populate email from the selected employee
+                    const email = selectedOption.dataset.email || selectedOption.value;
+                    if (employeeEmail) {
+                        employeeEmail.value = email;
+                    }
+                    
+                    // Auto-populate employee type from designation
+                    const designation = selectedOption.dataset.designation || '';
+                    if (employeeType && designation) {
+                        employeeType.value = designation;
+                    }
+                    
+                    // Auto-populate department from selected employee
+                    const department = selectedOption.dataset.department || '';
+                    const employeeDepartment = document.getElementById('employeeDepartment');
+                    if (employeeDepartment && department) {
+                        employeeDepartment.value = department;
+                    }
+                    
+                    // Auto-populate country from selected employee
+                    const country = selectedOption.dataset.country || '';
+                    if (countryOfEmployee && country) {
+                        countryOfEmployee.value = country;
+                    }
+                    
+                    // Auto-populate channel from selected employee
+                    const channel = selectedOption.dataset.channel || '';
+                    const channelSelect = document.getElementById('channel');
+                    if (channelSelect && channel) {
+                        // Check if the channel exists in the dropdown
+                        const channelExists = Array.from(channelSelect.options).some(
+                            opt => opt.value === channel
+                        );
+                        if (channelExists) {
+                            channelSelect.value = channel;
+                            // Trigger change event to auto-select matching scorecard
+                            channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                    
+                    // Update week and quarter when employee changes
+                    if (typeof updateWeekAndQuarter === 'function') {
+                        updateWeekAndQuarter();
+                    }
+                } else {
+                    // Clear fields if no employee selected
+                    if (employeeEmail) {
+                        employeeEmail.value = '';
+                    }
+                    if (employeeType) {
+                        employeeType.value = '';
+                    }
+                    const employeeDepartment = document.getElementById('employeeDepartment');
+                    if (employeeDepartment) {
+                        employeeDepartment.value = '';
+                    }
+                    if (countryOfEmployee) {
+                        countryOfEmployee.value = '';
+                    }
+                    // Clear channel field
+                    const channelSelect = document.getElementById('channel');
+                    if (channelSelect) {
+                        channelSelect.value = '';
+                        // Trigger change event to reload scorecards without channel filter
+                        channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+            };
+            
+            employeeSelect.addEventListener('change', handleEmployeeChange);
+            
+            // If an employee is already selected when page loads, populate fields immediately
+            // Wait a bit for employees to be loaded first
+            setTimeout(() => {
+                if (employeeSelect && employeeSelect.value && employeeSelect.selectedIndex > 0) {
+                    handleEmployeeChange.call(employeeSelect);
+                }
+            }, 1000);
+        }
+        
         if (!auditForm) {
             console.error('auditForm element not found!');
             window.confirmationDialog.show({
@@ -16475,16 +17549,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Load pending audits when page loads (all assigned audits)
         // Wait for Supabase to be ready first
         async function loadAuditsWhenReady() {
+            console.log('%c🔄 loadAuditsWhenReady called', 'color: #f59e0b; font-weight: bold; font-size: 14px;');
+            
             // Check if Supabase is already ready
             if (window.supabaseClient) {
+                console.log('✅ Supabase client already available');
+                console.log('🚀 Immediately calling loadPendingAudits()...');
                 loadPendingAudits();
                 return;
             }
+            
+            console.log('⏳ Waiting for Supabase client...');
             
             // Wait for supabaseReady event with timeout
             await new Promise((resolve) => {
                 const checkSupabase = () => {
                     if (window.supabaseClient) {
+                        console.log('✅ Supabase client ready!');
                         resolve();
                         return true;
                     }
@@ -16496,21 +17577,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Listen for ready events
+                // Listen for ready event
                 const readyHandler = () => {
+                    console.log('✅ Received supabaseReady event');
                     if (checkSupabase()) {
                         resolve();
                     }
                 };
                 window.addEventListener('supabaseReady', readyHandler, { once: true });
-                window.addEventListener('supabaseClientReady', readyHandler, { once: true });
+                
+                // Also listen for supabaseClientReady event
+                const clientReadyHandler = () => {
+                    console.log('✅ Received supabaseClientReady event');
+                    if (checkSupabase()) {
+                        resolve();
+                    }
+                };
+                window.addEventListener('supabaseClientReady', clientReadyHandler, { once: true });
                 
                 // Poll every 100ms as backup
                 let pollCount = 0;
                 const pollInterval = setInterval(() => {
                     pollCount++;
-                    if (checkSupabase() || pollCount > 100) {
+                    if (checkSupabase() || pollCount > 100) { // Stop after 10 seconds
                         clearInterval(pollInterval);
+                        if (pollCount > 100) {
+                            console.log('⏰ Polling timeout, proceeding anyway...');
+                        }
                         resolve();
                     }
                 }, 100);
@@ -16518,6 +17611,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Final check before calling
             if (!window.supabaseClient) {
+                console.error('❌ Supabase client still not available after waiting');
                 const list = document.getElementById('pendingAuditsList');
                 if (list) {
                     list.innerHTML = `
@@ -16530,18 +17624,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            console.log('%c🚀 Calling loadPendingAudits()...', 'color: #10b981; font-weight: bold; font-size: 14px;');
             loadPendingAudits();
         }
         
-        // Make function globally accessible
+        // Make function globally accessible for debugging
         window.loadAuditsWhenReady = loadAuditsWhenReady;
         window.loadPendingAudits = loadPendingAudits;
+        window.debugLoadAudits = loadPendingAudits; // Alias for easy debugging
+        
+        // 🔍 DEBUG: Test function availability immediately
+        console.log('%c🔍 Function Availability Check:', 'color: #8b5cf6; font-weight: bold;');
+        console.log('loadPendingAudits:', typeof window.loadPendingAudits);
+        console.log('loadAuditsWhenReady:', typeof window.loadAuditsWhenReady);
+        
+        // 🔍 DEBUG: Try calling it immediately if Supabase is ready
+        if (window.supabaseClient) {
+            console.log('%c✅ Supabase already ready, calling loadPendingAudits immediately', 'color: #10b981; font-weight: bold;');
+            setTimeout(() => {
+                if (typeof window.loadPendingAudits === 'function') {
+                    window.loadPendingAudits();
+                }
+            }, 200);
+        }
+        
+        // Call immediately and also after delay as backup
+        console.log('%c📋 Setting up loadAuditsWhenReady...', 'color: #3b82f6; font-weight: bold;');
         
         // Call immediately
         loadAuditsWhenReady();
         
         // Also listen for Supabase ready events and call immediately
         const supabaseReadyHandler = () => {
+            console.log('%c🎯 Supabase ready event received - calling loadPendingAudits', 'color: #10b981; font-weight: bold;');
             if (window.supabaseClient) {
                 setTimeout(() => loadPendingAudits(), 100);
             }
@@ -16549,10 +17664,14 @@ document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('supabaseReady', supabaseReadyHandler, { once: true });
         window.addEventListener('supabaseClientReady', supabaseReadyHandler, { once: true });
         
-        // Backup call after delay
+        // Also call after delay as backup
         setTimeout(() => {
+            console.log('🔄 Backup check: pendingAudits.length =', pendingAudits.length, 'allPendingAudits.length =', allPendingAudits.length);
             if (pendingAudits.length === 0 && allPendingAudits.length === 0) {
+                console.log('🔄 Backup: Calling loadAuditsWhenReady after delay...');
                 loadAuditsWhenReady();
+            } else {
+                console.log('✅ Data already loaded, skipping backup call');
             }
         }, 3000);
         
@@ -16764,75 +17883,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 800);
             }
         }
-        
-        // Handle employee selection change
-        employeeSelect.addEventListener('change', function() {
-            const selectedOption = this.options[this.selectedIndex];
-            
-            if (selectedOption && selectedOption.value) {
-                // Auto-populate email from the selected employee
-                const email = selectedOption.dataset.email || selectedOption.value;
-                if (employeeEmail) {
-                    employeeEmail.value = email;
-                }
-                
-                // Auto-populate employee type from designation
-                const designation = selectedOption.dataset.designation || '';
-                if (employeeType && designation) {
-                    employeeType.value = designation;
-                }
-                
-                // Auto-populate department from selected employee
-                const department = selectedOption.dataset.department || '';
-                const employeeDepartment = document.getElementById('employeeDepartment');
-                if (employeeDepartment) {
-                    employeeDepartment.value = department;
-                }
-                
-                // Auto-populate country from selected employee
-                const country = selectedOption.dataset.country || '';
-                if (countryOfEmployee && country) {
-                    countryOfEmployee.value = country;
-                }
-                
-                // Auto-populate channel from selected employee
-                const channel = selectedOption.dataset.channel || '';
-                const channelSelect = document.getElementById('channel');
-                if (channelSelect && channel) {
-                    // Check if the channel exists in the dropdown
-                    const channelExists = Array.from(channelSelect.options).some(
-                        opt => opt.value === channel
-                    );
-                    if (channelExists) {
-                        channelSelect.value = channel;
-                        // Trigger change event to auto-select matching scorecard
-                        channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }
-            } else {
-                // Clear fields if no employee selected
-                if (employeeEmail) {
-                    employeeEmail.value = '';
-                }
-                if (employeeType) {
-                    employeeType.value = '';
-                }
-                const employeeDepartment = document.getElementById('employeeDepartment');
-                if (employeeDepartment) {
-                    employeeDepartment.value = '';
-                }
-                if (countryOfEmployee) {
-                    countryOfEmployee.value = '';
-                }
-                // Clear channel field
-                const channelSelect = document.getElementById('channel');
-                if (channelSelect) {
-                    channelSelect.value = '';
-                    // Trigger change event to reload scorecards without channel filter
-                    channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            }
-        });
         
         // Load user data when page loads
         loadUserData();
@@ -20550,9 +21600,73 @@ window.toggleYourStatsSection = toggleYourStatsSection;
   <!-- Authentication Guard -->
   <script type="module" src="/js/auth-checker.js"></script>
   
+  <!-- Initialize header metadata stats -->
+  <script type="module">
+    import { updateHeaderMetadata } from '/src/features/audit-form/presentation/utils/score-updater.js';
+    
+    // Make function available globally for event listeners
+    window.updateHeaderMetadata = updateHeaderMetadata;
+    
+    // Helper function to initialize stats
+    function initializeStats() {
+      // Get current values
+      const averageScoreField = document.getElementById('averageScore');
+      const passingStatusField = document.getElementById('passingStatus');
+      const totalErrorsField = document.getElementById('totalErrorsCount');
+      
+      const score = averageScoreField ? (parseFloat(averageScoreField.value) || 0) : 0;
+      const passingStatus = passingStatusField ? (passingStatusField.value || '') : '';
+      const totalErrors = totalErrorsField ? (parseInt(totalErrorsField.value) || 0) : 0;
+      
+      updateHeaderMetadata(score, passingStatus, totalErrors);
+    }
+    
+    // Initialize stats on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait a bit for DOM to be fully ready
+      setTimeout(() => {
+        initializeStats();
+      }, 100);
+      
+      // Add event listener for interaction date changes
+      // Use event delegation since the field might be in a modal
+      document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'interactionDate') {
+          initializeStats();
+        }
+      });
+      
+      // Also listen for input events (for when date is auto-filled)
+      document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'interactionDate') {
+          initializeStats();
+        }
+      });
+      
+      // Watch for modal opening to initialize stats
+      const modalObserver = new MutationObserver(function(mutations) {
+        const auditFormModal = document.getElementById('auditFormModal');
+        if (auditFormModal && auditFormModal.style.display !== 'none' && auditFormModal.style.display !== '') {
+          // Modal is visible, initialize stats
+          setTimeout(() => {
+            initializeStats();
+          }, 100);
+        }
+      });
+      
+      const auditFormModal = document.getElementById('auditFormModal');
+      if (auditFormModal) {
+        modalObserver.observe(auditFormModal, {
+          attributes: true,
+          attributeFilter: ['style']
+        });
+      }
+    });
+  </script>
+  
   <!-- Initialize Supabase FIRST before any components load -->
   <script type="module">
-    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
     import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
     
     (async function initSupabaseFirst() {
@@ -20560,31 +21674,109 @@ window.toggleYourStatsSection = toggleYourStatsSection;
         // Initialize base Supabase client
         await initSupabase();
         
+        // Get base Supabase client to extract URL and key
+        const baseClient = getSupabase();
+        
+        // Fetch environment variables to get Supabase config
+        let supabaseUrl = '';
+        let supabaseAnonKey = '';
+        
+        try {
+          const envResponse = await fetch('/api/env');
+          if (envResponse.ok) {
+            const env = await envResponse.json();
+            supabaseUrl = env.SUPABASE_URL || '';
+            supabaseAnonKey = env.SUPABASE_ANON_KEY || '';
+          }
+        } catch (envError) {
+          console.warn('Could not fetch env from server, trying alternative methods:', envError);
+        }
+        
+        // Fallback: Try to get from window.env if available
+        if ((!supabaseUrl || !supabaseAnonKey) && window.env) {
+          supabaseUrl = window.env.SUPABASE_URL || supabaseUrl;
+          supabaseAnonKey = window.env.SUPABASE_ANON_KEY || supabaseAnonKey;
+        }
+        
+        // Fallback: Extract from base client if available
+        if (baseClient && (!supabaseUrl || !supabaseAnonKey)) {
+          // Try to get URL from the client's supabaseUrl property
+          if (baseClient.supabaseUrl) {
+            supabaseUrl = baseClient.supabaseUrl;
+          }
+          // Note: We can't easily extract the anon key from the client, so we rely on env
+        }
+        
+        // Final fallback: Try to get from existing SupabaseConfig
+        if ((!supabaseUrl || !supabaseAnonKey) && window.SupabaseConfig) {
+          supabaseUrl = window.SupabaseConfig.url || supabaseUrl;
+          supabaseAnonKey = window.SupabaseConfig.anonKey || supabaseAnonKey;
+        }
+        
+        // If still not found, throw error (should not happen if .env is properly configured)
+        if (!supabaseUrl || !supabaseAnonKey) {
+          console.error('❌ Supabase configuration not found. Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your .env file');
+          throw new Error('Supabase configuration missing. Please configure SUPABASE_URL and SUPABASE_ANON_KEY in your .env file');
+        }
+        
         // Get authenticated Supabase client and set on window
         const authenticatedClient = await getAuthenticatedSupabase();
         if (authenticatedClient) {
           window.supabaseClient = authenticatedClient;
           window.supabaseClientReady = true;
           
+          // Set up SupabaseConfig object for backward compatibility
+          window.SupabaseConfig = {
+            url: supabaseUrl,
+            anonKey: supabaseAnonKey,
+            getClient: () => authenticatedClient
+          };
+          
+          console.log('SupabaseConfig initialized:', {
+            url: supabaseUrl.substring(0, 40) + '...',
+            hasAnonKey: !!supabaseAnonKey,
+            hasClient: !!authenticatedClient
+          });
+          
+          console.log('%c✓ Supabase client initialized and ready', 'color: #10b981; font-weight: bold; font-size: 14px;');
+          console.log('%c✓ SupabaseConfig configured', 'color: #10b981; font-weight: bold;');
+          
           // Dispatch ready event
           window.dispatchEvent(new CustomEvent('supabaseReady'));
           window.dispatchEvent(new CustomEvent('supabaseClientReady'));
           
-          // Clear any stale sessionStorage cache that might interfere
+          // 🔍 DEBUG: Clear any stale sessionStorage cache that might interfere
           try {
             const cacheKeys = Object.keys(sessionStorage).filter(key => key.startsWith('assignedAudits_'));
             if (cacheKeys.length > 0) {
+              console.log('🧹 Clearing stale cache keys:', cacheKeys);
               cacheKeys.forEach(key => sessionStorage.removeItem(key));
               cacheKeys.forEach(key => sessionStorage.removeItem(key + '_time'));
             }
           } catch (e) {
-            // Ignore cache clearing errors
+            console.warn('Could not clear cache:', e);
           }
           
           // Directly trigger loadPendingAudits if function exists
           if (typeof window.loadPendingAudits === 'function') {
+            console.log('%c🚀 Directly calling loadPendingAudits from Supabase init...', 'color: #10b981; font-weight: bold;');
             setTimeout(() => {
               window.loadPendingAudits();
+            }, 100);
+          } else {
+            console.log('⏳ loadPendingAudits not yet available, will be called by loadAuditsWhenReady');
+            // Set up a watcher to call it when it becomes available
+            let checkCount = 0;
+            const checkInterval = setInterval(() => {
+              checkCount++;
+              if (typeof window.loadPendingAudits === 'function') {
+                console.log('%c🚀 loadPendingAudits now available, calling it...', 'color: #10b981; font-weight: bold;');
+                clearInterval(checkInterval);
+                window.loadPendingAudits();
+              } else if (checkCount > 50) {
+                console.error('❌ loadPendingAudits never became available after 5 seconds');
+                clearInterval(checkInterval);
+              }
             }, 100);
           }
         } else {

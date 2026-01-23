@@ -27,16 +27,29 @@ export interface AuditFormData {
   passingStatus?: string;
   averageScore?: number;
   totalErrorsCount?: number;
+  criticalErrors?: number;
+  criticalFailError?: number;
+  significantError?: number;
+  errorDescription?: string;
   recommendations?: string;
   validationStatus?: string;
   parameterValues?: Record<string, number>;
-  parameterComments?: Record<string, string>;
+  parameterComments?: Record<string, ParameterComment>;
   parameterFeedback?: Record<string, string[]>;
   auditDuration?: number;
   auditStartTime?: string;
   auditEndTime?: string;
   intercomAlias?: string;
   conversationId?: string;
+  submittedAt?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ParameterComment {
+  comments: string[];
+  commented_at: string;
+  commented_by: string;
 }
 
 export interface ScorecardParameter {

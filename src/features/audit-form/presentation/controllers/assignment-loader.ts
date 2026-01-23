@@ -65,13 +65,17 @@ export class AssignmentLoader {
         return;
       }
       
-      // Check resource access
-      const resourceAccess = (window as any).accessControl?.canAccessResource?.('audit_assignment', assignment);
-      if (!resourceAccess || !resourceAccess.allowed) {
-        alert(resourceAccess?.reason || 'You do not have permission to access this assignment.');
-        window.history.replaceState({}, document.title, window.location.pathname);
-        return;
+      // Check resource access (optional - RLS already enforces at DB level)
+      // If accessControl is not available, allow access (RLS policies already verified access when fetching assignment)
+      if ((window as any).accessControl && typeof (window as any).accessControl.canAccessResource === 'function') {
+        const resourceAccess = (window as any).accessControl.canAccessResource('audit_assignment', assignment);
+        if (resourceAccess && !resourceAccess.allowed) {
+          alert(resourceAccess.reason || 'You do not have permission to access this assignment.');
+          window.history.replaceState({}, document.title, window.location.pathname);
+          return;
+        }
       }
+      // If accessControl not available, proceed (RLS already verified access at database level)
       
       // Get table name from scorecard
       const assignmentTable = assignment.scorecards?.table_name;

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Permission Management | CQMS</title>
+<meta name="description" content="Quality Management System - Permission Management">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    <link rel="stylesheet" href="permission-management.css">
+    
+    <script 
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
+      crossorigin="anonymous">
+    </script>
+    
+    <!-- Import map for npm packages -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    
+    <!-- Authentication Guard - Must be loaded first -->
+    <script type="module" src="/js/auth-checker.js"></script>
+    
+    <!-- Initialize Supabase FIRST before any components load -->
+    <script type="module">
+      import { initSupabase } from '/js/utils/supabase-init.js';
+      (async function initSupabaseFirst() {
+        try {
+          await initSupabase();
+          // Signal that Supabase is ready
+          window.supabaseReady = true;
+          window.dispatchEvent(new CustomEvent('supabaseReady'));
+        } catch (error) {
+          console.error('Failed to initialize Supabase:', error);
+        }
+      })();
+    </script>
+    
+    <!-- Admin Check - Must verify admin access -->
+    <script type="module">
+      import '/js/features/settings/permissions/presentation/admin-check.js';
+    </script>
+    
+    <!-- Sidebar Loader -->
+    <script type="module" src="/js/load-sidebar.js" defer></script>
+</head>
+
+<body>
+<!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+<main class="main-content" role="main">
+    <p class="page-heading">Permission Management</p>
+    <div class="page-heading-spacer"></div>
+
+    <div class="permission-management-container">
+        <!-- Tabs for Role-Based and Individual Permissions -->
+        <div class="tabs-container">
+            <button class="tab-button active" data-tab="role-based">
+                <svg class="tab-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
+                </svg>
+                Role-Based Rules
+            </button>
+            <button class="tab-button" data-tab="individual">
+                <svg class="tab-icon" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/>
+                </svg>
+                Individual Permissions
+            </button>
+        </div>
+
+        <!-- Role-Based Rules Tab Content -->
+        <div id="role-based-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>Role-Based Permission Rules</h2>
+                <button type="button" class="btn-create" id="createRoleRuleBtn">
+                    <svg class="btn-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+                    </svg>
+                    Create Rule
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-section">
+                <select id="ruleTypeFilter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="page">Page</option>
+                    <option value="feature">Feature</option>
+                    <option value="api_endpoint">API Endpoint</option>
+                    <option value="action">Action</option>
+                </select>
+                <select id="activeFilter" class="filter-select">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <input type="text" id="searchRulesInput" class="search-input" placeholder="Search rules...">
+            </div>
+
+            <!-- Rules Table -->
+            <div class="table-container">
+                <table class="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>Rule Type</th>
+                            <th>Resource Name</th>
+                            <th>Allowed Roles</th>
+                            <th>Min Level</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roleRulesTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-cell">Loading rules...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Individual Permissions Tab Content -->
+        <div id="individual-tab" class="tab-content">
+            <div class="section-header">
+                <h2>Individual User Permissions</h2>
+                <button type="button" class="btn-create" id="createUserRuleBtn">
+                    <svg class="btn-icon" fill="currentColor" viewBox="0 0 20 20">
+                        <path clip-rule="evenodd" fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" />
+                    </svg>
+                    Create Permission
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-section">
+                <input type="email" id="userEmailFilter" class="filter-input" placeholder="Filter by user email...">
+                <select id="userRuleTypeFilter" class="filter-select">
+                    <option value="">All Types</option>
+                    <option value="page">Page</option>
+                    <option value="feature">Feature</option>
+                    <option value="api_endpoint">API Endpoint</option>
+                    <option value="action">Action</option>
+                </select>
+                <select id="userAccessTypeFilter" class="filter-select">
+                    <option value="">All Access Types</option>
+                    <option value="allow">Allow</option>
+                    <option value="deny">Deny</option>
+                </select>
+            </div>
+
+            <!-- User Rules Table -->
+            <div class="table-container">
+                <table class="permissions-table">
+                    <thead>
+                        <tr>
+                            <th>User Email</th>
+                            <th>Rule Type</th>
+                            <th>Resource Name</th>
+                            <th>Access Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userRulesTableBody">
+                        <tr>
+                            <td colspan="6" class="loading-cell">Loading permissions...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Create/Edit Role Rule Modal -->
+<div id="roleRuleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="roleRuleModalTitle">Create Role-Based Rule</h3>
+            <button type="button" class="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <form id="roleRuleForm" class="modal-form">
+            <input type="hidden" id="roleRuleId">
+            
+            <div class="form-group">
+                <label for="roleRuleType">Rule Type *</label>
+                <select id="roleRuleType" required>
+                    <option value="">Select type...</option>
+                    <option value="page">Page</option>
+                    <option value="feature">Feature</option>
+                    <option value="api_endpoint">API Endpoint</option>
+                    <option value="action">Action</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="roleResourceName">Resource Name *</label>
+                <input type="text" id="roleResourceName" required placeholder="e.g., view_users, user-management.html">
+            </div>
+
+            <div class="form-group">
+                <label for="roleAllowedRoles">Allowed Roles (JSON Array)</label>
+                <textarea id="roleAllowedRoles" rows="3" placeholder='["Super Admin", "Admin"] or ["*"] for all users'></textarea>
+                <small>Enter JSON array of roles or ["*"] for all authenticated users</small>
+            </div>
+
+            <div class="form-group">
+                <label for="roleMinLevel">Minimum Role Level</label>
+                <select id="roleMinLevel">
+                    <option value="">None</option>
+                    <option value="0">Level 0 - General User</option>
+                    <option value="1">Level 1 - Employee/Quality Analyst</option>
+                    <option value="2">Level 2 - Auditor/Quality Supervisor</option>
+                    <option value="3">Level 3 - Manager</option>
+                    <option value="4">Level 4 - Admin</option>
+                    <option value="5">Level 5 - Super Admin</option>
+                </select>
+                <small>Minimum role level required (alternative to allowed roles)</small>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="roleRuleActive" checked>
+                    <span>Active</span>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="cancelRoleRuleBtn">Cancel</button>
+                <button type="submit" class="btn-submit">Save Rule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Create/Edit User Rule Modal -->
+<div id="userRuleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="userRuleModalTitle">Create Individual Permission</h3>
+            <button type="button" class="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <form id="userRuleForm" class="modal-form">
+            <input type="hidden" id="userRuleId">
+            
+            <div class="form-group">
+                <label for="userEmail">User Email *</label>
+                <input type="email" id="userEmail" required placeholder="user@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="userRuleType">Rule Type *</label>
+                <select id="userRuleType" required>
+                    <option value="">Select type...</option>
+                    <option value="page">Page</option>
+                    <option value="feature">Feature</option>
+                    <option value="api_endpoint">API Endpoint</option>
+                    <option value="action">Action</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="userResourceName">Resource Name *</label>
+                <input type="text" id="userResourceName" required placeholder="e.g., view_users, user-management.html">
+            </div>
+
+            <div class="form-group">
+                <label for="userAccessType">Access Type *</label>
+                <select id="userAccessType" required>
+                    <option value="">Select access type...</option>
+                    <option value="allow">Allow</option>
+                    <option value="deny">Deny</option>
+                </select>
+                <small>Deny rules override allow rules</small>
+            </div>
+
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="userRuleActive" checked>
+                    <span>Active</span>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel" id="cancelUserRuleBtn">Cancel</button>
+                <button type="submit" class="btn-submit">Save Permission</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h3>Confirm Delete</h3>
+            <button type="button" class="modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="deleteMessage">Are you sure you want to delete this rule?</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" id="cancelDeleteBtn">Cancel</button>
+            <button type="button" class="btn-danger" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<script type="module">
+  import '/js/features/settings/permissions/presentation/permission-management.js';
+</script>
+</body>
+</html>

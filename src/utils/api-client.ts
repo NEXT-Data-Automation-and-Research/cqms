@@ -443,5 +443,83 @@ export const apiClient = {
       return result.data;
     },
   },
+
+  /**
+   * Generic HTTP methods for direct API calls
+   * Use these when you need to call endpoints that don't have specific methods
+   */
+  async get<T = any>(endpoint: string): Promise<T> {
+    const result = await apiRequest<T>(endpoint, { method: 'GET' });
+    if (result.error) {
+      const error: any = new Error(result.error.message || 'Request failed');
+      error.code = result.error.code;
+      error.status = result.error.status;
+      error.statusText = result.error.statusText;
+      error.details = result.error.details;
+      throw error;
+    }
+    return result.data as T;
+  },
+
+  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+    const result = await apiRequest<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    if (result.error) {
+      const error: any = new Error(result.error.message || 'Request failed');
+      error.code = result.error.code;
+      error.status = result.error.status;
+      error.statusText = result.error.statusText;
+      error.details = result.error.details;
+      throw error;
+    }
+    return result.data as T;
+  },
+
+  async put<T = any>(endpoint: string, data?: any): Promise<T> {
+    const result = await apiRequest<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    if (result.error) {
+      const error: any = new Error(result.error.message || 'Request failed');
+      error.code = result.error.code;
+      error.status = result.error.status;
+      error.statusText = result.error.statusText;
+      error.details = result.error.details;
+      throw error;
+    }
+    return result.data as T;
+  },
+
+  async delete<T = any>(endpoint: string): Promise<T> {
+    const result = await apiRequest<T>(endpoint, { method: 'DELETE' });
+    if (result.error) {
+      const error: any = new Error(result.error.message || 'Request failed');
+      error.code = result.error.code;
+      error.status = result.error.status;
+      error.statusText = result.error.statusText;
+      error.details = result.error.details;
+      throw error;
+    }
+    return result.data as T;
+  },
+
+  async patch<T = any>(endpoint: string, data?: any): Promise<T> {
+    const result = await apiRequest<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    });
+    if (result.error) {
+      const error: any = new Error(result.error.message || 'Request failed');
+      error.code = result.error.code;
+      error.status = result.error.status;
+      error.statusText = result.error.statusText;
+      error.details = result.error.details;
+      throw error;
+    }
+    return result.data as T;
+  },
 };
 

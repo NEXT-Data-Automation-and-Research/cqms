@@ -126,18 +126,12 @@ main.main-content * {
 #user-profile-container span,
 #user-profile-container p {
   color: #111827 !important;
-}
-
-/* But override for specific elements */
+}/* But override for specific elements */
 #user-profile-container h2 {
   color: #1f2937 !important;
-}
-
-#user-profile-container h3 {
+}#user-profile-container h3 {
   color: #1A733E !important;
-}
-
-#user-profile-container div[style*="uppercase"],
+}#user-profile-container div[style*="uppercase"],
 #user-profile-container div[style*="text-transform: uppercase"] {
   color: #374151 !important;
 }#user-profile-container span {

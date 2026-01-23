@@ -2,49 +2,200 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Reversal | QMS</title>
-  <meta name="description" content="Quality Management System - Reversal">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Reversal Management | QMS</title>
+  <meta name="description" content="Quality Management System - Reversal Management">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
   
   <!-- Global Styles (includes compiled Tailwind output) -->
+  <!-- CSS Loading Order: Tailwind → Theme → Layout → Page-specific -->
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <link rel="stylesheet" href="/src/features/reversal/presentation/styles/reversal.css">
   
   <!-- Tailwind is compiled via CLI into /public/styles.css; no CDN script needed in production -->
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            primary: 'var(--home-primary-500, #635BFF)',
-            'primary-dark': 'var(--home-primary-700, #4d42d1)',
-            'dark-forest': 'var(--home-background, #100A28)',
-            'success': 'var(--color-success)',
-            'warning': 'var(--color-warning)',
-            'error': 'var(--color-error)',
-          },
-          fontFamily: {
-            sans: ['var(--font-family-primary)', 'sans-serif'],
-          },
-        },
-      },
+  
+  <!-- Import map for npm packages in browser -->
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
     }
+  }
   </script>
 </head>
 
 <body class="home-page">
   <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
-  <main class="main-content" role="main">
+  <main class="main-content" role="main" style="display: flex; flex-direction: column; min-height: 100vh;">
     <!-- Header Component -->
     <div id="header-container"></div>
 
     <!-- Main Content -->
-    <div class="px-4 py-4 max-w-7xl mx-auto w-full">
-      <h1 class="text-xl font-bold text-gray-900 mb-4">Reversal</h1>
+    <div class="w-full relative z-10 flex flex-col flex-1 min-h-0 h-full" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+      <!-- Top Section: Header & Stats -->
+      <div class="px-6 py-4 border-b border-white/10 bg-black/30 backdrop-blur-sm flex-shrink-0">
+        <div class="max-w-full">
+          <h1 class="text-xl font-bold text-white mb-4">Reversal Management</h1>
+          
+          <!-- Stats Section -->
+          <div class="stats-grid" style="margin-top: 1.125rem;">
+            <div class="stat-card">
+              <div class="stat-value" id="totalReversals">-</div>
+              <div class="stat-title">Total Reversals</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="pendingReversals">-</div>
+              <div class="stat-title">Pending</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="approvedReversals">-</div>
+              <div class="stat-title">Approved</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="rejectedReversals">-</div>
+              <div class="stat-title">Rejected</div>
+            </div>
+          </div>
+        </div>
+      </div>
       
-      <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-        <p class="text-gray-600 text-center">This is the Reversal page. Content will be added here.</p>
+      <!-- Content Area -->
+      <div class="flex-1 flex px-6 py-4 overflow-y-auto min-h-0">
+        <div class="w-full max-w-full flex flex-col gap-4">
+          <!-- Action Buttons -->
+          <div class="header-actions">
+            <div class="flex gap-2 items-center flex-wrap">
+              <!-- Week Navigation -->
+              <div class="flex items-center gap-2">
+                <button class="action-btn" id="prevWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Previous Week">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                  </svg>
+                </button>
+                <div class="action-btn" id="weekDisplay" style="padding: 0.4688rem 0.75rem; cursor: default; background-color: var(--button-primary); color: var(--white); border-color: var(--button-primary);">
+                  <span id="weekText">Week -</span>
+                </div>
+                <button class="action-btn" id="nextWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Next Week">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                  </svg>
+                </button>
+              </div>
+              <!-- Date Range Picker -->
+              <div class="date-picker-dropdown">
+                <button class="action-btn" id="dateBtn">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                  <span id="dateBtnText">Date Range</span>
+                  <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <div class="date-dropdown-menu" id="dateDropdown">
+                  <div class="filter-group">
+                    <label class="filter-label">Start Date</label>
+                    <input type="date" class="filter-input" id="startDate">
+                  </div>
+                  <div class="filter-group">
+                    <label class="filter-label">End Date</label>
+                    <input type="date" class="filter-input" id="endDate">
+                  </div>
+                  <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
+                    <button class="action-btn" style="flex: 1;" id="applyDateBtn">Apply</button>
+                    <button class="action-btn" style="flex: 1;" id="clearDateBtn">Clear</button>
+                  </div>
+                </div>
+              </div>
+              <!-- Quick Date Filters -->
+              <div class="flex items-center gap-2">
+                <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
+                <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
+                <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
+              </div>
+              <button id="filterToggleBtn" class="action-btn" style="background-color: var(--button-primary); color: var(--white); border-color: var(--button-primary);">
+                <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor">
+                  <path d="M440-160q-17 0-28.5-11.5T400-200v-240L168-736q-15-20-4.5-42t36.5-22h560q26 0 36.5 22t-4.5 42L560-440v240q0 17-11.5 28.5T520-160h-80Z"/>
+                </svg>
+                Filters
+              </button>
+            </div>
+            <button id="exportBtn" class="action-btn" style="background-color: var(--button-primary); color: white; border: none;">Export</button>
+          </div>
+
+          <!-- Filters Section -->
+          <div id="filterPanel" class="filter-panel">
+            <div class="flex justify-between items-center mb-2">
+              <div class="filter-panel-title">Search & Filters</div>
+              <button id="clearFilters" class="clear-filters-btn">Clear All</button>
+            </div>
+
+            <div class="filter-grid">
+              <!-- Search -->
+              <div>
+                <label for="searchInput" class="filter-label">Search</label>
+                <input type="text" id="searchInput" placeholder="Search..." class="filter-input">
+              </div>
+              
+              <!-- Reversal Status -->
+              <div>
+                <label for="statusFilter" class="filter-label">Status</label>
+                <select id="statusFilter" class="filter-input">
+                  <option value="">All</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+              
+              <!-- Reversal Type -->
+              <div>
+                <label for="typeFilter" class="filter-label">Type</label>
+                <select id="typeFilter" class="filter-input">
+                  <option value="">All Types</option>
+                  <option value="Clarification Requested">Clarification Requested</option>
+                  <option value="Revision Requested">Revision Requested</option>
+                </select>
+              </div>
+              
+              <!-- Date Range -->
+              <div>
+                <label for="dateFromFilter" class="filter-label">From Date</label>
+                <input type="date" id="dateFromFilter" class="filter-input">
+              </div>
+
+              <div>
+                <label for="dateToFilter" class="filter-label">To Date</label>
+                <input type="date" id="dateToFilter" class="filter-input">
+              </div>
+            </div>
+          </div>
+
+          <!-- Reversal List -->
+          <div id="reversalList" class="reversal-list" style="display: flex; flex-direction: column; gap: 0.5625rem; width: 100%;">
+            <!-- Loading indicator -->
+            <div id="loadingIndicator" class="loading-indicator" style="text-align: center; padding: 2rem; color: #333333; font-family: 'Poppins', sans-serif;">
+              <p>Loading reversals...</p>
+            </div>
+          </div>
+
+          <!-- No Reversals Message -->
+          <div id="noReversalsMessage" class="no-reversals-message" style="display: none; text-align: center; padding: 2rem; color: #333333; font-family: 'Poppins', sans-serif;">
+            <p class="no-reversals-title" style="font-size: 0.875rem; margin-bottom: 0.375rem; font-weight: 600;">No pending reversal requests found</p>
+            <p class="no-reversals-subtitle" style="font-size: 0.75rem; margin-bottom: 0.75rem; color: #a0a0a0;">Reversal requests will appear here once submitted.</p>
+            <button id="viewAllBtnInMessage" class="view-all-btn" style="padding: 0.375rem 0.75rem; background-color: #6b7280; color: white; border: none; border-radius: 0.2812rem; font-size: 0.75rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">View All</button>
+          </div>
+        </div>
       </div>
     </div>
   </main>
@@ -54,6 +205,8 @@
   
   <!-- Sidebar Loader -->
   <script type="module" src="/js/load-sidebar.js" defer></script>
+  
+  <!-- Reversal Controller -->
+  <script type="module" src="/js/features/reversal/presentation/reversal-controller.js" defer></script>
 </body>
 </html>
-

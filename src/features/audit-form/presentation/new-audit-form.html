@@ -11,8 +11,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="theme.css">
-    <link rel="stylesheet" href="sidebar.css">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
     <style>
         .copy-button {
             display: inline-flex;
@@ -43,6 +43,11 @@
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        @keyframes loadingPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
         }
         
         @keyframes modalSlideIn {
@@ -686,24 +691,231 @@
         });
     });
     </script>
+    <!-- Import map for npm packages in browser -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+    <!-- Confirmation Dialog -->
+    <script src="/confirmation-dialog.js"></script>
     <!-- Quill.js for rich text editing -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-    <script src="env-config.js"></script>
-    <script src="supabase-config.js"></script>
-    <script src="auth-check.js"></script>
-    <script src="access-control.js"></script>
-    <script src="confirmation-dialog.js"></script>
-    <script src="load-sidebar.js"></script>
-    <script src="dark-mode.js"></script>
-    <script src="search.js"></script>
-    <script src="form-validation.js"></script>
-    <script src="intercom-config.js"></script>
-    <script src="audit-template.js"></script>
-    <script src="keyboard-shortcuts.js"></script>
+    
+    <!-- Authentication Guard and Supabase Initialization -->
+    <script type="module">
+      import { isAuthenticated, getCurrentUser } from '/js/auth-checker.js';
+      import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
+      import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
+      
+      // Initialize Supabase and check auth before loading other scripts
+      (async () => {
+        try {
+          console.log('[new-audit-form] Authentication check started');
+          
+          // Initialize Supabase first
+          const baseClient = await initSupabase();
+          
+          if (!baseClient) {
+            throw new Error('Failed to initialize Supabase client');
+          }
+          
+          // Store base client for compatibility
+          window.supabaseClient = baseClient;
+          window.supabaseClientReady = true;
+          
+          // Dispatch ready event
+          window.dispatchEvent(new CustomEvent('supabaseClientReady'));
+          window.dispatchEvent(new CustomEvent('supabaseReady'));
+          
+          console.log('✓ Supabase client initialized and ready');
+          
+          // ✅ SECURITY: Verify authentication with server BEFORE allowing page access
+          // This prevents unauthorized access when token is copied to another browser
+          const authenticated = await isAuthenticated();
+          
+          if (!authenticated) {
+            console.log('User not authenticated, redirecting to auth page...');
+            // Store current path for redirect after login
+            const currentPath = window.location.pathname;
+            if (currentPath && currentPath !== '/src/auth/presentation/auth-page.html') {
+              sessionStorage.setItem('redirectAfterLogin', currentPath + window.location.search);
+            }
+            window.location.href = '/src/auth/presentation/auth-page.html';
+            return;
+          }
+          
+          // Try to get user info, but don't redirect on temporary failures
+          // This prevents redirect loops during token refresh
+          try {
+            const user = await getCurrentUser();
+            if (user) {
+              console.log('✓ User authenticated:', user.email);
+            } else {
+              console.warn('⚠️ Could not fetch user info, but session exists. Continuing...');
+            }
+          } catch (userError) {
+            console.warn('⚠️ Error fetching user info (non-critical):', userError);
+            // Don't redirect on temporary errors - session might still be valid
+          }
+          
+          // Set up auth state listener to handle token expiration in real-time
+          const supabase = getSupabase();
+          if (supabase) {
+            // Start session monitoring for expiry warnings
+            try {
+              const sessionWarningModule = await import('/js/utils/session-warning.js');
+              sessionWarningModule.startSessionMonitoring();
+            } catch (err) {
+              console.warn('Session warning module not available:', err);
+            }
+            
+            // Listen for auth state changes - only redirect on actual sign out
+            supabase.auth.onAuthStateChange((event, session) => {
+              if (event === 'SIGNED_OUT') {
+                console.log('Auth state changed: User signed out');
+                // Only redirect on explicit sign out, not on token refresh failures
+                const currentPath = window.location.pathname;
+                if (currentPath && currentPath !== '/src/auth/presentation/auth-page.html') {
+                  sessionStorage.setItem('redirectAfterLogin', currentPath + window.location.search);
+                }
+                // Use setTimeout to prevent immediate redirect loops
+                setTimeout(() => {
+                  window.location.href = '/src/auth/presentation/auth-page.html';
+                }, 100);
+              } else if (event === 'TOKEN_REFRESHED') {
+                if (session) {
+                  console.log('Token refreshed successfully');
+                  // Clear auth cache to get fresh verification with new token
+                  import('/js/utils/authenticated-supabase.js')
+                    .then((module) => {
+                      module.clearAuthCache();
+                    })
+                    .catch(() => {
+                      // Ignore if module not loaded yet
+                    });
+                } else {
+                  console.warn('⚠️ Token refresh event but no session - might be temporary');
+                  // Don't redirect immediately - wait for explicit SIGNED_OUT event
+                }
+              }
+            });
+          }
+          
+          // Verify authenticated client works
+          try {
+            await getAuthenticatedSupabase();
+            console.log('✓ Authenticated Supabase client verified');
+          } catch (authError) {
+            console.warn('Auth verification warning:', authError);
+            // Don't block page load, but log the warning
+          }
+          
+          // Removed periodic auth check to prevent redirect loops
+          // The auth state change listener handles session expiration
+          
+          // Set up SupabaseConfig for compatibility with existing code
+          if (!window.SupabaseConfig) {
+            const { data: { session } } = await baseClient.auth.getSession();
+            const supabaseUrl = baseClient.supabaseUrl || window.env?.SUPABASE_URL || '';
+            const supabaseAnonKey = baseClient.supabaseKey || window.env?.SUPABASE_ANON_KEY || '';
+            
+            window.SupabaseConfig = {
+              url: supabaseUrl,
+              anonKey: supabaseAnonKey,
+              getClient: async () => {
+                return await getAuthenticatedSupabase();
+              }
+            };
+            
+            console.log('✓ SupabaseConfig initialized:', {
+              url: supabaseUrl ? supabaseUrl.substring(0, 30) + '...' : 'missing',
+              hasAnonKey: !!supabaseAnonKey,
+              hasClient: !!window.SupabaseConfig.getClient
+            });
+          }
+          
+          // Helper function to get user's JWT token for authenticated edge function calls
+          window.getUserJWTToken = async function() {
+            try {
+              if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error) {
+                  console.error('Error getting session:', error);
+                  return null;
+                }
+                return session?.access_token || null;
+              }
+              // Fallback: try baseClient
+              if (typeof baseClient !== 'undefined' && baseClient.auth) {
+                const { data: { session }, error } = await baseClient.auth.getSession();
+                if (error) {
+                  console.error('Error getting session:', error);
+                  return null;
+                }
+                return session?.access_token || null;
+              }
+              return null;
+            } catch (error) {
+              console.error('Error getting JWT token:', error);
+              return null;
+            }
+          };
+          
+          // User is authenticated - load sidebar
+          // Import sidebar loader after auth check
+          // The sidebar loader auto-initializes when imported, but we ensure it waits for DOM
+          try {
+            // Wait for DOM to be ready before importing sidebar
+            const initSidebarWhenReady = async () => {
+              // Wait for DOM to be ready
+              if (document.readyState === 'loading') {
+                await new Promise(resolve => {
+                  document.addEventListener('DOMContentLoaded', resolve, { once: true });
+                });
+              }
+              
+              // Small delay to ensure all scripts are loaded
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              // Import sidebar loader (it will auto-initialize)
+              await import('/js/load-sidebar.js');
+              console.log('✓ Sidebar loader imported and initialized');
+            };
+            
+            // Start sidebar initialization (don't await - let it happen in background)
+            initSidebarWhenReady().catch(err => {
+              console.error('Error initializing sidebar:', err);
+              // Don't block page load if sidebar fails
+            });
+          } catch (sidebarError) {
+            console.error('Error loading sidebar:', sidebarError);
+            // Don't block page load if sidebar fails
+          }
+          
+          // Store ready state for scripts that load later
+          window.supabaseReadyForDropdowns = true;
+          window.dispatchEvent(new CustomEvent('supabaseReadyForDropdowns'));
+          
+          console.log('✓ All initialization complete');
+        } catch (error) {
+          console.error('Error initializing Supabase:', error);
+          // Show error to user
+          alert('Failed to initialize database connection. Please refresh the page.');
+        }
+      })();
+    </script>
+    
+    <!-- Legacy script tags removed - functionality handled by modern ES modules above -->
 </head>
 <body style="margin: 0; padding: 0;">
 <!-- Audit Timer Chip -->
@@ -713,12 +925,15 @@
             <path d="M8 5v14l11-7z"/>
         </svg>
     </button>
-    <span style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums;">Time Keeper</span>
+    <span id="timerDisplay" style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums;">00:00</span>
+    <button id="timerCloseBtn" class="timer-close-btn" title="Close Timer" style="width: 1.2937rem; height: 1.2937rem; background: var(--primary-color); border: none; border-radius: 0.2425rem; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0; font-size: 0.8086rem; font-weight: bold; transition: all 0.2s;">
+        ×
+    </button>
 </div>
 <!-- End of Audit Timer Chip -->
 <main class="main-content" role="main">
 <div class="full-width-container" style="width: 100%; padding: 0; margin: 0;">
-    <form id="auditForm" method="POST" style="background: white; width: 100%; height: 100vh; display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; overflow-y: auto;">
+    <form id="auditForm" style="background: white; width: 100%; height: 100vh; display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; overflow-y: auto;">
     <!-- Hidden audit information fields - populated behind the scenes -->
     <input type="hidden" id="auditDuration" name="auditDuration">
     <input type="hidden" id="auditorEmail" name="auditorEmail">
@@ -769,6 +984,10 @@
                     <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
                         <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Department</p>
                         <input type="text" id="employeeDepartment" name="employeeDepartment" readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; width: 100%; line-height: 1.2;">
+                </div>
+                    <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+                        <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Channel</p>
+                        <input type="text" id="employeeChannel" name="employeeChannel" readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; width: 100%; line-height: 1.2;">
                 </div>
                     <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
                         <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Country *</p>
@@ -906,8 +1125,8 @@
                             </div>
                         </div>
                         <!-- Third Row: Collapsible Information Grid -->
-                        <div id="conversationInfoGrid" style="display: none; padding-top: 0.3234rem; border-top: 0.0304rem solid #e5e7eb; margin-top: 0.3234rem;">
-                            <button id="toggleInfoGridBtn" type="button" onclick="toggleConversationInfoGrid()" style="width: 100%; padding: 0.3234rem 0.4852rem; background: #f9fafb; border: 0.0304rem solid #e5e7eb; border-radius: 0.2425rem; font-family: 'Poppins', sans-serif; font-size: 0.4447rem; font-weight: 600; color: #1A733E; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; margin-bottom: 0.3234rem;" onmouseover="this.style.background='#f3f4f6'; this.style.borderColor='#1A733E';" onmouseout="this.style.background='#f9fafb'; this.style.borderColor='#e5e7eb';">
+                        <div id="conversationInfoGrid" style="display: block; padding-top: 0.3234rem; border-top: 0.0304rem solid #e5e7eb; margin-top: 0.3234rem;">
+                            <button id="toggleInfoGridBtn" type="button" style="width: 100%; padding: 0.3234rem 0.4852rem; background: #f9fafb; border: 0.0304rem solid #e5e7eb; border-radius: 0.2425rem; font-family: 'Poppins', sans-serif; font-size: 0.4447rem; font-weight: 600; color: #1A733E; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s; margin-bottom: 0.3234rem;">
                                 <span style="display: flex; align-items: center; gap: 0.2425rem;">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.4043rem; height: 0.4043rem;">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -1095,7 +1314,7 @@
         </div>
         <div style="display: flex; gap: 0.4852rem;">
         <button type="button" id="cancelBtn" style="padding: 0.4852rem 1.2937rem; background-color: white; color: #374151; border: 0.0405rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">Cancel</button>
-        <button type="submit" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(26, 115, 62, 0.2);">✓ Submit Audit</button>
+        <button type="submit" id="submitAuditBtn" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(26, 115, 62, 0.2); position: relative;">✓ Submit Audit</button>
         </div>
     </div>
     </form>
@@ -1122,6 +1341,33 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
     
     if (!scorecardSelect) {
         console.error('Scorecard select element not found');
+        return;
+    }
+    
+    // Wait for Supabase to be ready
+    if (!window.supabaseClient || !window.supabaseClientReady) {
+        console.log('Waiting for Supabase client before loading scorecards...');
+        await new Promise((resolve) => {
+            const checkReady = () => {
+                if (window.supabaseClient && window.supabaseClientReady) {
+                    resolve();
+                }
+            };
+            checkReady();
+            window.addEventListener('supabaseClientReady', checkReady, { once: true });
+            window.addEventListener('supabaseReady', checkReady, { once: true });
+            setTimeout(() => {
+                if (!window.supabaseClient) {
+                    console.error('Supabase client timeout in loadScorecards');
+                }
+                resolve();
+            }, 10000);
+        });
+    }
+    
+    if (!window.supabaseClient) {
+        console.error('Supabase client not available for loading scorecards');
+        scorecardSelect.innerHTML = '<option value="">Error: Database not ready</option>';
         return;
     }
     
@@ -1187,33 +1433,44 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
                 scorecardSelect.appendChild(option);
             });
             
-            // Auto-select scorecard: only if preselectedScorecardId is explicitly provided
-            // By default, no scorecard should be selected
-            if (filteredScorecards.length > 0 && !skipAutoSelect && preselectedScorecardId) {
-                // Check if the preselected scorecard exists in the filtered list
-                const preselectedExists = filteredScorecards.some(sc => sc.id === preselectedScorecardId);
-                if (preselectedExists) {
-                    scorecardSelect.value = preselectedScorecardId;
-                    await loadScorecardParameters(preselectedScorecardId);
-                } else {
-                    // If preselected doesn't exist in filtered list, check if it exists in all scorecards
-                    // This can happen when channel filter is applied but preselected scorecard doesn't match
-                    const preselectedInAll = allAvailableScorecards.some(sc => sc.id === preselectedScorecardId);
-                    if (preselectedInAll && channelFilter) {
-                        // Scorecard exists but doesn't match channel filter - add it anyway for AI audit
-                        console.log('⚠️ Preselected scorecard doesn\'t match channel filter, but adding it for AI audit:', preselectedScorecardId);
-                        const preselectedScorecard = allAvailableScorecards.find(sc => sc.id === preselectedScorecardId);
-                        if (preselectedScorecard) {
-                            const option = document.createElement('option');
-                            option.value = preselectedScorecard.id;
-                            option.textContent = preselectedScorecard.name + ' (AI Audit)';
-                            option.dataset.threshold = preselectedScorecard.passing_threshold;
-                            option.dataset.tableName = preselectedScorecard.table_name;
-                            option.dataset.channels = preselectedScorecard.channels || '';
-                            scorecardSelect.appendChild(option);
-                            scorecardSelect.value = preselectedScorecardId;
-                            await loadScorecardParameters(preselectedScorecardId);
+            // Auto-select scorecard logic
+            if (filteredScorecards.length > 0 && !skipAutoSelect) {
+                if (preselectedScorecardId) {
+                    // Check if the preselected scorecard exists in the filtered list
+                    const preselectedExists = filteredScorecards.some(sc => sc.id === preselectedScorecardId);
+                    if (preselectedExists) {
+                        scorecardSelect.value = preselectedScorecardId;
+                        await loadScorecardParameters(preselectedScorecardId);
+                    } else {
+                        // If preselected doesn't exist in filtered list, check if it exists in all scorecards
+                        // This can happen when channel filter is applied but preselected scorecard doesn't match
+                        const preselectedInAll = allAvailableScorecards.some(sc => sc.id === preselectedScorecardId);
+                        if (preselectedInAll && channelFilter) {
+                            // Scorecard exists but doesn't match channel filter - add it anyway for AI audit
+                            console.log('⚠️ Preselected scorecard doesn\'t match channel filter, but adding it for AI audit:', preselectedScorecardId);
+                            const preselectedScorecard = allAvailableScorecards.find(sc => sc.id === preselectedScorecardId);
+                            if (preselectedScorecard) {
+                                const option = document.createElement('option');
+                                option.value = preselectedScorecard.id;
+                                option.textContent = preselectedScorecard.name + ' (AI Audit)';
+                                option.dataset.threshold = preselectedScorecard.passing_threshold;
+                                option.dataset.tableName = preselectedScorecard.table_name;
+                                option.dataset.channels = preselectedScorecard.channels || '';
+                                scorecardSelect.appendChild(option);
+                                scorecardSelect.value = preselectedScorecardId;
+                                await loadScorecardParameters(preselectedScorecardId);
+                            }
                         }
+                    }
+                } else {
+                    // No preselected scorecard ID - auto-select the first scorecard
+                    const firstScorecard = filteredScorecards[0];
+                    if (firstScorecard) {
+                        console.log('✅ [loadScorecards] Auto-selecting first scorecard:', firstScorecard.name, 'ID:', firstScorecard.id);
+                        scorecardSelect.value = firstScorecard.id;
+                        // Load parameters for the first scorecard
+                        await loadScorecardParameters(firstScorecard.id);
+                        console.log('✅ [loadScorecards] First scorecard parameters loaded');
                     }
                 }
             }
@@ -1265,8 +1522,11 @@ async function autoSelectScorecardByChannel(channelName) {
 
 // Load parameters for selected scorecard
 async function loadScorecardParameters(scorecardId) {
+    console.log('[loadScorecardParameters] Starting load for scorecard:', scorecardId);
+    
     // Handle empty, null, or "null" string values
     if (!scorecardId || scorecardId === 'null' || scorecardId === 'undefined' || scorecardId.trim() === '') {
+        console.warn('[loadScorecardParameters] Invalid scorecard ID (empty/null):', scorecardId);
         currentScorecard = null;
         currentParameters = [];
         document.getElementById('scorecardInfo').style.display = 'none';
@@ -1278,7 +1538,7 @@ async function loadScorecardParameters(scorecardId) {
     // Validate UUID format to prevent SQL errors
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(scorecardId)) {
-        console.error('Invalid scorecard ID format:', scorecardId);
+        console.error('[loadScorecardParameters] Invalid scorecard ID format:', scorecardId);
         currentScorecard = null;
         currentParameters = [];
         document.getElementById('scorecardInfo').style.display = 'none';
@@ -1287,28 +1547,82 @@ async function loadScorecardParameters(scorecardId) {
         return;
     }
     
+    // Check if Supabase client is ready
+    if (!window.supabaseClient) {
+        console.error('[loadScorecardParameters] Supabase client not available. Waiting...');
+        // Wait for Supabase client to be ready
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds max wait
+        while (!window.supabaseClient && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (!window.supabaseClient) {
+            const errorMsg = 'Supabase client not initialized. Please refresh the page.';
+            console.error('[loadScorecardParameters]', errorMsg);
+            await window.confirmationDialog?.show({
+                title: 'Error',
+                message: errorMsg,
+                confirmText: 'OK',
+                type: 'error'
+            }).catch(() => {
+                alert(errorMsg);
+            });
+            return;
+        }
+    }
+    
+    console.log('[loadScorecardParameters] Supabase client ready, loading scorecard details...');
+    
     try {
         // Load scorecard details
+        console.log('[loadScorecardParameters] Fetching scorecard from database...');
         const { data: scorecard, error: scorecardError } = await window.supabaseClient
             .from('scorecards')
             .select('*')
             .eq('id', scorecardId)
             .single();
         
-        if (scorecardError) throw scorecardError;
+        if (scorecardError) {
+            console.error('[loadScorecardParameters] Error loading scorecard:', scorecardError);
+            throw scorecardError;
+        }
+        
+        if (!scorecard) {
+            const errorMsg = `Scorecard not found with ID: ${scorecardId}`;
+            console.error('[loadScorecardParameters]', errorMsg);
+            throw new Error(errorMsg);
+        }
+        
+        console.log('[loadScorecardParameters] Scorecard loaded:', scorecard.name);
         
         // Load parameters
+        console.log('[loadScorecardParameters] Fetching scorecard parameters...');
         const { data: parameters, error: paramsError } = await window.supabaseClient
-            .from('scorecard_parameters')
+            .from('scorecard_perameters')
             .select('*')
             .eq('scorecard_id', scorecardId)
             .eq('is_active', true)
             .order('display_order', { ascending: true });
         
-        if (paramsError) throw paramsError;
+        if (paramsError) {
+            console.error('[loadScorecardParameters] Error loading parameters:', paramsError);
+            throw paramsError;
+        }
+        
+        console.log('[loadScorecardParameters] Parameters loaded:', parameters?.length || 0, 'parameters');
+        console.log('[loadScorecardParameters] Parameters data:', parameters);
         
         currentScorecard = scorecard;
         currentParameters = parameters || [];
+        
+        // Ensure currentParameters is accessible globally
+        window.currentParameters = currentParameters;
+        window.currentScorecard = currentScorecard;
+        
+        console.log('[loadScorecardParameters] Stored currentParameters:', currentParameters.length, 'items');
+        console.log('[loadScorecardParameters] Stored currentScorecard:', currentScorecard?.name);
         
         // Update scorecard info display
         const scorecardScoringType = document.getElementById('scorecardScoringType');
@@ -1322,22 +1636,101 @@ async function loadScorecardParameters(scorecardId) {
             scorecardScoringType.textContent = scoringTypeText;
         }
         if (scorecardParamsCount) scorecardParamsCount.textContent = currentParameters.length;
-        if (scorecardInfo) scorecardInfo.style.display = 'flex';
+        if (scorecardInfo) {
+            scorecardInfo.style.display = 'flex';
+            console.log('[loadScorecardParameters] Scorecard info displayed');
+        } else {
+            console.warn('[loadScorecardParameters] Scorecard info element not found');
+        }
         
         // Render error parameters
-        renderErrorParameters();
+        console.log('[loadScorecardParameters] Rendering error parameters...');
+        console.log('[loadScorecardParameters] Current parameters:', currentParameters);
+        console.log('[loadScorecardParameters] Current parameters length:', currentParameters.length);
+        console.log('[loadScorecardParameters] Current scorecard:', currentScorecard);
+        console.log('[loadScorecardParameters] Window currentParameters:', window.currentParameters);
+        console.log('[loadScorecardParameters] Window currentScorecard:', window.currentScorecard);
+        
+        // Ensure parameters are available before rendering
+        if (!currentParameters || currentParameters.length === 0) {
+            console.warn('[loadScorecardParameters] No parameters to render! Parameters:', currentParameters);
+            const container = document.getElementById('errorParametersContainer');
+            if (container) {
+                container.innerHTML = '<div style="padding: 1.2937rem; text-align: center; color: #dc2626; font-size: 0.5659rem;"><p>No parameters found for this scorecard. Please check the scorecard configuration.</p></div>';
+            }
+            return;
+        }
+        
+        // Check if renderErrorParameters function exists
+        if (typeof renderErrorParameters === 'function') {
+            console.log('[loadScorecardParameters] Calling renderErrorParameters function...');
+            try {
+                renderErrorParameters();
+                console.log('[loadScorecardParameters] renderErrorParameters called successfully');
+            } catch (error) {
+                console.error('[loadScorecardParameters] Error calling renderErrorParameters:', error);
+                console.error('[loadScorecardParameters] Error stack:', error.stack);
+            }
+        } else {
+            console.error('[loadScorecardParameters] renderErrorParameters function not found!');
+            // Try to call it from window if it exists there
+            if (typeof window.renderErrorParameters === 'function') {
+                console.log('[loadScorecardParameters] Calling window.renderErrorParameters...');
+                try {
+                    window.renderErrorParameters();
+                } catch (error) {
+                    console.error('[loadScorecardParameters] Error calling window.renderErrorParameters:', error);
+                }
+            } else {
+                console.error('[loadScorecardParameters] renderErrorParameters not found on window either!');
+                // Fallback: manually render parameters
+                const container = document.getElementById('errorParametersContainer');
+                if (container) {
+                    container.innerHTML = '<div style="padding: 1.2937rem; text-align: center; color: #dc2626; font-size: 0.5659rem;"><p>Error: Parameter renderer not available. Please refresh the page.</p></div>';
+                }
+            }
+        }
         
         // Set initial average score based on scoring type
         setInitialAverageScore();
         
-    } catch (error) {
-        console.error('Error loading scorecard parameters:', error);
-        await window.confirmationDialog.show({
-            title: 'Error',
-            message: 'Failed to load scorecard parameters: ' + error.message,
-            confirmText: 'OK',
-            type: 'error'
+        console.log('[loadScorecardParameters] Scorecard loaded successfully:', {
+            scorecardName: scorecard.name,
+            parametersCount: currentParameters.length,
+            scoringType: scorecard.scoring_type
         });
+        
+    } catch (error) {
+        console.error('[loadScorecardParameters] Error loading scorecard parameters:', error);
+        console.error('[loadScorecardParameters] Error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint,
+            scorecardId: scorecardId
+        });
+        
+        // Show error to user
+        const errorMessage = error.message || 'Failed to load scorecard parameters';
+        try {
+            await window.confirmationDialog?.show({
+                title: 'Error Loading Scorecard',
+                message: errorMessage + (error.details ? '\n\nDetails: ' + error.details : ''),
+                confirmText: 'OK',
+                type: 'error'
+            });
+        } catch (dialogError) {
+            // Fallback if dialog is not available
+            alert('Error: ' + errorMessage);
+        }
+        
+        // Clear UI on error
+        currentScorecard = null;
+        currentParameters = [];
+        const scorecardInfo = document.getElementById('scorecardInfo');
+        if (scorecardInfo) scorecardInfo.style.display = 'none';
+        clearErrorParameters();
+        showNoScorecardMessage();
     }
 }
 
@@ -2381,14 +2774,47 @@ window.loadPendingAuditIntoForm = async function(auditId) {
     if (employeeEmail) employeeEmail.value = audit.employee_email || '';
     if (employeeType) employeeType.value = audit.employee_type || '';
     if (employeeDepartment) employeeDepartment.value = audit.employee_department || '';
+    
+    // Populate channel field - try to get from selected employee option first, then from audit data
+    const employeeChannelField = document.getElementById('employeeChannel');
+    if (employeeChannelField) {
+        let channelValue = '';
+        // First try to get from the selected employee option's dataset
+        if (employeeSelect && employeeSelect.selectedIndex > 0) {
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            channelValue = selectedOption.dataset.channel || '';
+        }
+        // Fallback to audit data if not found in option
+        if (!channelValue && audit.channel) {
+            channelValue = audit.channel;
+        }
+        // If still no channel, try to fetch from database
+        if (!channelValue && audit.employee_email) {
+            try {
+                const { data: personData } = await window.supabaseClient
+                    .from('people')
+                    .select('channel')
+                    .eq('email', audit.employee_email)
+                    .eq('is_active', true)
+                    .single();
+                if (personData && personData.channel) {
+                    channelValue = personData.channel;
+                }
+            } catch (err) {
+                console.warn('Could not fetch channel from database:', err);
+            }
+        }
+        employeeChannelField.value = channelValue || '';
+        console.log('✅ Channel field populated from audit:', channelValue);
+    }
+    
     if (countryOfEmployee) {
         countryOfEmployee.value = audit.country_of_employee || '';
     }
     
-    // Pre-fill any other existing data
+    // Pre-fill channel dropdown in Error Details section
     if (audit.channel) {
-        const channelField = document.getElementById('channel');
-        if (channelField) channelField.value = audit.channel;
+        await setChannelDropdownByName(audit.channel);
     }
     // Scroll to form
     document.getElementById('auditForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2685,10 +3111,16 @@ window.viewEmployeeConversations = async function(employeeEmail, employeeName) {
                 // Fetch admins from Intercom API via Supabase Edge Function
                 const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
                 
+                // Get user's JWT token for authenticated request
+                const userToken = await window.getUserJWTToken();
+                if (!userToken) {
+                    throw new Error('User authentication required. Please log in again.');
+                }
+                
                 const response = await fetch(edgeFunctionUrl, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${supabaseAnonKey}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': supabaseAnonKey,
                         'Accept': 'application/json'
                     }
@@ -4818,14 +5250,20 @@ async function findAdminIdForEmployee(employeeEmail) {
     
     // Fallback: If not found in cache, fetch from Intercom API
     if (!adminFound) {
-        console.log('ðŸ”„ Admin not in cache, fetching from Intercom API...');
+        console.log('ðŸ"„ Admin not in cache, fetching from Intercom API...');
         try {
             const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
+            
+            // Get user's JWT token for authenticated request
+            const userToken = await window.getUserJWTToken();
+            if (!userToken) {
+                throw new Error('User authentication required. Please log in again.');
+            }
             
             const response = await fetch(edgeFunctionUrl, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                    'Authorization': `Bearer ${userToken}`,
                     'apikey': supabaseAnonKey,
                     'Accept': 'application/json'
                 }
@@ -4913,14 +5351,20 @@ async function findAdminIdForCurrentUser(userEmail) {
     
     // Fallback: If not found in cache, fetch from Intercom API
     if (!adminFound) {
-        console.log('ðŸ”„ Admin not in cache, fetching from Intercom API...');
+        console.log('ðŸ"„ Admin not in cache, fetching from Intercom API...');
         try {
             const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
+            
+            // Get user's JWT token for authenticated request
+            const userToken = await window.getUserJWTToken();
+            if (!userToken) {
+                throw new Error('User authentication required. Please log in again.');
+            }
             
             const response = await fetch(edgeFunctionUrl, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                    'Authorization': `Bearer ${userToken}`,
                     'apikey': supabaseAnonKey,
                     'Accept': 'application/json'
                 }
@@ -5554,13 +5998,19 @@ async function fetchConversationsForCurrentUser(selectedDate) {
         console.log('ðŸ"¡ Calling:', edgeFunctionUrl);
         console.log('📅 Date range:', updatedSince, 'to', updatedBefore);
         
+        // Get user's JWT token for authenticated request
+        const userToken = await window.getUserJWTToken();
+        if (!userToken) {
+            throw new Error('User authentication required. Please log in again.');
+        }
+        
         // Update progress: Searching
         updateProgressIndicator(20, 'Searching conversations in Intercom...');
         
         const response = await fetch(edgeFunctionUrl, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'Authorization': `Bearer ${userToken}`,
                 'apikey': supabaseAnonKey,
                 'Accept': 'application/json'
             }
@@ -6977,13 +7427,19 @@ async function fetchEmployeeConversationsProgressively(adminId, updatedSince, up
                 console.log(`ðŸ”„ Background fetch: Loading page ${pageCount}...`);
             }
 
+            // Get user's JWT token for authenticated request
+            const userToken = await window.getUserJWTToken();
+            if (!userToken) {
+                throw new Error('User authentication required. Please log in again.');
+            }
+            
             let response;
             try {
                 // Use longer timeout for conversation fetching (60 seconds, with retries up to 120s)
                 response = await fetchWithRetry(edgeFunctionUrl, {
                     method: 'GET',
                     headers: {
-                        'Authorization': `Bearer ${window.SupabaseConfig?.anonKey || ''}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': window.SupabaseConfig?.anonKey || '',
                         'Accept': 'application/json'
                     }
@@ -7770,10 +8226,16 @@ window.startAuditFromConversation = async function(conversation) {
                     const supabaseAnonKey = window.SupabaseConfig?.anonKey || '';
                     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
                     
+                    // Get user's JWT token for authenticated request
+                    const userToken = await window.getUserJWTToken();
+                    if (!userToken) {
+                        throw new Error('User authentication required. Please log in again.');
+                    }
+                    
                     const response = await fetch(edgeFunctionUrl, {
                         method: 'GET',
                         headers: {
-                            'Authorization': `Bearer ${supabaseAnonKey}`,
+                            'Authorization': `Bearer ${userToken}`,
                             'apikey': supabaseAnonKey,
                             'Accept': 'application/json'
                         }
@@ -7904,6 +8366,7 @@ window.startAuditFromConversation = async function(conversation) {
             const dateStr = conversationDate.toISOString().split('T')[0];
             interactionDateField.value = dateStr;
             console.log('âœ… Conversation date pre-filled:', dateStr);
+            interactionDateField.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
         // Pre-fill client information
@@ -8569,13 +9032,33 @@ function hideNoScorecardMessage() {
 
 // Render error parameter fields dynamically
 function renderErrorParameters() {
+    // Use global variables if local ones are not available
+    const params = currentParameters || window.currentParameters || [];
+    const scorecard = currentScorecard || window.currentScorecard || null;
+    
+    console.log('[renderErrorParameters] Starting render...', {
+        parametersCount: params.length,
+        hasScorecard: !!scorecard,
+        scorecardName: scorecard?.name,
+        currentParametersSource: currentParameters ? 'local' : (window.currentParameters ? 'window' : 'none'),
+        currentScorecardSource: currentScorecard ? 'local' : (window.currentScorecard ? 'window' : 'none'),
+        currentParametersValue: currentParameters,
+        windowCurrentParametersValue: window.currentParameters
+    });
+    
     const container = document.getElementById('errorParametersContainer');
+    if (!container) {
+        console.error('[renderErrorParameters] errorParametersContainer element not found!');
+        return;
+    }
+    
     container.innerHTML = '';
     
     // Hide no scorecard message when rendering parameters
     hideNoScorecardMessage();
     
-    if (currentParameters.length === 0) {
+    if (params.length === 0) {
+        console.warn('[renderErrorParameters] No parameters to render');
         container.innerHTML = '<div style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;"><p>No parameters defined for this scorecard.</p></div>';
         // Reset header to default "Status"
         const headerStatusCol = document.querySelector('#errorParametersSection .error-details-header-status');
@@ -8585,10 +9068,13 @@ function renderErrorParameters() {
         return;
     }
     
+    console.log('[renderErrorParameters] Rendering', params.length, 'parameters');
+    console.log('[renderErrorParameters] Parameters to render:', params);
+    
     // Determine column header based on field types (matching audit-view.html logic)
     let statusColumnHeader = 'Status';
-    const allCounters = currentParameters.every(param => param.field_type === 'counter');
-    const allRadio = currentParameters.every(param => param.field_type === 'radio');
+    const allCounters = params.every(param => param.field_type === 'counter');
+    const allRadio = params.every(param => param.field_type === 'radio');
     
     if (allCounters) {
         statusColumnHeader = 'Counts';
@@ -8604,24 +9090,25 @@ function renderErrorParameters() {
     
     // Update scorecard display in header
     const scorecardDisplay = document.getElementById('formScorecardDisplay');
-    if (scorecardDisplay && currentScorecard) {
+    if (scorecardDisplay && scorecard) {
         let scoringTypeIcon = '';
         let scoringTypeText = '';
-        if (currentScorecard.scoring_type === 'deductive') {
+        if (scorecard.scoring_type === 'deductive') {
             scoringTypeIcon = '<svg style="width: 0.4043rem; height: 0.4043rem; display: inline-block; vertical-align: middle;" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>';
             scoringTypeText = 'DEDUCTIVE';
-        } else if (currentScorecard.scoring_type === 'additive') {
+        } else if (scorecard.scoring_type === 'additive') {
             scoringTypeIcon = '<svg style="width: 0.4043rem; height: 0.4043rem; display: inline-block; vertical-align: middle;" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>';
             scoringTypeText = 'ADDITIVE';
-        } else if (currentScorecard.scoring_type === 'hybrid') {
+        } else if (scorecard.scoring_type === 'hybrid') {
             scoringTypeIcon = '<svg style="width: 0.4043rem; height: 0.4043rem; display: inline-block; vertical-align: middle;" viewBox="0 0 24 24" fill="currentColor"><path d="M2 12h20M12 2v20"/></svg>';
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${currentScorecard.name}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${scorecard.name}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
     }
     
-    currentParameters.forEach(param => {
+    console.log('[renderErrorParameters] About to iterate over', params.length, 'parameters');
+    params.forEach(param => {
         // Determine parameter styling based on type
         const paramType = param.parameter_type || 'error';
         const paramIcon = paramType === 'error' ? '-' : (paramType === 'achievement' || paramType === 'bonus' ? '+' : '');
@@ -8736,6 +9223,8 @@ function renderErrorParameters() {
     
     // Update summary badges when scores change
     calculateAverageScore();
+    
+    console.log('[renderErrorParameters] Completed rendering', currentParameters.length, 'parameters');
 }
 
 // Clear error parameters
@@ -8775,27 +9264,34 @@ function clearErrorParameters() {
     // Initialize timer elements (will be set when timer is shown)
     function initializeTimerElements() {
         if (!timerDisplay) {
-            const timerEl = document.querySelector('#auditTimer');
-            if (timerEl) {
-                timerDisplay = timerEl.querySelector('span');
-                if (!timerDisplay) {
-                    // Try to find any span in the timer
-                    const spans = timerEl.querySelectorAll('span');
-                    if (spans.length > 0) {
-                        timerDisplay = spans[0];
+            // Try to find by ID first
+            timerDisplay = document.getElementById('timerDisplay');
+            if (!timerDisplay) {
+                const timerEl = document.querySelector('#auditTimer');
+                if (timerEl) {
+                    timerDisplay = timerEl.querySelector('span#timerDisplay');
+                    if (!timerDisplay) {
+                        // Fallback: find any span in the timer (excluding button spans)
+                        const spans = timerEl.querySelectorAll('span:not(button span)');
+                        if (spans.length > 0) {
+                            timerDisplay = spans[0];
+                        }
                     }
                 }
             }
             // If still not found, try again after a short delay (in case timer is hidden)
             if (!timerDisplay) {
                 setTimeout(() => {
-                    const timerEl = document.querySelector('#auditTimer');
-                    if (timerEl) {
-                        timerDisplay = timerEl.querySelector('span');
-                        if (timerDisplay && elapsedTime >= 0) {
-                            timerDisplay.textContent = formatTime(elapsedTime);
-                            console.log('Timer display found and updated:', timerDisplay);
+                    timerDisplay = document.getElementById('timerDisplay');
+                    if (!timerDisplay) {
+                        const timerEl = document.querySelector('#auditTimer');
+                        if (timerEl) {
+                            timerDisplay = timerEl.querySelector('span#timerDisplay');
                         }
+                    }
+                    if (timerDisplay && elapsedTime >= 0) {
+                        timerDisplay.textContent = formatTime(elapsedTime);
+                        console.log('Timer display found and updated:', timerDisplay);
                     }
                 }, 100);
             } else {
@@ -9256,6 +9752,27 @@ function clearErrorParameters() {
         updateStatusIndicator('paused');
     }
     
+    // Hide timer function
+    function hideTimer() {
+        const timerEl = getAuditTimerElement();
+        if (timerEl) {
+            // Pause timer before hiding
+            if (isRunning) {
+                pauseTimer();
+            }
+            // Save timer state before hiding
+            if (window.saveTimerState) {
+                window.saveTimerState();
+            }
+            // Hide the timer
+            timerEl.style.display = 'none';
+            console.log('Timer hidden');
+        }
+    }
+    
+    // Expose hideTimer globally
+    window.hideTimer = hideTimer;
+    
     // Function to get the audit start timestamp
     function getAuditStartTimestamp() {
         return auditStartTimestamp;
@@ -9303,6 +9820,29 @@ function clearErrorParameters() {
             });
         }
         
+        // Add close button event listener
+        const timerCloseBtn = document.getElementById('timerCloseBtn');
+        if (timerCloseBtn) {
+            // Remove existing listeners to avoid duplicates
+            const newCloseBtn = timerCloseBtn.cloneNode(true);
+            timerCloseBtn.parentNode.replaceChild(newCloseBtn, timerCloseBtn);
+            const closeBtn = newCloseBtn;
+            
+            closeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                hideTimer();
+            });
+            
+            // Add hover effect
+            closeBtn.addEventListener('mouseenter', () => {
+                closeBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            });
+            closeBtn.addEventListener('mouseleave', () => {
+                closeBtn.style.backgroundColor = 'var(--primary-color)';
+            });
+        }
+        
         const timerEl = getAuditTimerElement();
         if (timerEl) {
     let isDragging = false;
@@ -9310,7 +9850,9 @@ function clearErrorParameters() {
     
             timerEl.addEventListener('mousedown', (e) => {
                 initializeTimerElements();
-                if (e.target === timerControlBtn || e.target.closest('#timerControlBtn')) return;
+                // Don't start dragging if clicking on control buttons
+                if (e.target === timerControlBtn || e.target.closest('#timerControlBtn') || 
+                    e.target === timerCloseBtn || e.target.closest('#timerCloseBtn')) return;
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
@@ -9512,25 +10054,33 @@ function clearErrorParameters() {
             return; // Timer element doesn't exist
         }
         
-        // Find the span that displays the time - it's a direct child, not in button
-        // The structure is: <div id="auditTimer"><button>...</button><span>Time</span></div>
+        // Find the span that displays the time - use ID first for reliability
+        // The structure is: <div id="auditTimer"><button>...</button><span id="timerDisplay">Time</span><button>...</button></div>
         let displaySpan = null;
         
-        // Method 1: Get all direct children and find the span
-        const children = Array.from(timerEl.children);
-        for (let child of children) {
-            if (child.tagName === 'SPAN' && child.id !== 'timerControlBtn') {
-                displaySpan = child;
-                break;
+        // Method 1: Try to find by ID first (most reliable)
+        displaySpan = document.getElementById('timerDisplay');
+        if (!displaySpan) {
+            displaySpan = timerEl.querySelector('#timerDisplay');
+        }
+        
+        // Method 2: Get all direct children and find the span
+        if (!displaySpan) {
+            const children = Array.from(timerEl.children);
+            for (let child of children) {
+                if (child.tagName === 'SPAN' && child.id === 'timerDisplay') {
+                    displaySpan = child;
+                    break;
+                }
             }
         }
         
-        // Method 2: If not found, try querySelector
+        // Method 3: If not found, try querySelector (fallback)
         if (!displaySpan) {
-            displaySpan = timerEl.querySelector('span:not(#timerControlBtn)');
+            displaySpan = timerEl.querySelector('span:not(#timerControlBtn):not(#timerCloseBtn)');
         }
         
-        // Method 3: Last resort - get all spans and find one not in button
+        // Method 4: Last resort - get all spans and find one not in button
         if (!displaySpan) {
             const allSpans = timerEl.querySelectorAll('span');
             for (let span of allSpans) {
@@ -9728,19 +10278,47 @@ async function loadEmployees() {
             return;
         }
         
-        // Check if Supabase is available
-        if (!window.SupabaseUsers) {
-            console.error('SupabaseUsers not available');
-            employeeSelect.innerHTML = '<option value="">Error: Supabase not initialized</option>';
-            throw new Error('SupabaseUsers not available');
+        // Wait for Supabase to be ready
+        if (!window.supabaseClient || !window.supabaseClientReady) {
+            console.log('Waiting for Supabase client before loading employees...');
+            await new Promise((resolve) => {
+                const checkReady = () => {
+                    if (window.supabaseClient && window.supabaseClientReady) {
+                        resolve();
+                    }
+                };
+                checkReady();
+                window.addEventListener('supabaseClientReady', checkReady, { once: true });
+                window.addEventListener('supabaseReady', checkReady, { once: true });
+                setTimeout(() => {
+                    if (!window.supabaseClient) {
+                        console.error('Supabase client timeout in loadEmployees');
+                    }
+                    resolve();
+                }, 10000);
+            });
         }
         
-        console.log('Loading users from Supabase...');
-        // Load users from Supabase
-        allEmployees = await window.SupabaseUsers.getAllUsers({
-            orderBy: { column: 'name', ascending: true }
-        });
+        if (!window.supabaseClient) {
+            console.error('Supabase client not available');
+            employeeSelect.innerHTML = '<option value="">Error: Database not ready</option>';
+            return;
+        }
         
+        console.log('Loading employees from people table...');
+        // Load employees from people table (has permissive RLS - all authenticated users can read)
+        const { data: employeesData, error } = await window.supabaseClient
+            .from('people')
+            .select('email, name, role, department, channel, designation, employee_id, country, is_active')
+            .eq('is_active', true)
+            .order('name', { ascending: true });
+        
+        if (error) {
+            console.error('Error loading employees from Supabase:', error);
+            throw error;
+        }
+        
+        allEmployees = employeesData || [];
         console.log(`Loaded ${allEmployees ? allEmployees.length : 0} employees from Supabase`);
         
         if (!allEmployees || allEmployees.length === 0) {
@@ -9768,6 +10346,17 @@ async function loadEmployees() {
             option.dataset.employeeId = user.employee_id || '';
             option.dataset.country = user.country || '';
             option.dataset.channel = user.channel || '';
+            
+            // Debug logging for specific employee
+            if (user.email === 'abidur.rahman@nextventures.io') {
+                console.log('🔍 [loadEmployees] Abidur Rahman data:', {
+                    email: user.email,
+                    channel: user.channel,
+                    datasetChannel: option.dataset.channel,
+                    department: user.department
+                });
+            }
+            
             employeeSelect.appendChild(option);
             addedCount++;
         });
@@ -9787,6 +10376,14 @@ async function loadEmployees() {
 // Expose loadEmployees globally
 window.loadEmployees = loadEmployees;
 
+// Expose renderErrorParameters globally (ensure it's defined first)
+if (typeof renderErrorParameters === 'function') {
+    window.renderErrorParameters = renderErrorParameters;
+    console.log('[Global] renderErrorParameters exposed globally');
+} else {
+    console.warn('[Global] renderErrorParameters not found when trying to expose globally');
+}
+
 // Also try loading on window load as a final fallback
 window.addEventListener('load', async function() {
     console.log('Window load event fired, checking employee dropdown...');
@@ -9794,7 +10391,7 @@ window.addEventListener('load', async function() {
         const employeeSelect = document.getElementById('employeeName');
         if (employeeSelect && employeeSelect.options.length <= 1) {
             console.log('Window load fallback: Employee dropdown empty, attempting load...');
-            if (window.SupabaseUsers && window.SupabaseDB && typeof loadEmployees === 'function') {
+            if (window.supabaseClient && typeof loadEmployees === 'function') {
                 try {
                     await loadEmployees();
                     console.log('Window load fallback succeeded! Options:', document.getElementById('employeeName')?.options.length);
@@ -9802,7 +10399,7 @@ window.addEventListener('load', async function() {
                     console.error('Window load fallback error:', error);
                 }
             } else {
-                console.error('Window load fallback - missing dependencies. SupabaseUsers:', !!window.SupabaseUsers, 'SupabaseDB:', !!window.SupabaseDB);
+                console.error('Window load fallback - missing dependencies. supabaseClient:', !!window.supabaseClient);
             }
         } else {
             console.log('Window load fallback - dropdown already populated:', employeeSelect?.options.length);
@@ -9811,20 +10408,95 @@ window.addEventListener('load', async function() {
 });
 
 // Load channels from channels table
+// Helper function to set channel dropdown by name (waits for channels to load if needed)
+async function setChannelDropdownByName(channelName) {
+    if (!channelName) return false;
+    
+    const channelSelect = document.getElementById('channel');
+    if (!channelSelect) {
+        console.warn('⚠️ [setChannelDropdownByName] Channel dropdown not found');
+        return false;
+    }
+    
+    // If channels aren't loaded yet (only has "Select..." option), load them first
+    if (channelSelect.options.length <= 1) {
+        console.log('⏳ [setChannelDropdownByName] Channels not loaded yet, loading...');
+        try {
+            // Try calling the global loadChannels function if it exists
+            if (typeof loadChannels === 'function') {
+                await loadChannels();
+            } else if (typeof window.loadChannels === 'function') {
+                await window.loadChannels();
+            } else {
+                // Try importing from dropdown-loader
+                const { loadChannels: loadChannelsFromModule } = await import('/src/features/audit-form/presentation/utils/dropdown-loader.js');
+                await loadChannelsFromModule();
+            }
+            // Wait a bit for DOM to update
+            await new Promise(resolve => setTimeout(resolve, 200));
+        } catch (error) {
+            console.error('❌ [setChannelDropdownByName] Error loading channels:', error);
+        }
+    }
+    
+    // Find channel by name (text content) since dropdown uses IDs as values
+    for (let i = 0; i < channelSelect.options.length; i++) {
+        const option = channelSelect.options[i];
+        // Match by text content (channel name)
+        if (option.textContent && option.textContent.trim() === channelName.trim()) {
+            channelSelect.selectedIndex = i;
+            channelSelect.value = option.value;
+            console.log('✅ [setChannelDropdownByName] Channel dropdown set to:', option.textContent, 'ID:', option.value);
+            // Trigger change event to auto-select matching scorecard
+            channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        }
+    }
+    
+    console.warn('⚠️ [setChannelDropdownByName] Channel not found in dropdown:', channelName, 'Available:', Array.from(channelSelect.options).map(opt => opt.textContent));
+    return false;
+}
+
 async function loadChannels() {
     try {
         const channelSelect = document.getElementById('channel');
         
-        if (!window.supabaseClient) {
-            console.error('Supabase client not initialized');
-            channelSelect.innerHTML = '<option value="">Error: Supabase not initialized</option>';
+        if (!channelSelect) {
+            console.warn('Channel select element not found');
             return;
         }
         
-        // Fetch active channels from channels table
+        // Wait for Supabase to be ready
+        if (!window.supabaseClient || !window.supabaseClientReady) {
+            console.log('Waiting for Supabase client before loading channels...');
+            await new Promise((resolve) => {
+                const checkReady = () => {
+                    if (window.supabaseClient && window.supabaseClientReady) {
+                        resolve();
+                    }
+                };
+                checkReady();
+                window.addEventListener('supabaseClientReady', checkReady, { once: true });
+                window.addEventListener('supabaseReady', checkReady, { once: true });
+                setTimeout(() => {
+                    if (!window.supabaseClient) {
+                        console.error('Supabase client timeout in loadChannels');
+                    }
+                    resolve();
+                }, 10000);
+            });
+        }
+        
+        if (!window.supabaseClient) {
+            console.error('Supabase client not initialized');
+            channelSelect.innerHTML = '<option value="">Error: Database not ready</option>';
+            return;
+        }
+        
+        // Fetch active channels from channels table (include ID for proper value)
         const { data, error } = await window.supabaseClient
             .from('channels')
-            .select('name')
+            .select('id, name')
             .eq('is_active', true)
             .order('name', { ascending: true });
         
@@ -9835,15 +10507,15 @@ async function loadChannels() {
         
         data.forEach(channel => {
             const option = document.createElement('option');
-            option.value = channel.name;
-            option.textContent = channel.name;
+            option.value = channel.id; // Use ID as value, not name
+            option.textContent = channel.name; // Display name
             channelSelect.appendChild(option);
         });
         
         // Keep channel blank by default - no auto-selection
         // Scorecards will be loaded without auto-selection when page loads
         
-        console.log('Loaded channels from channels table:', data.map(c => c.name));
+        console.log('Loaded channels from channels table:', data.map(c => ({ id: c.id, name: c.name })));
         
     } catch (error) {
         console.error('Error loading channels:', error);
@@ -10089,6 +10761,20 @@ async function populateFormWithAuditData(audit) {
         if (employeeEmail) employeeEmail.value = audit.employee_email || '';
         if (employeeType) employeeType.value = audit.employee_type || '';
         if (employeeDepartment) employeeDepartment.value = audit.employee_department || '';
+        
+        // Populate channel field
+        const employeeChannelField = document.getElementById('employeeChannel');
+        if (employeeChannelField) {
+            let channelValue = audit.channel || '';
+            // Try to get from selected employee option if available
+            const employeeSelect = document.getElementById('employeeName');
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+                channelValue = selectedOption.dataset.channel || channelValue;
+            }
+            employeeChannelField.value = channelValue || '';
+        }
+        
         if (countryOfEmployee) {
             countryOfEmployee.value = audit.country_of_employee || '';
         }
@@ -10100,7 +10786,12 @@ async function populateFormWithAuditData(audit) {
         const clientEmail = document.getElementById('clientEmail');
         
         if (interactionId) interactionId.value = audit.interaction_id || '';
-        if (interactionDate) interactionDate.value = audit.interaction_date || '';
+        if (interactionDate) {
+          interactionDate.value = audit.interaction_date || '';
+          if (audit.interaction_date) {
+            interactionDate.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
         if (channel) channel.value = audit.channel || '';
         if (clientEmail) clientEmail.value = audit.client_email || '';
         
@@ -10508,6 +11199,26 @@ async function populateFormWithCalibrationSample(sampleAudit) {
             employeeDepartment.style.cursor = 'not-allowed';
             employeeDepartment.style.opacity = '0.9';
         }
+        
+        const employeeChannel = document.getElementById('employeeChannel');
+        if (employeeChannel) {
+            // Try to get channel from selected employee option first
+            let channelValue = '';
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+                channelValue = selectedOption.dataset.channel || '';
+            }
+            // Fallback to sample audit data
+            if (!channelValue && sampleAudit.channel) {
+                channelValue = sampleAudit.channel;
+            }
+            employeeChannel.value = channelValue || '';
+            employeeChannel.readOnly = true;
+            employeeChannel.style.backgroundColor = 'transparent';
+            employeeChannel.style.color = 'white';
+            employeeChannel.style.cursor = 'not-allowed';
+            employeeChannel.style.opacity = '0.9';
+        }
 
         if (countryOfEmployee) {
             countryOfEmployee.value = sampleAudit.country_of_employee || '';
@@ -10531,6 +11242,9 @@ async function populateFormWithCalibrationSample(sampleAudit) {
 
         if (interactionDate) {
             interactionDate.value = sampleAudit.interaction_date || '';
+            if (sampleAudit.interaction_date) {
+              interactionDate.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             interactionDate.readOnly = true;
             interactionDate.disabled = true; // Disable to prevent editing
             interactionDate.style.backgroundColor = '#f3f4f6';
@@ -10792,7 +11506,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Employee select found, current options:', employeeSelect.options.length);
             if (employeeSelect.options.length <= 1) {
                 console.log('Employee dropdown is empty, trying to load...');
-                if (window.SupabaseUsers && typeof loadEmployees === 'function') {
+                if (window.supabaseClient && typeof loadEmployees === 'function') {
                     try {
                         await loadEmployees();
                         console.log('Backup loadEmployees completed, options now:', document.getElementById('employeeName')?.options.length);
@@ -10800,7 +11514,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error('Backup loadEmployees error:', error);
                     }
                 } else {
-                    console.error('Backup failed - SupabaseUsers:', !!window.SupabaseUsers, 'loadEmployees:', typeof loadEmployees);
+                    console.error('Backup failed - supabaseClient:', !!window.supabaseClient, 'loadEmployees:', typeof loadEmployees);
                 }
             } else {
                 console.log('Employee dropdown already has options:', employeeSelect.options.length);
@@ -10818,7 +11532,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Employee select found, current options:', employeeSelect.options.length);
             if (employeeSelect.options.length <= 1) {
                 console.log('Employee dropdown is empty, trying to load...');
-                if (window.SupabaseUsers && typeof loadEmployees === 'function') {
+                if (window.supabaseClient && typeof loadEmployees === 'function') {
                     try {
                         await loadEmployees();
                         console.log('Backup loadEmployees completed, options now:', document.getElementById('employeeName')?.options.length);
@@ -10826,7 +11540,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error('Backup loadEmployees error:', error);
                     }
                 } else {
-                    console.error('Backup failed - SupabaseUsers:', !!window.SupabaseUsers, 'loadEmployees:', typeof loadEmployees);
+                    console.error('Backup failed - supabaseClient:', !!window.supabaseClient, 'loadEmployees:', typeof loadEmployees);
                 }
             } else {
                 console.log('Employee dropdown already has options:', employeeSelect.options.length);
@@ -11095,32 +11809,44 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle scorecard selection change
         const scorecardSelect = document.getElementById('scorecardSelect');
         if (scorecardSelect) {
+            console.log('[Scorecard Event Listener] Event listener attached to scorecardSelect');
             scorecardSelect.addEventListener('change', async function() {
-                // Don't clear form if we're in edit mode
-                if (isEditingExistingAudit) {
-                    return; // Let the edit mode handler manage the scorecard selection
-                }
-                
-                // Don't clear form if we're loading AI audit data
-                if (window.isLoadingAIAuditData) {
-                    console.log('⏸️ Skipping form clear - AI audit data is being loaded');
-                    return;
-                }
-                
                 const selectedValue = this.value;
+                console.log('[Scorecard Event Listener] Scorecard changed to:', selectedValue);
+                
+                // Always load scorecard parameters when a valid scorecard is selected
                 // Validate before loading to prevent UUID errors
                 if (selectedValue && selectedValue !== 'null' && selectedValue !== 'undefined' && selectedValue.trim() !== '') {
-                    await loadScorecardParameters(selectedValue);
+                    console.log('[Scorecard Event Listener] Valid scorecard selected, loading parameters...');
+                    try {
+                        await loadScorecardParameters(selectedValue);
+                        console.log('[Scorecard Event Listener] Scorecard parameters loaded successfully');
+                    } catch (error) {
+                        console.error('[Scorecard Event Listener] Error in loadScorecardParameters:', error);
+                    }
+                    
+                    // Only clear form if we're NOT in edit mode and NOT loading AI audit data
+                    if (!isEditingExistingAudit && !window.isLoadingAIAuditData) {
+                        // Clear form fields when changing scorecard in normal mode
+                        // (This is handled elsewhere, but keeping the check here for safety)
+                        console.log('[Scorecard Event Listener] Normal mode - form clearing handled elsewhere');
+                    } else {
+                        console.log('[Scorecard Event Listener] Skipping form clear - edit mode:', isEditingExistingAudit, 'AI loading:', window.isLoadingAIAuditData);
+                    }
                 } else {
+                    console.warn('[Scorecard Event Listener] Invalid or empty scorecard selection:', selectedValue);
                     // Clear scorecard info if invalid selection
                     currentScorecard = null;
                     currentParameters = [];
-                    document.getElementById('scorecardInfo').style.display = 'none';
+                    const scorecardInfo = document.getElementById('scorecardInfo');
+                    if (scorecardInfo) scorecardInfo.style.display = 'none';
                     clearErrorParameters();
                     updateHeaderMetadata(); // Hide background score when scorecard is cleared
                     showNoScorecardMessage();
                 }
             });
+        } else {
+            console.error('[Scorecard Event Listener] scorecardSelect element not found!');
         }
         
         // Load employees when page loads
@@ -11194,42 +11920,72 @@ document.addEventListener('DOMContentLoaded', function() {
             if (selectedOption && selectedOption.value) {
                 // Auto-populate email from the selected employee
                 const email = selectedOption.dataset.email || selectedOption.value;
+                console.log('📧 [Employee Change] Setting email:', email);
                 if (employeeEmail) {
                     employeeEmail.value = email;
+                    console.log('✅ [Employee Change] Email field set to:', employeeEmail.value);
+                } else {
+                    console.warn('⚠️ [Employee Change] employeeEmail field not found');
                 }
                 
                 // Auto-populate employee type from designation
                 const designation = selectedOption.dataset.designation || '';
-                if (employeeType && designation) {
-                    employeeType.value = designation;
+                console.log('👤 [Employee Change] Setting type/designation:', designation);
+                if (employeeType) {
+                    employeeType.value = designation || '';
+                    console.log('✅ [Employee Change] Type field set to:', employeeType.value);
+                } else {
+                    console.warn('⚠️ [Employee Change] employeeType field not found');
                 }
                 
                 // Auto-populate department from selected employee
                 const department = selectedOption.dataset.department || '';
+                console.log('🏢 [Employee Change] Setting department:', department);
                 const employeeDepartment = document.getElementById('employeeDepartment');
                 if (employeeDepartment) {
-                    employeeDepartment.value = department;
+                    employeeDepartment.value = department || '';
+                    console.log('✅ [Employee Change] Department field set to:', employeeDepartment.value);
+                } else {
+                    console.warn('⚠️ [Employee Change] employeeDepartment field not found');
                 }
                 
                 // Auto-populate country from selected employee
                 const country = selectedOption.dataset.country || '';
-                if (countryOfEmployee && country) {
-                    countryOfEmployee.value = country;
+                console.log('🌍 [Employee Change] Setting country:', country);
+                if (countryOfEmployee) {
+                    countryOfEmployee.value = country || '';
+                    console.log('✅ [Employee Change] Country field set to:', countryOfEmployee.value);
+                } else {
+                    console.warn('⚠️ [Employee Change] countryOfEmployee field not found');
                 }
                 
                 // Auto-populate channel from selected employee
                 const channel = selectedOption.dataset.channel || '';
-                const channelSelect = document.getElementById('channel');
-                if (channelSelect && channel) {
-                    // Check if the channel exists in the dropdown
-                    const channelExists = Array.from(channelSelect.options).some(
-                        opt => opt.value === channel
-                    );
-                    if (channelExists) {
-                        channelSelect.value = channel;
-                        // Trigger change event to auto-select matching scorecard
-                        channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
+                console.log('📋 [Employee Change] Selected employee:', {
+                    email: email,
+                    channel: channel,
+                    department: department,
+                    designation: designation,
+                    country: country,
+                    hasChannelDataset: 'channel' in selectedOption.dataset,
+                    datasetChannel: selectedOption.dataset.channel
+                });
+                
+                // Populate the employeeChannel display field
+                const employeeChannelField = document.getElementById('employeeChannel');
+                if (employeeChannelField) {
+                    employeeChannelField.value = channel || '';
+                    console.log('✅ [Employee Change] Channel field populated:', channel, 'Field value:', employeeChannelField.value);
+                } else {
+                    console.warn('⚠️ [Employee Change] employeeChannel field not found in DOM');
+                }
+                
+                // Also populate the channel dropdown if it exists
+                // Also populate the channel dropdown in Error Details section
+                if (channel) {
+                    await setChannelDropdownByName(channel);
+                } else {
+                    console.log('ℹ️ [Employee Change] No channel to set, employee has no channel');
                 }
             } else {
                 // Clear fields if no employee selected
@@ -11243,10 +11999,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (employeeDepartment) {
                     employeeDepartment.value = '';
                 }
+                const employeeChannelField = document.getElementById('employeeChannel');
+                if (employeeChannelField) {
+                    employeeChannelField.value = '';
+                }
                 if (countryOfEmployee) {
                     countryOfEmployee.value = '';
                 }
-                // Clear channel field
+                // Clear channel dropdown
                 const channelSelect = document.getElementById('channel');
                 if (channelSelect) {
                     channelSelect.value = '';
@@ -11287,6 +12047,43 @@ document.addEventListener('DOMContentLoaded', function() {
         // Guard to prevent duplicate submissions
         let isSubmitting = false;
         
+        // Helper function to update button state
+        function updateSubmitButtonState(state, originalText) {
+            const btn = auditForm.querySelector('button[type="submit"]');
+            if (!btn) {
+                console.warn('Submit button not found');
+                return;
+            }
+            
+            switch(state) {
+                case 'loading':
+                    btn.disabled = true;
+                    btn.style.opacity = '0.7';
+                    btn.style.cursor = 'not-allowed';
+                    btn.style.background = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
+                    btn.innerHTML = '<span style="display: inline-flex; align-items: center; gap: 0.2425rem;"><span style="display: inline-block; width: 0.4852rem; height: 0.4852rem; border: 0.0606rem solid white; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite;"></span> Submitting...</span>';
+                    console.log('✅ Button state: LOADING');
+                    break;
+                case 'success':
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    btn.textContent = '✓ Submitted!';
+                    console.log('✅ Button state: SUCCESS');
+                    break;
+                case 'error':
+                case 'reset':
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                    btn.style.cursor = 'pointer';
+                    btn.style.background = 'linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%)';
+                    btn.textContent = originalText || '✓ Submit Audit';
+                    console.log('✅ Button state: RESET');
+                    break;
+            }
+        }
+        
         // Handler function
         const handleSubmit = async function(e) {
             console.log('DEBUG: Form submit event fired!'); // Debug log only
@@ -11301,7 +12098,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Get button and store original text BEFORE any changes
+            const submitButton = auditForm.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton ? (submitButton.textContent || submitButton.innerText || '✓ Submit Audit') : '✓ Submit Audit';
+            
+            console.log('📝 Original button text:', originalButtonText);
+            
             isSubmitting = true;
+            
+            // Update submit button to show loading state IMMEDIATELY
+            updateSubmitButtonState('loading', originalButtonText);
+            
+            // Force a repaint to ensure the button state is visible
+            if (submitButton) {
+                submitButton.offsetHeight; // Force reflow
+            }
             
             console.log('===== FORM SUBMISSION STARTED =====');
             
@@ -11313,6 +12124,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmText: 'OK',
                     type: 'warning'
                 });
+                // Reset button state on validation error
+                updateSubmitButtonState('reset', originalButtonText);
                 isSubmitting = false;
                 return;
             }
@@ -11334,6 +12147,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     type: 'error'
                 });
                 console.error('Supabase client not available after waiting');
+                // Reset button state on error
+                updateSubmitButtonState('reset', originalButtonText);
                 isSubmitting = false;
                 return;
             }
@@ -11388,6 +12203,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (interactionIdField) {
                     interactionIdField.focus();
                 }
+                // Reset button state on validation error
+                updateSubmitButtonState('reset', originalButtonText);
                 isSubmitting = false;
                 return;
             }
@@ -11464,6 +12281,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmText: 'OK',
                     type: 'error'
                 });
+                // Reset button state on validation error
+                updateSubmitButtonState('reset', originalButtonText);
                 isSubmitting = false;
                 return;
             }
@@ -11884,27 +12703,50 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.log('Successfully updated pending audit:', data);
                         
                         // If this was from an audit assignment, mark it as completed
-                        if (isEditingPendingAudit && currentEditingAuditId) {
+                        // IMPORTANT: Use currentAssignmentId (assignment ID), not currentEditingAuditId (audit record ID)
+                        if (currentAssignmentId) {
                             try {
+                                // Get the saved audit ID from the update result
+                                const savedAuditId = data && data[0] ? data[0].id : currentEditingAuditId;
+                                
+                                // Build assignment update payload
+                                const assignmentUpdate = { 
+                                    status: 'completed',
+                                    completed_at: new Date().toISOString(),
+                                    audit_id: savedAuditId  // Link the completed audit to the assignment
+                                };
+                                
+                                // Include conversation_id if available
+                                if (pendingConversationId) {
+                                    assignmentUpdate.conversation_id = pendingConversationId;
+                                }
+                                
+                                console.log('Updating assignment:', {
+                                    assignmentId: currentAssignmentId,
+                                    auditId: savedAuditId,
+                                    update: assignmentUpdate
+                                });
+                                
                                 const { data: updateData, error: assignmentError } = await window.supabaseClient
                                     .from('audit_assignments')
-                                    .update({ 
-                                        status: 'completed',
-                                        completed_at: new Date().toISOString(),
-                                        ...(pendingConversationId ? { conversation_id: pendingConversationId } : {})
-                                    })
-                                    .eq('id', currentEditingAuditId)
+                                    .update(assignmentUpdate)
+                                    .eq('id', currentAssignmentId)  // FIXED: Use assignment ID, not audit ID
                                     .select();
                                 
                                 if (assignmentError) {
                                     console.error('Error marking assignment as completed:', assignmentError);
+                                    console.error('Assignment ID used:', currentAssignmentId);
+                                    console.error('Error details:', JSON.stringify(assignmentError, null, 2));
                                 } else {
                                     console.log('Successfully marked assignment as completed:', updateData);
                                 }
                             } catch (assignmentError) {
                                 console.error('Exception marking assignment as completed:', assignmentError);
+                                console.error('Assignment ID used:', currentAssignmentId);
                                 // Don't fail the audit submission if marking as completed fails
                             }
+                        } else {
+                            console.log('No assignment ID found, skipping assignment update');
                         }
                         
                         // Reset editing mode
@@ -11932,17 +12774,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         // If this was from an audit assignment, mark it as completed
                         if (currentAssignmentId) {
                             try {
+                                // Get the saved audit ID from the insert result
+                                const savedAuditId = data && data[0] ? data[0].id : auditPayload.id;
+                                
                                 // Build update object
+                                // Note: completed_at is TEXT in database, so ISO string is correct
                                 const assignmentUpdate = { 
-                                        status: 'completed',
-                                        completed_at: new Date().toISOString(),
-                                        audit_id: auditPayload.id  // Link the completed audit
+                                    status: 'completed',
+                                    completed_at: new Date().toISOString(),  // TEXT field, storing ISO string
+                                    audit_id: savedAuditId  // Link the completed audit to the assignment
                                 };
                                 
                                 // Include conversation_id if available (from starting audit from conversation)
                                 if (pendingConversationId) {
                                     assignmentUpdate.conversation_id = pendingConversationId;
                                 }
+                                
+                                console.log('Updating assignment for new audit:', {
+                                    assignmentId: currentAssignmentId,
+                                    auditId: savedAuditId,
+                                    update: assignmentUpdate
+                                });
                                 
                                 const { data: updateData, error: assignmentError } = await window.supabaseClient
                                     .from('audit_assignments')
@@ -11952,13 +12804,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 if (assignmentError) {
                                     console.error('Error marking assignment as completed:', assignmentError);
+                                    console.error('Assignment ID used:', currentAssignmentId);
+                                    console.error('Error details:', JSON.stringify(assignmentError, null, 2));
                                 } else {
                                     console.log('Successfully marked assignment as completed:', updateData);
                                 }
                             } catch (assignmentError) {
                                 console.error('Exception marking assignment as completed:', assignmentError);
+                                console.error('Assignment ID used:', currentAssignmentId);
                                 // Don't fail the audit submission if marking as completed fails
                             }
+                        } else {
+                            console.log('No assignment ID found, skipping assignment update');
                         }
                     }
                 }
@@ -12013,6 +12870,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         cancelText: 'Close',
                         type: 'error'
                     });
+                    // Reset button state on error
+                    updateSubmitButtonState('reset', originalButtonText);
+                    isSubmitting = false;
                     return;
                 }
                 
@@ -12044,13 +12904,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const message = wasEditingExistingAudit ? 'Audit updated successfully!' : 'Audit submitted successfully!';
-                const confirmed = await window.confirmationDialog.show({
-                    title: 'Success!',
-                    message: message,
-                    confirmText: 'View Audit',
-                    cancelText: 'Stay Here',
-                    type: 'success'
-                });
+                
+                console.log('✅ Audit saved successfully! Showing success state...');
+                
+                // Update submit button to show success state IMMEDIATELY
+                updateSubmitButtonState('success', originalButtonText);
+                
+                // Force a repaint to ensure the button state is visible
+                const submitButton = auditForm.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.offsetHeight; // Force reflow
+                }
+                
+                // Show success dialog with fallback
+                let confirmed = false;
+                console.log('Showing success dialog...');
+                if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                    try {
+                        confirmed = await window.confirmationDialog.show({
+                            title: 'Success!',
+                            message: message,
+                            confirmText: 'View Audit',
+                            cancelText: 'Stay Here',
+                            type: 'success'
+                        });
+                        console.log('Success dialog shown, user choice:', confirmed);
+                    } catch (dialogError) {
+                        console.error('Error showing success dialog:', dialogError);
+                        // Fallback to alert
+                        confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to stay here.');
+                    }
+                } else {
+                    // Fallback if confirmation dialog is not available
+                    console.warn('Confirmation dialog not available, using alert fallback');
+                    confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to stay here.');
+                }
                 
                 // Reset form
                 auditForm.reset();
@@ -12104,16 +12992,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Exception saving to Supabase:', err);
                 console.error('Exception stack:', err.stack);
                 
-                await window.confirmationDialog.show({
-                    title: 'Error Saving Audit',
-                    message: 'An error occurred while saving the audit: ' + err.message,
-                    confirmText: 'OK',
-                    cancelText: 'Close',
-                    type: 'error'
-                });
+                const errorMessage = 'An error occurred while saving the audit: ' + err.message;
+                if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                    try {
+                        await window.confirmationDialog.show({
+                            title: 'Error Saving Audit',
+                            message: errorMessage,
+                            confirmText: 'OK',
+                            cancelText: 'Close',
+                            type: 'error'
+                        });
+                    } catch (dialogError) {
+                        console.error('Error showing error dialog:', dialogError);
+                        alert(errorMessage);
+                    }
+                } else {
+                    alert(errorMessage);
+                }
+                
+                // Reset button state on exception
+                updateSubmitButtonState('reset', originalButtonText);
             } finally {
                 // Always reset the submitting flag
                 isSubmitting = false;
+                console.log('🏁 Form submission process completed');
             }
         };
         
@@ -12253,13 +13155,173 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
     
     // Check for assignment parameter in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const assignmentId = urlParams.get('assignment');
-    
-    if (assignmentId) {
-        // Load the assignment and start the audit
-        loadAssignmentFromURL(assignmentId);
+    // Wait for Supabase to be ready before reading URL parameters
+    async function checkUrlParameters() {
+        // Wait for Supabase to be ready with extended timeout and periodic checks
+        if (!window.supabaseClient || !window.supabaseClientReady) {
+            console.log('Waiting for Supabase client before reading URL parameters...');
+            await new Promise((resolve) => {
+                let resolved = false;
+                const checkReady = () => {
+                    if (window.supabaseClient && window.supabaseClientReady && !resolved) {
+                        resolved = true;
+                        console.log('✓ Supabase client is ready for URL parameter check');
+                        resolve();
+                    }
+                };
+                
+                // Check immediately
+                checkReady();
+                
+                // Also listen for ready event
+                window.addEventListener('supabaseClientReady', checkReady, { once: true });
+                window.addEventListener('supabaseReady', checkReady, { once: true });
+                
+                // Check periodically as fallback (every 200ms)
+                const checkInterval = setInterval(() => {
+                    if (window.supabaseClient && window.supabaseClientReady && !resolved) {
+                        resolved = true;
+                        clearInterval(checkInterval);
+                        console.log('✓ Supabase client ready (via periodic check)');
+                        resolve();
+                    }
+                }, 200);
+                
+                // Timeout after 15 seconds (increased from 10)
+                setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearInterval(checkInterval);
+                        if (!window.supabaseClient) {
+                            console.error('⚠️ Supabase client initialization timeout - proceeding anyway');
+                        } else {
+                            console.log('✓ Supabase client ready (via timeout)');
+                        }
+                        resolve(); // Resolve anyway
+                    }
+                }, 15000);
+            });
+        }
+        
+        // Double-check Supabase is ready
+        if (!window.supabaseClient || !window.supabaseClientReady) {
+            console.warn('⚠️ Supabase client may not be fully ready, but proceeding...');
+        } else {
+            console.log('✅ Supabase client confirmed ready');
+        }
+        
+        // Now read URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const assignmentId = urlParams.get('assignment');
+        const conversationId = urlParams.get('conversation_id');
+        const employeeEmail = urlParams.get('employee_email');
+        const scorecardId = urlParams.get('scorecard_id');
+        const channel = urlParams.get('channel');
+        
+        if (assignmentId) {
+            // Load the assignment and start the audit
+            // conversation_id will be read inside loadAssignmentFromURL if not already in URL
+            loadAssignmentFromURL(assignmentId);
+        } else {
+            // If no assignment, check for direct parameters to auto-fill form
+            if (employeeEmail || scorecardId || conversationId) {
+                console.log('Auto-filling form from URL parameters:', { employeeEmail, scorecardId, conversationId, channel });
+                await autoFillFormFromUrlParams({ employeeEmail, scorecardId, conversationId, channel });
+            } else if (conversationId) {
+                // If only conversation_id is provided without assignment, log it for debugging
+                console.log('Conversation ID provided in URL but no assignment:', conversationId);
+            }
+        }
     }
+    
+    // Auto-fill form from URL parameters (when no assignment is provided)
+    async function autoFillFormFromUrlParams(params) {
+        try {
+            const { employeeEmail, scorecardId, conversationId, channel } = params;
+            
+            // Wait for form to be initialized
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Auto-fill employee if provided
+            if (employeeEmail) {
+                await loadEmployees(); // Ensure employees are loaded
+                const employeeSelect = document.getElementById('employeeName');
+                if (employeeSelect) {
+                    const normalizedEmail = employeeEmail.toLowerCase().trim();
+                    for (let i = 0; i < employeeSelect.options.length; i++) {
+                        const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
+                        if (optionEmail === normalizedEmail) {
+                            employeeSelect.selectedIndex = i;
+                            const selectedOption = employeeSelect.options[i];
+                            
+                            // Directly populate all employee fields from dataset
+                            const emailField = document.getElementById('employeeEmail');
+                            const typeField = document.getElementById('employeeType');
+                            const departmentField = document.getElementById('employeeDepartment');
+                            const countryField = document.getElementById('countryOfEmployee');
+                            const channelField = document.getElementById('employeeChannel');
+                            
+                            if (emailField) emailField.value = selectedOption.dataset.email || '';
+                            if (typeField) typeField.value = selectedOption.dataset.designation || '';
+                            if (departmentField) departmentField.value = selectedOption.dataset.department || '';
+                            if (countryField) countryField.value = selectedOption.dataset.country || '';
+                            if (channelField) channelField.value = selectedOption.dataset.channel || '';
+                            
+                            // Trigger change event to ensure any other dependent logic runs
+                            employeeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log('✅ Auto-filled employee:', employeeEmail);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Auto-fill scorecard if provided
+            if (scorecardId) {
+                await loadScorecards(); // Ensure scorecards are loaded
+                const scorecardSelect = document.getElementById('scorecardSelect');
+                if (scorecardSelect) {
+                    // Wait a bit for dropdown to populate
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    scorecardSelect.value = scorecardId;
+                    scorecardSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    console.log('✅ Auto-filled scorecard:', scorecardId);
+                }
+            }
+            
+            // Auto-fill channel if provided
+            if (channel) {
+                const channelSelect = document.getElementById('channel');
+                if (channelSelect) {
+                    channelSelect.value = channel;
+                    channelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    console.log('✅ Auto-filled channel:', channel);
+                }
+            }
+            
+            // Auto-fill conversation ID if provided
+            if (conversationId) {
+                const interactionIdField = document.getElementById('interactionId');
+                if (interactionIdField) {
+                    interactionIdField.value = conversationId;
+                    // Load conversation after a delay
+                    setTimeout(async () => {
+                        if (window.loadConversationFromIntercom && typeof window.loadConversationFromIntercom === 'function') {
+                            await window.loadConversationFromIntercom(conversationId);
+                        }
+                    }, 1000);
+                    console.log('✅ Auto-filled conversation ID:', conversationId);
+                }
+            }
+        } catch (error) {
+            console.error('Error auto-filling form from URL parameters:', error);
+        }
+    }
+    
+    // Start checking URL parameters after a short delay to ensure Supabase init has started
+    setTimeout(() => {
+        checkUrlParameters();
+    }, 100);
 }); // End of DOMContentLoaded
 
 // Load assignment from URL parameter and start audit
@@ -12267,21 +13329,86 @@ async function loadAssignmentFromURL(assignmentId) {
     try {
         console.log('Loading assignment from URL:', assignmentId);
         
-        // Wait for Supabase to be ready
-        let attempts = 0;
-        while (!window.supabaseClient && attempts < 50) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-            attempts++;
+        // Wait for Supabase to be ready using event listener
+        if (!window.supabaseClient || !window.supabaseClientReady) {
+            console.log('Waiting for Supabase client to be ready...');
+            await new Promise((resolve) => {
+                const checkReady = () => {
+                    if (window.supabaseClient && window.supabaseClientReady) {
+                        resolve();
+                    }
+                };
+                
+                // Check immediately
+                checkReady();
+                
+                // Also listen for ready event
+                window.addEventListener('supabaseClientReady', checkReady, { once: true });
+                window.addEventListener('supabaseReady', checkReady, { once: true });
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (!window.supabaseClient) {
+                        console.error('Supabase client initialization timeout');
+                        resolve(); // Resolve anyway to show error
+                    }
+                }, 10000);
+            });
         }
         
-        if (!window.supabaseClient) {
-            console.error('Supabase client not initialized');
-            alert('Error: Database connection not ready. Please refresh the page.');
-            return;
+        // Try to get authenticated Supabase client (more reliable)
+        let supabaseClient = window.supabaseClient;
+        try {
+            // Use SupabaseConfig.getClient if available (uses authenticated client)
+            if (window.SupabaseConfig && typeof window.SupabaseConfig.getClient === 'function') {
+                supabaseClient = await window.SupabaseConfig.getClient();
+                console.log('✅ Using authenticated Supabase client via SupabaseConfig');
+            } else if (typeof getAuthenticatedSupabase === 'function') {
+                // Fallback to direct import if available
+                const { getAuthenticatedSupabase: getAuthSupabase } = await import('/js/utils/authenticated-supabase.js');
+                supabaseClient = await getAuthSupabase();
+                console.log('✅ Using authenticated Supabase client via direct import');
+            }
+        } catch (authError) {
+            console.warn('Could not get authenticated client, using base client:', authError);
+            // Continue with base client
+        }
+        
+        if (!supabaseClient) {
+            console.error('Supabase client not initialized after waiting');
+            // Try one more time with a longer wait and multiple fallbacks
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Try multiple ways to get the client
+            try {
+                supabaseClient = window.supabaseClient;
+            } catch (e) {
+                console.warn('Failed to get window.supabaseClient:', e);
+            }
+            
+            if (!supabaseClient && window.SupabaseConfig?.getClient) {
+                try {
+                    supabaseClient = await window.SupabaseConfig.getClient();
+                } catch (e) {
+                    console.warn('Failed to get client via SupabaseConfig:', e);
+                }
+            }
+            
+            if (!supabaseClient) {
+                console.error('Supabase client still not available after extended wait');
+                console.error('Available:', {
+                    hasWindowClient: !!window.supabaseClient,
+                    hasSupabaseConfig: !!window.SupabaseConfig,
+                    hasGetClient: !!window.SupabaseConfig?.getClient,
+                    readyFlag: window.supabaseClientReady
+                });
+                alert('Error: Database connection not ready. Please refresh the page.\n\nIf this persists, check your browser console for more details.');
+                return;
+            }
         }
         
         // Load the assignment from database with scorecard info
-        const { data: assignment, error } = await window.supabaseClient
+        const { data: assignment, error } = await supabaseClient
             .from('audit_assignments')
             .select(`
                 *,
@@ -12309,14 +13436,18 @@ async function loadAssignmentFromURL(assignmentId) {
             return;
         }
         
-        // Check resource access using centralized access control
-        const resourceAccess = window.accessControl?.canAccessResource('audit_assignment', assignment);
-        if (!resourceAccess || !resourceAccess.allowed) {
-            alert(resourceAccess?.reason || 'You do not have permission to access this assignment.');
-            // Clean URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-            return;
+        // Check resource access using centralized access control (optional - RLS already enforces at DB level)
+        // If accessControl is not available, allow access (RLS policies already verified access when fetching assignment)
+        if (window.accessControl && typeof window.accessControl.canAccessResource === 'function') {
+            const resourceAccess = window.accessControl.canAccessResource('audit_assignment', assignment);
+            if (resourceAccess && !resourceAccess.allowed) {
+                alert(resourceAccess.reason || 'You do not have permission to access this assignment.');
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
+            }
         }
+        // If accessControl not available, proceed (RLS already verified access at database level)
         
         // Get the table name from the scorecard
         const assignmentTable = assignment.scorecards?.table_name || assignment.scorecard_table_name;
@@ -12335,6 +13466,10 @@ async function loadAssignmentFromURL(assignmentId) {
             return;
         }
         
+        // Check for conversation_id URL parameter (overrides assignment's conversation_id)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlConversationId = urlParams.get('conversation_id');
+        
         // Map assignment to expected format
         const mappedAssignment = {
             id: assignment.id,
@@ -12343,7 +13478,9 @@ async function loadAssignmentFromURL(assignmentId) {
             auditor_email: assignment.auditor_email,
             scorecard_id: scorecardId,
             status: assignment.status || assignment.audit_status,
-            conversation_id: assignment.conversation_id || null,
+            conversation_id: urlConversationId || assignment.conversation_id || null,
+            scheduled_date: assignment.scheduled_date || null,
+            created_at: assignment.created_at || null,
             scorecards: {
                 id: scorecardId,
                 table_name: assignmentTable
@@ -12352,13 +13489,27 @@ async function loadAssignmentFromURL(assignmentId) {
         
         // Update assignment status to 'in_progress' (only if it's pending)
         if (mappedAssignment.status === 'pending') {
-            const { error: updateError } = await window.supabaseClient
+            const { error: updateError } = await supabaseClient
                 .from('audit_assignments')
                 .update({ status: 'in_progress' })
                 .eq('id', mappedAssignment.id);
             
             if (updateError) {
                 console.error('Error updating assignment status:', updateError);
+            }
+        }
+        
+        // Update assignment's conversation_id if provided via URL parameter
+        if (urlConversationId && urlConversationId !== assignment.conversation_id) {
+            const { error: updateConvError } = await supabaseClient
+                .from('audit_assignments')
+                .update({ conversation_id: urlConversationId })
+                .eq('id', mappedAssignment.id);
+            
+            if (updateConvError) {
+                console.warn('Warning: Could not update assignment conversation_id:', updateConvError);
+            } else {
+                console.log('✅ Updated assignment conversation_id to:', urlConversationId);
             }
         }
         
@@ -12379,7 +13530,7 @@ async function loadAssignmentFromURL(assignmentId) {
         if (mappedAssignment.conversation_id) {
             try {
                 console.log('🔍 Checking for AI audit data for conversation:', mappedAssignment.conversation_id);
-                const { data: aiResult, error: aiError } = await window.supabaseClient
+                const { data: aiResult, error: aiError } = await supabaseClient
                     .from('ai_audit_results')
                     .select('*')
                     .eq('conversation_id', String(mappedAssignment.conversation_id))
@@ -12421,30 +13572,41 @@ async function loadAssignmentFromURL(assignmentId) {
         console.log('📋 Scorecard selection:', {
             aiAuditScorecardId: aiAuditData?.scorecard_id,
             assignmentScorecardId: mappedAssignment.scorecard_id,
-            scorecardIdToUse: scorecardIdToUse
+            scorecardIdToUse: scorecardIdToUse,
+            assignmentChannel: mappedAssignment.channel
         });
         
         // Set a flag to prevent channel change listener from interfering
         window.isLoadingAssignmentScorecard = true;
         
-        if (scorecardSelect && scorecardIdToUse) {
-            // When we have AI audit data, we need to load ALL scorecards (not filtered by channel)
-            // because the AI audit scorecard might not match the current channel filter
-            // Load scorecards without channel filter FIRST, before setting channel
-            console.log('🔄 Loading scorecards with AI audit scorecard (NO channel filter):', scorecardIdToUse);
-            await loadScorecards(null, scorecardIdToUse); // null = no channel filter, preselectedScorecardId = AI audit scorecard
-            
-            // Wait a bit for the dropdown to be populated
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Double-check the value is set (in case loadScorecards didn't find it)
-            if (scorecardSelect.value !== scorecardIdToUse) {
-                console.log('⚠️ Scorecard value mismatch. Expected:', scorecardIdToUse, 'Got:', scorecardSelect.value);
-                // Check if the scorecard exists in dropdown
-                const scorecardOption = Array.from(scorecardSelect.options).find(opt => opt.value === scorecardIdToUse);
-                if (scorecardOption) {
-                    console.log('✅ Setting scorecard dropdown to:', scorecardIdToUse);
-                    scorecardSelect.value = scorecardIdToUse;
+        // Always load scorecards, even if no scorecard_id is provided
+        // Filter by channel if available, otherwise load all active scorecards
+        const channelFilter = mappedAssignment.channel || null;
+        
+        if (scorecardSelect) {
+            if (scorecardIdToUse) {
+                // When we have a scorecard ID (from AI audit or assignment), load scorecards
+                // If we have AI audit data, we need to load ALL scorecards (not filtered by channel)
+                // because the AI audit scorecard might not match the current channel filter
+                if (aiAuditData?.scorecard_id) {
+                    console.log('🔄 Loading scorecards with AI audit scorecard (NO channel filter):', scorecardIdToUse);
+                    await loadScorecards(null, scorecardIdToUse); // null = no channel filter, preselectedScorecardId = AI audit scorecard
+                } else {
+                    console.log('🔄 Loading scorecards with assignment scorecard (channel filter):', scorecardIdToUse, 'channel:', channelFilter);
+                    await loadScorecards(channelFilter, scorecardIdToUse); // Filter by channel, preselectedScorecardId = assignment scorecard
+                }
+                
+                // Wait a bit for the dropdown to be populated
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Double-check the value is set (in case loadScorecards didn't find it)
+                if (scorecardSelect.value !== scorecardIdToUse) {
+                    console.log('⚠️ Scorecard value mismatch. Expected:', scorecardIdToUse, 'Got:', scorecardSelect.value);
+                    // Check if the scorecard exists in dropdown
+                    const scorecardOption = Array.from(scorecardSelect.options).find(opt => opt.value === scorecardIdToUse);
+                    if (scorecardOption) {
+                        console.log('✅ Setting scorecard dropdown to:', scorecardIdToUse);
+                        scorecardSelect.value = scorecardIdToUse;
                     // Don't trigger change event here to avoid clearing form - we'll load parameters directly
                     // Load the scorecard parameters
                     await loadScorecardParameters(scorecardIdToUse);
@@ -12454,7 +13616,7 @@ async function loadAssignmentFromURL(assignmentId) {
                     
                     // If scorecard not found, try loading it directly from database and adding to dropdown
                     try {
-                        const { data: scorecardData, error: scError } = await window.supabaseClient
+                        const { data: scorecardData, error: scError } = await supabaseClient
                             .from('scorecards')
                             .select('*')
                             .eq('id', scorecardIdToUse)
@@ -12487,40 +13649,44 @@ async function loadAssignmentFromURL(assignmentId) {
                     await loadScorecardParameters(scorecardIdToUse);
                 }
             }
-        } else if (scorecardSelect) {
-            // If no scorecard ID provided, auto-select first available
-            await loadScorecards();
+        } else {
+            // No scorecard ID provided - load scorecards filtered by channel (if available) and auto-select first
+            console.log('⚠️ No scorecard ID in assignment. Loading scorecards filtered by channel:', channelFilter);
+            await loadScorecards(channelFilter, null, false); // Filter by channel, no preselection, skipAutoSelect = false (auto-select first)
+            console.log('✅ Scorecards loaded. First scorecard should be auto-selected.');
+        }
+        } else {
+            console.error('❌ Scorecard select element not found!');
         }
         
         // NOW set the channel AFTER scorecards are loaded and selected
         // This way, even if the channel listener fires, the scorecard is already set
-        const channelField = document.getElementById('channel');
-        if (channelField && assignment.channel) {
-            // Temporarily remove the change listener to prevent filtering
-            const channelSelect = document.getElementById('channel');
-            if (channelSelect && scorecardIdToUse) {
-                // Clone the element to remove all event listeners
-                const newChannelSelect = channelSelect.cloneNode(true);
-                channelSelect.parentNode.replaceChild(newChannelSelect, channelSelect);
-                // Re-attach the listener after a delay
-                setTimeout(() => {
-                    const restoredChannelSelect = document.getElementById('channel');
-                    if (restoredChannelSelect) {
-                        restoredChannelSelect.addEventListener('change', async function() {
-                            // Don't auto-select if we're loading an assignment scorecard
-                            if (window.isLoadingAssignmentScorecard) {
-                                console.log('⏸️ Skipping channel auto-select - assignment scorecard is being loaded');
-                                return;
-                            }
-                            const selectedChannel = this.value;
-                            await autoSelectScorecardByChannel(selectedChannel);
-                        });
-                    }
-                }, 1000);
-            }
-            
-            channelField.value = assignment.channel;
-            console.log('✅ Channel pre-filled:', assignment.channel);
+        // Set channel dropdown in Error Details section
+        const channelSelect = document.getElementById('channel');
+        if (assignment.channel) {
+            await setChannelDropdownByName(assignment.channel);
+        }
+        
+        // Temporarily remove the change listener to prevent filtering if scorecard is being loaded
+        if (channelSelect && scorecardIdToUse) {
+            // Clone the element to remove all event listeners
+            const newChannelSelect = channelSelect.cloneNode(true);
+            channelSelect.parentNode.replaceChild(newChannelSelect, channelSelect);
+            // Re-attach the listener after a delay
+            setTimeout(() => {
+                const restoredChannelSelect = document.getElementById('channel');
+                if (restoredChannelSelect) {
+                    restoredChannelSelect.addEventListener('change', async function() {
+                        // Don't auto-select if we're loading an assignment scorecard
+                        if (window.isLoadingAssignmentScorecard) {
+                            console.log('⏸️ Skipping channel auto-select - assignment scorecard is being loaded');
+                            return;
+                        }
+                        const selectedChannel = this.value;
+                        await autoSelectScorecardByChannel(selectedChannel);
+                    });
+                }
+            }, 1000);
         }
         
         // Clear the flag after scorecard is loaded
@@ -12552,10 +13718,58 @@ async function loadAssignmentFromURL(assignmentId) {
                 const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
                 if (optionEmail === normalizedEmail) {
                     employeeSelect.selectedIndex = i;
-                    // Trigger change event to populate other fields
-                    employeeSelect.dispatchEvent(new Event('change'));
+                    const selectedOption = employeeSelect.options[i];
+                    const employeeChannel = selectedOption.dataset.channel || '';
+                    const employeeEmail = selectedOption.dataset.email || '';
+                    const employeeDesignation = selectedOption.dataset.designation || '';
+                    const employeeDepartment = selectedOption.dataset.department || '';
+                    const employeeCountry = selectedOption.dataset.country || '';
+                    
+                    // Directly populate all employee fields from dataset
+                    // Email field
+                    const emailField = document.getElementById('employeeEmail');
+                    if (emailField) {
+                        emailField.value = employeeEmail;
+                        console.log('✅ [Assignment Load] Email field populated:', employeeEmail);
+                    }
+                    
+                    // Type field (from designation)
+                    const typeField = document.getElementById('employeeType');
+                    if (typeField) {
+                        typeField.value = employeeDesignation;
+                        console.log('✅ [Assignment Load] Type field populated:', employeeDesignation);
+                    }
+                    
+                    // Department field
+                    const departmentField = document.getElementById('employeeDepartment');
+                    if (departmentField) {
+                        departmentField.value = employeeDepartment;
+                        console.log('✅ [Assignment Load] Department field populated:', employeeDepartment);
+                    }
+                    
+                    // Country field
+                    const countryField = document.getElementById('countryOfEmployee');
+                    if (countryField) {
+                        countryField.value = employeeCountry;
+                        console.log('✅ [Assignment Load] Country field populated:', employeeCountry);
+                    }
+                    
+                    // Channel field
+                    const employeeChannelField = document.getElementById('employeeChannel');
+                    if (employeeChannelField && employeeChannel) {
+                        employeeChannelField.value = employeeChannel;
+                        console.log('✅ [Assignment Load] Channel field populated:', employeeChannel);
+                    }
+                    
+                    // Also populate channel dropdown in Error Details section
+                    if (employeeChannel) {
+                        await setChannelDropdownByName(employeeChannel);
+                    }
+                    
+                    // Trigger change event to ensure any other dependent logic runs
+                    employeeSelect.dispatchEvent(new Event('change', { bubbles: true }));
                     employeeFound = true;
-                    console.log('✅ Employee found and selected:', mappedAssignment.employee_email);
+                    console.log('✅ Employee found and selected:', mappedAssignment.employee_email, 'Channel:', employeeChannel);
                     break;
                 }
             }
@@ -12569,18 +13783,41 @@ async function loadAssignmentFromURL(assignmentId) {
         
         // Pre-fill interaction date if available
         const interactionDateField = document.getElementById('interactionDate');
-        if (interactionDateField && assignment.interaction_date) {
-            interactionDateField.value = assignment.interaction_date;
-            console.log('✅ Interaction date pre-filled:', assignment.interaction_date);
-        } else if (interactionDateField && (assignment.scheduled_date || assignment.created_at)) {
-            // Use scheduled_date if available, otherwise created_at as fallback
-            const dateToUse = assignment.scheduled_date 
-                ? assignment.scheduled_date 
-                : assignment.created_at;
-            const assignmentDate = new Date(dateToUse + (assignment.scheduled_date ? 'T00:00:00' : ''));
-            const dateStr = assignmentDate.toISOString().split('T')[0];
-            interactionDateField.value = dateStr;
-            console.log('✅ Interaction date pre-filled from assignment date:', dateStr);
+        if (interactionDateField) {
+            // Use scheduled_date from mappedAssignment (which comes from assignment.scheduled_date)
+            // or fallback to created_at
+            const dateToUse = mappedAssignment.scheduled_date || mappedAssignment.created_at || assignment.scheduled_date || assignment.created_at;
+            
+            if (dateToUse) {
+                // Handle both date string formats (YYYY-MM-DD or ISO timestamp)
+                let dateStr;
+                if (dateToUse.includes('T')) {
+                    // ISO timestamp format
+                    const assignmentDate = new Date(dateToUse);
+                    dateStr = assignmentDate.toISOString().split('T')[0];
+                } else {
+                    // Already in YYYY-MM-DD format
+                    dateStr = dateToUse.split('T')[0]; // Remove time if present
+                }
+                
+                interactionDateField.value = dateStr;
+                console.log('✅ Interaction date pre-filled from assignment:', dateStr, '(source:', mappedAssignment.scheduled_date ? 'scheduled_date' : 'created_at', ')');
+                
+                // Trigger change event to update stats immediately
+                setTimeout(() => {
+                    interactionDateField.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Also call updateHeaderMetadata directly to ensure it runs
+                    if (window.updateHeaderMetadata) {
+                        const averageScoreField = document.getElementById('averageScore');
+                        const passingStatusField = document.getElementById('passingStatus');
+                        const totalErrorsField = document.getElementById('totalErrorsCount');
+                        const score = averageScoreField ? (parseFloat(averageScoreField.value) || 0) : 0;
+                        const passingStatus = passingStatusField ? (passingStatusField.value || '') : '';
+                        const totalErrors = totalErrorsField ? (parseInt(totalErrorsField.value) || 0) : 0;
+                        window.updateHeaderMetadata(score, passingStatus, totalErrors);
+                    }
+                }, 100);
+            }
         }
         
         // Pre-fill client information if available
@@ -13684,8 +14921,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Debounce: wait 500ms after user stops typing before loading
             if (interactionId) {
                 loadTimeout = setTimeout(async () => {
-        await loadConversationFromIntercom(interactionId);
+                    await loadConversationFromIntercom(interactionId);
+                    // Also check for existing audit stats
+                    await checkAndLoadExistingAuditStats(interactionId);
                 }, 500);
+            } else {
+                // Clear stats if interaction ID is cleared
+                const totalErrorsDisplay = document.getElementById('totalErrorsCountDisplay');
+                const criticalFailErrorDisplay = document.getElementById('criticalFailErrorDisplay');
+                if (totalErrorsDisplay) totalErrorsDisplay.textContent = '0';
+                if (criticalFailErrorDisplay) criticalFailErrorDisplay.textContent = '0';
             }
     });
     }
@@ -13717,10 +14962,150 @@ document.addEventListener('DOMContentLoaded', function() {
         interactionIdInput.focus();
     }
 
+    /**
+     * Check for existing audit by interaction/conversation ID and load stats
+     */
+    async function checkAndLoadExistingAuditStats(conversationId) {
+        if (!conversationId) return;
+
+        try {
+            // Get Supabase client
+            const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+            const supabase = await getAuthenticatedSupabase();
+
+            // Get all active scorecards to find their table names
+            const { data: scorecards, error: scorecardsError } = await supabase
+                .from('scorecards')
+                .select('id, table_name, name')
+                .eq('is_active', true);
+
+            if (scorecardsError) {
+                console.error('Error loading scorecards:', scorecardsError);
+                return;
+            }
+
+            if (!scorecards || scorecards.length === 0) {
+                console.log('No active scorecards found');
+                return;
+            }
+
+            // Try to find existing audit in any scorecard table
+            let existingAudit = null;
+            let foundTableName = null;
+
+            for (const scorecard of scorecards) {
+                if (!scorecard.table_name) continue;
+
+                try {
+                    // Try both interaction_id (bigint) and conversation_id (text) fields
+                    // Convert conversationId to number if it's numeric
+                    const numericId = /^\d+$/.test(String(conversationId)) ? parseInt(conversationId, 10) : null;
+                    
+                    let query = supabase
+                        .from(scorecard.table_name)
+                        .select('id, total_errors_count, critical_fail_error, critical_errors, significant_error, average_score, passing_status')
+                        .limit(1);
+
+                    // Try conversation_id first (text field)
+                    if (conversationId) {
+                        const { data, error } = await query.eq('conversation_id', String(conversationId));
+                        if (!error && data && data.length > 0) {
+                            existingAudit = data[0];
+                            foundTableName = scorecard.table_name;
+                            break;
+                        }
+                    }
+
+                    // Try interaction_id (bigint field) if conversationId is numeric
+                    if (numericId !== null) {
+                        const { data, error } = await query.eq('interaction_id', numericId);
+                        if (!error && data && data.length > 0) {
+                            existingAudit = data[0];
+                            foundTableName = scorecard.table_name;
+                            break;
+                        }
+                    }
+                } catch (tableError) {
+                    // Table might not exist or have different schema, skip it
+                    console.debug(`Skipping table ${scorecard.table_name}:`, tableError.message);
+                    continue;
+                }
+            }
+
+            // If found, update the stats display
+            if (existingAudit) {
+                console.log('Found existing audit:', existingAudit);
+                
+                const totalErrors = existingAudit.total_errors_count || 0;
+                const criticalFail = existingAudit.critical_fail_error || 0;
+                const criticalErrors = existingAudit.critical_errors || 0;
+                const significantError = existingAudit.significant_error || 0;
+
+                // Update hidden fields
+                const totalErrorsField = document.getElementById('totalErrorsCount');
+                const criticalFailField = document.getElementById('criticalFailError');
+                const criticalErrorsField = document.getElementById('criticalErrors');
+                const significantErrorField = document.getElementById('significantError');
+
+                if (totalErrorsField) totalErrorsField.value = String(totalErrors);
+                if (criticalFailField) criticalFailField.value = String(criticalFail);
+                if (criticalErrorsField) criticalErrorsField.value = String(criticalErrors);
+                if (significantErrorField) significantErrorField.value = String(significantError);
+
+                // Update display divs
+                const totalErrorsDisplay = document.getElementById('totalErrorsCountDisplay');
+                const criticalFailErrorDisplay = document.getElementById('criticalFailErrorDisplay');
+                const criticalErrorsDisplay = document.getElementById('criticalErrorsDisplay');
+                const significantErrorDisplay = document.getElementById('significantErrorDisplay');
+
+                if (totalErrorsDisplay) totalErrorsDisplay.textContent = String(totalErrors);
+                if (criticalFailErrorDisplay) criticalFailErrorDisplay.textContent = String(criticalFail);
+                if (criticalErrorsDisplay) criticalErrorsDisplay.textContent = String(criticalErrors);
+                if (significantErrorDisplay) significantErrorDisplay.textContent = String(significantError);
+
+                // Update error counts section color if there are errors
+                const errorCountsSection = document.getElementById('errorCountsSection');
+                if (errorCountsSection && totalErrors > 0) {
+                    errorCountsSection.style.background = '#fee2e2';
+                    errorCountsSection.style.borderColor = '#fecaca';
+                    const labels = errorCountsSection.querySelectorAll('p');
+                    labels.forEach(label => {
+                        label.style.color = '#991b1b';
+                    });
+                }
+
+                console.log('✅ Loaded stats from existing audit:', { totalErrors, criticalFail, criticalErrors, significantError });
+            } else {
+                console.log('No existing audit found for conversation ID:', conversationId);
+                // Reset stats to 0 if no existing audit found
+                const totalErrorsDisplay = document.getElementById('totalErrorsCountDisplay');
+                const criticalFailErrorDisplay = document.getElementById('criticalFailErrorDisplay');
+                if (totalErrorsDisplay) totalErrorsDisplay.textContent = '0';
+                if (criticalFailErrorDisplay) criticalFailErrorDisplay.textContent = '0';
+            }
+        } catch (error) {
+            console.error('Error checking for existing audit:', error);
+            // Don't throw - this is a non-critical operation
+        }
+    }
+
     // Fetch conversation from Intercom API
     // Make it globally available for calibration mode
     window.loadConversationFromIntercom = async function(conversationId) {
-        // Show loading state
+        console.log('🔄 [loadConversationFromIntercom] Starting to load conversation:', conversationId);
+        
+        // Get DOM elements
+        const viewChatBtn = document.getElementById('viewChatBtn');
+        const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+        const transcriptChatView = document.getElementById('transcriptChatView');
+        const transcriptTextView = document.getElementById('transcriptTextView');
+        
+        if (!chatMessagesContainer) {
+            console.error('❌ [loadConversationFromIntercom] chatMessagesContainer not found');
+            return;
+        }
+        
+        // Show loading state with progress bar
         if (viewChatBtn) {
             viewChatBtn.disabled = true;
             viewChatBtn.style.backgroundColor = '#9ca3af';
@@ -13730,63 +15115,100 @@ document.addEventListener('DOMContentLoaded', function() {
             viewChatBtn.title = 'Loading conversation...';
         }
         
+        // Show loading indicator with progress bar
         chatMessagesContainer.innerHTML = `
             <div style="text-align: center; padding: 1.2937rem; color: #000000;">
-                <div style="display: inline-block; width: 1.2937rem; height: 1.2937rem; border: 0.091rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="margin-top: 0.6469rem; font-size: 0.5659rem;">Loading conversation from Intercom...</p>
+                <div style="display: inline-block; width: 1.2937rem; height: 1.2937rem; border: 0.091rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 0.6469rem;"></div>
+                <p style="margin-top: 0.6469rem; font-size: 0.5659rem; font-weight: 500; margin-bottom: 0.3234rem;">Loading conversation from Intercom...</p>
+                <div style="width: 100%; max-width: 12.937rem; height: 0.2426rem; background: #e5e7eb; border-radius: 0.1213rem; margin: 0 auto; overflow: hidden;">
+                    <div id="conversationLoadingBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #1A733E, #2d8650); border-radius: 0.1213rem; transition: width 0.3s ease; animation: loadingPulse 1.5s ease-in-out infinite;"></div>
+                </div>
+                <p id="conversationLoadingStatus" style="font-size: 0.4852rem; color: #6b7280; margin-top: 0.3234rem;">Connecting to Intercom...</p>
             </div>
         `;
+        
+        // Animate progress bar
+        const loadingBar = document.getElementById('conversationLoadingBar');
+        const loadingStatus = document.getElementById('conversationLoadingStatus');
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            if (progress < 90) {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                if (loadingBar) loadingBar.style.width = progress + '%';
+            }
+        }, 200);
 
         try {
-            // Fetch conversation data from Intercom API via Supabase Edge Function (to avoid CORS)
-            // Use display_as=html to get proper HTML with image tags, or plaintext for text-based references
-            // We'll handle both formats in the parsing logic
-            const edgeFunctionUrl = `${SUPABASE_URL}/functions/v1/intercom-proxy?conversation_id=${encodeURIComponent(conversationId)}&display_as=html`;
+            // Get Supabase configuration
+            const supabaseUrl = window.SupabaseConfig?.url || window.supabaseClient?.supabaseUrl || window.env?.SUPABASE_URL || '';
+            const supabaseAnonKey = window.SupabaseConfig?.anonKey || window.supabaseClient?.supabaseKey || window.env?.SUPABASE_ANON_KEY || '';
+            
+            if (!supabaseUrl || !supabaseAnonKey) {
+                throw new Error('Supabase configuration not found. Please refresh the page.');
+            }
+            
+            // Update loading status
+            if (loadingStatus) loadingStatus.textContent = 'Fetching conversation data...';
+            if (loadingBar) loadingBar.style.width = '30%';
+            
+            // Fetch conversation data from Intercom API via Supabase Edge Function
+            const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?conversation_id=${encodeURIComponent(conversationId)}&display_as=plaintext`;
+            
+            console.log('📡 [loadConversationFromIntercom] Fetching from:', edgeFunctionUrl);
+            
+            // Get user's JWT token for authenticated request
+            let userToken = null;
+            try {
+                if (window.getUserJWTToken && typeof window.getUserJWTToken === 'function') {
+                    userToken = await window.getUserJWTToken();
+                } else if (window.supabaseClient) {
+                    const { data: { session } } = await window.supabaseClient.auth.getSession();
+                    userToken = session?.access_token || null;
+                }
+            } catch (tokenError) {
+                console.warn('⚠️ [loadConversationFromIntercom] Could not get user token:', tokenError);
+            }
+            
+            if (!userToken) {
+                throw new Error('User authentication required. Please log in again.');
+            }
+            
+            if (loadingStatus) loadingStatus.textContent = 'Requesting conversation from Intercom...';
+            if (loadingBar) loadingBar.style.width = '50%';
             
             const response = await fetch(edgeFunctionUrl, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Accept': 'application/json'
+                    'Authorization': `Bearer ${userToken}`,
+                    'apikey': supabaseAnonKey,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             });
 
+            if (loadingBar) loadingBar.style.width = '80%';
+            if (loadingStatus) loadingStatus.textContent = 'Processing conversation data...';
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
+                const errorText = await response.text().catch(() => 'Unknown error');
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` };
+                }
                 throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
             }
 
             const conversation = await response.json();
             currentConversationData = conversation;
-
-            // DEBUG: Log raw API response
-            console.log('=== RAW API RESPONSE ===');
-            console.log('Full conversation object:', conversation);
-            console.log('Total conversation parts:', conversation.conversation_parts?.conversation_parts?.length || 0);
             
-            // Check specific email parts to see if email_message_metadata is present
-            if (conversation.conversation_parts?.conversation_parts) {
-                const part32842906801 = conversation.conversation_parts.conversation_parts.find(p => p.id === '32842906801');
-                const part32842914590 = conversation.conversation_parts.conversation_parts.find(p => p.id === '32842914590');
-                
-                if (part32842906801) {
-                    console.log('=== PART 32842906801 (should be email) ===');
-                    console.log('Full part:', JSON.stringify(part32842906801, null, 2));
-                    console.log('Has email_message_metadata key?', 'email_message_metadata' in part32842906801);
-                    console.log('email_message_metadata value:', part32842906801.email_message_metadata);
-                    console.log('All keys:', Object.keys(part32842906801));
-                }
-                
-                if (part32842914590) {
-                    console.log('=== PART 32842914590 (should be email) ===');
-                    console.log('Full part:', JSON.stringify(part32842914590, null, 2));
-                    console.log('Has email_message_metadata key?', 'email_message_metadata' in part32842914590);
-                    console.log('email_message_metadata value:', part32842914590.email_message_metadata);
-                    console.log('All keys:', Object.keys(part32842914590));
-                }
-            }
-            console.log('========================');
+            console.log('✅ [loadConversationFromIntercom] Conversation loaded successfully');
+            console.log('📊 [loadConversationFromIntercom] Conversation parts:', conversation.conversation_parts?.conversation_parts?.length || conversation.conversation_parts?.length || 0);
+
+            if (loadingBar) loadingBar.style.width = '100%';
+            if (loadingStatus) loadingStatus.textContent = 'Rendering conversation...';
 
             // Autofill email and date from conversation data (only if not in calibration mode)
             if (!isCalibrationMode) {
@@ -13802,9 +15224,13 @@ document.addEventListener('DOMContentLoaded', function() {
             // Ensure chat view is active (it should already be)
             if (!isChatViewActive) {
                 isChatViewActive = true;
-                transcriptChatView.style.display = 'flex';
-                transcriptTextView.style.display = 'none';
+                if (transcriptChatView) transcriptChatView.style.display = 'flex';
+                if (transcriptTextView) transcriptTextView.style.display = 'none';
             }
+
+            // Clear loading interval
+            clearInterval(progressInterval);
+            if (loadingBar) loadingBar.style.width = '100%';
 
             // Enable Open button after successful load
             if (viewChatBtn) {
@@ -13816,11 +15242,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 viewChatBtn.title = 'Open in Intercom';
             }
 
+            // Check for existing audit and load stats after conversation loads
+            if (typeof checkAndLoadExistingAuditStats === 'function') {
+                await checkAndLoadExistingAuditStats(conversationId);
+            }
+
             // Show success notification
-            showNotification('Conversation loaded successfully!', 'success');
+            if (typeof showNotification === 'function') {
+                showNotification('Conversation loaded successfully!', 'success');
+            }
 
         } catch (error) {
-            console.error('Error loading conversation from Intercom:', error);
+            console.error('❌ [loadConversationFromIntercom] Error loading conversation:', error);
+            
+            // Clear loading interval
+            clearInterval(progressInterval);
+            
+            // Show error message in chat container
+            chatMessagesContainer.innerHTML = `
+                <div style="text-align: center; padding: 1.2937rem; color: #ef4444;">
+                    <svg style="width: 2.4258rem; height: 2.4258rem; margin: 0 auto 0.6469rem; opacity: 0.7; color: #ef4444;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p style="font-size: 0.5659rem; font-weight: 600; margin-bottom: 0.3234rem; color: #dc2626;">Failed to load conversation from Intercom</p>
+                    <p style="font-size: 0.4852rem; color: #6b7280; margin-bottom: 0.1617rem;">${escapeHtml(error.message || 'Unknown error occurred')}</p>
+                    <p style="font-size: 0.4043rem; color: #9ca3af; margin-top: 0.3234rem;">Conversation ID: ${escapeHtml(conversationId)}</p>
+                    <button onclick="window.loadConversationFromIntercom('${escapeHtml(conversationId)}')" style="margin-top: 0.6469rem; padding: 0.3234rem 0.6469rem; background: #1A733E; color: white; border: none; border-radius: 0.2426rem; font-size: 0.4852rem; cursor: pointer; font-weight: 500;">Retry</button>
+                </div>
+            `;
             
             // Auto-fallback to text view on error
             if (transcriptChatView && transcriptTextView) {
@@ -13838,20 +15289,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 viewChatBtn.textContent = 'Open';
                 viewChatBtn.title = 'Open in Intercom (load conversation first)';
             }
-
-            // Show error message in chat container (for debugging, but user will see text view)
-            chatMessagesContainer.innerHTML = `
-                <div style="text-align: center; padding: 1.2937rem; color: #ef4444;">
-                    <svg style="width: 1.9406rem; height: 1.9406rem; margin: 0 auto 0.6469rem; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="8" x2="12" y2="12"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
-                    <p style="font-size: 0.5659rem; font-weight: 600; margin-bottom: 0.3234rem;">Failed to load conversation from Intercom</p>
-                    <p style="font-size: 0.4852rem; color: #000000;">${escapeHtml(error.message)}</p>
-                    <p style="font-size: 0.4852rem; color: #000000; margin-top: 0.3234rem;">Falling back to text view.</p>
-                </div>
-            `;
         }
     };
     // Also create a local reference for backward compatibility
@@ -14066,13 +15503,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displayConversationMessages(conversation) {
-        const parts = conversation.conversation_parts?.conversation_parts || [];
+        // Get chat messages container - CRITICAL: Must be retrieved here
+        const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+        const transcriptChatView = document.getElementById('transcriptChatView');
+        const transcriptTextView = document.getElementById('transcriptTextView');
+        
+        if (!chatMessagesContainer) {
+            console.error('❌ [displayConversationMessages] chatMessagesContainer not found!');
+            return;
+        }
+        
+        console.log('✅ [displayConversationMessages] Container found, starting render...');
+        
+        // Handle different conversation_parts structures from Intercom API
+        let parts = [];
+        if (conversation.conversation_parts?.conversation_parts) {
+            // Nested structure: { conversation_parts: { conversation_parts: [...] } }
+            parts = conversation.conversation_parts.conversation_parts;
+        } else if (Array.isArray(conversation.conversation_parts)) {
+            // Direct array: { conversation_parts: [...] }
+            parts = conversation.conversation_parts;
+        } else if (conversation.parts && Array.isArray(conversation.parts)) {
+            // Alternative structure: { parts: [...] }
+            parts = conversation.parts;
+        }
         
         console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
         console.log('ðŸ”„ displayConversationMessages called');
         console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
         console.log('Total parts:', parts.length);
         console.log('Conversation ID:', conversation.id);
+        console.log('Conversation structure:', {
+            hasConversationParts: !!conversation.conversation_parts,
+            conversationPartsType: typeof conversation.conversation_parts,
+            isNested: !!(conversation.conversation_parts?.conversation_parts),
+            isArray: Array.isArray(conversation.conversation_parts),
+            hasParts: !!conversation.parts,
+            partsLength: parts.length
+        });
+        
+        if (parts.length === 0) {
+            console.warn('⚠️ No conversation parts found! Full conversation object:', conversation);
+        }
         
         // Log conversation structure for debugging
         if (parts.length > 0) {
@@ -14627,7 +16099,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 );
                 
                 if (isImage && att.url) {
-                    attachmentImages.push(att.url);
+                    let imageUrl = att.url;
+                    // Ensure URL is absolute - if it's relative, make it absolute
+                    if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+                        // If it's a relative URL, prepend Intercom CDN base URL
+                        imageUrl = 'https://downloads.intercomcdn.com/' + imageUrl.replace(/^\//, '');
+                    }
+                    attachmentImages.push(imageUrl);
                 }
             });
             
@@ -14674,23 +16152,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const hasAttachments = attachments.length > 0;
             
             // Build content info badge to show in UI what this part contains
-            // Show part_type only if debug flag is enabled
+            // Debug panel hidden - only show actual content types, not debug info
             let contentInfoBadge = '';
             const contentTypes = [];
             
-            // Include part_type first (only if debug mode is enabled)
-            if (shouldShowPartTypes() && partType) {
-                contentTypes.push(`Type: ${partType}`);
-            }
-            
-            // Then add content types
+            // Add content types (debug info excluded)
             if (hasText || hasHtml) contentTypes.push('Text');
             if (hasImages) contentTypes.push(`${allImages.length} Image${allImages.length > 1 ? 's' : ''}`);
             if (hasAttachments) contentTypes.push(`${attachments.length} Attachment${attachments.length > 1 ? 's' : ''}`);
             if (isEmail) contentTypes.push('Email');
             
-            // Always show badge if we have part_type or any content
-            if (contentTypes.length > 0 || (shouldShowPartTypes() && partType)) {
+            // Only show badge if we have actual content (no debug info)
+            if (contentTypes.length > 0) {
                 contentInfoBadge = `<div style="
                     font-size: 0.3639rem;
                     color: ${isUser ? '#000000' : 'rgba(255,255,255,0.7)'};
@@ -14700,7 +16173,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     border-radius: 0.1617rem;
                     display: inline-block;
                 ">
-                    ${contentTypes.length > 0 ? contentTypes.join(' • ') : (shouldShowPartTypes() && partType ? `Part Type: ${partType}` : 'Empty Part')}
+                    ${contentTypes.join(' • ')}
                 </div>`;
             }
             
@@ -15010,23 +16483,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${formattedHtml ? renderMessageWithInlineImages(formattedHtml, images, imageStartIndex, part.id, isUser) : 
                       (hasText ? 
                         `<div class="message-text-content" data-original-text="${escapeHtml(formattedText.replace(/"/g, '&quot;'))}" data-message-id="${part.id}" style="font-size: 0.5257rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; margin-top: ${isEmail ? '0.2426rem' : '0'}; margin-bottom: ${(allImages.length > 0 || attachments.length > 0) ? '0.3234rem' : '0'}; color: ${isUser ? '#374151' : 'white'};">${formattedText}</div>` : 
-                        (shouldShowPartTypes() && partType && partType.trim() !== '' ? 
-                            `<div class="message-text-content" data-message-id="${part.id}" style="font-size: 0.5257rem; line-height: 1.5; margin-top: ${isEmail ? '0.2426rem' : '0'}; margin-bottom: ${(allImages.length > 0 || attachments.length > 0) ? '0.3234rem' : '0'}; color: ${isUser ? '#6b7280' : 'rgba(255,255,255,0.8)'}; font-style: italic;">
-                                <span style="text-transform: uppercase; font-weight: 600; letter-spacing: 0.0405rem; font-size: 0.4447rem; opacity: 0.8;">${escapeHtml(partType)}</span>
-                                ${hasBody ? '<span style="margin-left: 0.2426rem; font-size: 0.4043rem; opacity: 0.6;">(body exists but no displayable content)</span>' : ''}
-                            </div>` : 
+                        ( 
                             (isAI && !hasBody && partType && partType.trim() !== '' ? 
                                 `<div class="message-text-content" data-message-id="${part.id}" style="font-size: 0.5257rem; line-height: 1.5; margin-top: ${isEmail ? '0.2426rem' : '0'}; margin-bottom: ${(allImages.length > 0 || attachments.length > 0) ? '0.3234rem' : '0'}; color: ${isUser ? '#6b7280' : 'rgba(255,255,255,0.8)'}; font-style: italic;">
                                     <span style="font-weight: 500; opacity: 0.9;">${escapeHtml(getActionLabel(partType))}</span>
                                 </div>` : 
                                 (hasBody || hasImages || hasAttachments || isEmail ? 
-                                    `<div class="message-text-content" data-message-id="${part.id}" style="font-size: 0.5257rem; line-height: 1.5; margin-top: ${isEmail ? '0.2426rem' : '0'}; margin-bottom: ${(allImages.length > 0 || attachments.length > 0) ? '0.3234rem' : '0'}; color: ${isUser ? '#6b7280' : 'rgba(255,255,255,0.8)'}; font-style: italic;">
-                                        <span style="opacity: 0.7;">Part ID: ${part.id}</span>
-                                        ${hasBody ? '<span style="margin-left: 0.2426rem;">• Has body (no displayable text)</span>' : ''}
-                                    </div>` : 
-                                    `<div class="message-text-content" data-message-id="${part.id}" style="font-size: 0.5257rem; line-height: 1.5; margin-top: ${isEmail ? '0.2426rem' : '0'}; margin-bottom: ${(allImages.length > 0 || attachments.length > 0) ? '0.3234rem' : '0'}; color: ${isUser ? '#9ca3af' : 'rgba(255,255,255,0.5)'}; font-style: italic;">
-                                        <span style="opacity: 0.6;">Empty part (ID: ${part.id})</span>
-                                    </div>`
+                                    '' : 
+                                    ''
                                 )
                             )
                         )
@@ -15040,6 +16504,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
             chatMessagesContainer.appendChild(messageDiv);
         });
+        
+        // Log how many messages were rendered
+        const renderedMessages = chatMessagesContainer.children.length;
+        console.log(`✅ [displayConversationMessages] Rendered ${renderedMessages} message elements to container`);
+        
+        // Ensure chat view is active and visible
+        if (transcriptChatView) {
+            transcriptChatView.style.display = 'flex';
+            console.log('✅ [displayConversationMessages] Chat view displayed');
+        }
+        if (transcriptTextView) {
+            transcriptTextView.style.display = 'none';
+        }
+        
+        // Sync to textarea if function exists
+        if (typeof syncChatToTextarea === 'function') {
+            syncChatToTextarea();
+        }
 
         // Scroll to bottom after a brief delay to ensure DOM is updated
         setTimeout(() => {
@@ -15121,13 +16603,48 @@ document.addEventListener('DOMContentLoaded', function() {
             const globalIndex = imageStartIndex + idx;
             const placeholder = `__IMAGE_PLACEHOLDER_${idx}__`;
             
-            // Escape the image src for HTML attribute (preserve URL structure)
-            // Only escape characters that would break the HTML attribute, preserve URL structure
-            const escapedSrc = escapeHtmlAttribute(imgSrc);
+            // Ensure image URL is absolute and properly formatted
+            let finalImageSrc = imgSrc;
+            if (finalImageSrc && !finalImageSrc.startsWith('http://') && !finalImageSrc.startsWith('https://')) {
+                // If relative URL, try to construct Intercom CDN URL
+                // Intercom images are typically served from downloads.intercomcdn.com
+                if (finalImageSrc.includes('intercom') || finalImageSrc.includes('downloads')) {
+                    finalImageSrc = 'https://' + finalImageSrc.replace(/^https?:\/\//, '').replace(/^\/\//, '');
+                } else {
+                    finalImageSrc = 'https://downloads.intercomcdn.com/' + finalImageSrc.replace(/^\//, '');
+                }
+            }
             
-            // Create image HTML with proper styling and click handler
-            // Use proper attribute escaping for src, but don't double-encode URL parameters
-            const imageHtml = `<img src="${escapedSrc}" alt="Image ${idx + 1}" onclick="window.openImageViewer(${globalIndex})" onerror="console.error('Failed to load image:', this.src); this.style.display='none';" style="max-width: 100%; max-height: 20rem; border-radius: 0.3234rem; margin: 0.3234rem 0; cursor: pointer; display: block; box-shadow: 0 0.1213rem 0.2426rem rgba(0,0,0,0.1); transition: transform 0.2s ease, box-shadow 0.2s ease;" onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 0.2426rem 0.4852rem rgba(0,0,0,0.15)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0.1213rem 0.2426rem rgba(0,0,0,0.1)';" loading="lazy" />`;
+            // Escape the image src for HTML attribute (preserve URL structure)
+            const escapedSrc = escapeHtmlAttribute(finalImageSrc);
+            
+            // Create image element with unique ID for event listener attachment (CSP compliant)
+            const imageId = `img_${messageId}_${idx}`;
+            const imageHtml = `<img id="${imageId}" src="${escapedSrc}" alt="Image ${idx + 1}" data-image-index="${globalIndex}" style="max-width: 100%; max-height: 20rem; border-radius: 0.3234rem; margin: 0.3234rem 0; cursor: pointer; display: block; box-shadow: 0 0.1213rem 0.2426rem rgba(0,0,0,0.1); transition: transform 0.2s ease, box-shadow 0.2s ease;" loading="lazy" />`;
+            
+            // Store image element reference for event listener attachment (fixes CSP violation)
+            setTimeout(() => {
+                const imgElement = document.getElementById(imageId);
+                if (imgElement) {
+                    imgElement.addEventListener('click', () => {
+                        if (window.openImageViewer) {
+                            window.openImageViewer(globalIndex);
+                        }
+                    });
+                    imgElement.addEventListener('error', function() {
+                        console.error('❌ Failed to load image:', this.src);
+                        this.style.display = 'none';
+                    });
+                    imgElement.addEventListener('mouseenter', function() {
+                        this.style.transform = 'scale(1.02)';
+                        this.style.boxShadow = '0 0.2426rem 0.4852rem rgba(0,0,0,0.15)';
+                    });
+                    imgElement.addEventListener('mouseleave', function() {
+                        this.style.transform = 'scale(1)';
+                        this.style.boxShadow = '0 0.1213rem 0.2426rem rgba(0,0,0,0.1)';
+                    });
+                }
+            }, 0);
             
             if (renderedHtml.includes(placeholder)) {
                 renderedHtml = renderedHtml.replace(placeholder, imageHtml);
@@ -15175,7 +16692,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let imageIndex = 0;
         
         imgTags.forEach((img) => {
-            const src = img.getAttribute('src') || '';
+            let src = img.getAttribute('src') || '';
             if (src) {
                 // Decode HTML entities in URL (but preserve the original URL structure)
                 let decodedSrc = src;
@@ -15183,6 +16700,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (src.includes('&amp;') && !src.includes('?')) {
                     decodedSrc = src.replace(/&amp;/g, '&');
                 }
+                
+                // Ensure URL is absolute - if it's relative, make it absolute using Intercom's CDN
+                if (decodedSrc && !decodedSrc.startsWith('http://') && !decodedSrc.startsWith('https://')) {
+                    // If it's a relative URL, prepend Intercom CDN base URL
+                    decodedSrc = 'https://downloads.intercomcdn.com/' + decodedSrc.replace(/^\//, '');
+                }
+                
                 images.push(decodedSrc);
                 
                 // Replace img tag with a placeholder
@@ -15213,7 +16737,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const matchIndex = match.index;
             
             if (imageUrl && imageUrl.trim() && !images.includes(imageUrl.trim())) {
-                const trimmedUrl = imageUrl.trim();
+                let trimmedUrl = imageUrl.trim();
+                
+                // Ensure URL is absolute - if it's relative, make it absolute using Intercom's CDN
+                if (trimmedUrl && !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+                    // If it's a relative URL, prepend Intercom CDN base URL
+                    // Intercom images are typically served from their CDN
+                    trimmedUrl = 'https://downloads.intercomcdn.com/' + trimmedUrl.replace(/^\//, '');
+                }
+                
                 // Only add if not already found in HTML img tags
                 textImageMatches.push({
                     url: trimmedUrl,
@@ -15509,15 +17041,62 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleConversationInfoGrid() {
         const content = document.getElementById('conversationInfoGridContent');
         const icon = document.getElementById('toggleInfoGridIcon');
-        if (!content || !icon) return;
+        const grid = document.getElementById('conversationInfoGrid');
         
-        const isHidden = content.style.display === 'none';
+        if (!content || !icon || !grid) {
+            console.warn('⚠️ Conversation info grid elements not found');
+            return;
+        }
+        
+        const isHidden = content.style.display === 'none' || content.style.display === '';
         content.style.display = isHidden ? 'grid' : 'none';
         icon.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+        
+        console.log('✅ Conversation info grid toggled:', isHidden ? 'shown' : 'hidden');
     }
     
     // Make toggle function globally accessible
     window.toggleConversationInfoGrid = toggleConversationInfoGrid;
+    
+    // Attach event listener to toggle button (fixes CSP violation)
+    function attachConversationInfoGridToggle() {
+        const toggleBtn = document.getElementById('toggleInfoGridBtn');
+        if (toggleBtn) {
+            // Remove any existing listeners by cloning and replacing
+            const newBtn = toggleBtn.cloneNode(true);
+            toggleBtn.parentNode.replaceChild(newBtn, toggleBtn);
+            
+            // Attach event listener
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleConversationInfoGrid();
+            });
+            
+            // Add hover effects via event listeners
+            newBtn.addEventListener('mouseenter', () => {
+                newBtn.style.background = '#f3f4f6';
+                newBtn.style.borderColor = '#1A733E';
+            });
+            newBtn.addEventListener('mouseleave', () => {
+                newBtn.style.background = '#f9fafb';
+                newBtn.style.borderColor = '#e5e7eb';
+            });
+            
+            console.log('✅ Conversation info grid toggle button event listener attached');
+        } else {
+            console.warn('⚠️ Toggle button not found, will retry...');
+            // Retry after a short delay if button not found yet
+            setTimeout(attachConversationInfoGridToggle, 500);
+        }
+    }
+    
+    // Attach when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', attachConversationInfoGridToggle);
+    } else {
+        attachConversationInfoGridToggle();
+    }
     
     // Language detection function - simple heuristic to detect non-English text
     function detectLanguage(text) {
@@ -16146,6 +17725,7 @@ window.submitDummyAudit = async function() {
             const today = new Date();
             interactionDate.value = today.toISOString().split('T')[0];
             console.log('✓ Filled interaction date:', interactionDate.value);
+            interactionDate.dispatchEvent(new Event('change', { bubbles: true }));
         }
         
         if (channel) {
@@ -16294,6 +17874,30 @@ Next Steps:
 // URL Parameter Handling - Load assignment from URL
 // ============================================================================
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('DOMContentLoaded fired in new-audit-form.html');
+    
+    // Wait for Supabase to be ready before proceeding
+    if (!window.supabaseClient || !window.supabaseClientReady) {
+        console.log('Waiting for Supabase client to be ready...');
+        await new Promise((resolve) => {
+            const checkReady = () => {
+                if (window.supabaseClient && window.supabaseClientReady) {
+                    console.log('✓ Supabase client ready, proceeding with page initialization');
+                    resolve();
+                }
+            };
+            checkReady();
+            window.addEventListener('supabaseClientReady', checkReady, { once: true });
+            window.addEventListener('supabaseReady', checkReady, { once: true });
+            setTimeout(() => {
+                if (!window.supabaseClient) {
+                    console.error('Supabase client initialization timeout');
+                }
+                resolve(); // Resolve anyway to continue
+            }, 15000);
+        });
+    }
+    
     // Check for assignment parameter in URL
     const urlParams = new URLSearchParams(window.location.search);
     const assignmentId = urlParams.get('assignment');
@@ -16428,6 +18032,7 @@ async function loadConversationDataIntoForm(conversationData) {
     if (interactionDateField && conversation.created_at) {
         const conversationDate = new Date(conversation.created_at * 1000);
         interactionDateField.value = conversationDate.toISOString().split('T')[0];
+        interactionDateField.dispatchEvent(new Event('change', { bubbles: true }));
     }
     
     // Pre-fill client information
@@ -16676,6 +18281,237 @@ async function loadConversationDataIntoForm(conversationData) {
             <img id="imageViewerImg" src="" alt="Conversation image" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.5);">
         </div>
     </div>
+
+  <!-- Initialize header metadata stats -->
+  <script>
+    // Inline updateHeaderMetadata function to avoid import issues
+    function updateHeaderMetadata(score = 0, passingStatus = '', totalErrors = 0) {
+      const metadataContainer = document.getElementById('headerMetadataCards');
+      if (!metadataContainer) {
+        console.warn('headerMetadataCards container not found');
+        return;
+      }
+
+      // Get quarter and week
+      const quarterField = document.getElementById('quarter');
+      const weekField = document.getElementById('week');
+      const interactionDateField = document.getElementById('interactionDate');
+
+      // Get interaction date or use current date as fallback
+      const interactionDate = interactionDateField?.value || '';
+      let dateToUse;
+      
+      if (interactionDate) {
+        const parsedDate = new Date(interactionDate);
+        dateToUse = !isNaN(parsedDate.getTime()) ? parsedDate : new Date();
+      } else {
+        dateToUse = new Date();
+      }
+
+      // Calculate quarter and week from interaction date (or current date if not set)
+      let quarter = quarterField?.value || '';
+      let week = weekField?.value || '';
+
+      // Calculate quarter from date
+      if (!quarter) {
+        const month = dateToUse.getMonth() + 1;
+        if (month >= 1 && month <= 3) quarter = 'Q1';
+        else if (month >= 4 && month <= 6) quarter = 'Q2';
+        else if (month >= 7 && month <= 9) quarter = 'Q3';
+        else if (month >= 10 && month <= 12) quarter = 'Q4';
+        
+        // Update hidden field if it exists
+        if (quarterField) {
+          quarterField.value = quarter;
+        }
+      }
+
+      // Calculate week from date
+      if (!week) {
+        const startOfYear = new Date(dateToUse.getFullYear(), 0, 1);
+        const dayOfWeek = startOfYear.getDay();
+        const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const mondayOfWeek1 = new Date(startOfYear);
+        mondayOfWeek1.setDate(startOfYear.getDate() + daysToMonday);
+        mondayOfWeek1.setHours(0, 0, 0, 0);
+        const dateDay = dateToUse.getDay();
+        const dateDaysToMonday = dateDay === 0 ? -6 : 1 - dateDay;
+        const mondayOfDateWeek = new Date(dateToUse);
+        mondayOfDateWeek.setDate(dateToUse.getDate() + dateDaysToMonday);
+        mondayOfDateWeek.setHours(0, 0, 0, 0);
+        const daysSinceWeek1 = Math.floor((mondayOfDateWeek.getTime() - mondayOfWeek1.getTime()) / (24 * 60 * 60 * 1000));
+        week = (Math.floor(daysSinceWeek1 / 7) + 1).toString();
+        
+        // Update hidden field if it exists
+        if (weekField) {
+          weekField.value = week;
+        }
+      }
+
+      // Format date for display
+      let formattedDate = 'N/A';
+      if (interactionDate) {
+        const date = new Date(interactionDate);
+        if (!isNaN(date.getTime())) {
+          const day = date.getDate();
+          const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+          const month = months[date.getMonth()];
+          const year = date.getFullYear();
+          // For date input fields, we only have date, not time, so use 00:00
+          let hours = date.getHours();
+          const minutes = date.getMinutes().toString().padStart(2, '0');
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          hours = hours % 12 || 12;
+          formattedDate = `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+        }
+      } else {
+        // If no interaction date, show current date
+        const day = dateToUse.getDate();
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const month = months[dateToUse.getMonth()];
+        const year = dateToUse.getFullYear();
+        let hours = dateToUse.getHours();
+        const minutes = dateToUse.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        formattedDate = `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+      }
+
+      // Determine status icon (handle empty status)
+      const passingStatusLower = (passingStatus || '').toLowerCase();
+      const isPassing = passingStatusLower.includes('pass') && !passingStatusLower.includes('not');
+      const statusIcon = passingStatusLower ? (isPassing ? '✓ ' : '✗ ') : '';
+      const displayStatus = passingStatus || 'N/A';
+
+      // Format quarter
+      const formattedQuarter = quarter ? (quarter.toString().startsWith('Q') ? quarter : 'Q' + quarter) : 'N/A';
+
+      // Escape HTML helper
+      function escapeHtml(text) {
+        if (text == null) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      // Build metadata cards HTML
+      const metadataCardsHtml = `
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Date</p>
+          <p style="font-size: 0.4852rem; font-weight: 600; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${escapeHtml(formattedDate)}</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Qtr</p>
+          <p style="font-size: 0.5659rem; font-weight: 600; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${escapeHtml(formattedQuarter)}</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Week</p>
+          <p style="font-size: 0.5659rem; font-weight: 600; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${escapeHtml(week || 'N/A')}</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Errors</p>
+          <p style="font-size: 0.6064rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${escapeHtml(totalErrors.toString())}</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Status</p>
+          <p id="headerStatusDisplay" style="font-size: 0.6064rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${statusIcon}${escapeHtml(displayStatus)}</p>
+        </div>
+        <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
+          <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Score</p>
+          <p id="headerScoreDisplay" style="font-size: 0.6064rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif; line-height: 1.2;">${escapeHtml(score.toFixed(0))}%</p>
+        </div>
+      `;
+
+      metadataContainer.innerHTML = metadataCardsHtml;
+    }
+    
+    // Make function available globally for event listeners
+    window.updateHeaderMetadata = updateHeaderMetadata;
+    
+    // Helper function to initialize stats
+    function initializeStats() {
+      try {
+        // Get current values
+        const averageScoreField = document.getElementById('averageScore');
+        const passingStatusField = document.getElementById('passingStatus');
+        const totalErrorsField = document.getElementById('totalErrorsCount');
+        
+        const score = averageScoreField ? (parseFloat(averageScoreField.value) || 0) : 0;
+        const passingStatus = passingStatusField ? (passingStatusField.value || '') : '';
+        const totalErrors = totalErrorsField ? (parseInt(totalErrorsField.value) || 0) : 0;
+        
+        updateHeaderMetadata(score, passingStatus, totalErrors);
+      } catch (error) {
+        console.error('Error initializing stats:', error);
+      }
+    }
+    
+    // Watch for interaction date field and set up event listeners
+    function setupInteractionDateWatcher() {
+      const interactionDateField = document.getElementById('interactionDate');
+      if (interactionDateField) {
+        // Listen to standard events
+        interactionDateField.addEventListener('change', initializeStats);
+        interactionDateField.addEventListener('input', initializeStats);
+        
+        // Also trigger change event when value property is set programmatically
+        // This is a workaround for when .value is set directly
+        let lastValue = interactionDateField.value;
+        const checkValue = setInterval(() => {
+          if (interactionDateField.value !== lastValue) {
+            lastValue = interactionDateField.value;
+            if (lastValue) {
+              initializeStats();
+            }
+          }
+        }, 500);
+        
+        // Clean up interval after 30 seconds (should be enough for initial load)
+        setTimeout(() => clearInterval(checkValue), 30000);
+      }
+    }
+    
+    // Initialize stats when DOM is ready
+    function initStatsOnReady() {
+      // Wait a bit for DOM to be fully ready and form fields to be populated
+      setTimeout(() => {
+        setupInteractionDateWatcher();
+        initializeStats();
+      }, 1000);
+    }
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initStatsOnReady);
+    } else {
+      // DOM already loaded
+      initStatsOnReady();
+    }
+    
+    // Also re-initialize after a longer delay to catch assignment loading
+    setTimeout(() => {
+      setupInteractionDateWatcher();
+      initializeStats();
+    }, 2000);
+    
+    // Watch for when interaction date field is added dynamically
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        mutation.addedNodes.forEach(function(node) {
+          if (node.nodeType === 1) { // Element node
+            if (node.id === 'interactionDate' || node.querySelector && node.querySelector('#interactionDate')) {
+              setupInteractionDateWatcher();
+              initializeStats();
+            }
+          }
+        });
+      });
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  </script>
 
 </body>
 </html>

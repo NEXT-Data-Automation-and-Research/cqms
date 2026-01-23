@@ -1,0 +1,304 @@
+/**
+ * Reversal Management Page Styles
+ * Uses design system variables from theme.css
+ */
+
+/* Stats Grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    background: var(--background-white);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    border: 0.0469rem solid var(--border-light);
+    transition: var(--transition-fast);
+    box-sizing: border-box;
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-0.0625rem);
+}
+
+.stat-value {
+    font-size: var(--font-xl);
+    font-weight: 700;
+    color: var(--button-primary);
+    margin-bottom: 0.1875rem;
+    line-height: 1.2;
+}
+
+.stat-title {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Dark Mode Styles */
+[data-theme="dark"] .stat-card {
+    background: var(--background-white);
+    border-color: var(--border-light);
+}
+
+[data-theme="dark"] .stat-title {
+    color: var(--text-secondary);
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+/* Action Buttons - Use system styles from home-page.css */
+.action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4688rem 0.75rem;
+    background-color: var(--background-white);
+    color: var(--text-color);
+    border: 0.0469rem solid var(--border-light);
+    border-radius: 0.375rem;
+    font-size: var(--font-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition-fast);
+    font-family: var(--font-family);
+    white-space: nowrap;
+}
+
+.action-btn:hover:not(:disabled) {
+    background-color: var(--gray-50);
+    border-color: var(--border-focus);
+}
+
+.action-btn.active {
+    background-color: var(--button-primary);
+    color: var(--white);
+    border-color: var(--button-primary);
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.action-btn svg {
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Date Range Picker */
+.date-picker-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.date-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.375rem;
+    background: var(--background-white);
+    border: 0.0469rem solid var(--border-light);
+    border-radius: 0.375rem;
+    box-shadow: var(--shadow-lg);
+    padding: 0.75rem;
+    z-index: var(--z-dropdown);
+    min-width: 12rem;
+}
+
+.date-dropdown-menu.active {
+    display: block;
+}
+
+/* Filter Panel */
+.filter-panel {
+    display: none;
+    background: var(--background-white);
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    border: 0.0469rem solid var(--border-light);
+    margin-bottom: 0.75rem;
+    box-sizing: border-box;
+}
+
+.filter-panel-title {
+    font-size: var(--font-sm);
+    font-weight: 600;
+    color: var(--button-primary);
+}
+
+.clear-filters-btn {
+    padding: 0.2812rem 0.5625rem;
+    background-color: var(--gray-50);
+    color: var(--gray-700);
+    border: 0.0469rem solid var(--gray-300);
+    border-radius: 0.1875rem;
+    font-size: var(--font-xs);
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.clear-filters-btn:hover {
+    background-color: var(--gray-100);
+    border-color: var(--gray-400);
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+    margin-top: 0.5625rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.filter-label {
+    font-size: var(--font-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.1875rem;
+    display: block;
+}
+
+.filter-input {
+    padding: 0.375rem 0.5625rem;
+    border: 0.0469rem solid var(--border-light);
+    border-radius: 0.2812rem;
+    font-size: var(--font-sm);
+    font-family: var(--font-family);
+    background-color: var(--background-white);
+    color: var(--text-color);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.filter-input:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 0.125rem rgba(26, 115, 62, 0.1);
+}
+
+/* Reversal List */
+.reversal-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5625rem;
+    width: 100%;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+}
+
+.no-reversals-message {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-family: var(--font-family);
+}
+
+.no-reversals-title {
+    font-size: var(--font-base);
+    margin-bottom: 0.375rem;
+    font-weight: 600;
+}
+
+.no-reversals-subtitle {
+    font-size: var(--font-sm);
+    margin-bottom: 0.75rem;
+    color: var(--text-muted);
+}
+
+.view-all-btn {
+    padding: 0.375rem 0.75rem;
+    background-color: var(--gray-500);
+    color: white;
+    border: none;
+    border-radius: 0.2812rem;
+    font-size: var(--font-sm);
+    font-family: var(--font-family);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.view-all-btn:hover {
+    background-color: var(--gray-600);
+}
+
+/* Reversal Card */
+.reversal-card {
+    background: var(--gray-50);
+    border: 0.0469rem solid var(--border-light);
+    border-radius: 0.1875rem;
+    padding: 0.75rem;
+    transition: var(--transition-fast);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.reversal-card:hover {
+    border-color: var(--border-focus);
+    background-color: var(--background-white);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .header-actions > div {
+        width: 100%;
+    }
+    
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Ensure proper overflow handling */
+.reversal-list {
+    min-height: 0;
+    overflow-y: auto;
+    flex: 1;
+}

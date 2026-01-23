@@ -110,7 +110,17 @@ export class AssignedAuditsSidebar {
 
   private navigateToAuditForm(): void {
     // Navigate to the audit form page
-    window.location.href = '/src/features/audit-form/audit-form.html';
+    // For manual audits, no parameters are needed
+    window.location.href = '/src/features/audit-form/presentation/new-audit-form.html';
+  }
+  
+  private navigateToAuditFormWithAssignment(assignmentId: string, conversationId?: string): void {
+    // Navigate to the audit form page with assignment and optional conversation_id
+    let url = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+    if (conversationId) {
+      url += `&conversation_id=${encodeURIComponent(conversationId)}`;
+    }
+    window.location.href = url;
   }
 
   onEmployeeSelect(callback: (employee: EmployeeAuditSummary) => void): void {
@@ -231,6 +241,9 @@ export class AssignedAuditsSidebar {
                   employee_id: person.employee_id,
                   intercom_alias: person.intercom_admin_alias
                 });
+                if (person.intercom_admin_alias) {
+                  logInfo(`✅ Found intercom_alias for ${person.email}: ${person.intercom_admin_alias}`);
+                }
               }
             });
           }
@@ -250,6 +263,9 @@ export class AssignedAuditsSidebar {
                     employee_id: user.employee_id,
                     intercom_alias: user.intercom_admin_alias
                   });
+                  if (user.intercom_admin_alias) {
+                    logInfo(`✅ Found intercom_alias for ${user.email}: ${user.intercom_admin_alias}`);
+                  }
                 }
               });
             }
@@ -351,6 +367,10 @@ export class AssignedAuditsSidebar {
       if (summary) {
         summary.audits.push(audit);
         summary.audit_count = summary.audits.length;
+        // Update intercom_alias if this audit has one and the summary doesn't
+        if (audit.intercom_alias && !summary.intercom_alias) {
+          summary.intercom_alias = audit.intercom_alias;
+        }
       }
     });
 
@@ -432,7 +452,6 @@ export class AssignedAuditsSidebar {
     this.listContainer.textContent = '';
     this.filteredSummaries.forEach((summary, index) => {
       const isActive = summary.employee_email === this.selectedEmployeeId;
-      const intercomDisplay = summary.intercom_alias || 'No alias';
       
       const itemDiv = document.createElement('div');
       itemDiv.className = `employee-item ${isActive ? 'active' : ''}`;
@@ -448,12 +467,15 @@ export class AssignedAuditsSidebar {
       nameSpan.className = 'employee-name';
       nameSpan.textContent = summary.employee_name;
       
-      const aliasSpan = document.createElement('span');
-      aliasSpan.className = 'employee-alias';
-      aliasSpan.textContent = intercomDisplay;
-      
       primaryDiv.appendChild(nameSpan);
-      primaryDiv.appendChild(aliasSpan);
+      
+      // Only show alias if it exists
+      if (summary.intercom_alias) {
+        const aliasSpan = document.createElement('span');
+        aliasSpan.className = 'employee-alias';
+        aliasSpan.textContent = summary.intercom_alias;
+        primaryDiv.appendChild(aliasSpan);
+      }
       
       const secondaryDiv = document.createElement('div');
       secondaryDiv.className = 'employee-secondary';
@@ -473,6 +495,7 @@ export class AssignedAuditsSidebar {
       logInfo(`✅ Rendered employee item ${index + 1}`, {
         employeeEmail: summary.employee_email,
         employeeName: summary.employee_name,
+        intercomAlias: summary.intercom_alias || 'none',
         auditCount: summary.audit_count
       });
     });
