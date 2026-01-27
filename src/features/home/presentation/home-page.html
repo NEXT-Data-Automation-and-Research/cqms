@@ -205,15 +205,6 @@
     background-color: var(--primary-green-dark) !important;
   }
 
-  /* Purple channel tag to match screenshot */
-  #profileChannelTag {
-    color: #9333ea !important; /* Purple color */
-  }
-  
-  #displayChannelText {
-    color: #9333ea !important;
-    font-weight: 700;
-  }
 
   /* Green QUALITY ANALYST badge */
   #dashboardUserRole {
@@ -1090,10 +1081,6 @@
                 </span>
               </div>
               <div id="profileInfoPills" class="flex items-center gap-2 flex-wrap">
-                <!-- Channel Tag (shown for all users) -->
-                <span id="profileChannelTag" class="text-purple-600 text-xs font-medium hidden">
-                  # Channel: <span id="displayChannelText" class="font-bold">All Channels</span>
-                </span>
                 <!-- Employee Pills (hidden by default, shown conditionally) -->
                 <div id="pillEmployeeId" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 rounded text-[10px]">
                   <svg class="w-3 h-3 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1101,13 +1088,6 @@
                   </svg>
                   <span class="text-blue-500 font-medium">ID:</span>
                   <span class="text-blue-700 font-bold" id="displayEmployeeId">-</span>
-                </div>
-                <div id="pillChannel" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 rounded text-[10px]">
-                  <svg class="w-3 h-3 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/>
-                  </svg>
-                  <span class="text-purple-500 font-medium">Channel:</span>
-                  <span class="text-purple-700 font-bold" id="displayChannel">-</span>
                 </div>
                 <div id="pillTeam" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-green-50 rounded text-[10px]">
                   <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1138,20 +1118,8 @@
                   <span class="text-purple-500 font-medium">Channel:</span>
                   <span class="text-purple-700 font-bold" id="displayAdminChannel">-</span>
                 </div>
-                <div id="pillQualityMentor" class="hidden flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded text-[10px]">
-                  <svg class="w-3 h-3 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
-                  </svg>
-                  <span class="text-amber-500 font-medium">Quality Mentor:</span>
-                  <span class="text-amber-700 font-bold">Yes</span>
-                </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Right: Date -->
-          <div class="flex items-center gap-1.5 text-sm text-gray-600 ml-auto">
-            <span id="dashboardTodayDate" class="font-semibold"><!-- Date --></span>
           </div>
         </div>
       </div>
@@ -3111,17 +3079,10 @@ async function populatePremiumDashboard() {
   const dashboardUserEmail = document.getElementById('dashboardUserEmail');
   const dashboardUserRole = document.getElementById('dashboardUserRole');
   const dashboardAvatar = document.getElementById('dashboardAvatar');
-  const dashboardTodayDate = document.getElementById('dashboardTodayDate');
   
   if (dashboardUserName) dashboardUserName.textContent = userInfo.name || 'Unknown User';
   if (dashboardUserEmail) dashboardUserEmail.textContent = userInfo.email || '';
   if (dashboardUserRole) dashboardUserRole.textContent = userInfo.role || 'User';
-  
-  // Set today's date
-  if (dashboardTodayDate) {
-    const today = new Date();
-    dashboardTodayDate.textContent = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
   
   // Update dashboard avatar
   if (dashboardAvatar) {
@@ -3161,15 +3122,22 @@ async function populatePremiumDashboard() {
       const isEmployee = userData.role === 'Employee';
       const isAdmin = userData.role === 'Admin' || userData.role === 'Super Admin' || userData.role === 'Quality Analyst';
       
-      // Show Intercom pill for all users (show even if null to display the value)
+      // Show Intercom pill only if there's a valid value (not null or empty)
       const pillIntercomAlias = document.getElementById('pillIntercomAlias');
       if (pillIntercomAlias) {
-        pillIntercomAlias.classList.remove('hidden');
         const displayIntercomAlias = document.getElementById('displayIntercomAlias');
         if (displayIntercomAlias) {
-          // Show intercom_admin_alias if available, otherwise intercom_admin_id, otherwise "null"
+          // Show intercom_admin_alias if available, otherwise intercom_admin_id
           const intercomValue = userData.intercom_admin_alias || userData.intercom_admin_id || null;
-          displayIntercomAlias.textContent = intercomValue !== null ? String(intercomValue) : 'null';
+          
+          // Only show the pill if there's a valid (non-null, non-empty) value
+          if (intercomValue !== null && intercomValue !== undefined && String(intercomValue).trim() !== '') {
+            pillIntercomAlias.classList.remove('hidden');
+            displayIntercomAlias.textContent = String(intercomValue);
+          } else {
+            // Keep it hidden if no valid value
+            pillIntercomAlias.classList.add('hidden');
+          }
         }
       }
       
@@ -3178,7 +3146,6 @@ async function populatePremiumDashboard() {
       const hasEmployeeData = userData.employee_id || userData.channel || userData.team || userData.team_supervisor;
       if (isEmployee || hasEmployeeData) {
         const pillEmployeeId = document.getElementById('pillEmployeeId');
-        const pillChannel = document.getElementById('pillChannel');
         const pillTeam = document.getElementById('pillTeam');
         const pillSupervisor = document.getElementById('pillSupervisor');
         
@@ -3190,24 +3157,6 @@ async function populatePremiumDashboard() {
             // Show the value even if it's null/empty (will show "-")
             displayEmployeeId.textContent = userData.employee_id || '-';
           }
-        }
-        
-        // Show Channel pill if channel exists in query result (even if null/empty)
-        if (pillChannel) {
-          pillChannel.classList.remove('hidden');
-          const displayChannel = document.getElementById('displayChannel');
-          if (displayChannel) {
-            displayChannel.textContent = userData.channel || '-';
-          }
-        }
-        
-        // Also show channel tag
-        const profileChannelTag = document.getElementById('profileChannelTag');
-        const displayChannelText = document.getElementById('displayChannelText');
-        if (profileChannelTag && displayChannelText) {
-          const channelText = userData.channel || 'All Channels';
-          displayChannelText.textContent = channelText;
-          profileChannelTag.classList.remove('hidden');
         }
         
         // Show Team pill if team exists in query result (even if null/empty)
@@ -3252,25 +3201,10 @@ async function populatePremiumDashboard() {
       
       // Show/hide admin pills
       if (isAdmin) {
-        const pillAdminChannel = document.getElementById('pillAdminChannel');
-        const pillQualityMentor = document.getElementById('pillQualityMentor');
-        const profileChannelTag = document.getElementById('profileChannelTag');
-        const displayChannelText = document.getElementById('displayChannelText');
-        
-        // Show channel tag for all users (matching screenshot)
-        if (profileChannelTag && displayChannelText) {
-          const channelText = userData.channel || 'All Channels';
-          displayChannelText.textContent = channelText;
-          profileChannelTag.classList.remove('hidden');
-        }
-        
         if (pillAdminChannel) {
           pillAdminChannel.classList.remove('hidden');
           const displayAdminChannel = document.getElementById('displayAdminChannel');
           if (displayAdminChannel) displayAdminChannel.textContent = userData.channel || 'All Channels';
-        }
-        if (pillQualityMentor && userData.quality_mentor) {
-          pillQualityMentor.classList.remove('hidden');
         }
       }
     } else if (!error && !userData) {

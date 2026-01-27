@@ -21,7 +21,7 @@ export interface Auditor {
   id: string;
   email: string;
   name: string;
-  role: 'Quality Analyst' | 'Admin' | 'Super Admin' | 'Quality Supervisor';
+  role: 'Quality Analyst' | 'Admin' | 'Super Admin' | 'Quality Supervisor' | 'Auditor' | 'Manager';
   is_active: boolean;
 }
 

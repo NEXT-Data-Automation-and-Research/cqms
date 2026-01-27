@@ -62,6 +62,90 @@ export class PeopleRepository extends BaseRepository {
   }
 
   /**
+   * Find all auditors (roles above Employee level)
+   * Includes: Quality Analyst, Admin, Super Admin, Quality Supervisor, Auditor, Manager
+   */
+  async findAllAuditors(): Promise<Auditor[]> {
+    return this.getCachedOrFetch(
+      'all_auditors',
+      async () => {
+        try {
+          const result = await this.executeQuery(
+            async () => {
+              // Get all users with roles above Employee level
+              // Roles: Quality Analyst, Admin, Super Admin, Quality Supervisor, Auditor, Manager
+              return await this.db
+                .from(this.getTableName())
+                .select(['email', 'name', 'role', 'is_active'])
+                .in('role', [
+                  'Quality Analyst',
+                  'Admin',
+                  'Super Admin',
+                  'Quality Supervisor',
+                  'Auditor',
+                  'Manager'
+                ])
+                .eq('is_active', true)
+                .order('name', { ascending: true })
+                .execute<PeopleRow[]>();
+            },
+            'Failed to load all auditors'
+          );
+
+          const auditors = this.mapToAuditors(Array.isArray(result) ? result : []);
+          logInfo(`[PeopleRepository] Loaded ${auditors.length} auditors`);
+          return auditors;
+        } catch (error) {
+          logError('[PeopleRepository] Error loading all auditors:', error);
+          throw error;
+        }
+      },
+      300000 // 5 minutes cache
+    );
+  }
+
+  /**
+   * Find other auditors (non-Quality Analyst roles above Employee level)
+   * Includes: Admin, Super Admin, Quality Supervisor, Auditor, Manager
+   */
+  async findOtherAuditors(): Promise<Auditor[]> {
+    return this.getCachedOrFetch(
+      'other_auditors',
+      async () => {
+        try {
+          const result = await this.executeQuery(
+            async () => {
+              // Get all users with roles above Employee level, excluding Quality Analysts
+              return await this.db
+                .from(this.getTableName())
+                .select(['email', 'name', 'role', 'is_active'])
+                .in('role', [
+                  'Admin',
+                  'Super Admin',
+                  'Quality Supervisor',
+                  'Auditor',
+                  'Manager'
+                ])
+                .eq('is_active', true)
+                .order('name', { ascending: true })
+                .execute<PeopleRow[]>();
+            },
+            'Failed to load other auditors'
+          );
+
+          const auditors = this.mapToAuditors(Array.isArray(result) ? result : []);
+          logInfo(`[PeopleRepository] Loaded ${auditors.length} other auditors`);
+          return auditors;
+        } catch (error) {
+          logError('[PeopleRepository] Error loading other auditors:', error);
+          throw error;
+        }
+      },
+      300000 // 5 minutes cache
+    );
+  }
+
+  /**
    * Find all team members (excluding Quality Analysts)
    */
   async findTeamMembers(): Promise<Employee[]> {
@@ -110,7 +194,7 @@ export class PeopleRepository extends BaseRepository {
         id: row.email!,
         email: row.email!,
         name: row.name!,
-        role: row.role! as 'Quality Analyst',
+        role: row.role! as Auditor['role'],
         is_active: row.is_active ?? true
       }));
   }
@@ -142,6 +226,22 @@ export class PeopleRepository extends BaseRepository {
    */
   invalidateQualityAnalystsCache(): void {
     this.invalidateCache('quality_analysts');
+  }
+
+  /**
+   * Invalidate cache for all auditors
+   */
+  invalidateAllAuditorsCache(): void {
+    this.invalidateCache('all_auditors');
+    this.invalidateCache('quality_analysts');
+    this.invalidateCache('other_auditors');
+  }
+
+  /**
+   * Invalidate cache for other auditors
+   */
+  invalidateOtherAuditorsCache(): void {
+    this.invalidateCache('other_auditors');
   }
 
   /**

@@ -24,6 +24,12 @@
   width: calc(100vw - var(--sidebar-width)) !important;
 }
 
+/* When sidebar is collapsed but hovered, adjust main-content width */
+.home-page .sidebar.collapsed:hover ~ .main-content {
+  margin-left: var(--sidebar-width) !important;
+  width: calc(100vw - var(--sidebar-width)) !important;
+}
+
 /* Header Background - Light background for home page */
 .home-page header {
   background-color: var(--background-white, #FFFFFF) !important;

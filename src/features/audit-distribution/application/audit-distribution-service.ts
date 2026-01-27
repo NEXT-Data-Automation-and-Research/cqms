@@ -48,7 +48,8 @@ export class AuditDistributionService extends BaseService {
   }
 
   /**
-   * Load quality analysts
+   * Load quality analysts (role = 'Quality Analyst')
+   * These are shown by default in the auditor selection
    */
   async loadQualityAnalysts(): Promise<Auditor[]> {
     return this.executeBusinessLogic(
@@ -60,14 +61,17 @@ export class AuditDistributionService extends BaseService {
   }
 
   /**
-   * Load other auditors (Admin, Super Admin, Quality Supervisor)
-   * Note: Currently returns empty array as we only show Quality Analysts as auditors
-   * and team members separately. This can be extended if needed.
+   * Load other auditors (non-Quality Analyst roles above Employee level)
+   * Includes: Admin, Super Admin, Quality Supervisor, Auditor, Manager
+   * These appear when "Include Others" button is enabled
    */
   async loadOtherAuditors(): Promise<Auditor[]> {
-    // Return empty array - we only use Quality Analysts as auditors
-    // Team members are shown separately
-    return [];
+    return this.executeBusinessLogic(
+      async () => {
+        return await this.peopleRepository.findOtherAuditors();
+      },
+      'Failed to load other auditors'
+    );
   }
 
   /**

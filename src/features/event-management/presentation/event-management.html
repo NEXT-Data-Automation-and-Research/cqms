@@ -14,20 +14,19 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
-  <link rel="stylesheet" href="event-management.css">
+  <link rel="stylesheet" href="/src/features/event-management/presentation/event-management.css">
   <!-- SECURITY: SRI hashes should be added after verification -->
   <!-- Generate hashes using: node scripts/generate-sri-hashes.js -->
   <script 
     src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
-    integrity="sha384-..." 
     crossorigin="anonymous">
   </script>
   <!-- Note: Google GSI may not support SRI - consider hosting locally -->
+  <!-- Removed crossorigin to avoid CORS issues with Google's CDN -->
   <script 
     src="https://accounts.google.com/gsi/client" 
     async 
-    defer
-    crossorigin="anonymous">
+    defer>
   </script>
   <!-- Global Confirmation Dialog Component -->
   <script src="/confirmation-dialog.js"></script>
@@ -65,8 +64,8 @@
           <h1 class="event-title">Event Management</h1>
           <p id="eventScopeInfo" class="event-scope-info"></p>
         </div>
-        <button id="createEventBtn" class="btn-create-event">
-          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button id="createEventBtn" class="btn-create-event" type="button" aria-label="Create new event">
+          <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
           </svg>
           <span id="createEventBtnText">Create Event</span>
@@ -75,34 +74,34 @@
 
       <!-- View Toggle and Event Types Filter -->
       <div class="event-controls">
-        <div class="event-filters">
-          <button class="event-type-filter active" data-type="all">
+        <div class="event-filters" role="group" aria-label="Event type filters">
+          <button class="event-type-filter active" data-type="all" type="button" aria-pressed="true" aria-label="Show all events">
             All Events
           </button>
-          <button class="event-type-filter" data-type="session">
+          <button class="event-type-filter" data-type="session" type="button" aria-pressed="false" aria-label="Show sessions only">
             Sessions
           </button>
-          <button class="event-type-filter" data-type="meeting">
+          <button class="event-type-filter" data-type="meeting" type="button" aria-pressed="false" aria-label="Show meetings only">
             Meetings
           </button>
-          <button class="event-type-filter" data-type="feedback">
+          <button class="event-type-filter" data-type="feedback" type="button" aria-pressed="false" aria-label="Show feedback sessions only">
             Feedback Sessions
           </button>
-          <button class="event-type-filter" data-type="training">
+          <button class="event-type-filter" data-type="training" type="button" aria-pressed="false" aria-label="Show training sessions only">
             Training Session
           </button>
         </div>
 
         <!-- View Toggle -->
-        <div class="view-toggle-container">
-          <button id="listViewBtn" class="view-toggle-btn active" data-view="list">
-            <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="view-toggle-container" role="group" aria-label="View toggle">
+          <button id="listViewBtn" class="view-toggle-btn active" data-view="list" type="button" aria-pressed="true" aria-label="List view">
+            <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
             <span class="view-toggle-text">List</span>
           </button>
-          <button id="calendarViewBtn" class="view-toggle-btn" data-view="calendar">
-            <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button id="calendarViewBtn" class="view-toggle-btn" data-view="calendar" type="button" aria-pressed="false" aria-label="Calendar view">
+            <svg class="view-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
             <span class="view-toggle-text">Calendar</span>
@@ -163,7 +162,7 @@
           </div>
           
           <!-- Calendar Days -->
-          <div id="calendarGrid" class="grid grid-cols-7 gap-px bg-gray-200" style="display: none;">
+          <div id="calendarGrid" class="calendar-grid" style="display: none;">
             <!-- Calendar cells will be populated by JavaScript -->
           </div>
         </div>
@@ -341,12 +340,6 @@
       </div>
       
       <div class="modal-footer">
-        <button onclick="window.print()" class="btn-secondary" title="Print event details">
-          <svg class="btn-icon-small" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
-          </svg>
-          <span class="btn-text">Print</span>
-        </button>
         <button id="closeViewEventModalBtn2" class="btn-secondary">
           Close
         </button>
