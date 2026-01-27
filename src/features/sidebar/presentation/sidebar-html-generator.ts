@@ -17,22 +17,25 @@ export class SidebarHTMLGenerator {
    */
   generate(userInfo: UserInfo | null): string {
     // H5 FIX: Filter routes BEFORE generating HTML to prevent menu flash
-    const userRole = userInfo?.role;
-    const sidebarRoutes = router.getSidebarRoutes(userRole);
+    // COMMENTED OUT: User permission filtering - temporarily disabled for development
+    // const userRole = userInfo?.role;
+    // const sidebarRoutes = router.getSidebarRoutes(userRole);
+    const sidebarRoutes = router.getSidebarRoutes(); // Get all routes without role filtering
     const currentPath = router.getCurrentPath();
 
-    // Filter routes by access before rendering
-    const accessibleRoutes = sidebarRoutes.filter(route => {
-      // If route allows 'all', always show it
-      if (route.meta.roles.includes('all')) return true;
-      // If no user role provided, show all routes initially (for backwards compatibility)
-      if (!userRole) return true;
-      // Check if user has access
-      return router.canAccessRoute(route.meta.roles, userRole);
-    });
+    // COMMENTED OUT: Filter routes by access before rendering - temporarily disabled for development
+    // const accessibleRoutes = sidebarRoutes.filter(route => {
+    //   // If route allows 'all', always show it
+    //   if (route.meta.roles.includes('all')) return true;
+    //   // If no user role provided, show all routes initially (for backwards compatibility)
+    //   if (!userRole) return true;
+    //   // Check if user has access
+    //   return router.canAccessRoute(route.meta.roles, userRole);
+    // });
+    const accessibleRoutes = sidebarRoutes; // Show all routes without filtering
 
     const menuItems = accessibleRoutes
-      .map(route => this.generateMenuItem(route, currentPath, userRole))
+      .map(route => this.generateMenuItem(route, currentPath)) // Removed userRole parameter
       .filter(item => item !== '') // Filter out empty items (e.g., submenus with no accessible items)
       .join('')
 
@@ -44,14 +47,15 @@ export class SidebarHTMLGenerator {
    */
   private generateMenuItem(
     route: RouteConfig, 
-    currentPath: string, 
-    userRole?: string
+    currentPath: string
+    // COMMENTED OUT: userRole parameter - temporarily disabled for development
+    // userRole?: string
   ): string {
     const isActive = router.isRouteActive(route.path)
     const hasSubmenu = route.submenu && route.submenu.length > 0
 
     if (hasSubmenu) {
-      return this.generateSubmenuItem(route, currentPath, userRole)
+      return this.generateSubmenuItem(route, currentPath) // Removed userRole parameter
     }
 
     // Use clean URL if available, fallback to original path (backward compatible)
@@ -89,8 +93,9 @@ export class SidebarHTMLGenerator {
    */
   private generateSubmenuItem(
     route: RouteConfig,
-    currentPath: string,
-    userRole?: string
+    currentPath: string
+    // COMMENTED OUT: userRole parameter - temporarily disabled for development
+    // userRole?: string
   ): string {
     if (!route.submenu || route.submenu.length === 0) {
       return ''
@@ -101,15 +106,16 @@ export class SidebarHTMLGenerator {
     )
     const isExpanded = isActive
 
-    // Filter submenu items by access
-    const accessibleSubmenuItems = route.submenu.filter(item => 
-      router.canAccessRoute(item.roles, userRole)
-    )
+    // COMMENTED OUT: Filter submenu items by access - temporarily disabled for development
+    // const accessibleSubmenuItems = route.submenu.filter(item => 
+    //   router.canAccessRoute(item.roles, userRole)
+    // )
+    const accessibleSubmenuItems = route.submenu; // Show all submenu items without filtering
 
-    // If no submenu items are accessible, don't show the parent menu item
-    if (accessibleSubmenuItems.length === 0) {
-      return ''
-    }
+    // COMMENTED OUT: If no submenu items are accessible, don't show the parent menu item - temporarily disabled for development
+    // if (accessibleSubmenuItems.length === 0) {
+    //   return ''
+    // }
 
     const submenuItems = accessibleSubmenuItems
       .map(item => {

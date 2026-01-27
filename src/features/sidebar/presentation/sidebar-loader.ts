@@ -51,8 +51,9 @@ export class SidebarLoader {
     // Set up UI features immediately (toggle, menu handlers)
     this.setupSidebarToggle()
     this.menu.setupMenuHandlers()
-    this.hideEmployeeMenuItems()
-    this.updateAccessControlMenuItem()
+    // COMMENTED OUT: User permission checks - temporarily disabled for development
+    // this.hideEmployeeMenuItems()
+    // this.updateAccessControlMenuItem()
 
     // Load user profile from cache immediately (fast - <10ms)
     const cachedUserInfo = this.userProfile.loadUserInfoFromStorage()
@@ -414,68 +415,70 @@ export class SidebarLoader {
   /**
    * Hide menu items that employees shouldn't see
    * This matches the old behavior - show all routes, then hide based on role
+   * COMMENTED OUT: Temporarily disabled for development
    */
-  private hideEmployeeMenuItems(): void {
-    const userInfo = sidebarState.loadUserInfo()
-    if (!userInfo || userInfo.role !== 'Employee') {
-      return
-    }
+  // private hideEmployeeMenuItems(): void {
+  //   const userInfo = sidebarState.loadUserInfo()
+  //   if (!userInfo || userInfo.role !== 'Employee') {
+  //     return
+  //   }
 
-    // Hide menu items that employees shouldn't see
-    const itemsToHide = [
-      'new-auditors-dashboard.html',
-      'audit-distribution-page.html',
-      'create-audit.html'
-    ]
+  //   // Hide menu items that employees shouldn't see
+  //   const itemsToHide = [
+  //     'new-auditors-dashboard.html',
+  //     'audit-distribution-page.html',
+  //     'create-audit.html'
+  //   ]
 
-    const menuItems = document.querySelectorAll('.menu-item')
-    menuItems.forEach(item => {
-      const link = item as HTMLAnchorElement
-      if (link.href) {
-        const href = link.href.toLowerCase()
-        if (itemsToHide.some(itemToHide => href.includes(itemToHide.toLowerCase()))) {
-          const listItem = item.closest('li')
-          if (listItem) {
-            listItem.style.display = 'none'
-          }
-        }
-      }
-    })
+  //   const menuItems = document.querySelectorAll('.menu-item')
+  //   menuItems.forEach(item => {
+  //     const link = item as HTMLAnchorElement
+  //     if (link.href) {
+  //       const href = link.href.toLowerCase()
+  //       if (itemsToHide.some(itemToHide => href.includes(itemToHide.toLowerCase()))) {
+  //         const listItem = item.closest('li')
+  //         if (listItem) {
+  //           listItem.style.display = 'none'
+  //         }
+  //       }
+  //     }
+  //   })
 
-    // Also hide submenu items that employees shouldn't see
-    const submenuItems = document.querySelectorAll('.submenu-item')
-    submenuItems.forEach(item => {
-      const link = item as HTMLAnchorElement
-      if (link.href) {
-        const href = link.href.toLowerCase()
-        // Hide User Management and Access Control for employees
-        if (href.includes('user-management') || href.includes('access-control')) {
-          const listItem = item.closest('li')
-          if (listItem) {
-            listItem.style.display = 'none'
-          }
-        }
-      }
-    })
-  }
+  //   // Also hide submenu items that employees shouldn't see
+  //   const submenuItems = document.querySelectorAll('.submenu-item')
+  //   submenuItems.forEach(item => {
+  //     const link = item as HTMLAnchorElement
+  //     if (link.href) {
+  //       const href = link.href.toLowerCase()
+  //       // Hide User Management and Access Control for employees
+  //       if (href.includes('user-management') || href.includes('access-control')) {
+  //         const listItem = item.closest('li')
+  //         if (listItem) {
+  //           listItem.style.display = 'none'
+  //         }
+  //       }
+  //     }
+  //   })
+  // }
 
   /**
    * Show or hide Access Control menu item based on user role
+   * COMMENTED OUT: Temporarily disabled for development
    */
-  private updateAccessControlMenuItem(): void {
-    const accessControlMenuItem = document.getElementById('accessControlMenuItem')
-    if (!accessControlMenuItem) return
+  // private updateAccessControlMenuItem(): void {
+  //   const accessControlMenuItem = document.getElementById('accessControlMenuItem')
+  //   if (!accessControlMenuItem) return
 
-    // Check if user has access control permission
-    // Wait a bit for accessControl to be available
-    setTimeout(() => {
-      if ((window as any).accessControl && (window as any).accessControl.hasAccessControlPermission) {
-        accessControlMenuItem.style.display = 'block'
-      } else {
-        accessControlMenuItem.style.display = 'none'
-      }
-    }, 100)
-  }
+  //   // Check if user has access control permission
+  //   // Wait a bit for accessControl to be available
+  //   setTimeout(() => {
+  //     if ((window as any).accessControl && (window as any).accessControl.hasAccessControlPermission) {
+  //       accessControlMenuItem.style.display = 'block'
+  //     } else {
+  //       accessControlMenuItem.style.display = 'none'
+  //     }
+  //   }, 100)
+  // }
 
   /**
    * Show an error message if sidebar fails to load
