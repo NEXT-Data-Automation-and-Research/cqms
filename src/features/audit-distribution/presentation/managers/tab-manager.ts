@@ -1,16 +1,16 @@
 /**
  * Tab Manager
- * Manages tab navigation for manual audit view
+ * Manages tab navigation for audit distribution views
  */
 
-export type TabType = 'assignment' | 'statistics';
+export type TabType = 'manual' | 'schedule' | 'ai' | 'statistics';
 
 export interface TabManagerConfig {
   onTabChange?: (tab: TabType) => void;
 }
 
 export class TabManager {
-  private currentTab: TabType = 'assignment';
+  private currentTab: TabType = 'manual';
   private config: TabManagerConfig;
 
   constructor(config: TabManagerConfig = {}) {
@@ -19,36 +19,50 @@ export class TabManager {
   }
 
   private initialize(): void {
-    const assignmentTab = document.getElementById('assignmentTab');
-    const statisticsTab = document.getElementById('statisticsTab');
-    const tabSlider = document.getElementById('tabSlider');
-    const assignmentContent = document.getElementById('assignmentContent');
-    const statisticsContent = document.getElementById('statisticsContent');
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      const manualTab = document.getElementById('manualTab');
+      const scheduleTab = document.getElementById('scheduleTab');
+      const aiTab = document.getElementById('aiTab');
+      const statisticsTab = document.getElementById('statisticsTab');
+      const tabSlider = document.getElementById('tabSlider');
 
-    const switchTab = (tab: TabType) => {
-      this.currentTab = tab;
-      
-      // Update tab buttons
-      assignmentTab?.classList.toggle('active', tab === 'assignment');
-      statisticsTab?.classList.toggle('active', tab === 'statistics');
-      
-      // Update tab slider position
+      // Set initial slider position
       if (tabSlider) {
-        tabSlider.style.left = tab === 'assignment' ? '0.2344rem' : 'calc(50% + 0.1172rem)';
+        const tabIndex = this.currentTab === 'manual' ? 0 : this.currentTab === 'schedule' ? 1 : this.currentTab === 'ai' ? 2 : 3;
+        const leftOffset = `calc(${tabIndex * 25}% + 0.2344rem)`;
+        tabSlider.style.left = leftOffset;
+        tabSlider.style.width = 'calc(25% - 0.2344rem)';
       }
-      
-      // Show/hide content
-      assignmentContent?.classList.toggle('hidden', tab !== 'assignment');
-      statisticsContent?.classList.toggle('hidden', tab !== 'statistics');
 
-      // Notify listener
-      if (this.config.onTabChange) {
-        this.config.onTabChange(tab);
-      }
-    };
+      const switchTab = (tab: TabType) => {
+        this.currentTab = tab;
+        
+        // Update tab buttons
+        manualTab?.classList.toggle('active', tab === 'manual');
+        scheduleTab?.classList.toggle('active', tab === 'schedule');
+        aiTab?.classList.toggle('active', tab === 'ai');
+        statisticsTab?.classList.toggle('active', tab === 'statistics');
+        
+        // Update tab slider position (4 tabs, so each is 25%)
+        if (tabSlider) {
+          const tabIndex = tab === 'manual' ? 0 : tab === 'schedule' ? 1 : tab === 'ai' ? 2 : 3;
+          const leftOffset = `calc(${tabIndex * 25}% + 0.2344rem)`;
+          tabSlider.style.left = leftOffset;
+          tabSlider.style.width = 'calc(25% - 0.2344rem)';
+        }
 
-    assignmentTab?.addEventListener('click', () => switchTab('assignment'));
-    statisticsTab?.addEventListener('click', () => switchTab('statistics'));
+        // Notify listener
+        if (this.config.onTabChange) {
+          this.config.onTabChange(tab);
+        }
+      };
+
+      manualTab?.addEventListener('click', () => switchTab('manual'));
+      scheduleTab?.addEventListener('click', () => switchTab('schedule'));
+      aiTab?.addEventListener('click', () => switchTab('ai'));
+      statisticsTab?.addEventListener('click', () => switchTab('statistics'));
+    }, 0);
   }
 
   getCurrentTab(): TabType {
@@ -56,27 +70,32 @@ export class TabManager {
   }
 
   switchToTab(tab: TabType): void {
-    const assignmentTab = document.getElementById('assignmentTab');
-    const statisticsTab = document.getElementById('statisticsTab');
-    const tabSlider = document.getElementById('tabSlider');
-    const assignmentContent = document.getElementById('assignmentContent');
-    const statisticsContent = document.getElementById('statisticsContent');
-
     this.currentTab = tab;
     
-    assignmentTab?.classList.toggle('active', tab === 'assignment');
-    statisticsTab?.classList.toggle('active', tab === 'statistics');
-    
-    if (tabSlider) {
-      tabSlider.style.left = tab === 'assignment' ? '0.2344rem' : 'calc(50% + 0.1172rem)';
-    }
-    
-    assignmentContent?.classList.toggle('hidden', tab !== 'assignment');
-    statisticsContent?.classList.toggle('hidden', tab !== 'statistics');
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => {
+      const manualTab = document.getElementById('manualTab');
+      const scheduleTab = document.getElementById('scheduleTab');
+      const aiTab = document.getElementById('aiTab');
+      const statisticsTab = document.getElementById('statisticsTab');
+      const tabSlider = document.getElementById('tabSlider');
 
-    if (this.config.onTabChange) {
-      this.config.onTabChange(tab);
-    }
+      manualTab?.classList.toggle('active', tab === 'manual');
+      scheduleTab?.classList.toggle('active', tab === 'schedule');
+      aiTab?.classList.toggle('active', tab === 'ai');
+      statisticsTab?.classList.toggle('active', tab === 'statistics');
+      
+      if (tabSlider) {
+        const tabIndex = tab === 'manual' ? 0 : tab === 'schedule' ? 1 : tab === 'ai' ? 2 : 3;
+        const leftOffset = `calc(${tabIndex * 25}% + 0.2344rem)`;
+        tabSlider.style.left = leftOffset;
+        tabSlider.style.width = 'calc(25% - 0.2344rem)';
+      }
+
+      if (this.config.onTabChange) {
+        this.config.onTabChange(tab);
+      }
+    }, 0);
   }
 }
 

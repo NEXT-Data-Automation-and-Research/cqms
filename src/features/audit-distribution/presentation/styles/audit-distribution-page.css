@@ -184,7 +184,7 @@ body.audit-distribution-page,
   border-radius: var(--radius-lg, 0.5rem);
   overflow: hidden;
   width: 100%;
-  max-width: 15rem;
+  max-width: 35rem;
   padding: 0.2344rem;
   margin: 0 auto;
 }
@@ -197,7 +197,7 @@ body.audit-distribution-page,
   border-radius: var(--radius-sm, 0.25rem);
   transition: all 0.3s ease;
   left: 0.2344rem;
-  width: calc(50% - 0.2344rem);
+  width: calc(25% - 0.2344rem);
 }
 
 .audit-distribution-page .tab-button {
@@ -410,10 +410,34 @@ body.audit-distribution-page,
   --color-background-secondary: var(--home-contrast);
 }
 
-/* Update cards and components */
-.audit-distribution-page .bg-primary,
-.audit-distribution-page [class*="bg-primary"] {
+/* Update cards and components - but exclude opacity-based classes */
+.audit-distribution-page .bg-primary:not([class*="/10"]):not([class*="/20"]):not([class*="/5"]),
+.audit-distribution-page [class*="bg-primary"]:not([class*="bg-primary/10"]):not([class*="bg-primary/20"]):not([class*="bg-primary/5"]) {
   background-color: var(--home-primary-500) !important;
+}
+
+/* Special handling for opacity-based bg-primary classes (like bg-primary/10 for avatars and icons) */
+.audit-distribution-page [class*="bg-primary/10"] {
+  background-color: rgba(26, 115, 62, 0.1) !important;
+}
+
+.audit-distribution-page [class*="bg-primary/20"] {
+  background-color: rgba(26, 115, 62, 0.2) !important;
+}
+
+.audit-distribution-page [class*="bg-primary/5"] {
+  background-color: rgba(26, 115, 62, 0.05) !important;
+}
+
+/* Override: Remove background color from selected people list item containers only */
+.audit-distribution-page [data-action="person-select"],
+.audit-distribution-page [data-action="employee-select"] {
+  background-color: transparent !important;
+}
+
+.audit-distribution-page [data-action="person-select"]:hover,
+.audit-distribution-page [data-action="employee-select"]:hover {
+  background-color: #f9fafb !important;
 }
 
 .audit-distribution-page .text-primary,
@@ -667,13 +691,19 @@ body.audit-distribution-page .sidebar .search-input:focus {
   color: var(--color-text-secondary, #4b5563) !important;
 }
 
-/* Ensure main content area has proper background */
+/* Ensure main content area has proper background and alignment */
 .audit-distribution-page .main-content {
   background-color: var(--home-background, #F8F7F2) !important;
   min-height: 100vh;
   overflow-x: hidden;
   overflow-y: auto;
   position: relative;
+  width: 100% !important;
+  /* Ensure proper spacing from sidebar - sidebar.css handles margin-left */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
 }
 
 /* Fix hover overflow issues */
@@ -708,24 +738,25 @@ body.audit-distribution-page .sidebar .search-input:focus {
   position: relative;
 }
 
-/* Ensure content container is visible */
+/* Ensure content container is visible - Scale everything to 80% */
 .audit-distribution-page #audit-distribution-container {
   background-color: transparent !important;
   min-height: calc(100vh - 150px);
   max-height: 100vh;
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
   visibility: visible !important;
   opacity: 1 !important;
-  width: 100%;
-  margin: 0;
-  padding: 0 1rem 0 0;
+  width: 125% !important; /* Compensate for 0.8 scale (1/0.8 = 1.25) */
+  margin: 0 auto !important;
+  margin-left: -12.5% !important; /* Center the scaled content */
+  padding: 0 !important;
   overflow: visible;
   position: relative;
-}
-
-/* Ensure main content wrapper has right padding */
-.audit-distribution-page #audit-distribution-container > div {
-  padding-right: 1.5rem !important;
+  z-index: 1 !important;
+  transform: scale(0.8);
+  transform-origin: top center;
 }
 
 /* Responsive viewport adjustments */
@@ -748,29 +779,30 @@ body.audit-distribution-page .sidebar .search-input:focus {
   padding: 0 !important;
 }
 
-/* Ensure flex layout is visible */
+/* Duplicate rule removed - using the one above with scale */
+
 .audit-distribution-page #audit-distribution-container > div {
   display: flex !important;
+  flex-direction: column !important;
   visibility: visible !important;
-  align-items: flex-start !important;
-}
-
-/* Ensure sidebar and content are visible */
-.audit-distribution-page #auditDistributionSidebar {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  flex-shrink: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 .audit-distribution-page #auditDistributionContent {
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
-  width: 100%;
-  flex: 1 1 0% !important;
-  min-width: 0 !important;
-  padding-right: 1rem !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 /* Simple list view - matching homepage style */

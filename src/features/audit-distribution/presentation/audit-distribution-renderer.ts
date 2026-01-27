@@ -10,16 +10,22 @@ import { AuditDistributionSidebar, type AuditDistributionView } from './componen
 import { ScheduleAuditView } from './components/schedule-audit-view.js';
 import { AIAuditView } from './components/ai-audit-view.js';
 import { ManualAuditViewRenderer } from './renderers/manual-audit-view-renderer.js';
+import { TabManager, type TabType } from './managers/tab-manager.js';
+import { StatisticsTabRenderer } from './renderers/statistics-tab-renderer.js';
+import { AssignmentTabRenderer } from './renderers/assignment-tab-renderer.js';
 import { logInfo, logError } from '../../../utils/logging-helper.js';
 
 export class AuditDistributionRenderer {
   private stateManager: AuditDistributionStateManager;
   private service: AuditDistributionService | null = null;
   private currentView: AuditDistributionView = 'manual';
+  private currentTab: TabType = 'manual';
   private sidebar: AuditDistributionSidebar | null = null;
+  private tabManager: TabManager | null = null;
   private manualAuditViewRenderer: ManualAuditViewRenderer | null = null;
   private scheduleAuditView: ScheduleAuditView | null = null;
   private aiAuditView: AIAuditView | null = null;
+  private statisticsTabRenderer: StatisticsTabRenderer | null = null;
 
   constructor(stateManager: AuditDistributionStateManager, service?: AuditDistributionService) {
     this.stateManager = stateManager;
@@ -42,38 +48,48 @@ export class AuditDistributionRenderer {
     logInfo('[Renderer] Initializing with container:', { containerId: container.id });
     
     container.textContent = '';
-    const wrapperDiv = document.createElement('div');
-    wrapperDiv.className = 'flex w-full items-start';
-    
-    const sidebarDiv = document.createElement('div');
-    sidebarDiv.id = 'auditDistributionSidebar';
-    sidebarDiv.className = 'flex-shrink-0';
-    
+    // Direct content wrapper - no sidebar wrapper needed
     const contentWrapperDiv = document.createElement('div');
-    contentWrapperDiv.className = 'flex-1 min-w-0 overflow-x-hidden pr-4';
+    contentWrapperDiv.className = 'w-full flex flex-col';
+    
+    // Page Heading - At the top of content area
+    const headingDiv = document.createElement('div');
+    headingDiv.className = 'px-4 pt-4 pb-2 text-center';
+    headingDiv.innerHTML = '<h1 class="text-xl font-bold text-gray-900 m-0">Audit Distribution</h1>';
+    
+    // Tab Navigation - Below heading
+    const tabNavDiv = document.createElement('div');
+    tabNavDiv.className = 'w-full flex justify-center py-4 bg-transparent';
+    tabNavDiv.innerHTML = `
+      <div class="tab-navigation">
+        <div class="tab-slider" id="tabSlider"></div>
+        <button class="tab-button active" data-tab="manual" id="manualTab">Manual Assign</button>
+        <button class="tab-button" data-tab="schedule" id="scheduleTab">Schedule Assign</button>
+        <button class="tab-button" data-tab="ai" id="aiTab">AI Audit</button>
+        <button class="tab-button" data-tab="statistics" id="statisticsTab">Statistics</button>
+      </div>
+    `;
     
     const contentDiv = document.createElement('div');
     contentDiv.id = 'auditDistributionContent';
     contentDiv.className = 'w-full';
     
+    contentWrapperDiv.appendChild(headingDiv);
+    contentWrapperDiv.appendChild(tabNavDiv);
     contentWrapperDiv.appendChild(contentDiv);
-    wrapperDiv.appendChild(sidebarDiv);
-    wrapperDiv.appendChild(contentWrapperDiv);
-    container.appendChild(wrapperDiv);
+    container.appendChild(contentWrapperDiv);
 
-    // Initialize sidebar
-    const sidebarContainer = container.querySelector('#auditDistributionSidebar') as HTMLElement;
-    if (sidebarContainer) {
-      logInfo('[Renderer] Initializing sidebar...');
-      this.sidebar = new AuditDistributionSidebar(sidebarContainer, {
-        currentView: this.currentView,
-        onViewChange: (view) => {
-          this.switchView(view);
-        }
-      });
-    } else {
-      logError('[Renderer] Sidebar container not found!');
-    }
+    // Initialize tab manager
+    this.tabManager = new TabManager({
+      onTabChange: (tab) => {
+        this.switchTab(tab);
+      }
+    });
+
+    // Initialize statistics tab renderer
+    this.statisticsTabRenderer = new StatisticsTabRenderer({
+      stateManager: this.stateManager
+    });
 
     // Render initial view - use setTimeout to ensure DOM is ready
     // If service is not available yet, it will be rendered when service is set
@@ -83,11 +99,37 @@ export class AuditDistributionRenderer {
     }, 0);
   }
 
+
   /**
-   * Switch between different views
+   * Switch between different tabs
+   */
+  private switchTab(tab: TabType): void {
+    this.currentTab = tab;
+    
+    // Map tab to view
+    if (tab === 'manual' || tab === 'schedule' || tab === 'ai') {
+      this.currentView = tab as AuditDistributionView;
+      // Update sidebar if needed
+      if (this.sidebar) {
+        this.sidebar.update({ currentView: this.currentView });
+      }
+    }
+
+    // Render the selected view
+    this.renderCurrentView();
+  }
+
+  /**
+   * Switch between different views (legacy - kept for compatibility)
    */
   private switchView(view: AuditDistributionView): void {
     this.currentView = view;
+    this.currentTab = view === 'manual' ? 'manual' : view === 'schedule' ? 'schedule' : 'ai';
+    
+    // Update tab manager
+    if (this.tabManager) {
+      this.tabManager.switchToTab(this.currentTab);
+    }
     
     // Update sidebar
     if (this.sidebar) {
@@ -108,9 +150,10 @@ export class AuditDistributionRenderer {
       return;
     }
 
-    logInfo('[Renderer] Rendering view:', { view: this.currentView });
 
-    switch (this.currentView) {
+    logInfo('[Renderer] Rendering view:', { tab: this.currentTab, view: this.currentView });
+
+    switch (this.currentTab) {
       case 'manual':
         logInfo('[Renderer] Rendering manual audit view...');
         this.renderManualAuditView(contentContainer);
@@ -122,6 +165,10 @@ export class AuditDistributionRenderer {
       case 'ai':
         logInfo('[Renderer] Rendering AI audit view...');
         this.renderAIAuditView(contentContainer);
+        break;
+      case 'statistics':
+        logInfo('[Renderer] Rendering statistics view...');
+        this.renderStatisticsView(contentContainer);
         break;
     }
     
@@ -174,6 +221,23 @@ export class AuditDistributionRenderer {
     if (viewContainer) {
       this.aiAuditView = new AIAuditView(viewContainer);
     }
+  }
+
+  /**
+   * Render statistics view
+   */
+  private renderStatisticsView(container: HTMLElement): void {
+    container.textContent = '';
+    const viewContainer = document.createElement('div');
+    viewContainer.id = 'statisticsContent';
+    viewContainer.className = 'px-4 py-4 max-w-7xl mx-auto w-full';
+    container.appendChild(viewContainer);
+    // Use setTimeout to ensure DOM is ready before rendering
+    setTimeout(() => {
+      if (this.statisticsTabRenderer) {
+        this.statisticsTabRenderer.render();
+      }
+    }, 0);
   }
 
 

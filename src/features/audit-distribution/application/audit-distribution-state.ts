@@ -120,6 +120,9 @@ export class AuditDistributionStateManager {
     const { employees, filters } = this.state;
     let filtered = [...employees];
 
+    if (filters.role) {
+      filtered = filtered.filter(e => e.designation === filters.role);
+    }
     if (filters.channel) {
       filtered = filtered.filter(e => e.channel === filters.channel);
     }
@@ -131,6 +134,14 @@ export class AuditDistributionStateManager {
     }
     if (filters.country) {
       filtered = filtered.filter(e => e.country === filters.country);
+    }
+    if (filters.is_active) {
+      if (filters.is_active === 'active') {
+        filtered = filtered.filter(e => e.is_active === true);
+      } else if (filters.is_active === 'inactive') {
+        filtered = filtered.filter(e => e.is_active === false);
+      }
+      // 'all' means no filter
     }
     if (filters.qualitySupervisor) {
       filtered = filtered.filter(e => e.quality_mentor === filters.qualitySupervisor);

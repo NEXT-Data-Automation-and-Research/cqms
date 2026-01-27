@@ -32,6 +32,9 @@ export function getActiveFilterChips(filters: FilterOptions, employees: Employee
     });
   }
 
+  if (filters.role && filters.role.trim() !== '') {
+    chips.push({ key: 'role', label: 'Role', value: filters.role.trim(), type: 'filter' });
+  }
   if (filters.channel && filters.channel.trim() !== '') {
     chips.push({ key: 'channel', label: 'Channel', value: filters.channel.trim(), type: 'filter' });
   }
@@ -43,6 +46,9 @@ export function getActiveFilterChips(filters: FilterOptions, employees: Employee
   }
   if (filters.country && filters.country.trim() !== '') {
     chips.push({ key: 'country', label: 'Country', value: filters.country.trim(), type: 'filter' });
+  }
+  if (filters.is_active && filters.is_active !== 'all') {
+    chips.push({ key: 'is_active', label: 'Status', value: filters.is_active === 'active' ? 'Active' : 'Inactive', type: 'filter' });
   }
   if (filters.qualitySupervisor) {
     const emp = employees.find(e => e.email === filters.qualitySupervisor);

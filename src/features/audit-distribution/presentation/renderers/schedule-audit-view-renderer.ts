@@ -47,97 +47,117 @@ export class ScheduleAuditViewRenderer {
 
   private getViewHTML(): string {
     return `
-      <div class="px-4 py-4 max-w-7xl mx-auto w-full">
-        <!-- Schedule Configuration Section -->
-        <div class="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <h2 class="text-lg font-bold text-gray-900 mb-4">Schedule Configuration</h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <!-- Schedule Date (Required) -->
-            <div>
-              <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
-                <span class="text-red-500 text-xs">*</span>
-                <span>Schedule Date</span>
-              </label>
-              <input
-                type="date"
-                id="scheduleDateInput"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
-                min="${new Date().toISOString().split('T')[0]}"
-                required
-              />
-            </div>
-            
-            <!-- Recurring Schedule -->
-            <div>
-              <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
-                <span>Recurring Schedule</span>
-              </label>
-              <select
-                id="recurringScheduleSelect"
-                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-gray-900"
-              >
-                <option value="none">One-time</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-          </div>
-          
-          <!-- Recurring Options (hidden by default) -->
-          <div id="recurringOptionsContainer" class="hidden mb-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="text-xs font-semibold text-gray-900 mb-2 block">End Date (Optional)</label>
-                <input
-                  type="date"
-                  id="recurringEndDateInput"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
-                  min="${new Date().toISOString().split('T')[0]}"
-                />
+      <div class="px-4 py-6 max-w-7xl mx-auto w-full">
+        <!-- Header Section with Filters -->
+        <div class="mb-6">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
               </div>
               <div>
-                <label class="text-xs font-semibold text-gray-900 mb-2 block">Number of Occurrences</label>
+                <h2 class="text-2xl font-bold text-gray-900">Schedule Assign</h2>
+                <p class="text-sm text-gray-600 mt-1">
+                  Schedule and automate audit assignments for your team
+                </p>
+              </div>
+            </div>
+            
+            <!-- Search and Filters -->
+            <div id="expandedFilterContainer"></div>
+          </div>
+        </div>
+        
+        <!-- Schedule Configuration Section - Above People List -->
+        <div class="mb-6">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+            <h2 class="text-lg font-bold text-gray-900 mb-4">Schedule Configuration</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <!-- Schedule Date (Required) -->
+              <div>
+                <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
+                  <span class="text-red-500 text-xs">*</span>
+                  <span>Schedule Date</span>
+                </label>
                 <input
-                  type="number"
-                  id="recurringOccurrencesInput"
-                  min="1"
-                  max="365"
+                  type="date"
+                  id="scheduleDateInput"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
-                  placeholder="Leave empty for no limit"
+                  min="${new Date().toISOString().split('T')[0]}"
+                  required
                 />
+              </div>
+              
+              <!-- Recurring Schedule -->
+              <div>
+                <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
+                  <span>Recurring Schedule</span>
+                </label>
+                <select
+                  id="recurringScheduleSelect"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-gray-900"
+                >
+                  <option value="none">One-time</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Recurring Options (hidden by default) -->
+            <div id="recurringOptionsContainer" class="hidden mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="text-xs font-semibold text-gray-900 mb-2 block">End Date (Optional)</label>
+                  <input
+                    type="date"
+                    id="recurringEndDateInput"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
+                    min="${new Date().toISOString().split('T')[0]}"
+                  />
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-gray-900 mb-2 block">Number of Occurrences</label>
+                  <input
+                    type="number"
+                    id="recurringOccurrencesInput"
+                    min="1"
+                    max="365"
+                    class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
+                    placeholder="Leave empty for no limit"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Main Content -->
-        <div class="flex gap-4 min-h-[500px] max-h-[calc(100vh-300px)]">
-          <!-- Employee List - Left Side -->
-          <div class="flex flex-col flex-1 min-w-0 bg-white rounded-xl border border-gray-200 flex flex-col overflow-hidden">
+        <!-- People List Section - Below Filters -->
+        <div class="mb-6">
+          <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <!-- Header -->
-            <div class="px-4 pt-4 pb-3 border-b border-gray-200 flex-shrink-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="flex-1 min-w-0">
-                  <h2 class="text-lg font-bold text-gray-900 m-0 mb-0.5">People</h2>
-                  <p class="text-xs text-gray-600 m-0 font-medium">Select team members for scheduled audit assignment</p>
-                </div>
-                <!-- Filter Bar -->
-                <div id="filterBarContainer" class="flex-shrink-0 max-w-[300px]"></div>
-              </div>
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+              <h3 class="text-lg font-semibold text-gray-900">People</h3>
+              <p class="text-xs text-gray-600 mt-1">Select team members for scheduled audit assignment</p>
             </div>
-            <div class="px-4 py-3 flex-1 min-h-0 flex flex-col overflow-hidden">
-              <!-- Selection Actions -->
-              <div id="selectionActionsContainer" class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 flex-shrink-0"></div>
-              <div id="employeeListContent" class="flex-1 min-h-0 overflow-y-auto overflow-x-visible"></div>
-              <div id="paginationBottomContainer" class="flex-shrink-0 mt-3 pt-3 border-t border-gray-200"></div>
-            </div>
+            <!-- Selection Actions -->
+            <div id="selectionActionsContainer" class="px-6 py-3 border-b border-gray-200 flex items-center gap-2 flex-shrink-0"></div>
+            <!-- Employee List Content -->
+            <div id="employeeListContent" class="max-h-[60vh] overflow-y-auto"></div>
+            <!-- Pagination -->
+            <div id="paginationBottomContainer" class="px-6 py-3 border-t border-gray-200 flex-shrink-0"></div>
           </div>
-          
-          <!-- Auditor Selection Pane - Right Side -->
-          <div id="auditorModalContainer" class="flex-shrink-0 w-0 transition-all duration-300 overflow-hidden"></div>
         </div>
+        
+        <!-- Auditor Selection Pane -->
+        <div id="auditorModalContainer" class="flex-shrink-0 w-0 transition-all duration-300 overflow-hidden"></div>
 
         <!-- Scheduled Audits List -->
         <div class="mt-4 bg-white rounded-xl border border-gray-200">

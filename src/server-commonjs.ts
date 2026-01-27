@@ -353,6 +353,23 @@ app.get('/src/features/home/presentation/home-page.html', (req: express.Request,
   }
 });
 
+// Serve help.html with version injection - Direct route handler for /help
+app.get('/help', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/help/help/presentation/help.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing help.html:', error);
+    const filePath = path.join(__dirname, '../src/features/help/help/presentation/help.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      logWithTimestamp('error', `Help file not found at: ${filePath}`);
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
 // ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
 // These routes are checked BEFORE the regex fallback for better performance
 // Backward compatibility: Old URLs still work via the regex route below

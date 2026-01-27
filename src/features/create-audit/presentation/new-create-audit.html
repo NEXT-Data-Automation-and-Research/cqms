@@ -68,6 +68,66 @@
         .copy-success {
             color: #10b981 !important;
         }
+        
+        /* Date range button hover effects */
+        .date-range-btn {
+            transition: all 0.2s;
+        }
+        .date-range-btn:hover {
+            background-color: #e5e7eb !important;
+        }
+        .date-range-btn[data-is-active="true"]:hover {
+            background-color: #15582E !important;
+        }
+        
+        /* Custom date input focus effects */
+        .custom-date-input:focus {
+            border-color: #1A733E !important;
+            outline: none !important;
+        }
+        
+        /* Custom date picker buttons hover effects */
+        .close-custom-date-picker-btn:hover {
+            background-color: #f3f4f6 !important;
+            color: #374151 !important;
+        }
+        .cancel-custom-date-btn:hover {
+            background-color: #e5e7eb !important;
+        }
+        .apply-custom-date-btn:hover {
+            background-color: #15582E !important;
+        }
+        
+        /* Conversation filter buttons hover effects */
+        .conversation-filter-btn:hover {
+            background-color: #15582E !important;
+        }
+        .reset-conversation-date-btn:hover {
+            background-color: #e5e7eb !important;
+        }
+        
+        /* AI Audit submit button hover effects */
+        .ai-audit-submit-btn:not(:disabled):hover {
+            background-color: #7c3aed !important;
+            opacity: 1 !important;
+        }
+        .ai-audit-submit-btn:not(:disabled) {
+            cursor: pointer !important;
+        }
+        #aiAuditSubmitBtn:not(:disabled):hover {
+            background: linear-gradient(135deg, #15582E 0%, #1f7a3d 100%) !important;
+            transform: translateY(-1px) !important;
+            box-shadow: 0 2px 6px rgba(26, 115, 62, 0.3) !important;
+        }
+        #aiAuditSubmitBtn:not(:disabled) {
+            background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%) !important;
+        }
+        
+        /* Your Stats header hover effect */
+        .your-stats-header-toggle:hover {
+            background-color: rgba(26, 115, 62, 0.05);
+        }
+        
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -690,7 +750,7 @@
 
     <!-- Your Stats Section -->
     <div id="yourStatsSection" style="background: var(--background-white); border-radius: 0.3234rem; padding: 0.6469rem; border: 0.0405rem solid var(--border-light); margin-bottom: 0.9704rem; margin-top: 2rem; width: 100%;">
-        <div id="yourStatsHeader" onclick="toggleYourStatsSection()" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6469rem; padding-bottom: 0.3234rem; border-bottom: 0.0405rem solid #1A733E; cursor: pointer; user-select: none;">
+        <div id="yourStatsHeader" class="your-stats-header-toggle" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6469rem; padding-bottom: 0.3234rem; border-bottom: 0.0405rem solid #1A733E; cursor: pointer; user-select: none;">
             <h3 style="font-size: 0.5659rem; font-weight: 600; color: #1A733E; margin: 0; text-transform: uppercase; letter-spacing: 0.0122rem; display: flex; align-items: center; gap: 0.3234rem;">
                 <svg id="yourStatsExpandIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s ease; transform: rotate(0deg);">
                     <polyline points="9 18 15 12 9 6"></polyline>
@@ -1097,16 +1157,16 @@
                 <span id="pullConversationsAdminAliasChip" style="display: none;"></span>
             </h3>
                 <div style="display: flex; align-items: center; gap: 0.3234rem; position: relative;">
-                    <button id="dateRangeBtnYesterday" data-is-active="true" onclick="selectDateRange('yesterday')" style="padding: 0.2425rem 0.4043rem; background: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onmouseover="if(this.dataset.isActive === 'true') this.style.backgroundColor='#15582E'; else this.style.backgroundColor='#e5e7eb'" onmouseout="if(this.dataset.isActive === 'true') this.style.backgroundColor='#1A733E'; else this.style.backgroundColor='#f3f4f6'" title="Yesterday (Default)">
+                    <button id="dateRangeBtnYesterday" data-is-active="true" data-range="yesterday" class="date-range-btn" style="padding: 0.2425rem 0.4043rem; background: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" title="Yesterday (Default)">
                         Yesterday
                     </button>
-                    <button id="dateRangeBtnLast3Days" data-is-active="false" onclick="selectDateRange('last3days')" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onmouseover="if(this.dataset.isActive === 'true') this.style.backgroundColor='#15582E'; else this.style.backgroundColor='#e5e7eb'" onmouseout="if(this.dataset.isActive === 'true') this.style.backgroundColor='#1A733E'; else this.style.backgroundColor='#f3f4f6'" title="Last 3 Days">
+                    <button id="dateRangeBtnLast3Days" data-is-active="false" data-range="last3days" class="date-range-btn" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" title="Last 3 Days">
                         Last 3 days
                     </button>
-                    <button id="dateRangeBtnThisWeek" data-is-active="false" onclick="selectDateRange('thisweek')" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" onmouseover="if(this.dataset.isActive === 'true') this.style.backgroundColor='#15582E'; else this.style.backgroundColor='#e5e7eb'" onmouseout="if(this.dataset.isActive === 'true') this.style.backgroundColor='#1A733E'; else this.style.backgroundColor='#f3f4f6'" title="This Week">
+                    <button id="dateRangeBtnThisWeek" data-is-active="false" data-range="thisweek" class="date-range-btn" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap;" title="This Week">
                         This week
                     </button>
-                    <button id="dateRangeBtnCustom" data-is-active="false" onclick="toggleCustomDateRangePicker()" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem;" onmouseover="if(this.dataset.isActive === 'true') this.style.backgroundColor='#15582E'; else this.style.backgroundColor='#e5e7eb'" onmouseout="if(this.dataset.isActive === 'true') this.style.backgroundColor='#1A733E'; else this.style.backgroundColor='#f3f4f6'" title="Custom Date Range">
+                    <button id="dateRangeBtnCustom" data-is-active="false" class="date-range-btn date-range-btn-custom" style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem;" title="Custom Date Range">
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -1120,7 +1180,7 @@
                         <div style="display: flex; flex-direction: column; gap: 0.4852rem;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2425rem;">
                                 <label style="font-size: 0.4852rem; font-weight: 600; color: #374151;">Custom Date Range</label>
-                                <button onclick="closeCustomDateRangePicker()" style="background: transparent; border: none; color: #6b7280; cursor: pointer; padding: 0.1617rem; display: flex; align-items: center; justify-content: center; border-radius: 0.1617rem; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.color='#374151';" onmouseout="this.style.backgroundColor='transparent'; this.style.color='#6b7280';" title="Close">
+                                <button id="closeCustomDateRangePickerBtn" class="close-custom-date-picker-btn" style="background: transparent; border: none; color: #6b7280; cursor: pointer; padding: 0.1617rem; display: flex; align-items: center; justify-content: center; border-radius: 0.1617rem; transition: all 0.2s;" title="Close">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="18" y1="6" x2="6" y2="18"></line>
                                         <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -1130,18 +1190,18 @@
                             <div style="display: flex; flex-direction: row; gap: 0.4852rem; align-items: flex-end;">
                                 <div style="flex: 1;">
                                     <label for="customStartDate" style="display: block; font-size: 0.4447rem; font-weight: 500; color: #6b7280; margin-bottom: 0.1617rem;">From</label>
-                                    <input type="date" id="customStartDate" style="width: 100%; padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; color: #374151; background: white; cursor: pointer; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='#1A733E'; this.style.outline='none';" onblur="this.style.borderColor='#d1d5db';">
+                                    <input type="date" id="customStartDate" class="custom-date-input" style="width: 100%; padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; color: #374151; background: white; cursor: pointer; transition: border-color 0.2s; box-sizing: border-box;">
                                 </div>
                                 <div style="flex: 1;">
                                     <label for="customEndDate" style="display: block; font-size: 0.4447rem; font-weight: 500; color: #6b7280; margin-bottom: 0.1617rem;">To</label>
-                                    <input type="date" id="customEndDate" style="width: 100%; padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; color: #374151; background: white; cursor: pointer; transition: border-color 0.2s; box-sizing: border-box;" onfocus="this.style.borderColor='#1A733E'; this.style.outline='none';" onblur="this.style.borderColor='#d1d5db';">
+                                    <input type="date" id="customEndDate" class="custom-date-input" style="width: 100%; padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; color: #374151; background: white; cursor: pointer; transition: border-color 0.2s; box-sizing: border-box;">
                                 </div>
                             </div>
                             <div style="display: flex; gap: 0.3234rem; margin-top: 0.2425rem;">
-                                <button onclick="closeCustomDateRangePicker()" style="flex: 1; padding: 0.3234rem 0.4852rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#e5e7eb';" onmouseout="this.style.backgroundColor='#f3f4f6';">
+                                <button id="cancelCustomDateRangeBtn" class="cancel-custom-date-btn" style="flex: 1; padding: 0.3234rem 0.4852rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;">
                                     Cancel
                                 </button>
-                                <button onclick="applyCustomDateRange()" style="flex: 1; padding: 0.3234rem 0.4852rem; background: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#15582E';" onmouseout="this.style.backgroundColor='#1A733E';">
+                                <button id="applyCustomDateRangeBtn" class="apply-custom-date-btn" style="flex: 1; padding: 0.3234rem 0.4852rem; background: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;">
                                     Apply
                                 </button>
                             </div>
@@ -1237,7 +1297,7 @@
                             </svg>
                             <span>Clear</span>
                         </button>
-                        <button id="aiAuditSubmitBtnInline" onclick="submitAIAuditBatch()" disabled style="display: flex; align-items: center; gap: 0.1212rem; padding: 0.1617rem 0.2425rem; background: #8b5cf6; color: white; border: none; border-radius: 0.1212rem; font-size: 0.4043rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: not-allowed; transition: all 0.2s; white-space: nowrap; animation: shine 2s infinite; opacity: 0.6; position: relative; overflow: hidden;" onmouseover="if(!this.disabled) { this.style.backgroundColor='#7c3aed'; this.style.opacity='1'; }" onmouseout="if(!this.disabled) { this.style.backgroundColor='#8b5cf6'; this.style.opacity='1'; }" title="Run AI Audit for selected conversations">
+                        <button id="aiAuditSubmitBtnInline" class="ai-audit-submit-btn" disabled style="display: flex; align-items: center; gap: 0.1212rem; padding: 0.1617rem 0.2425rem; background: #8b5cf6; color: white; border: none; border-radius: 0.1212rem; font-size: 0.4043rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: not-allowed; transition: all 0.2s; white-space: nowrap; animation: shine 2s infinite; opacity: 0.6; position: relative; overflow: hidden;" title="Run AI Audit for selected conversations">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 2L13.09 8.26L20 9L13.09 9.74L12 16L10.91 9.74L4 9L10.91 8.26L12 2Z"/>
                                 <path d="M19 19L20.09 21.26L23 22L20.09 22.74L19 25L17.91 22.74L15 22L17.91 21.26L19 19Z"/>
@@ -1633,7 +1693,7 @@
                         ⏱️ Completes in 2-5 minutes
                     </div>
                 </div>
-                <button id="aiAuditSubmitBtn" onclick="submitAIAuditBatch()" disabled style="padding: 0.5rem 1.25rem; background: #d1d5db; color: #9ca3af; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: not-allowed; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);" onmouseover="if(!this.disabled) { this.style.background='linear-gradient(135deg, #15582E 0%, #1f7a3d 100%)'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 2px 6px rgba(26, 115, 62, 0.3)'; }" onmouseout="if(!this.disabled) { this.style.background='linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%)'; this.style.transform='translateY(0)'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.1)'; }">
+                <button id="aiAuditSubmitBtn" class="ai-audit-submit-btn" disabled style="padding: 0.5rem 1.25rem; background: #d1d5db; color: #9ca3af; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: not-allowed; transition: all 0.2s; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                     Submit Batch
                 </button>
             </div>
@@ -1881,14 +1941,14 @@
                     <label for="conversationsEndDate" style="font-size: 0.4852rem; font-weight: 500; color: #6b7280; white-space: nowrap;">To Date:</label>
                     <input type="date" id="conversationsEndDate" style="padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif;">
                 </div>
-                <button onclick="openConversationsFilterDialog()" style="padding: 0.375rem 0.75rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.backgroundColor='#15582E'" onmouseout="this.style.backgroundColor='#1A733E'" title="Open filter options">
+                <button id="openConversationsFilterDialogBtn" class="conversation-filter-btn" style="padding: 0.375rem 0.75rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;" title="Open filter options">
                     <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
                     </svg>
                     Filter
                     <span id="activeFiltersCount" style="display: none; background-color: rgba(255,255,255,0.3); border-radius: 0.75rem; padding: 0.125rem 0.375rem; font-size: 0.75rem; margin-left: 0.25rem;">0</span>
                 </button>
-                <button onclick="resetConversationsDateRange()" style="padding: 0.375rem 0.75rem; background-color: #f3f4f6; color: #374151; border: 0.0625rem solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.backgroundColor='#e5e7eb'" onmouseout="this.style.backgroundColor='#f3f4f6'" title="Reset to default date range (previous day)">
+                <button id="resetConversationsDateRangeBtn" class="reset-conversation-date-btn" style="padding: 0.375rem 0.75rem; background-color: #f3f4f6; color: #374151; border: 0.0625rem solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s;" title="Reset to default date range (previous day)">
                     Reset
                 </button>
             </div>
@@ -6416,7 +6476,7 @@ let pullConversationsFilters = {
 };
 
 // Select date range and update button styles
-async function selectDateRange(range) {
+window.selectDateRange = async function(range) {
     pullConversationsDateRange = range;
     
     // Reset all buttons to default style
@@ -21481,6 +21541,115 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Date range buttons - attach event listeners
+    const dateRangeButtons = document.querySelectorAll('.date-range-btn');
+    dateRangeButtons.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            const range = btn.dataset.range;
+            if (range) {
+                // Preset range buttons
+                selectDateRange(range);
+            } else if (btn.id === 'dateRangeBtnCustom') {
+                // Custom date range button
+                toggleCustomDateRangePicker();
+            }
+        });
+    });
+    
+    // Custom date range picker buttons
+    const closeCustomDateRangePickerBtn = document.getElementById('closeCustomDateRangePickerBtn');
+    if (closeCustomDateRangePickerBtn) {
+        closeCustomDateRangePickerBtn.addEventListener('click', function() {
+            closeCustomDateRangePicker();
+        });
+    }
+    
+    const cancelCustomDateRangeBtn = document.getElementById('cancelCustomDateRangeBtn');
+    if (cancelCustomDateRangeBtn) {
+        cancelCustomDateRangeBtn.addEventListener('click', function() {
+            closeCustomDateRangePicker();
+        });
+    }
+    
+    const applyCustomDateRangeBtn = document.getElementById('applyCustomDateRangeBtn');
+    if (applyCustomDateRangeBtn) {
+        applyCustomDateRangeBtn.addEventListener('click', function() {
+            applyCustomDateRange();
+        });
+    }
+    
+    // Custom date inputs - focus/blur handlers
+    const customStartDate = document.getElementById('customStartDate');
+    const customEndDate = document.getElementById('customEndDate');
+    if (customStartDate) {
+        customStartDate.addEventListener('focus', function() {
+            this.style.borderColor = '#1A733E';
+            this.style.outline = 'none';
+        });
+        customStartDate.addEventListener('blur', function() {
+            this.style.borderColor = '#d1d5db';
+        });
+    }
+    if (customEndDate) {
+        customEndDate.addEventListener('focus', function() {
+            this.style.borderColor = '#1A733E';
+            this.style.outline = 'none';
+        });
+        customEndDate.addEventListener('blur', function() {
+            this.style.borderColor = '#d1d5db';
+        });
+    }
+    
+    // Conversation pool filter buttons
+    const openConversationsFilterDialogBtn = document.getElementById('openConversationsFilterDialogBtn');
+    if (openConversationsFilterDialogBtn) {
+        openConversationsFilterDialogBtn.addEventListener('click', function() {
+            openConversationsFilterDialog();
+        });
+    }
+    
+    const resetConversationsDateRangeBtn = document.getElementById('resetConversationsDateRangeBtn');
+    if (resetConversationsDateRangeBtn) {
+        resetConversationsDateRangeBtn.addEventListener('click', function() {
+            resetConversationsDateRange();
+        });
+    }
+    
+    // AI Audit submit buttons
+    const aiAuditSubmitBtnInline = document.getElementById('aiAuditSubmitBtnInline');
+    if (aiAuditSubmitBtnInline) {
+        aiAuditSubmitBtnInline.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!this.disabled && typeof window.submitAIAuditBatch === 'function') {
+                window.submitAIAuditBatch();
+            }
+        });
+    }
+    
+    const aiAuditSubmitBtn = document.getElementById('aiAuditSubmitBtn');
+    if (aiAuditSubmitBtn) {
+        aiAuditSubmitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!this.disabled && typeof window.submitAIAuditBatch === 'function') {
+                window.submitAIAuditBatch();
+            }
+        });
+    }
+    
+    // Your Progress section header toggle
+    const yourStatsHeader = document.getElementById('yourStatsHeader');
+    if (yourStatsHeader) {
+        yourStatsHeader.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.toggleYourStatsSection === 'function') {
+                window.toggleYourStatsSection();
+            }
+        });
+    }
+    
     // Custom date range picker - close when clicking outside
     const customDateRangePicker = document.getElementById('customDateRangePicker');
     const customDateRangeBtn = document.getElementById('dateRangeBtnCustom');
@@ -21492,6 +21661,190 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
+    }
+    
+    // General event delegation for buttons with onclick handlers
+    // This handles buttons that call window functions, preventing CSP violations
+    document.addEventListener('click', function(e) {
+        const target = e.target.closest('[onclick]');
+        if (target && target.onclick) {
+            // Get the onclick attribute value
+            const onclickAttr = target.getAttribute('onclick');
+            if (onclickAttr) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Remove the onclick attribute to prevent CSP violation
+                target.removeAttribute('onclick');
+                
+                // Try to execute the function call
+                try {
+                    // Parse common patterns: functionName(), functionName('arg'), etc.
+                    const match = onclickAttr.match(/^(\w+)\((.*?)\)/);
+                    if (match) {
+                        const funcName = match[1];
+                        const argsStr = match[2];
+                        
+                        // Get the function from window
+                        const func = window[funcName];
+                        if (typeof func === 'function') {
+                            // Parse arguments (handle strings, numbers, null, etc.)
+                            let args = [];
+                            if (argsStr.trim()) {
+                                try {
+                                    // Try to evaluate arguments safely
+                                    args = argsStr.split(',').map(arg => {
+                                        arg = arg.trim();
+                                        // Handle string literals
+                                        if ((arg.startsWith('"') && arg.endsWith('"')) || 
+                                            (arg.startsWith("'") && arg.endsWith("'"))) {
+                                            return arg.slice(1, -1);
+                                        }
+                                        // Handle numbers
+                                        if (/^-?\d+$/.test(arg)) {
+                                            return parseInt(arg, 10);
+                                        }
+                                        // Handle null, undefined, etc.
+                                        if (arg === 'null') return null;
+                                        if (arg === 'undefined') return undefined;
+                                        if (arg === 'true') return true;
+                                        if (arg === 'false') return false;
+                                        // Return as string if can't parse
+                                        return arg;
+                                    });
+                                } catch (err) {
+                                    console.warn('Could not parse onclick arguments:', argsStr);
+                                }
+                            }
+                            func.apply(window, args);
+                        } else {
+                            console.warn('Function not found:', funcName);
+                        }
+                    } else {
+                        // Try direct evaluation as fallback (only if it's a simple function call)
+                        console.warn('Could not parse onclick:', onclickAttr);
+                    }
+                } catch (err) {
+                    console.error('Error executing onclick handler:', err);
+                }
+            }
+        }
+    }, true); // Use capture phase to catch before other handlers
+    
+    // Remove all inline event handlers on page load to prevent CSP violations
+    function removeInlineEventHandlers() {
+        const elements = document.querySelectorAll('[onclick], [onmouseover], [onmouseout], [onfocus], [onblur], [onchange], [onsubmit]');
+        elements.forEach(function(el) {
+            // Store handler info in data attributes for later use if needed
+            if (el.hasAttribute('onclick')) {
+                el.dataset.onclickHandler = el.getAttribute('onclick');
+                el.removeAttribute('onclick');
+            }
+            if (el.hasAttribute('onmouseover')) {
+                el.dataset.onmouseoverHandler = el.getAttribute('onmouseover');
+                el.removeAttribute('onmouseover');
+            }
+            if (el.hasAttribute('onmouseout')) {
+                el.dataset.onmouseoutHandler = el.getAttribute('onmouseout');
+                el.removeAttribute('onmouseout');
+            }
+            if (el.hasAttribute('onfocus')) {
+                el.dataset.onfocusHandler = el.getAttribute('onfocus');
+                el.removeAttribute('onfocus');
+            }
+            if (el.hasAttribute('onblur')) {
+                el.dataset.onblurHandler = el.getAttribute('onblur');
+                el.removeAttribute('onblur');
+            }
+            if (el.hasAttribute('onchange')) {
+                el.dataset.onchangeHandler = el.getAttribute('onchange');
+                el.removeAttribute('onchange');
+            }
+            if (el.hasAttribute('onsubmit')) {
+                el.dataset.onsubmitHandler = el.getAttribute('onsubmit');
+                el.removeAttribute('onsubmit');
+            }
+        });
+    }
+    
+    // Remove inline handlers immediately
+    removeInlineEventHandlers();
+    
+    // Also remove handlers for dynamically added elements
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    // Check the node itself
+                    if (node.hasAttribute && (node.hasAttribute('onclick') || node.hasAttribute('onmouseover') || 
+                        node.hasAttribute('onmouseout') || node.hasAttribute('onfocus') || 
+                        node.hasAttribute('onblur') || node.hasAttribute('onchange') || 
+                        node.hasAttribute('onsubmit'))) {
+                        removeInlineEventHandlers();
+                    }
+                    // Check children
+                    const children = node.querySelectorAll ? node.querySelectorAll('[onclick], [onmouseover], [onmouseout], [onfocus], [onblur], [onchange], [onsubmit]') : [];
+                    if (children.length > 0) {
+                        removeInlineEventHandlers();
+                    }
+                }
+            });
+        });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    // Conversation pool date inputs - add change listeners to trigger reload
+    let conversationDateChangeTimeout = null;
+    function setupConversationPoolDateListeners() {
+        const conversationsStartDate = document.getElementById('conversationsStartDate');
+        const conversationsEndDate = document.getElementById('conversationsEndDate');
+        
+        if (conversationsStartDate && conversationsEndDate) {
+            // Check if listeners are already attached (using a data attribute)
+            if (conversationsStartDate.dataset.hasListener === 'true') {
+                return; // Already set up
+            }
+            
+            // Mark as having listeners
+            conversationsStartDate.dataset.hasListener = 'true';
+            conversationsEndDate.dataset.hasListener = 'true';
+            
+            // Debounce function to avoid too many API calls
+            const handleDateChange = function() {
+                if (conversationDateChangeTimeout) {
+                    clearTimeout(conversationDateChangeTimeout);
+                }
+                conversationDateChangeTimeout = setTimeout(function() {
+                    const startDate = conversationsStartDate.value;
+                    const endDate = conversationsEndDate.value;
+                    
+                    // Only reload if both dates are set and valid
+                    if (startDate && endDate && currentAdminId) {
+                        if (new Date(startDate) <= new Date(endDate)) {
+                            loadConversationsForEmployee();
+                        }
+                    }
+                }, 500); // 500ms debounce
+            };
+            
+            conversationsStartDate.addEventListener('change', handleDateChange);
+            conversationsEndDate.addEventListener('change', handleDateChange);
+        }
+    }
+    
+    // Set up listeners initially
+    setupConversationPoolDateListeners();
+    
+    // Also set up listeners when conversations section is opened (using MutationObserver)
+    const conversationsSection = document.getElementById('conversationsSection');
+    if (conversationsSection) {
+        const observer = new MutationObserver(function(mutations) {
+            if (conversationsSection.style.display !== 'none' && conversationsSection.style.display !== '') {
+                // Small delay to ensure DOM is ready
+                setTimeout(setupConversationPoolDateListeners, 100);
+            }
+        });
+        observer.observe(conversationsSection, { attributes: true, attributeFilter: ['style'] });
     }
     
     // Week navigation

@@ -2810,26 +2810,101 @@ async function initializeDashboard() {
     // All database operations will now use authenticated client with RLS enforcement
 
     // Load data in optimized order - users first, then everything in parallel
-    // Use cached users if available
-    const cachedUsers = sessionStorage.getItem('cachedUsers');
-    const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
-    const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
-    
-    if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
-      allUsers = JSON.parse(cachedUsers);
-    } else {
-      // Try to use TypeScript module first, fallback to HTML function
-      try {
-        const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
-        await loadAllUsersTS();
-        // Get users from homeState
-        allUsers = homeState.allUsers || [];
-        sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
-        sessionStorage.setItem('cachedUsersTime', Date.now().toString());
-      } catch (error) {
-        console.warn('Failed to load users via TypeScript module, using fallback:', error);
-        if (typeof loadAllUsers === 'function') {
-          await loadAllUsers();
+    // Use persistent cache for instant display
+    try {
+      const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
+      const { getCachedSync, buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      
+      // Try to get cached users immediately
+      const cachedUsersData = await getCachedSync('users_all');
+      if (cachedUsersData) {
+        allUsers = cachedUsersData;
+        console.log('[Cache] Loaded users from persistent cache');
+      } else {
+        // Fallback to sessionStorage for backward compatibility
+        const cachedUsers = sessionStorage.getItem('cachedUsers');
+        const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
+        const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
+        
+        if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
+          allUsers = JSON.parse(cachedUsers);
+        }
+      }
+      
+      // Preload cached data for instant display (stale-while-revalidate)
+      const period = getCurrentPeriodDates();
+      const statsCacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      const auditsCacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+      const updatesCacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      
+      // Load cached data immediately for instant display
+      const [cachedStats, cachedAudits, cachedUpdates] = await Promise.all([
+        getCachedSync(statsCacheKey),
+        getCachedSync(auditsCacheKey),
+        getCachedSync(updatesCacheKey)
+      ]);
+      
+      // Render cached data immediately if available
+      if (cachedStats && typeof renderStatsFromData === 'function') {
+        renderStatsFromData(cachedStats);
+        console.log('[Cache] Rendered stats from cache');
+      }
+      if (cachedAudits) {
+        assignedAudits = cachedAudits;
+        if (typeof renderAssignedAudits === 'function') {
+          renderAssignedAudits();
+          console.log('[Cache] Rendered audits from cache');
+        }
+      }
+      if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function') {
+        renderRecentUpdatesFromData(cachedUpdates);
+        console.log('[Cache] Rendered updates from cache');
+      }
+      
+      // Load users if not cached
+      if (!allUsers || allUsers.length === 0) {
+        // Try to use TypeScript module first, fallback to HTML function
+        try {
+          const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
+          await loadAllUsersTS();
+          // Get users from homeState
+          allUsers = homeState.allUsers || [];
+          // Cache in persistent storage
+          const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+          await persistentCacheService.set('users_all', allUsers, 10 * 60 * 1000); // 10 minutes
+          // Also cache in sessionStorage for backward compatibility
+          sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
+          sessionStorage.setItem('cachedUsersTime', Date.now().toString());
+        } catch (error) {
+          console.warn('Failed to load users via TypeScript module, using fallback:', error);
+          if (typeof loadAllUsers === 'function') {
+            await loadAllUsers();
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to use persistent cache, falling back to sessionStorage:', error);
+      // Fallback to sessionStorage
+      const cachedUsers = sessionStorage.getItem('cachedUsers');
+      const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
+      const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
+      
+      if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
+        allUsers = JSON.parse(cachedUsers);
+      } else {
+        // Try to use TypeScript module first, fallback to HTML function
+        try {
+          const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
+          await loadAllUsersTS();
+          // Get users from homeState
+          allUsers = homeState.allUsers || [];
+          sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
+          sessionStorage.setItem('cachedUsersTime', Date.now().toString());
+        } catch (error) {
+          console.warn('Failed to load users via TypeScript module, using fallback:', error);
+          if (typeof loadAllUsers === 'function') {
+            await loadAllUsers();
+          }
         }
       }
     }
@@ -3297,26 +3372,50 @@ async function loadRecentUpdates() {
       const updatesFeed = document.getElementById('updatesFeed');
       if (!updatesFeed) return;
 
-      // Check cache first
-      const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      // Use persistent cache with stale-while-revalidate
+      const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
       
-      // Extended cache TTL to 2 minutes for better performance
-      if (cachedData && cacheAge < 120000) { // 2 minutes cache (extended from 1 minute)
-        console.log('Loading recent updates from cache');
-        const allUpdates = JSON.parse(cachedData);
-        renderRecentUpdatesFromData(allUpdates);
-        return;
+      const cacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      
+      // Use persistent cache (stale-while-revalidate pattern)
+      const updatesData = await unifiedDataService.get(
+        cacheKey,
+        async () => {
+          // Fetch function - show loader only if no cached data
+          showLoader('updatesFeed');
+          const data = await fetchAndCacheRecentUpdates(period);
+          return data;
+        },
+        3 * 60 * 1000, // 3 minutes TTL
+        {
+          usePersistentCache: true,
+          staleWhileRevalidate: true
+        }
+      );
+      
+      // Render the updates (from cache or fresh)
+      if (updatesData && typeof renderRecentUpdatesFromData === 'function') {
+        renderRecentUpdatesFromData(updatesData);
       }
-      
-      // Show loader
-      showLoader('updatesFeed');
-      
-      await fetchAndCacheRecentUpdates(period);
     } catch (error) {
       console.error('Error loading recent updates:', error);
+      // Try fallback to sessionStorage
+      try {
+        const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+        const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+        
+        if (cachedData && cacheAge < 120000) {
+          const allUpdates = JSON.parse(cachedData);
+          renderRecentUpdatesFromData(allUpdates);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback cache also failed:', fallbackError);
+      }
+      
       const updatesFeed = document.getElementById('updatesFeed');
       if (updatesFeed) {
         updatesFeed.innerHTML = `
@@ -3890,16 +3989,29 @@ async function fetchAndCacheRecentUpdates(period) {
     // Limit to 15 most recent
     allUpdates = allUpdates.slice(0, 15);
     
-    // Cache the results
-    const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-    sessionStorage.setItem(cacheKey, JSON.stringify(allUpdates));
-    sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    // Cache the results in persistent cache
+    try {
+      const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      const cacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      await persistentCacheService.set(cacheKey, allUpdates, 3 * 60 * 1000); // 3 minutes
+    } catch (cacheError) {
+      console.warn('Failed to cache in persistent storage, using sessionStorage:', cacheError);
+      // Fallback to sessionStorage
+      const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+      sessionStorage.setItem(cacheKey, JSON.stringify(allUpdates));
+      sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    }
     
     // Update UI with fresh data
     console.log('Updating UI with fresh recent updates');
     renderRecentUpdatesFromData(allUpdates);
+    
+    // Return data for caching
+    return allUpdates;
   } catch (error) {
     console.error('Error fetching recent updates:', error);
+    throw error; // Re-throw so caller can handle
   }
 }
 
@@ -4039,26 +4151,51 @@ async function loadAssignedAudits() {
     try {
       console.log('Loading audits for user:', currentUserEmail, 'Role:', currentUserRole, 'IsAgent:', isAgent);
       
-      // Check cache first
-      const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      // Use persistent cache with stale-while-revalidate
+      const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
       
-      // Extended cache TTL to 2 minutes for better performance
-      if (cachedData && cacheAge < 120000) { // 2 minutes cache (extended from 1 minute)
-        console.log('Loading assigned audits from cache');
-        assignedAudits = JSON.parse(cachedData);
+      const cacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+      
+      // Use persistent cache (stale-while-revalidate pattern)
+      const auditsData = await unifiedDataService.get(
+        cacheKey,
+        async () => {
+          // Fetch function - show loader only if no cached data
+          showLoader('assignedAuditsList');
+          const data = await fetchAndCacheAssignedAudits(period);
+          return data;
+        },
+        5 * 60 * 1000, // 5 minutes TTL
+        {
+          usePersistentCache: true,
+          staleWhileRevalidate: true
+        }
+      );
+      
+      // Update assignedAudits and render
+      if (auditsData) {
+        assignedAudits = auditsData;
         renderAssignedAudits();
-        return;
       }
-      
-      // Show loader
-      showLoader('assignedAuditsList');
-      
-      await fetchAndCacheAssignedAudits(period);
     } catch (error) {
       console.error('Error loading assigned audits:', error);
+      // Try fallback to sessionStorage
+      try {
+        const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+        const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+        
+        if (cachedData && cacheAge < 120000) {
+          assignedAudits = JSON.parse(cachedData);
+          renderAssignedAudits();
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback cache also failed:', fallbackError);
+      }
+      
       const list = document.getElementById('assignedAuditsList');
       if (list) {
         list.innerHTML = `
@@ -4082,14 +4219,26 @@ async function fetchAndCacheAssignedAudits(period) {
       await loadPendingAssignmentsForAuditor();
     }
 
-    // Cache the results
-    const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
-    sessionStorage.setItem(cacheKey, JSON.stringify(assignedAudits));
-    sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    // Cache the results in persistent cache
+    try {
+      const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      const cacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+      await persistentCacheService.set(cacheKey, assignedAudits, 5 * 60 * 1000); // 5 minutes
+    } catch (cacheError) {
+      console.warn('Failed to cache in persistent storage, using sessionStorage:', cacheError);
+      // Fallback to sessionStorage
+      const cacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+      sessionStorage.setItem(cacheKey, JSON.stringify(assignedAudits));
+      sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    }
     
     // Update UI with fresh data
     console.log('Updating UI with fresh assigned audits');
     renderAssignedAudits();
+    
+    // Return data for caching
+    return assignedAudits;
   } catch (error) {
     console.error('Error fetching assigned audits:', error);
     document.getElementById('assignedAuditsList').innerHTML = `
@@ -4097,6 +4246,7 @@ async function fetchAndCacheAssignedAudits(period) {
         <p>Error loading audits</p>
       </div>
     `;
+    throw error; // Re-throw so caller can handle
   }
 }
 
@@ -4624,31 +4774,54 @@ async function updateYourStats() {
   
   return deduplicateRequest(requestKey, async () => {
     try {
-      // Check cache first
-      const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-      const cachedData = sessionStorage.getItem(cacheKey);
-      const cachedTime = sessionStorage.getItem(cacheKey + '_time');
-      const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+      // Use persistent cache with stale-while-revalidate
+      const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
       
-      if (cachedData && cacheAge < 60000) { // 1 minute cache
-        console.log('Loading stats from cache');
-        const statsData = JSON.parse(cachedData);
+      const cacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      
+      // Use persistent cache (stale-while-revalidate pattern)
+      const statsData = await unifiedDataService.get(
+        cacheKey,
+        async () => {
+          // Fetch function - show loader only if no cached data
+          showStatsLoader();
+          const data = await fetchAndCacheStats(period);
+          return data;
+        },
+        5 * 60 * 1000, // 5 minutes TTL
+        {
+          usePersistentCache: true,
+          staleWhileRevalidate: true
+        }
+      );
+      
+      // Render the stats (from cache or fresh)
+      if (statsData && typeof renderStatsFromData === 'function') {
         renderStatsFromData(statsData);
-        return;
       }
-      
-      // Show loader
-      showStatsLoader();
-      
-      await fetchAndCacheStats(period);
     } catch (error) {
       console.error('Error loading stats:', error);
+      // Try fallback to sessionStorage
+      try {
+        const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+        const cachedData = sessionStorage.getItem(cacheKey);
+        const cachedTime = sessionStorage.getItem(cacheKey + '_time');
+        const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
+        
+        if (cachedData && cacheAge < 60000) {
+          const statsData = JSON.parse(cachedData);
+          renderStatsFromData(statsData);
+          return;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback cache also failed:', fallbackError);
+      }
       // Show error state in stats
       showStatsLoader();
       const errorMsg = document.createElement('div');
       errorMsg.className = 'text-xs text-red-500 text-center mt-2';
       errorMsg.textContent = 'Error loading stats';
-      // Stats will show loading state, error is logged
     }
   });
 }
@@ -5296,17 +5469,30 @@ async function fetchAndCacheStats(period) {
       requiresAcknowledgment
     };
     
-    // Cache the results
-    const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
-    sessionStorage.setItem(cacheKey, JSON.stringify(statsData));
-    sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    // Cache the results in persistent cache
+    try {
+      const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      const cacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      await persistentCacheService.set(cacheKey, statsData, 5 * 60 * 1000); // 5 minutes
+    } catch (cacheError) {
+      console.warn('Failed to cache in persistent storage, using sessionStorage:', cacheError);
+      // Fallback to sessionStorage
+      const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+      sessionStorage.setItem(cacheKey, JSON.stringify(statsData));
+      sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
+    }
     
     // Update UI with fresh data
     console.log('Updating UI with fresh stats');
     renderStatsFromData(statsData);
     
+    // Return data for caching
+    return statsData;
+    
   } catch (error) {
     console.error('Error updating your stats:', error);
+    throw error; // Re-throw so caller can handle
   }
 }
 

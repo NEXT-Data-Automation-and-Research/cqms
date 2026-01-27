@@ -70,6 +70,8 @@ export interface FilterOptions {
   qualitySupervisor?: string;
   teamSupervisor?: string;
   search?: string;
+  role?: string;
+  is_active?: 'all' | 'active' | 'inactive';
   groupBy?: 'none' | 'channel' | 'team' | 'quality_mentor' | 'team_supervisor' | 'department' | 'country';
 }
 

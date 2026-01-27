@@ -6,6 +6,9 @@
 import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
 import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 import { logInfo, logError } from '../../../../utils/logging-helper.js';
+import { FilterBar } from './filter-bar.js';
+import type { FilterOptions } from '../../domain/types.js';
+import type { Employee } from '../../domain/types.js';
 
 interface Scorecard {
   id: string;
@@ -54,6 +57,7 @@ export class AIAuditView {
   };
   private searchDebounceTimer: number | null = null;
   private modalOverlay: HTMLDivElement | null = null;
+  private filterBar: FilterBar | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -85,6 +89,10 @@ export class AIAuditView {
       logInfo(`[AIAuditView] Loaded ${this.people.length} people`);
       this.applyFilters();
       this.render();
+      // Initialize or update filter bar after render
+      setTimeout(() => {
+        this.updateFilterBar();
+      }, 0);
     } catch (error) {
       logError('[AIAuditView] Error loading people:', error);
       this.showError('Failed to load people from database');
@@ -211,11 +219,7 @@ export class AIAuditView {
   }
 
   private render(): void {
-    const roles = this.getUniqueValues('role');
-    const channels = this.getUniqueValues('channel');
-    const teams = this.getUniqueValues('team');
-    const departments = this.getUniqueValues('department');
-    const countries = this.getUniqueValues('country');
+    // Filters are now handled by FilterBar component, no need to get unique values here
 
     const allFilteredSelected = this.filteredPeople.length > 0 && 
       this.filteredPeople.every(p => this.selectedPeople.has(p.email));
@@ -226,9 +230,12 @@ export class AIAuditView {
         <div class="mt-6">
           <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
             <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h3 class="text-lg font-semibold text-gray-900">
-                People (${this.filteredPeople.length}${this.people.length !== this.filteredPeople.length ? ` of ${this.people.length}` : ''})
-              </h3>
+              <div>
+                <h3 class="text-lg font-semibold text-gray-900">
+                  People (${this.filteredPeople.length}${this.people.length !== this.filteredPeople.length ? ` of ${this.people.length}` : ''})
+                </h3>
+                <p class="text-xs text-gray-600 mt-1">Select team members for AI audit</p>
+              </div>
               <div class="flex items-center gap-2">
                 ${someFilteredSelected ? `
                   <button 
@@ -251,7 +258,7 @@ export class AIAuditView {
                 const isSelected = this.selectedPeople.has(person.email);
                 return `
                 <div 
-                  class="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}"
+                  class="px-6 py-4 hover:bg-gray-50 transition-colors cursor-pointer"
                   data-email="${escapeHtml(person.email)}"
                   data-action="person-select"
                 >
@@ -315,103 +322,18 @@ export class AIAuditView {
                 </p>
               </div>
             </div>
-
-            <!-- Search and Filters -->
-            <div class="space-y-4">
-              <!-- Search Bar -->
-              <div class="relative">
-                <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"/>
-                    <path d="m21 21-4.35-4.35"/>
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  id="peopleSearch"
-                  class="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all"
-                  placeholder="Search by name, email, role, channel, team, department, country..."
-                  value="${escapeHtml(this.filters.search)}"
-                />
+            
+            <!-- Search and Filters - Using shared FilterBar component -->
+            <div id="expandedFilterContainer"></div>
+            
+            <!-- Selected Count -->
+            ${this.selectedPeople.size > 0 ? `
+              <div class="bg-primary/10 border border-primary/20 rounded-md px-4 py-2 mt-4">
+                <p class="text-sm font-medium text-primary">
+                  ${this.selectedPeople.size} person${this.selectedPeople.size === 1 ? '' : 's'} selected
+                </p>
               </div>
-
-              <!-- Filter Row -->
-              <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <!-- Role Filter -->
-                <select
-                  id="filterRole"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">All Roles</option>
-                  ${roles.map(role => `
-                    <option value="${escapeHtml(role)}" ${this.filters.role === role ? 'selected' : ''}>${escapeHtml(role)}</option>
-                  `).join('')}
-                </select>
-
-                <!-- Channel Filter -->
-                <select
-                  id="filterChannel"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">All Channels</option>
-                  ${channels.map(channel => `
-                    <option value="${escapeHtml(channel)}" ${this.filters.channel === channel ? 'selected' : ''}>${escapeHtml(channel)}</option>
-                  `).join('')}
-                </select>
-
-                <!-- Team Filter -->
-                <select
-                  id="filterTeam"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">All Teams</option>
-                  ${teams.map(team => `
-                    <option value="${escapeHtml(team)}" ${this.filters.team === team ? 'selected' : ''}>${escapeHtml(team)}</option>
-                  `).join('')}
-                </select>
-
-                <!-- Department Filter -->
-                <select
-                  id="filterDepartment"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">All Departments</option>
-                  ${departments.map(dept => `
-                    <option value="${escapeHtml(dept)}" ${this.filters.department === dept ? 'selected' : ''}>${escapeHtml(dept)}</option>
-                  `).join('')}
-                </select>
-
-                <!-- Country Filter -->
-                <select
-                  id="filterCountry"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="">All Countries</option>
-                  ${countries.map(country => `
-                    <option value="${escapeHtml(country)}" ${this.filters.country === country ? 'selected' : ''}>${escapeHtml(country)}</option>
-                  `).join('')}
-                </select>
-
-                <!-- Active Status Filter -->
-                <select
-                  id="filterActive"
-                  class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-                >
-                  <option value="all" ${this.filters.is_active === 'all' ? 'selected' : ''}>All Status</option>
-                  <option value="active" ${this.filters.is_active === 'active' ? 'selected' : ''}>Active Only</option>
-                  <option value="inactive" ${this.filters.is_active === 'inactive' ? 'selected' : ''}>Inactive Only</option>
-                </select>
-              </div>
-
-              <!-- Selected Count -->
-              ${this.selectedPeople.size > 0 ? `
-                <div class="bg-primary/10 border border-primary/20 rounded-md px-4 py-2">
-                  <p class="text-sm font-medium text-primary">
-                    ${this.selectedPeople.size} person${this.selectedPeople.size === 1 ? '' : 's'} selected
-                  </p>
-                </div>
-              ` : ''}
-            </div>
+            ` : ''}
           </div>
         </div>
         ${peopleListHtml}
@@ -422,6 +344,67 @@ export class AIAuditView {
     this.updateFloatingButton();
     
     this.attachEventListeners();
+  }
+
+  private updateFilterBar(): void {
+    const expandedFilterContainer = document.getElementById('expandedFilterContainer');
+    if (!expandedFilterContainer) return;
+
+    // Convert Person[] to Employee[] format for FilterBar
+    const employees: Employee[] = this.people.map(p => ({
+      id: p.email,
+      email: p.email,
+      name: p.name,
+      avatar_url: null,
+      channel: p.channel || null,
+      team: p.team || null,
+      department: p.department || null,
+      country: p.country || null,
+      designation: p.role || null,
+      quality_mentor: null,
+      team_supervisor: null,
+      is_active: p.is_active ?? true
+    }));
+
+    // Convert Filters to FilterOptions
+    const filterOptions: FilterOptions = {
+      search: this.filters.search || undefined,
+      role: this.filters.role || undefined,
+      channel: this.filters.channel || undefined,
+      team: this.filters.team || undefined,
+      department: this.filters.department || undefined,
+      country: this.filters.country || undefined,
+      is_active: this.filters.is_active !== 'all' ? this.filters.is_active as 'active' | 'inactive' : undefined
+    };
+
+    if (this.filterBar) {
+      // Update existing filter bar
+      this.filterBar.update({
+        employees,
+        filters: filterOptions
+      });
+    } else {
+      // Create new filter bar
+      this.filterBar = new FilterBar(expandedFilterContainer, {
+        employees,
+        filters: filterOptions,
+        expanded: true,
+        onFilterChange: (filters) => {
+          // Update local filters from FilterOptions
+          this.filters.search = filters.search || '';
+          this.filters.role = filters.role || '';
+          this.filters.channel = filters.channel || '';
+          this.filters.team = filters.team || '';
+          this.filters.department = filters.department || '';
+          this.filters.country = filters.country || '';
+          this.filters.is_active = filters.is_active || 'all';
+          
+          // Apply filters and re-render
+          this.applyFilters();
+          this.render();
+        }
+      });
+    }
   }
 
   private updateFloatingButton(): void {
@@ -458,43 +441,8 @@ export class AIAuditView {
   }
 
   private attachEventListeners(): void {
-    // Search input
-    const searchInput = this.container.querySelector('#peopleSearch') as HTMLInputElement;
-    if (searchInput) {
-      searchInput.removeEventListener('input', this.handleSearch);
-      searchInput.addEventListener('input', this.handleSearch);
-    }
-
-    // Filter selects
-    const filterRole = this.container.querySelector('#filterRole') as HTMLSelectElement;
-    if (filterRole) {
-      filterRole.onchange = () => this.handleFilterChange('role', filterRole.value);
-    }
-
-    const filterChannel = this.container.querySelector('#filterChannel') as HTMLSelectElement;
-    if (filterChannel) {
-      filterChannel.onchange = () => this.handleFilterChange('channel', filterChannel.value);
-    }
-
-    const filterTeam = this.container.querySelector('#filterTeam') as HTMLSelectElement;
-    if (filterTeam) {
-      filterTeam.onchange = () => this.handleFilterChange('team', filterTeam.value);
-    }
-
-    const filterDepartment = this.container.querySelector('#filterDepartment') as HTMLSelectElement;
-    if (filterDepartment) {
-      filterDepartment.onchange = () => this.handleFilterChange('department', filterDepartment.value);
-    }
-
-    const filterCountry = this.container.querySelector('#filterCountry') as HTMLSelectElement;
-    if (filterCountry) {
-      filterCountry.onchange = () => this.handleFilterChange('country', filterCountry.value);
-    }
-
-    const filterActive = this.container.querySelector('#filterActive') as HTMLSelectElement;
-    if (filterActive) {
-      filterActive.onchange = () => this.handleFilterChange('is_active', filterActive.value);
-    }
+    // Filter bar handles all filter inputs now, so we don't need individual listeners
+    // The FilterBar component handles all the event listeners
 
     // Select All / Deselect All buttons
     const selectAllBtn = this.container.querySelector('#selectAllBtn') as HTMLButtonElement;

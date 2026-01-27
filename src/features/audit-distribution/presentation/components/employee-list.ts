@@ -169,9 +169,7 @@ export class EmployeeList {
 
     return `
       <div
-        class="employee-item px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0 ${
-          isSelected ? 'bg-primary/5' : ''
-        }"
+        class="employee-item px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0"
         data-email="${this.escapeHtml(employee.email)}"
         data-action="employee-select"
       >

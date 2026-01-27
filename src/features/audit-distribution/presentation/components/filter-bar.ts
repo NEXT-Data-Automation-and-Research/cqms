@@ -6,12 +6,13 @@
 import type { Employee, FilterOptions } from '../../domain/types.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { getActiveFilterChips } from './filter-chip-utils.js';
-import { getFilterBarHTML } from './filter-bar-template.js';
+import { getFilterBarHTML, getExpandedFilterHTML } from './filter-bar-template.js';
 
 export interface FilterBarConfig {
   employees: Employee[];
   filters: FilterOptions;
   onFilterChange: (filters: FilterOptions) => void;
+  expanded?: boolean; // Use expanded layout matching AI Audit style
 }
 
 export class FilterBar {
@@ -52,15 +53,23 @@ export class FilterBar {
     const activeFilterChips = getActiveFilterChips(filters, employees);
     const hasActiveFilters = activeFilterChips.length > 0;
 
-    const html = getFilterBarHTML(
-      filters.search || '',
-      activeFilterChips,
-      hasActiveFilters,
-      false,
-      false,
-      this.config.employees,
-      this.config.filters
-    );
+    const html = this.config.expanded
+      ? getExpandedFilterHTML(
+          filters.search || '',
+          activeFilterChips,
+          hasActiveFilters,
+          this.config.employees,
+          this.config.filters
+        )
+      : getFilterBarHTML(
+          filters.search || '',
+          activeFilterChips,
+          hasActiveFilters,
+          false,
+          false,
+          this.config.employees,
+          this.config.filters
+        );
 
     safeSetHTML(this.container, html);
 
@@ -158,6 +167,14 @@ export class FilterBar {
             delete filters.qualitySupervisor;
           } else if (key === 'teamSupervisor') {
             delete filters.teamSupervisor;
+          } else if (key === 'role') {
+            delete filters.role;
+          } else if (key === 'is_active') {
+            delete filters.is_active;
+          } else if (key === 'groupBy') {
+            delete filters.groupBy;
+          } else if (key === 'search') {
+            delete filters.search;
           }
 
           // Clean up undefined values
@@ -184,6 +201,49 @@ export class FilterBar {
         this.config.onFilterChange(emptyFilters);
         if (searchInput) {
           searchInput.value = this.config.filters.search || '';
+        }
+      });
+    }
+
+    // Handle filter dropdowns in expanded layout
+    if (this.config.expanded) {
+      const filterSelects = [
+        { id: 'filterRole', key: 'role' as keyof FilterOptions },
+        { id: 'filterChannel', key: 'channel' as keyof FilterOptions },
+        { id: 'filterTeam', key: 'team' as keyof FilterOptions },
+        { id: 'filterDepartment', key: 'department' as keyof FilterOptions },
+        { id: 'filterCountry', key: 'country' as keyof FilterOptions },
+        { id: 'filterActive', key: 'is_active' as keyof FilterOptions },
+        { id: 'filterGroupBy', key: 'groupBy' as keyof FilterOptions },
+        { id: 'filterQualitySupervisor', key: 'qualitySupervisor' as keyof FilterOptions },
+        { id: 'filterTeamSupervisor', key: 'teamSupervisor' as keyof FilterOptions }
+      ];
+
+      filterSelects.forEach(({ id, key }) => {
+        const select = this.container.querySelector(`#${id}`) as HTMLSelectElement;
+        if (select) {
+          select.addEventListener('change', () => {
+            let value: string | undefined = select.value.trim();
+            
+            // Handle special cases
+            if (key === 'is_active' && value === 'all') {
+              value = undefined;
+            } else if (key === 'groupBy' && value === 'none') {
+              value = undefined;
+            }
+            
+            const filters: FilterOptions = {
+              ...this.config.filters,
+              [key]: value || undefined
+            };
+            
+            // Clean up undefined values
+            if (!value) {
+              delete filters[key];
+            }
+            
+            this.config.onFilterChange(filters);
+          });
         }
       });
     }

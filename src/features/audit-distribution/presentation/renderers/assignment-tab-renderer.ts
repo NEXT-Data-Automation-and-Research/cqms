@@ -46,14 +46,20 @@ export class AssignmentTabRenderer {
   }
 
   private initializeFilterBar(): void {
+    // Check for expanded filter container first (new style), then fall back to compact
+    const expandedFilterContainer = document.getElementById('expandedFilterContainer');
     const filterBarContainer = document.getElementById('filterBarContainer');
-    if (!filterBarContainer) return;
+    const container = expandedFilterContainer || filterBarContainer;
+    
+    if (!container) return;
 
     const state = this.stateManager.getState();
+    const useExpanded = !!expandedFilterContainer;
 
-    this.filterBar = new FilterBar(filterBarContainer, {
+    this.filterBar = new FilterBar(container, {
       employees: state.employees,
       filters: state.filters,
+      expanded: useExpanded,
       onFilterChange: (filters) => {
         // Replace filters completely when coming from modal (preserves search if needed)
         this.stateManager.replaceFilters(filters);
@@ -742,7 +748,12 @@ export class AssignmentTabRenderer {
   }
 
   updateEmployeeList(): void {
+    // Use view-specific containers (each view has its own people list now)
     let contentContainer = document.getElementById('employeeListContent');
+    let selectionActionsContainer = document.getElementById('selectionActionsContainer');
+    let paginationContainer = document.getElementById('paginationBottomContainer');
+    
+    // If still no container, try to create it (legacy support)
     if (!contentContainer) {
       const mainContainer = document.getElementById('employeeListContainer');
       if (mainContainer) {
