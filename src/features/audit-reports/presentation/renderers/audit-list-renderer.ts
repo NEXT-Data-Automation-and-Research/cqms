@@ -156,6 +156,65 @@ export function renderAuditList(
   
   // Setup profile tooltips for participant chips
   setupProfileTooltips(container, audits);
+  
+  // Setup event delegation for View Details buttons
+  setupViewDetailsButtonHandlers(container, controller);
+}
+
+/**
+ * Setup event delegation for View Details button clicks
+ */
+function setupViewDetailsButtonHandlers(container: HTMLElement, controller: AuditReportsController): void {
+  // Remove any existing listener to prevent duplicates
+  const existingHandler = (container as any).__viewDetailsHandler;
+  if (existingHandler) {
+    container.removeEventListener('click', existingHandler);
+  }
+  
+  // Create new handler
+  const handler = async (e: Event) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest('[data-action="view-details"]') as HTMLButtonElement;
+    
+    if (button) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const auditId = button.dataset.auditId;
+      if (auditId) {
+        console.log('[AuditReports] View Details button clicked for audit:', auditId);
+        
+        // Always prefer window.auditReportsController as it has the methods attached
+        const globalController = (window as any).auditReportsController;
+        
+        if (globalController?.showAuditModal) {
+          console.log('[AuditReports] Using global controller showAuditModal');
+          try {
+            await globalController.showAuditModal(auditId);
+          } catch (error) {
+            console.error('[AuditReports] Error calling showAuditModal:', error);
+          }
+        } else if ((controller as any).showAuditModal) {
+          console.log('[AuditReports] Using local controller showAuditModal');
+          try {
+            await (controller as any).showAuditModal(auditId);
+          } catch (error) {
+            console.error('[AuditReports] Error calling showAuditModal:', error);
+          }
+        } else {
+          console.error('[AuditReports] showAuditModal method not found on any controller');
+          console.log('[AuditReports] Global controller available:', !!globalController);
+          console.log('[AuditReports] Global controller methods:', globalController ? Object.keys(globalController) : 'N/A');
+        }
+      }
+    }
+  };
+  
+  // Store reference for cleanup
+  (container as any).__viewDetailsHandler = handler;
+  
+  // Add event listener with capture phase to ensure it runs before any blocking handlers
+  container.addEventListener('click', handler, { capture: true });
 }
 
 /**
@@ -632,8 +691,10 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
           
           <!-- View Details Button -->
           <button 
-            onclick="window.auditReportsController?.showAuditModal('${auditId}')"
+            data-action="view-details"
+            data-audit-id="${auditId}"
             class="btn-view-details"
+            style="position: relative; z-index: 10; pointer-events: auto;"
           >
             View Details
           </button>

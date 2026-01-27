@@ -746,19 +746,41 @@ export class AuditReportsEventHandlers {
 // Helper functions for controller methods
 async function showAuditModal(controller: AuditReportsController, auditId: string): Promise<void> {
   logInfo('Show audit modal:', auditId);
+  console.log('[AuditReports] showAuditModal called with auditId:', auditId);
   
-  const state = controller.getState();
-  const audit = state.audits.find(a => a.id === auditId);
-  
-  if (!audit) {
-    alert('Audit not found');
-    return;
+  try {
+    const state = controller.getState();
+    console.log('[AuditReports] State has', state.audits.length, 'audits');
+    
+    const audit = state.audits.find(a => a.id === auditId);
+    console.log('[AuditReports] Found audit:', audit ? 'yes' : 'no');
+    
+    if (!audit) {
+      console.error('[AuditReports] Audit not found in state for ID:', auditId);
+      alert('Audit not found');
+      return;
+    }
+    
+    console.log('[AuditReports] Audit data:', { 
+      id: audit.id, 
+      employeeName: audit.employeeName,
+      hasTranscript: !!audit.transcript,
+      transcriptLength: audit.transcript?.length || 0
+    });
+    
+    // Import modal dynamically to avoid circular dependencies
+    console.log('[AuditReports] Importing AuditDetailModal...');
+    const { AuditDetailModal } = await import('./modals/audit-detail-modal.js');
+    console.log('[AuditReports] Creating modal instance...');
+    const modal = new AuditDetailModal(controller);
+    console.log('[AuditReports] Opening modal...');
+    await modal.open(audit);
+    console.log('[AuditReports] Modal opened successfully');
+  } catch (error) {
+    console.error('[AuditReports] Error in showAuditModal:', error);
+    logError('Error in showAuditModal:', error);
+    alert('Error opening audit details. Please try again.');
   }
-  
-  // Import modal dynamically to avoid circular dependencies
-  const { AuditDetailModal } = await import('./modals/audit-detail-modal.js');
-  const modal = new AuditDetailModal(controller);
-  await modal.open(audit);
 }
 
 function editAudit(controller: AuditReportsController, auditId: string): void {

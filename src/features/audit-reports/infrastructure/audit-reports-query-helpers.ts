@@ -103,9 +103,9 @@ async function retryQueryWithMinimalFields(
   showAllAudits: boolean = true
 ): Promise<AuditReport[]> {
   try {
-    // Use minimal field set that should exist in all tables
-    // Include interaction_id and channel as they are critical for display
-    const minimalFields = 'id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, channel, submitted_at, passing_status, average_score, total_errors_count';
+    // Use expanded minimal field set that should exist in all tables
+    // Include transcript and other essential fields for the modal view
+    const minimalFields = 'id, employee_email, employee_name, employee_type, auditor_email, auditor_name, interaction_id, interaction_date, channel, quarter, week, country_of_employee, client_email, submitted_at, passing_status, average_score, total_errors_count, transcript, error_description, recommendations, acknowledgement_status, reversal_requested_at, reversal_approved, created_at';
     
     let query = db
       .from(tableName)

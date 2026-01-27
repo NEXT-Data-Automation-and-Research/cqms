@@ -907,6 +907,19 @@
           window.dispatchEvent(new CustomEvent('supabaseReadyForDropdowns'));
           
           console.log('✓ All initialization complete');
+          
+          // Auto-select scorecard from URL after a short delay to ensure DOM is ready
+          setTimeout(async () => {
+            try {
+              console.log('🚀 Auto-selecting scorecard from URL...');
+              await autoSelectScorecardFromURL();
+              console.log('✅ Scorecard auto-selection complete');
+            } catch (error) {
+              console.error('Error in scorecard auto-selection:', error);
+              // Don't block page - just log the error
+            }
+          }, 500);
+          
         } catch (error) {
           console.error('Error initializing Supabase:', error);
           // Show error to user
@@ -941,6 +954,7 @@
     <input type="hidden" id="quarter" name="quarter">
     <input type="hidden" id="week" name="week">
     <input type="hidden" id="errorDescription" name="errorDescription">
+    <input type="hidden" id="employeeNameDisplay" name="employeeNameDisplay">
     <!-- Hidden error count fields for form submission -->
     <input type="hidden" id="totalErrorsCount" name="totalErrorsCount">
     <input type="hidden" id="criticalErrors" name="criticalErrors">
@@ -960,7 +974,7 @@
                 <h2 style="font-size: 0.7278rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif;">Create New Audit</h2>
             </div>
             <div style="display: flex; align-items: center; gap: 0.3234rem;">
-                    <button type="button" onclick="closeAuditForm()" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Close (Esc)">×</button>
+                    <button type="button" id="closeAuditFormBtn" class="close-button" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Close (Esc)">×</button>
             </div>
         </div>
         <div>
@@ -1045,7 +1059,7 @@
                     </div>
                 </div>
             </div>
-            <button type="button" id="clearAIAuditButton" onclick="clearAIAuditData()" style="display: none; background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.1617rem; padding: 0.2425rem 0.4852rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; color: white; font-family: 'Poppins', sans-serif; transition: all 0.2s; white-space: nowrap;">Clear AI Data</button>
+            <button type="button" id="clearAIAuditButton" style="display: none; background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.1617rem; padding: 0.2425rem 0.4852rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; color: white; font-family: 'Poppins', sans-serif; transition: all 0.2s; white-space: nowrap;">Clear AI Data</button>
         </div>
     </div>
 
@@ -1083,7 +1097,7 @@
                                 <div style="display: flex; align-items: center; gap: 0.1617rem;">
                                     <span style="font-size: 0.4447rem; color: #000000; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0092rem; white-space: nowrap;">ID:</span>
                                     <input type="text" id="interactionId" name="interactionId" required placeholder="Enter..." style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; min-width: 2.4258rem;">
-                                    <button type="button" onclick="copyConversationId(); return false;" style="padding: 0.0808rem; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #000000; transition: all 0.2s;" title="Copy ID" onmouseover="this.style.color='#1A733E';" onmouseout="this.style.color='#000000';">
+                                    <button type="button" id="copyConversationIdBtn" class="copy-button" style="padding: 0.0808rem; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #000000; transition: all 0.2s;" title="Copy ID">
                                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.4043rem; height: 0.4043rem;">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                         </svg>
@@ -1105,7 +1119,7 @@
                                 <div style="display: flex; align-items: center; gap: 0.1617rem; min-width: 0;">
                                     <span style="font-size: 0.4447rem; color: #000000; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0092rem; white-space: nowrap; flex-shrink: 0;">Email:</span>
                                     <input type="email" id="clientEmail" name="clientEmail" placeholder="client@..." style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; min-width: 3.6387rem; box-sizing: border-box;">
-                                    <button type="button" onclick="copyClientEmail(); return false;" style="padding: 0.0808rem; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #000000; transition: all 0.2s;" title="Copy Email" onmouseover="this.style.color='#1A733E';" onmouseout="this.style.color='#000000';">
+                                    <button type="button" id="copyClientEmailBtn" class="copy-button" style="padding: 0.0808rem; background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #000000; transition: all 0.2s;" title="Copy Email">
                                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.4043rem; height: 0.4043rem;">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                                         </svg>
@@ -1116,7 +1130,7 @@
                         <!-- Second Row: Quick Actions (Compact) -->
                         <div id="clientNameSection" style="display: none; align-items: center; justify-content: flex-end; gap: 0.3234rem; padding-top: 0.3234rem; border-top: 0.0304rem solid #e5e7eb;">
                             <div style="display: flex; align-items: center; gap: 0.1617rem;">
-                                <button type="button" id="translateChatBtn" onclick="translateChatMessages(); return false;" disabled style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; border: 0.0304rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.4043rem; font-family: 'Poppins', sans-serif; font-weight: 500; color: #000000; cursor: not-allowed; transition: all 0.2s; display: flex; align-items: center; gap: 0.1617rem; white-space: nowrap; opacity: 0.6;" title="Translation feature is currently disabled">
+                                <button type="button" id="translateChatBtn" disabled style="padding: 0.2425rem 0.4043rem; background: #f3f4f6; border: 0.0304rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.4043rem; font-family: 'Poppins', sans-serif; font-weight: 500; color: #000000; cursor: not-allowed; transition: all 0.2s; display: flex; align-items: center; gap: 0.1617rem; white-space: nowrap; opacity: 0.6;" title="Translation feature is currently disabled">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.4043rem; height: 0.4043rem;">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
                                     </svg>
@@ -1337,6 +1351,12 @@ const quillInstances = new Map();
 
 // Load available scorecards
 async function loadScorecards(channelFilter = null, preselectedScorecardId = null, skipAutoSelect = false) {
+    // Skip if we're in the middle of loading/populating edit mode data
+    if (window._editModeLoading || window._editModePopulating) {
+        console.log('[loadScorecards] Skipping - edit mode loading/populating');
+        return;
+    }
+    
     const scorecardSelect = document.getElementById('scorecardSelect');
     
     if (!scorecardSelect) {
@@ -2092,8 +2112,8 @@ window.viewCompletedAudit = function(auditId, scorecardId, tableName) {
         });
         return;
     }
-    // Use same format as audit-reports.html for consistency
-    window.location.href = `audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+    // Use same format as audit-reports.html for consistency (absolute path)
+    window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
 };
 
 // Load pending audits for current user from audit_assignments table
@@ -2273,10 +2293,11 @@ function displayPendingAudits() {
             
             if (auditId && scorecardId && tableName) {
                 actionButton = `<button 
-                    onclick="event.stopPropagation(); viewCompletedAudit('${auditId}', '${scorecardId}', '${tableName}')" 
+                    class="view-audit-btn" 
+                    data-audit-id="${auditId}" 
+                    data-scorecard-id="${scorecardId}" 
+                    data-table-name="${tableName}"
                     style="padding: 0.3234rem 0.6469rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
-                    onmouseover="this.style.backgroundColor='#15582E'"
-                    onmouseout="this.style.backgroundColor='#1A733E'"
                 >
                     View Details
                 </button>`;
@@ -2293,10 +2314,9 @@ function displayPendingAudits() {
             statusBadge = '<span style="background-color: #fef3c7; color: #92400e; padding: 0.0808rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4447rem; font-weight: 600;">In Progress</span>';
             if (canEdit) {
                 actionButton = `<button 
-                    onclick="event.stopPropagation(); navigateToAssignment('${audit.id}')" 
+                    class="navigate-assignment-btn" 
+                    data-audit-id="${audit.id}"
                     style="padding: 0.3234rem 0.6469rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
-                    onmouseover="this.style.backgroundColor='#15582E'"
-                    onmouseout="this.style.backgroundColor='#1A733E'"
                 >
                     Continue
                 </button>`;
@@ -2305,10 +2325,9 @@ function displayPendingAudits() {
             statusBadge = '<span style="background-color: #dcfce7; color: #166534; padding: 0.0808rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4447rem; font-weight: 600;">Pending</span>';
             if (canEdit) {
                 actionButton = `<button 
-                    onclick="event.stopPropagation(); navigateToAssignment('${audit.id}')" 
+                    class="navigate-assignment-btn" 
+                    data-audit-id="${audit.id}"
                     style="padding: 0.3234rem 0.6469rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
-                    onmouseover="this.style.backgroundColor='#15582E'"
-                    onmouseout="this.style.backgroundColor='#1A733E'"
                 >
                     Start Audit
                 </button>`;
@@ -2347,8 +2366,6 @@ function displayPendingAudits() {
                         data-email="${escapeHtml(displayEmail)}"
                         data-name="${escapeHtml(displayName)}"
                         style="padding: 0.2425rem 0.4852rem; background-color: #f0fdf4; color: #1A733E; border: 0.0304rem solid #1A733E; border-radius: 0.1617rem; font-size: 0.4447rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;"
-                        onmouseover="this.style.backgroundColor='#dcfce7'; this.style.borderColor='#15582E'; this.style.color='#15582E';"
-                        onmouseout="this.style.backgroundColor='#f0fdf4'; this.style.borderColor='#1A733E'; this.style.color='#1A733E';"
                         title="Pull conversations for ${escapeHtml(displayName)}"
                     >
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -2856,6 +2873,8 @@ window.createManualAudit = async function() {
     currentAssignmentId = null;
     isEditingExistingAudit = false;
     currentEditingTableName = null;
+    window._editModeLoading = false;
+    window._editModeValuesPopulated = false;
     
     // Reset the form
     const auditForm = document.getElementById('auditForm');
@@ -6273,7 +6292,7 @@ function displayPullConversationsList(conversations) {
             <td style="padding: 0.375rem 0.5rem; vertical-align: middle;">
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
                     <span style="font-family: monospace; font-size: 0.625rem; color: #000000;">${conversationId && conversationId !== 'N/A' ? conversationId.substring(0, 8) + '...' : 'N/A'}</span>
-                    <button onclick="event.stopPropagation(); copyToClipboard('${conversationId}', this);" style="padding: 0.125rem; background: transparent; border: none; cursor: pointer; color: #000000; transition: all 0.2s;" onmouseover="this.style.color='#1A733E';" onmouseout="this.style.color='#000000';" title="Copy ID">
+                    <button class="copy-conv-id-btn" data-conv-id="${conversationId}" style="padding: 0.125rem; background: transparent; border: none; cursor: pointer; color: #000000; transition: all 0.2s;" title="Copy ID">
                         <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
@@ -9032,6 +9051,13 @@ function hideNoScorecardMessage() {
 
 // Render error parameter fields dynamically
 function renderErrorParameters() {
+    // Skip if values have already been populated (would wipe them)
+    // Note: We DON'T skip during _editModeLoading because we need to render the fields first
+    if (window._editModeValuesPopulated) {
+        console.log('[renderErrorParameters] Skipping - edit mode values already populated, would wipe values');
+        return;
+    }
+    
     // Use global variables if local ones are not available
     const params = currentParameters || window.currentParameters || [];
     const scorecard = currentScorecard || window.currentScorecard || null;
@@ -9229,6 +9255,11 @@ function renderErrorParameters() {
 
 // Clear error parameters
 function clearErrorParameters() {
+    // Skip if we're in edit mode loading
+    if (window._editModeLoading || window._editModePopulating) {
+        console.log('[clearErrorParameters] Skipping - edit mode loading/populating');
+        return;
+    }
     // Show no scorecard message when clearing
     showNoScorecardMessage();
 }
@@ -10340,6 +10371,7 @@ async function loadEmployees() {
             option.value = user.email; // Use email as the value
             option.textContent = user.name || user.email;
             option.dataset.email = user.email;
+            option.dataset.name = user.name || user.email; // Store name in dataset for reliable access
             option.dataset.role = user.role || '';
             option.dataset.department = user.department || '';
             option.dataset.designation = user.designation || '';
@@ -10597,6 +10629,89 @@ function checkCalibrationMode() {
     return false;
 }
 
+// Auto-select scorecard from URL parameters or channel
+async function autoSelectScorecardFromURL() {
+    console.log('🔍 Checking URL for scorecard or channel...');
+    const urlParams = new URLSearchParams(window.location.search);
+    const scorecardId = urlParams.get('scorecardId') || urlParams.get('scorecard');
+    const channel = urlParams.get('channel');
+    const employeeChannel = urlParams.get('employeeChannel');
+    
+    console.log('URL parameters:', {
+        scorecardId,
+        channel,
+        employeeChannel
+    });
+    
+    const scorecardSelect = document.getElementById('scorecardSelect');
+    if (!scorecardSelect) {
+        console.warn('Scorecard select element not found');
+        return;
+    }
+    
+    // Priority 1: Explicit scorecard ID
+    if (scorecardId && scorecardId !== 'null' && scorecardId !== '') {
+        console.log('🎯 Loading scorecard by ID:', scorecardId);
+        await loadScorecards();
+        scorecardSelect.value = scorecardId;
+        if (scorecardSelect.value === scorecardId) {
+            console.log('✅ Scorecard selected from URL:', scorecardId);
+            await loadScorecardParameters(scorecardId);
+            return true;
+        } else {
+            console.warn('❌ Scorecard ID not found in dropdown:', scorecardId);
+        }
+    }
+    
+    // Priority 2: Channel-based selection
+    const channelValue = channel || employeeChannel;
+    if (channelValue && channelValue !== 'null' && channelValue !== '') {
+        console.log('🔍 Searching for scorecard by channel:', channelValue);
+        
+        // Try to find channel name from channels table
+        try {
+            const { data: channelData } = await window.supabaseClient
+                .from('channels')
+                .select('id, name')
+                .eq('id', channelValue)
+                .single();
+            
+            const channelName = channelData ? channelData.name : channelValue;
+            console.log('📍 Channel name:', channelName);
+            
+            // Load scorecards filtered by channel name
+            await loadScorecards(channelName);
+            
+            // If scorecards were loaded, select the first one (default)
+            if (scorecardSelect.options.length > 1) {
+                // Select first non-placeholder option
+                for (let i = 1; i < scorecardSelect.options.length; i++) {
+                    if (scorecardSelect.options[i].value) {
+                        scorecardSelect.selectedIndex = i;
+                        const selectedId = scorecardSelect.value;
+                        console.log('✅ Auto-selected scorecard for channel:', {
+                            channel: channelName,
+                            scorecardId: selectedId,
+                            scorecardName: scorecardSelect.options[i].text
+                        });
+                        await loadScorecardParameters(selectedId);
+                        return true;
+                    }
+                }
+            } else {
+                console.warn('⚠️ No scorecards found for channel:', channelName);
+            }
+        } catch (error) {
+            console.error('Error finding scorecard by channel:', error);
+        }
+    }
+    
+    // Priority 3: Load all scorecards (no specific selection)
+    console.log('📋 Loading all scorecards (no specific selection)');
+    await loadScorecards();
+    return false;
+}
+
 async function loadAuditForEditing() {
     const urlParams = new URLSearchParams(window.location.search);
     const auditId = urlParams.get('edit');
@@ -10615,6 +10730,42 @@ async function loadAuditForEditing() {
     
     try {
         console.log('Loading audit for editing:', auditId, 'from table:', tableName);
+        
+        // Wait for Supabase client to be ready
+        let waitAttempts = 0;
+        while (!window.supabaseClient && waitAttempts < 100) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            waitAttempts++;
+        }
+        
+        if (!window.supabaseClient) {
+            console.error('Supabase client not available for edit mode');
+            alert('Error: Database connection not ready. Please refresh the page.');
+            return;
+        }
+        
+        // Wait for auth session to be established
+        let authAttempts = 0;
+        let hasSession = false;
+        while (!hasSession && authAttempts < 50) {
+            try {
+                const { data: { session } } = await window.supabaseClient.auth.getSession();
+                if (session) {
+                    hasSession = true;
+                    console.log('Auth session ready for edit mode:', session.user?.email);
+                }
+            } catch (e) {
+                // Ignore, keep waiting
+            }
+            if (!hasSession) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                authAttempts++;
+            }
+        }
+        
+        if (!hasSession) {
+            console.warn('No auth session for edit mode, query may fail due to RLS');
+        }
         
         // Load the audit data from the specified table
         const { data, error } = await window.supabaseClient
@@ -10636,6 +10787,9 @@ async function loadAuditForEditing() {
         isEditingExistingAudit = true;
         currentEditingAuditId = auditId;
         currentEditingTableName = tableName;
+        window._editModeLoading = true; // Prevent scorecard change handler from running
+        window._editModeValuesPopulated = false; // Reset values populated flag
+        console.log('[Edit Mode] Flags set - isEditingExistingAudit:', isEditingExistingAudit, '_editModeLoading:', window._editModeLoading, '_editModeValuesPopulated:', window._editModeValuesPopulated);
         
         // Show the audit form modal
         const auditFormModal = document.getElementById('auditFormModal');
@@ -10684,6 +10838,15 @@ async function loadAuditForEditing() {
         
         // Populate form fields with audit data
         await populateFormWithAuditData(data);
+        
+        // Clear the loading flag after a delay to ensure all async operations complete
+        setTimeout(() => {
+            window._editModeLoading = false;
+            // Keep _editModeValuesPopulated = true to prevent renderErrorParameters from wiping values
+            console.log('[Edit Mode] Loading flag cleared, values populated flag remains:', window._editModeValuesPopulated);
+        }, 500);
+        
+        console.log('Edit mode population complete');
         
         // Update header to indicate editing mode
         const formHeader = document.getElementById('formScorecardDisplay');
@@ -10745,8 +10908,8 @@ async function populateFormWithAuditData(audit) {
                 const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
                 if (optionEmail === normalizedEmail) {
                     employeeSelect.selectedIndex = i;
-                    // Trigger change event to populate other fields
-                    employeeSelect.dispatchEvent(new Event('change'));
+                    // DON'T trigger change event - it causes cascade that resets form
+                    // We'll populate fields directly from audit data instead
                     employeeFound = true;
                     break;
                 }
@@ -10762,6 +10925,20 @@ async function populateFormWithAuditData(audit) {
         if (employeeType) employeeType.value = audit.employee_type || '';
         if (employeeDepartment) employeeDepartment.value = audit.employee_department || '';
         
+        // Set employeeNameDisplay hidden field for form submission
+        const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+        if (employeeNameDisplayField) {
+            // Try to get name from selected option first, then from audit data
+            let employeeNameValue = audit.employee_name || '';
+            const employeeSelect = document.getElementById('employeeName');
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+                employeeNameValue = selectedOption.dataset.name || selectedOption.textContent || employeeNameValue;
+            }
+            employeeNameDisplayField.value = employeeNameValue.trim();
+            console.log('✅ [Edit Mode] Employee name display set:', employeeNameValue.trim());
+        }
+        
         // Populate channel field
         const employeeChannelField = document.getElementById('employeeChannel');
         if (employeeChannelField) {
@@ -10776,7 +10953,14 @@ async function populateFormWithAuditData(audit) {
         }
         
         if (countryOfEmployee) {
-            countryOfEmployee.value = audit.country_of_employee || '';
+            let countryValue = audit.country_of_employee || '';
+            // Try to get from selected employee option if available
+            const employeeSelect = document.getElementById('employeeName');
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+                countryValue = selectedOption.dataset.country || countryValue;
+            }
+            countryOfEmployee.value = countryValue || '';
         }
         
         // Populate interaction details
@@ -10842,6 +11026,7 @@ async function populateFormWithAuditData(audit) {
         
         // Populate error parameters
         if (currentParameters && currentParameters.length > 0) {
+            // STEP 1: First, set all error count values (radio buttons and counters)
             currentParameters.forEach(param => {
                 const fieldValue = audit[param.field_id];
                 
@@ -10851,9 +11036,15 @@ async function populateFormWithAuditData(audit) {
                     const radioNo = document.getElementById(`${param.field_id}_no`);
                     
                     if (fieldValue === 1 || fieldValue === true || fieldValue === 'true' || fieldValue === '1') {
-                        if (radioYes) radioYes.checked = true;
+                        if (radioYes) {
+                            radioYes.checked = true;
+                            radioYes.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     } else {
-                        if (radioNo) radioNo.checked = true;
+                        if (radioNo) {
+                            radioNo.checked = true;
+                            radioNo.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     }
                 } else {
                     // Set counter value
@@ -10861,6 +11052,7 @@ async function populateFormWithAuditData(audit) {
                     const counterValue = fieldValue || 0;
                     if (field) {
                         field.value = counterValue;
+                        field.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     
                     // Update plain text display
@@ -10877,6 +11069,17 @@ async function populateFormWithAuditData(audit) {
                         }
                     }
                 }
+            });
+            
+            // STEP 2: Wait for DOM to update after setting error counts
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // STEP 3: Now update feedback boxes (they will read the correct error counts) and populate feedbacks
+            currentParameters.forEach(param => {
+                const paramType = param.parameter_type || 'error';
+                
+                // Update feedback boxes based on error count (will now read correct values from DOM)
+                updateFeedbackBoxesForParameter(param.field_id, param.field_type || 'counter', paramType);
                 
                 // Populate feedback - handle both old format (string) and new format (JSON array)
                 const feedbackData = audit[`feedback_${param.field_id}`];
@@ -10899,39 +11102,110 @@ async function populateFormWithAuditData(audit) {
                     }
                 }
                 
-                // Update feedback boxes based on error count first, then populate values
-                const paramType = param.parameter_type || 'error';
-                updateFeedbackBoxesForParameter(param.field_id, param.field_type || 'counter', paramType);
-                
-                // Populate feedback values into the boxes
+                // Populate feedback values into the boxes (wait for boxes to be created)
                 if (feedbackArray.length > 0) {
+                    // Wait a bit for feedback boxes to be created by updateFeedbackBoxesForParameter
+                    const delay = 150 * (currentParameters.indexOf(param) + 1);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    
                     const feedbackContainer = document.getElementById(`feedback_container_${param.field_id}`);
                     if (feedbackContainer) {
-                        feedbackArray.forEach((feedbackText, index) => {
+                        // Populate each feedback with retry logic for Quill instances
+                        for (let index = 0; index < feedbackArray.length; index++) {
+                            const feedbackText = feedbackArray[index];
+                            if (!feedbackText) continue;
+                            
                             const feedbackId = `feedback_${param.field_id}_${index}`;
-                            const textarea = document.getElementById(feedbackId);
-                            if (textarea && feedbackText) {
-                                textarea.value = feedbackText;
-                                // Trigger auto-expand
-                                setTimeout(() => {
-                                    textarea.style.height = 'auto';
-                                    const scrollHeightRem = textarea.scrollHeight / 16;
-                                    textarea.style.height = Math.min(scrollHeightRem, 50.0) + 'rem';
-                                }, 100);
+                            const quillId = `quill_${feedbackId}`;
+                            
+                            // Try to populate with Quill editor (with retries)
+                            let populated = false;
+                            for (let retry = 0; retry < 5; retry++) {
+                                const quillDiv = document.getElementById(quillId);
+                                if (quillDiv && quillInstances.has(quillId)) {
+                                    const quill = quillInstances.get(quillId);
+                                    // Check if feedbackText is HTML or plain text
+                                    if (feedbackText && feedbackText.trim().startsWith('<')) {
+                                        quill.root.innerHTML = feedbackText;
+                                    } else {
+                                        // Convert plain text to HTML
+                                        const htmlContent = feedbackText.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                                        quill.root.innerHTML = htmlContent || '';
+                                    }
+                                    populated = true;
+                                    console.log(`✅ Populated feedback ${feedbackId} in Quill editor`);
+                                    break;
+                                }
+                                // Wait a bit before retrying
+                                await new Promise(resolve => setTimeout(resolve, 100));
                             }
-                        });
+                            
+                            // Fallback to textarea if Quill not available
+                            if (!populated) {
+                                const textarea = document.getElementById(feedbackId);
+                                if (textarea && feedbackText) {
+                                    textarea.value = feedbackText;
+                                    // Trigger auto-expand
+                                    setTimeout(() => {
+                                        textarea.style.height = 'auto';
+                                        const scrollHeightRem = textarea.scrollHeight / 16;
+                                        textarea.style.height = Math.min(scrollHeightRem, 50.0) + 'rem';
+                                    }, 100);
+                                    console.log(`✅ Populated feedback ${feedbackId} in textarea (fallback)`);
+                                } else {
+                                    console.warn(`⚠️ Could not populate feedback ${feedbackId} - element not found`);
+                                }
+                            }
+                        }
+                    } else {
+                        console.warn(`⚠️ Feedback container not found for ${param.field_id}`);
                     }
                 }
             });
+            
+            // Wait for all feedback boxes to be created and populated (max delay based on parameter count)
+            const maxDelay = Math.max(500, currentParameters.length * 150);
+            await new Promise(resolve => setTimeout(resolve, maxDelay));
         }
         
-        // Recalculate scores
-        calculateAverageScore();
+        // Wait a bit more to ensure all DOM updates are complete
+        await new Promise(resolve => setTimeout(resolve, 200));
         
-        console.log('Form populated with audit data');
+        // Recalculate all metrics from populated error counts (this ensures accuracy)
+        if (typeof calculateTotalErrorsCount === 'function') {
+            calculateTotalErrorsCount();
+            console.log('✅ Total errors count recalculated');
+        }
+        
+        if (typeof calculateErrorsByCategory === 'function') {
+            calculateErrorsByCategory();
+            console.log('✅ Errors by category recalculated');
+        }
+        
+        // Recalculate average score from error counts (more accurate than using stored value)
+        calculateAverageScore();
+        console.log('✅ Average score recalculated from error counts');
+        
+        // Also set passing status if available (after score calculation)
+        const passingStatusField = document.getElementById('passingStatus');
+        if (passingStatusField && audit.passing_status) {
+            passingStatusField.value = audit.passing_status;
+            console.log('✅ Passing status set from audit data:', audit.passing_status);
+        }
+        
+        // Update header metadata to reflect the loaded scores
+        if (typeof updateHeaderMetadata === 'function') {
+            updateHeaderMetadata();
+            console.log('✅ Header metadata updated');
+        }
+        
+        // Mark that values have been populated to prevent renderErrorParameters from wiping them
+        window._editModeValuesPopulated = true;
+        console.log('✅ Form populated with audit data - values populated flag set');
         
     } catch (error) {
         console.error('Error populating form with audit data:', error);
+        window._editModeValuesPopulated = false; // Clear flag on error
     }
 }
 
@@ -11156,6 +11430,14 @@ async function populateFormWithCalibrationSample(sampleAudit) {
             for (let i = 0; i < employeeSelect.options.length; i++) {
                 if (employeeSelect.options[i].dataset.email === sampleAudit.employee_email) {
                     employeeSelect.selectedIndex = i;
+                    // Set employeeNameDisplay hidden field
+                    const selectedOption = employeeSelect.options[i];
+                    const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                    if (employeeNameDisplayField) {
+                        const employeeName = selectedOption.dataset.name || selectedOption.textContent || sampleAudit.employee_name || '';
+                        employeeNameDisplayField.value = employeeName.trim();
+                        console.log('✅ [Calibration] Employee name display set:', employeeName.trim());
+                    }
                     break;
                 }
             }
@@ -11221,7 +11503,17 @@ async function populateFormWithCalibrationSample(sampleAudit) {
         }
 
         if (countryOfEmployee) {
-            countryOfEmployee.value = sampleAudit.country_of_employee || '';
+            // Try to get country from selected employee option first
+            let countryValue = '';
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+                countryValue = selectedOption.dataset.country || '';
+            }
+            // Fallback to sample audit data
+            if (!countryValue && sampleAudit.country_of_employee) {
+                countryValue = sampleAudit.country_of_employee;
+            }
+            countryOfEmployee.value = countryValue || '';
         }
 
         // Interaction details (read-only - from sample) - NOT in header, so gray background
@@ -11490,39 +11782,200 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     console.log('DOMContentLoaded fired');
     
-    // Check page access using centralized access control
-    if (!window.accessControl || !window.accessControl.enforcePageAccess('audit-form.html')) {
-        return; // Access denied, user will be redirected
-    }
+    // ============================================================================
+    // LOGGING: Track when submit button is clicked for debugging
+    // The actual handler is set up in initializeForm()
+    // ============================================================================
+    (function setupEarlyLogging() {
+        console.log('🔧 Setting up early logging for form submission...');
+        
+        // Track if full handler is ready (will be set by initializeForm)
+        window._fullSubmitHandlerReady = false;
+        
+        const auditForm = document.getElementById('auditForm');
+        const submitAuditBtn = document.getElementById('submitAuditBtn');
+        
+        console.log('📋 Early check - auditForm:', !!auditForm, 'submitAuditBtn:', !!submitAuditBtn);
+        
+        // Just add logging, don't interfere with event flow
+        if (submitAuditBtn) {
+            submitAuditBtn.addEventListener('click', function(e) {
+                console.log('==========================================');
+                console.log('🖱️ Submit button clicked!');
+                console.log('_fullSubmitHandlerReady:', window._fullSubmitHandlerReady);
+                console.log('==========================================');
+                // Don't prevent default - let the handlers in initializeForm work
+            }, false); // Use bubbling phase, not capture
+        }
+        
+        if (auditForm) {
+            auditForm.addEventListener('submit', function(e) {
+                console.log('📝 Form submit event triggered');
+                console.log('_fullSubmitHandlerReady:', window._fullSubmitHandlerReady);
+                // Don't prevent default - let the handlers in initializeForm work
+            }, false); // Use bubbling phase, not capture
+        }
+        
+        console.log('✅ Early logging setup complete');
+    })();
     
-    // Initialize form immediately - the submit handler will wait for Supabase
-    initializeForm();
-    
-    // Also try to load employees directly after a short delay as a backup
-    setTimeout(async () => {
-        console.log('Backup: Attempting to load employees directly...');
+    // ============================================================================
+    // CRITICAL: Set up employee selection handler and load data BEFORE access control
+    // These must work regardless of access control status for manual audit flow
+    // ============================================================================
+    (async function setupEmployeeSelectionEarly() {
+        console.log('Setting up employee selection handler early...');
+        
         const employeeSelect = document.getElementById('employeeName');
+        const employeeEmail = document.getElementById('employeeEmail');
+        const employeeType = document.getElementById('employeeType');
+        const employeeDepartment = document.getElementById('employeeDepartment');
+        const employeeChannelField = document.getElementById('employeeChannel');
+        const countryOfEmployee = document.getElementById('countryOfEmployee');
+        const channelSelect = document.getElementById('channel');
+        
         if (employeeSelect) {
-            console.log('Employee select found, current options:', employeeSelect.options.length);
-            if (employeeSelect.options.length <= 1) {
-                console.log('Employee dropdown is empty, trying to load...');
-                if (window.supabaseClient && typeof loadEmployees === 'function') {
-                    try {
-                        await loadEmployees();
-                        console.log('Backup loadEmployees completed, options now:', document.getElementById('employeeName')?.options.length);
-                    } catch (error) {
-                        console.error('Backup loadEmployees error:', error);
+            console.log('Found employeeSelect, attaching change handler');
+            employeeSelect.addEventListener('change', async function() {
+                const selectedOption = this.options[this.selectedIndex];
+                console.log('🔄 [Early Handler] Employee selection changed:', selectedOption?.textContent);
+                
+                if (selectedOption && selectedOption.value) {
+                    // Auto-populate all fields from selected employee data
+                    const email = selectedOption.dataset.email || selectedOption.value;
+                    const employeeName = selectedOption.dataset.name || selectedOption.textContent || '';
+                    const designation = selectedOption.dataset.designation || '';
+                    const department = selectedOption.dataset.department || '';
+                    const country = selectedOption.dataset.country || '';
+                    const channel = selectedOption.dataset.channel || '';
+                    
+                    console.log('📧 [Early Handler] Employee data:', { email, employeeName, designation, department, country, channel });
+                    
+                    // Set employee name display (hidden field for form submission)
+                    const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                    if (employeeNameDisplayField) {
+                        employeeNameDisplayField.value = employeeName.trim();
+                        console.log('✅ Employee name display set:', employeeName.trim());
+                    }
+                    
+                    // Set email
+                    if (employeeEmail) {
+                        employeeEmail.value = email;
+                        console.log('✅ Email set:', email);
+                    }
+                    
+                    // Set type/designation
+                    if (employeeType) {
+                        employeeType.value = designation;
+                        console.log('✅ Type set:', designation);
+                    }
+                    
+                    // Set department
+                    if (employeeDepartment) {
+                        employeeDepartment.value = department;
+                        console.log('✅ Department set:', department);
+                    }
+                    
+                    // Set channel display
+                    if (employeeChannelField) {
+                        employeeChannelField.value = channel;
+                        console.log('✅ Channel display set:', channel);
+                    }
+                    
+                    // Set country
+                    if (countryOfEmployee) {
+                        countryOfEmployee.value = country;
+                        console.log('✅ Country set:', country);
+                    }
+                    
+                    // Set channel dropdown by matching name
+                    if (channel && channelSelect) {
+                        // Find the option with matching text content
+                        for (let i = 0; i < channelSelect.options.length; i++) {
+                            if (channelSelect.options[i].textContent.trim().toLowerCase() === channel.trim().toLowerCase()) {
+                                channelSelect.selectedIndex = i;
+                                console.log('✅ Channel dropdown set to:', channelSelect.options[i].textContent);
+                                // Trigger change event to load scorecards
+                                channelSelect.dispatchEvent(new Event('change'));
+                                break;
+                            }
+                        }
                     }
                 } else {
-                    console.error('Backup failed - supabaseClient:', !!window.supabaseClient, 'loadEmployees:', typeof loadEmployees);
+                    // Clear all fields
+                    if (employeeEmail) employeeEmail.value = '';
+                    if (employeeType) employeeType.value = '';
+                    if (employeeDepartment) employeeDepartment.value = '';
+                    if (employeeChannelField) employeeChannelField.value = '';
+                    if (countryOfEmployee) countryOfEmployee.value = '';
                 }
-            } else {
-                console.log('Employee dropdown already has options:', employeeSelect.options.length);
+            });
+        } else {
+            console.warn('employeeSelect not found in early setup');
+        }
+        
+        // Load employees and channels early
+        console.log('Loading employees and channels early...');
+        
+        // Wait for Supabase to be ready (with timeout)
+        const waitForSupabase = new Promise((resolve) => {
+            if (window.supabaseClient && window.supabaseClientReady) {
+                resolve(true);
+                return;
+            }
+            const checkReady = () => {
+                if (window.supabaseClient && window.supabaseClientReady) {
+                    resolve(true);
+                }
+            };
+            window.addEventListener('supabaseClientReady', checkReady, { once: true });
+            window.addEventListener('supabaseReady', checkReady, { once: true });
+            setTimeout(() => resolve(false), 8000); // 8 second timeout
+        });
+        
+        const supabaseReady = await waitForSupabase;
+        if (supabaseReady && window.supabaseClient) {
+            console.log('Supabase ready, loading employees and channels...');
+            try {
+                // Load employees
+                if (typeof loadEmployees === 'function') {
+                    await loadEmployees();
+                    console.log('✅ Employees loaded early');
+                }
+                // Load channels
+                if (typeof loadChannels === 'function') {
+                    await loadChannels();
+                    console.log('✅ Channels loaded early');
+                }
+            } catch (error) {
+                console.error('Error in early data loading:', error);
             }
         } else {
-            console.error('Employee select element not found in backup attempt');
+            console.warn('Supabase not ready for early data loading');
         }
-    }, 1500);
+        
+        console.log('Early employee selection setup complete');
+    })();
+    
+    // CRITICAL: Initialize form FIRST to set up submit handlers
+    // This must happen before access control check so form can submit
+    try {
+        console.log('🚀 Calling initializeForm()...');
+        initializeForm();
+        console.log('✅ initializeForm() completed');
+    } catch (initError) {
+        console.error('❌ Error in initializeForm():', initError);
+        // Set the flag anyway so the form isn't blocked
+        window._fullSubmitHandlerReady = true;
+    }
+    
+    // Check page access using centralized access control
+    // Note: We still call initializeForm first so submit handlers are always ready
+    if (!window.accessControl || !window.accessControl.enforcePageAccess('audit-form.html')) {
+        console.log('Access control check failed or not available, but form handlers are ready');
+        // Don't return here - let the form be usable
+        // The access control will handle redirects if needed
+    }
     
     // Also try to load employees directly after a short delay as a backup
     setTimeout(async () => {
@@ -11551,6 +12004,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 1500);
     
     function initializeForm() {
+        console.log('🚀 initializeForm() called');
+        
+        // CRITICAL: Set the flag immediately so early handler knows we're initializing
+        // The actual handler attachment will happen below
+        window._formInitStarted = true;
+        
         // Check if user is an Employee and hide create manual audit button
         try {
             const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
@@ -11575,13 +12034,22 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!auditForm) {
             console.error('auditForm element not found!');
-            window.confirmationDialog.show({
-                title: 'Form Error',
-                message: 'Error: Form element not found! Please refresh the page.',
-                confirmText: 'Refresh',
-                cancelText: 'OK',
-                type: 'error'
-            });
+            // CRITICAL: Set the flag even on error so the early handler doesn't keep waiting
+            window._fullSubmitHandlerReady = true;
+            console.log('⚠️ Form not found but setting _fullSubmitHandlerReady to prevent timeout');
+            
+            // Show error with fallback
+            if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                window.confirmationDialog.show({
+                    title: 'Form Error',
+                    message: 'Error: Form element not found! Please refresh the page.',
+                    confirmText: 'Refresh',
+                    cancelText: 'OK',
+                    type: 'error'
+                });
+            } else {
+                alert('Error: Form element not found! Please refresh the page.');
+            }
             return;
         }
         
@@ -11813,6 +12281,12 @@ document.addEventListener('DOMContentLoaded', function() {
             scorecardSelect.addEventListener('change', async function() {
                 const selectedValue = this.value;
                 console.log('[Scorecard Event Listener] Scorecard changed to:', selectedValue);
+                
+                // Skip if we're in the middle of loading edit mode data
+                if (window._editModeLoading || window._editModePopulating) {
+                    console.log('[Scorecard Event Listener] Skipping - edit mode loading/populating');
+                    return;
+                }
                 
                 // Always load scorecard parameters when a valid scorecard is selected
                 // Validate before loading to prevent UUID errors
@@ -12086,11 +12560,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Handler function
         const handleSubmit = async function(e) {
+            console.log('==========================================');
+            console.log('BUTTON PRESSED - Submit event captured!');
+            console.log('==========================================');
+            
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+            }
+            
+            // Form submission logic
             console.log('DEBUG: Form submit event fired!'); // Debug log only
             console.log('Submit event fired! Event object:', e);
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
             
             // Prevent duplicate submissions
             if (isSubmitting) {
@@ -12368,9 +12850,83 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update employeeName with the actual name from the selected option
-            const selectedEmployeeOption = employeeSelect.options[employeeSelect.selectedIndex];
-            if (selectedEmployeeOption && selectedEmployeeOption.textContent) {
-                auditData.employeeName = selectedEmployeeOption.textContent;
+            // Use multiple fallback methods to ensure we get the employee name
+            const employeeSelect = document.getElementById('employeeName');
+            let employeeNameFound = false;
+            
+            // Method 1: Get from selected option using selectedIndex
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedEmployeeOption = employeeSelect.options[employeeSelect.selectedIndex];
+                if (selectedEmployeeOption && selectedEmployeeOption.value && selectedEmployeeOption.textContent) {
+                    auditData.employeeName = selectedEmployeeOption.textContent.trim();
+                    employeeNameFound = true;
+                    console.log('✅ Employee name from selectedIndex:', auditData.employeeName);
+                }
+            }
+            
+            // Method 2: If Method 1 failed, try finding option by email value
+            if (!employeeNameFound && employeeSelect && auditData.employeeEmail) {
+                const emailToFind = auditData.employeeEmail.toLowerCase().trim();
+                for (let i = 0; i < employeeSelect.options.length; i++) {
+                    const opt = employeeSelect.options[i];
+                    if (opt.value && opt.value.toLowerCase().trim() === emailToFind) {
+                        // Found the option, get name from dataset.name or textContent
+                        const optName = opt.dataset.name || opt.textContent;
+                        if (optName && optName.trim()) {
+                            auditData.employeeName = optName.trim();
+                            employeeNameFound = true;
+                            console.log('✅ Employee name from email lookup:', auditData.employeeName);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Method 3: If still not found, try using the select's current value to find the option
+            if (!employeeNameFound && employeeSelect && employeeSelect.value) {
+                const currentValue = employeeSelect.value.toLowerCase().trim();
+                for (let i = 0; i < employeeSelect.options.length; i++) {
+                    const opt = employeeSelect.options[i];
+                    if (opt.value && opt.value.toLowerCase().trim() === currentValue) {
+                        const optName = opt.dataset.name || opt.textContent;
+                        if (optName && optName.trim()) {
+                            auditData.employeeName = optName.trim();
+                            employeeNameFound = true;
+                            console.log('✅ Employee name from select value lookup:', auditData.employeeName);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Method 4: If still not found, try the hidden employeeNameDisplay field
+            if (!employeeNameFound) {
+                const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                if (employeeNameDisplayField && employeeNameDisplayField.value && employeeNameDisplayField.value.trim()) {
+                    auditData.employeeName = employeeNameDisplayField.value.trim();
+                    employeeNameFound = true;
+                    console.log('✅ Employee name from hidden field:', auditData.employeeName);
+                }
+            }
+            
+            // Method 5: Last resort - use employeeNameDisplay from FormData if available
+            if (!employeeNameFound && auditData.employeeNameDisplay && auditData.employeeNameDisplay.trim()) {
+                auditData.employeeName = auditData.employeeNameDisplay.trim();
+                employeeNameFound = true;
+                console.log('✅ Employee name from FormData employeeNameDisplay:', auditData.employeeName);
+            }
+            
+            if (!employeeNameFound) {
+                console.warn('⚠️ Could not determine employee name. selectedIndex:', employeeSelect?.selectedIndex, 'value:', employeeSelect?.value, 'employeeEmail:', auditData.employeeEmail);
+            }
+            
+            // Update channel with the actual name from the selected option (not UUID)
+            const channelSelect = document.getElementById('channel');
+            if (channelSelect && channelSelect.selectedIndex > 0) {
+                const selectedChannelOption = channelSelect.options[channelSelect.selectedIndex];
+                if (selectedChannelOption && selectedChannelOption.value && selectedChannelOption.textContent) {
+                    auditData.channel = selectedChannelOption.textContent.trim();
+                }
             }
             
             // Ensure auditorName is populated (from hidden field)
@@ -12678,6 +13234,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         isEditingExistingAudit = false;
                         currentEditingAuditId = null;
                         currentEditingTableName = null;
+                        window._editModeLoading = false;
+                        window._editModeValuesPopulated = false;
                     }
                     
                 } else if (isEditingPendingAudit && currentEditingAuditId) {
@@ -12756,20 +13314,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                 } else {
                     // INSERT new audit record
-                    console.log('Inserting new audit...');
+                    console.log('➕ INSERTING new audit record...');
+                    console.log('📋 Table:', currentScorecard.table_name);
+                    console.log('📦 Payload keys:', Object.keys(auditPayload));
                     
+                    console.log('📤 Executing INSERT query...');
                     const result = await retryOnSchemaCacheError(async () => {
-                        return await window.supabaseClient
+                        const queryResult = await window.supabaseClient
                             .from(currentScorecard.table_name)
                             .insert([auditPayload])
                             .select();
+                        console.log('📥 INSERT query result:', queryResult);
+                        return queryResult;
                     });
                     
                     data = result.data;
                     error = result.error;
                     
+                    console.log('📊 INSERT result - data:', data);
+                    console.log('❌ INSERT result - error:', error);
+                    console.log('📊 Data length:', data ? data.length : 0);
+                    console.log('📊 First record:', data && data[0] ? data[0] : 'null');
+                    
                     if (!error) {
-                        console.log('Successfully inserted new audit:', data);
+                        console.log('✅ Successfully inserted new audit:', data);
                         
                         // If this was from an audit assignment, mark it as completed
                         if (currentAssignmentId) {
@@ -12863,38 +13431,109 @@ document.addEventListener('DOMContentLoaded', function() {
                         console.error(`ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnName} TEXT;`);
                     }
                     
-                    await window.confirmationDialog.show({
-                        title: 'Error Saving Audit',
-                        message: errorMessage,
-                        confirmText: 'OK',
-                        cancelText: 'Close',
-                        type: 'error'
-                    });
+                    // Show error toast notification immediately
+                    const errorToast = document.createElement('div');
+                    errorToast.id = 'submitErrorToast';
+                    errorToast.style.cssText = `
+                        position: fixed;
+                        top: 1rem;
+                        right: 1rem;
+                        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                        color: white;
+                        padding: 1rem 1.5rem;
+                        border-radius: 0.5rem;
+                        font-family: 'Poppins', sans-serif;
+                        font-size: 1rem;
+                        font-weight: 600;
+                        z-index: 99999;
+                        box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+                        display: flex;
+                        align-items: center;
+                        gap: 0.75rem;
+                        max-width: 400px;
+                        animation: slideIn 0.3s ease-out;
+                    `;
+                    errorToast.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        <span>Error saving audit. See details below.</span>
+                    `;
+                    document.body.appendChild(errorToast);
+                    
+                    // Auto-remove toast after 8 seconds
+                    setTimeout(() => {
+                        if (errorToast.parentNode) {
+                            errorToast.style.animation = 'slideOut 0.3s ease-out forwards';
+                            setTimeout(() => errorToast.remove(), 300);
+                        }
+                    }, 8000);
+                    
+                    // Show error dialog with details
+                    if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                        await window.confirmationDialog.show({
+                            title: 'Error Saving Audit',
+                            message: errorMessage,
+                            confirmText: 'OK',
+                            cancelText: 'Close',
+                            type: 'error'
+                        });
+                    } else {
+                        alert('Error Saving Audit:\n\n' + errorMessage);
+                    }
                     // Reset button state on error
                     updateSubmitButtonState('reset', originalButtonText);
                     isSubmitting = false;
                     return;
                 }
                 
+                // CRITICAL: Double-check we have valid saved data before proceeding with success flow
+                if (!data || !data[0] || !data[0].id) {
+                    console.error('❌ CRITICAL ERROR: Save reported success but no valid data returned!');
+                    console.error('Data:', data);
+                    await window.confirmationDialog.show({
+                        title: 'Error Saving Audit',
+                        message: 'The audit save operation completed but no data was returned. Please check the console and try again.',
+                        confirmText: 'OK',
+                        type: 'error'
+                    });
+                    updateSubmitButtonState('reset', originalButtonText);
+                    isSubmitting = false;
+                    return; // EXIT - DO NOT RESET FORM
+                }
+                
+                console.log('✅ SUCCESS: Audit saved to database!');
+                console.log('Saved audit data:', data[0]);
+                console.log('Saved audit ID:', data[0].id);
+                
                 // Store audit ID for redirect (before any variables get cleared)
-                const savedAuditId = data && data[0] ? data[0].id : (currentEditingAuditId || null);
+                const savedAuditId = data[0].id;
+                console.log('💾 Saved audit ID for redirect:', savedAuditId);
                 
                 // Send email notification to the audited employee
-                if (data && data[0] && (data[0].employee_email || auditPayload.employee_email)) {
+                if (data[0].employee_email || auditPayload.employee_email) {
                     try {
+                        console.log('📧 Sending email notification...');
                         await sendAuditEmailNotification(data[0], currentScorecard);
+                        console.log('✅ Email notification sent');
                     } catch (emailError) {
                         // Log error but don't fail the audit submission
-                        console.error('Error sending email notification:', emailError);
+                        console.error('⚠️ Error sending email notification (non-critical):', emailError);
                     }
                     
                     // Send webhook to n8n workflow for email notification
                     try {
+                        console.log('🔗 Sending n8n webhook...');
                         await sendN8nWebhook(data[0], currentScorecard);
+                        console.log('✅ n8n webhook sent');
                     } catch (n8nError) {
                         // Log error but don't fail the audit submission
-                        console.error('Error sending n8n webhook:', n8nError);
+                        console.error('⚠️ Error sending n8n webhook (non-critical):', n8nError);
                     }
+                } else {
+                    console.log('ℹ️ No employee email found, skipping notifications');
                 }
                 
                 // Show success message
@@ -12906,6 +13545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const message = wasEditingExistingAudit ? 'Audit updated successfully!' : 'Audit submitted successfully!';
                 
                 console.log('✅ Audit saved successfully! Showing success state...');
+                console.log('🎯 About to show success dialog and reset form');
                 
                 // Update submit button to show success state IMMEDIATELY
                 updateSubmitButtonState('success', originalButtonText);
@@ -12915,6 +13555,61 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (submitButton) {
                     submitButton.offsetHeight; // Force reflow
                 }
+                
+                // Show a visible toast notification immediately (always works)
+                const toast = document.createElement('div');
+                toast.id = 'submitSuccessToast';
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 1rem;
+                    right: 1rem;
+                    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                    color: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 0.5rem;
+                    font-family: 'Poppins', sans-serif;
+                    font-size: 1rem;
+                    font-weight: 600;
+                    z-index: 99999;
+                    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    animation: slideIn 0.3s ease-out;
+                `;
+                toast.innerHTML = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    <span>${message}</span>
+                `;
+                document.body.appendChild(toast);
+                
+                // Add animation styles if not exists
+                if (!document.getElementById('toastAnimationStyles')) {
+                    const styleSheet = document.createElement('style');
+                    styleSheet.id = 'toastAnimationStyles';
+                    styleSheet.textContent = `
+                        @keyframes slideIn {
+                            from { transform: translateX(100%); opacity: 0; }
+                            to { transform: translateX(0); opacity: 1; }
+                        }
+                        @keyframes slideOut {
+                            from { transform: translateX(0); opacity: 1; }
+                            to { transform: translateX(100%); opacity: 0; }
+                        }
+                    `;
+                    document.head.appendChild(styleSheet);
+                }
+                
+                // Auto-remove toast after 5 seconds
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.style.animation = 'slideOut 0.3s ease-out forwards';
+                        setTimeout(() => toast.remove(), 300);
+                    }
+                }, 5000);
                 
                 // Show success dialog with fallback
                 let confirmed = false;
@@ -12940,7 +13635,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to stay here.');
                 }
                 
-                // Reset form
+                // ONLY reset form if we've confirmed success above (we've passed all error checks)
+                console.log('🔄 Resetting form (save was successful)...');
                 auditForm.reset();
                 
                 // Reset header back to green (passing state)
@@ -12978,7 +13674,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const tableName = currentScorecard ? currentScorecard.table_name : null;
                     
                     if (savedAuditId && scorecardId && tableName) {
-                        window.location.href = `audit-view.html?id=${savedAuditId}&scorecard=${scorecardId}&table=${tableName}`;
+                        window.location.href = `/audit-view.html?id=${savedAuditId}&scorecard=${scorecardId}&table=${tableName}`;
                     } else {
                         // Fallback to expert-audits if we don't have the required info
                         window.location.href = 'audit-reports.html';
@@ -13021,6 +13717,129 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Attach the handler to the form submit event
         auditForm.addEventListener('submit', handleSubmit);
+        
+        // Also prevent default form submission at the form level
+        auditForm.onsubmit = function(e) {
+            console.log('Form onsubmit triggered - preventing default');
+            if (e) {
+                e.preventDefault();
+            }
+            handleSubmit(e);
+            return false;
+        };
+        
+        // Add click handler directly on submit button as extra safety
+        const submitAuditBtn = document.getElementById('submitAuditBtn');
+        if (submitAuditBtn) {
+            submitAuditBtn.addEventListener('click', function(e) {
+                console.log('==========================================');
+                console.log('Submit button clicked directly!');
+                console.log('==========================================');
+                e.preventDefault();
+                e.stopPropagation();
+                // Call handleSubmit to show our log
+                handleSubmit(e);
+            });
+        }
+        
+        // Signal that the full submit handler is ready
+        window._fullSubmitHandlerReady = true;
+        console.log('✅ Full submit handler is now ready!');
+        
+        // Event delegation for dynamically created buttons
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('button');
+            if (!target) return;
+            
+            // Close button
+            if (target.id === 'closeAuditFormBtn' || target.classList.contains('close-button')) {
+                e.preventDefault();
+                target.style.background = 'rgba(255,255,255,0.3)';
+                setTimeout(() => { target.style.background = 'rgba(255,255,255,0.2)'; }, 200);
+                if (typeof closeAuditForm === 'function') closeAuditForm();
+            }
+            
+            // Copy conversation ID button
+            if (target.id === 'copyConversationIdBtn' || target.classList.contains('copy-button')) {
+                e.preventDefault();
+                target.style.color = '#1A733E';
+                setTimeout(() => { target.style.color = '#000000'; }, 200);
+                if (target.id === 'copyConversationIdBtn' && typeof copyConversationId === 'function') {
+                    copyConversationId();
+                } else if (target.id === 'copyClientEmailBtn' && typeof copyClientEmail === 'function') {
+                    copyClientEmail();
+                }
+            }
+            
+            // Clear AI Audit button
+            if (target.id === 'clearAIAuditButton') {
+                e.preventDefault();
+                if (typeof clearAIAuditData === 'function') clearAIAuditData();
+            }
+            
+            // Translate chat button
+            if (target.id === 'translateChatBtn') {
+                e.preventDefault();
+                if (typeof translateChatMessages === 'function') translateChatMessages();
+            }
+            
+            // View audit button
+            if (target.classList.contains('view-audit-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const auditId = target.getAttribute('data-audit-id');
+                const scorecardId = target.getAttribute('data-scorecard-id');
+                const tableName = target.getAttribute('data-table-name');
+                target.style.backgroundColor = '#15582E';
+                setTimeout(() => { target.style.backgroundColor = '#1A733E'; }, 200);
+                if (auditId && scorecardId && tableName && typeof viewCompletedAudit === 'function') {
+                    viewCompletedAudit(auditId, scorecardId, tableName);
+                }
+            }
+            
+            // Navigate to assignment button
+            if (target.classList.contains('navigate-assignment-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const auditId = target.getAttribute('data-audit-id');
+                target.style.backgroundColor = '#15582E';
+                setTimeout(() => { target.style.backgroundColor = '#1A733E'; }, 200);
+                if (auditId && typeof navigateToAssignment === 'function') {
+                    navigateToAssignment(auditId);
+                }
+            }
+            
+            // Pull conversations button
+            if (target.classList.contains('pull-conversations-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const employeeEmail = target.getAttribute('data-email');
+                const employeeName = target.getAttribute('data-name');
+                target.style.backgroundColor = '#dcfce7';
+                target.style.borderColor = '#15582E';
+                target.style.color = '#15582E';
+                setTimeout(() => {
+                    target.style.backgroundColor = '#f0fdf4';
+                    target.style.borderColor = '#1A733E';
+                    target.style.color = '#1A733E';
+                }, 200);
+                if (employeeEmail && typeof pullConversationsForEmployee === 'function') {
+                    pullConversationsForEmployee(employeeEmail, employeeName);
+                }
+            }
+            
+            // Copy conversation ID in pull conversations modal
+            if (target.classList.contains('copy-conv-id-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                const convId = target.getAttribute('data-conv-id');
+                target.style.color = '#1A733E';
+                setTimeout(() => { target.style.color = '#000000'; }, 200);
+                if (convId && typeof copyToClipboard === 'function') {
+                    copyToClipboard(convId, target);
+                }
+            }
+        });
         
         console.log('Event listeners attached successfully');
         
@@ -13065,6 +13884,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 isEditingExistingAudit = false;
                 currentEditingTableName = null;
                 pendingConversationId = null; // Clear conversation ID after use
+                window._editModeLoading = false;
+                window._editModeValuesPopulated = false;
                 
                 // Hide form modal
                 const auditFormModal = document.getElementById('auditFormModal');
@@ -13457,7 +14278,7 @@ async function loadAssignmentFromURL(assignmentId) {
         if (assignment.status === 'completed' || assignment.audit_status === 'completed') {
             // Redirect to view the completed audit
             if (scorecardId && assignmentTable) {
-                window.location.href = `audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
+                window.location.href = `/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
                 return;
             }
             alert('This assignment has already been completed.');
@@ -13519,6 +14340,8 @@ async function loadAssignmentFromURL(assignmentId) {
         currentEditingAuditId = null;
         isEditingExistingAudit = false;
         currentEditingTableName = null;
+        window._editModeLoading = false;
+        window._editModeValuesPopulated = false;
         
         // Store conversation ID for later use
         if (mappedAssignment.conversation_id) {
@@ -13747,18 +14570,20 @@ async function loadAssignmentFromURL(assignmentId) {
                         console.log('✅ [Assignment Load] Department field populated:', employeeDepartment);
                     }
                     
-                    // Country field
+                    // Country field - Use assignment data as fallback if employee dataset doesn't have it
                     const countryField = document.getElementById('countryOfEmployee');
                     if (countryField) {
-                        countryField.value = employeeCountry;
-                        console.log('✅ [Assignment Load] Country field populated:', employeeCountry);
+                        const countryValue = employeeCountry || assignment.country_of_employee || '';
+                        countryField.value = countryValue;
+                        console.log('✅ [Assignment Load] Country field populated:', countryValue, '(source:', employeeCountry ? 'employee' : 'assignment', ')');
                     }
                     
-                    // Channel field
+                    // Channel field - Use assignment data as fallback if employee dataset doesn't have it
                     const employeeChannelField = document.getElementById('employeeChannel');
-                    if (employeeChannelField && employeeChannel) {
-                        employeeChannelField.value = employeeChannel;
-                        console.log('✅ [Assignment Load] Channel field populated:', employeeChannel);
+                    if (employeeChannelField) {
+                        const channelValue = employeeChannel || assignment.channel || '';
+                        employeeChannelField.value = channelValue;
+                        console.log('✅ [Assignment Load] Channel field populated:', channelValue, '(source:', employeeChannel ? 'employee' : 'assignment', ')');
                     }
                     
                     // Also populate channel dropdown in Error Details section

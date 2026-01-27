@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/api/index"
+    }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "public/**",
+      "includeFiles": "src/**",
+      "includeFiles": "dist/**",
+      "maxDuration": 30
+    }
+  }
+}

@@ -2662,33 +2662,56 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Wait for Supabase with better strategy (updated to match new initialization pattern)
 async function waitForSupabase(maxWait = 10000) {
-  // Check if already ready
+  // OPTIMIZATION: Check if already ready immediately (instant return)
   if (window.supabaseClient && window.supabaseReady) {
     return true;
   }
   
-  // Wait for supabaseReady event
+  // Wait for supabaseReady event with optimized polling
   return new Promise((resolve) => {
     const startTime = Date.now();
     
-    // Check if already ready
+    // Double-check if already ready
     if (window.supabaseClient && window.supabaseReady) {
       resolve(true);
       return;
     }
     
-    // Listen for supabaseReady event
-    const onReady = () => {
+    // OPTIMIZATION: Use both event listener AND fast polling for quicker detection
+    // Polling every 50ms catches ready state faster than waiting for event
+    let pollInterval;
+    
+    const checkReady = () => {
       if (window.supabaseClient && window.supabaseReady) {
+        if (pollInterval) clearInterval(pollInterval);
         window.removeEventListener('supabaseReady', onReady);
         resolve(true);
+        return true;
       }
+      return false;
+    };
+    
+    // Listen for supabaseReady event
+    const onReady = () => {
+      if (checkReady()) return;
     };
     
     window.addEventListener('supabaseReady', onReady, { once: true });
     
-    // Fallback timeout
+    // Fast polling for quicker detection (50ms intervals)
+    pollInterval = setInterval(() => {
+      if (checkReady()) return;
+      // Timeout check
+      if (Date.now() - startTime >= maxWait) {
+        clearInterval(pollInterval);
+        window.removeEventListener('supabaseReady', onReady);
+        resolve(window.supabaseClient && window.supabaseReady);
+      }
+    }, 50);
+    
+    // Fallback timeout (backup, polling should handle this)
     setTimeout(() => {
+      if (pollInterval) clearInterval(pollInterval);
       window.removeEventListener('supabaseReady', onReady);
       if (window.supabaseClient && window.supabaseReady) {
         resolve(true);
@@ -2713,6 +2736,9 @@ async function getAuthenticatedDb() {
 
 async function initializeDashboard() {
   try {
+    // OPTIMIZATION: Start multiple operations in parallel for faster first load
+    const startTime = performance.now();
+    
     // Ensure date dropdown is closed on initialization
     const dateDropdown = document.getElementById('dateDropdown');
     if (dateDropdown) {
@@ -2720,19 +2746,30 @@ async function initializeDashboard() {
       dateDropdown.style.display = 'none';
     }
     
-    // Date utilities are already available via fallback script above
+    // Get current user immediately (from localStorage - instant, no waiting)
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    currentUserEmail = (userInfo.email || '').toLowerCase().trim();
+    currentUserRole = userInfo.role || '';
+    isAgent = currentUserRole === 'Employee';
+    
+    // OPTIMIZATION: Start module preloading in parallel with Supabase wait
+    // This saves ~200-500ms on first load by loading modules while waiting for auth
+    const modulePreloadPromise = Promise.all([
+      import('/js/features/home/infrastructure/unified-data-service.js').catch(() => null),
+      import('/js/features/home/infrastructure/cache-aware-loader.js').catch(() => null),
+      import('/js/features/home/infrastructure/persistent-cache-service.js').catch(() => null),
+      import('/js/utils/authenticated-supabase.js').catch(() => null)
+    ]);
+    
     // Wait for Supabase authenticated client to be ready
-    const supabaseReady = await waitForSupabase(10000);
+    // OPTIMIZATION: Reduced timeout to 3s for faster failure detection
+    const supabaseReady = await waitForSupabase(3000);
     if (!supabaseReady) {
       console.error('Supabase client not ready after timeout');
       return;
     }
     
-    // Get current user immediately (from cache) - no need to wait
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-    currentUserEmail = (userInfo.email || '').toLowerCase().trim();
-    currentUserRole = userInfo.role || '';
-    isAgent = currentUserRole === 'Employee';
+    console.log(`[Perf] Supabase ready in ${Math.round(performance.now() - startTime)}ms`);
 
     if (!currentUserEmail) {
       console.error('No user logged in');
@@ -2809,78 +2846,90 @@ async function initializeDashboard() {
     // Supabase client is already ready (waited at start of function)
     // All database operations will now use authenticated client with RLS enforcement
 
+    // OPTIMIZATION: Use preloaded modules (already loading in parallel with Supabase wait)
+    // This avoids sequential module loading which adds ~200-500ms
+    const preloadedModules = await modulePreloadPromise;
+    const [unifiedDataModule, cacheLoaderModule, persistentCacheModule, authSupabaseModule] = preloadedModules;
+    
     // Load data in optimized order - users first, then everything in parallel
     // Use persistent cache for instant display
     try {
-      const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
-      const { getCachedSync, buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      const unifiedDataService = unifiedDataModule?.unifiedDataService;
+      const getCachedSync = cacheLoaderModule?.getCachedSync;
+      const buildCacheKey = cacheLoaderModule?.buildCacheKey;
       
-      // Try to get cached users immediately
-      const cachedUsersData = await getCachedSync('users_all');
-      if (cachedUsersData) {
-        allUsers = cachedUsersData;
-        console.log('[Cache] Loaded users from persistent cache');
-      } else {
-        // Fallback to sessionStorage for backward compatibility
-        const cachedUsers = sessionStorage.getItem('cachedUsers');
-        const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
-        const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
+      // Try to get cached users immediately from sessionStorage (faster than IndexedDB)
+      const cachedUsers = sessionStorage.getItem('cachedUsers');
+      const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
+      const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
+      
+      if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
+        allUsers = JSON.parse(cachedUsers);
+        console.log('[Cache] Loaded users from sessionStorage');
+      } else if (getCachedSync) {
+        // Fallback to persistent cache
+        const cachedUsersData = await getCachedSync('users_all');
+        if (cachedUsersData) {
+          allUsers = cachedUsersData;
+          console.log('[Cache] Loaded users from persistent cache');
+        }
+      }
+      
+      // OPTIMIZATION: Load cached data in parallel for instant display (stale-while-revalidate)
+      if (getCachedSync && buildCacheKey) {
+        const period = getCurrentPeriodDates();
+        const statsCacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+        const auditsCacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+        const updatesCacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
         
-        if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
-          allUsers = JSON.parse(cachedUsers);
+        // Load all cached data in parallel
+        const [cachedStats, cachedAudits, cachedUpdates] = await Promise.all([
+          getCachedSync(statsCacheKey),
+          getCachedSync(auditsCacheKey),
+          getCachedSync(updatesCacheKey)
+        ]);
+        
+        // Render cached data immediately if available
+        if (cachedStats && typeof renderStatsFromData === 'function') {
+          renderStatsFromData(cachedStats);
+          console.log('[Cache] Rendered stats from cache');
         }
-      }
-      
-      // Preload cached data for instant display (stale-while-revalidate)
-      const period = getCurrentPeriodDates();
-      const statsCacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
-      const auditsCacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
-      const updatesCacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
-      
-      // Load cached data immediately for instant display
-      const [cachedStats, cachedAudits, cachedUpdates] = await Promise.all([
-        getCachedSync(statsCacheKey),
-        getCachedSync(auditsCacheKey),
-        getCachedSync(updatesCacheKey)
-      ]);
-      
-      // Render cached data immediately if available
-      if (cachedStats && typeof renderStatsFromData === 'function') {
-        renderStatsFromData(cachedStats);
-        console.log('[Cache] Rendered stats from cache');
-      }
-      if (cachedAudits) {
-        assignedAudits = cachedAudits;
-        if (typeof renderAssignedAudits === 'function') {
-          renderAssignedAudits();
-          console.log('[Cache] Rendered audits from cache');
-        }
-      }
-      if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function') {
-        renderRecentUpdatesFromData(cachedUpdates);
-        console.log('[Cache] Rendered updates from cache');
-      }
-      
-      // Load users if not cached
-      if (!allUsers || allUsers.length === 0) {
-        // Try to use TypeScript module first, fallback to HTML function
-        try {
-          const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
-          await loadAllUsersTS();
-          // Get users from homeState
-          allUsers = homeState.allUsers || [];
-          // Cache in persistent storage
-          const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
-          await persistentCacheService.set('users_all', allUsers, 10 * 60 * 1000); // 10 minutes
-          // Also cache in sessionStorage for backward compatibility
-          sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
-          sessionStorage.setItem('cachedUsersTime', Date.now().toString());
-        } catch (error) {
-          console.warn('Failed to load users via TypeScript module, using fallback:', error);
-          if (typeof loadAllUsers === 'function') {
-            await loadAllUsers();
+        if (cachedAudits) {
+          assignedAudits = cachedAudits;
+          if (typeof renderAssignedAudits === 'function') {
+            renderAssignedAudits();
+            console.log('[Cache] Rendered audits from cache');
           }
         }
+        if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function') {
+          renderRecentUpdatesFromData(cachedUpdates);
+          console.log('[Cache] Rendered updates from cache');
+        }
+      }
+      
+      // Load users if not cached (non-blocking, in background)
+      if (!allUsers || allUsers.length === 0) {
+        // Try to use TypeScript module first, fallback to HTML function
+        (async () => {
+          try {
+            const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
+            await loadAllUsersTS();
+            // Get users from homeState
+            allUsers = homeState.allUsers || [];
+            // Cache in sessionStorage (faster for next load)
+            sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
+            sessionStorage.setItem('cachedUsersTime', Date.now().toString());
+            // Also cache in persistent storage
+            if (persistentCacheModule?.persistentCacheService) {
+              await persistentCacheModule.persistentCacheService.set('users_all', allUsers, 10 * 60 * 1000);
+            }
+          } catch (error) {
+            console.warn('Failed to load users via TypeScript module, using fallback:', error);
+            if (typeof loadAllUsers === 'function') {
+              await loadAllUsers();
+            }
+          }
+        })();
       }
     } catch (error) {
       console.warn('Failed to use persistent cache, falling back to sessionStorage:', error);
@@ -2892,76 +2941,79 @@ async function initializeDashboard() {
       if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
         allUsers = JSON.parse(cachedUsers);
       } else {
-        // Try to use TypeScript module first, fallback to HTML function
-        try {
-          const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
-          await loadAllUsersTS();
-          // Get users from homeState
-          allUsers = homeState.allUsers || [];
-          sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
-          sessionStorage.setItem('cachedUsersTime', Date.now().toString());
-        } catch (error) {
-          console.warn('Failed to load users via TypeScript module, using fallback:', error);
-          if (typeof loadAllUsers === 'function') {
-            await loadAllUsers();
+        // Load users in background (non-blocking)
+        (async () => {
+          try {
+            const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
+            await loadAllUsersTS();
+            allUsers = homeState.allUsers || [];
+            sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
+            sessionStorage.setItem('cachedUsersTime', Date.now().toString());
+          } catch (error) {
+            console.warn('Failed to load users via TypeScript module, using fallback:', error);
+            if (typeof loadAllUsers === 'function') {
+              await loadAllUsers();
+            }
           }
-        }
+        })();
       }
     }
+    
+    console.log(`[Perf] Cache loaded in ${Math.round(performance.now() - startTime)}ms`);
 
-    // Progressive loading - load critical data first, then secondary data
-    // This improves perceived performance by showing data as it arrives
+    // OPTIMIZATION: Show loading indicators immediately for better perceived performance
+    // These appear while data is being fetched from the server
+    if (typeof showStatsLoader === 'function') showStatsLoader();
+    if (typeof showLoader === 'function') {
+      showLoader('assignedAuditsList');
+      showLoader('updatesFeed');
+    }
+
+    // OPTIMIZATION: Load ALL data in parallel for maximum speed
+    // All data sections load simultaneously for faster perceived performance
+    const dataLoadStart = performance.now();
+    
     try {
       // Import TypeScript data loader module (from old.home infrastructure)
       // Note: Path points to compiled JS from TypeScript source
       const dataLoaderModule = await import('/js/features/home/old.home/infrastructure/home-data-loader.js');
       
-      // Load critical data first (stats and assigned audits - what users see first)
-      const criticalDataPromise = Promise.all([
-        dataLoaderModule.updateYourStats(),
-        dataLoaderModule.loadAssignedAudits()
-      ]);
+      // Start ALL data loading in parallel - don't await, let them run concurrently
+      const dataPromises = [
+        dataLoaderModule.updateYourStats().catch(err => console.error('Error loading stats:', err)),
+        dataLoaderModule.loadAssignedAudits().catch(err => console.error('Error loading audits:', err)),
+        dataLoaderModule.loadRecentUpdates().catch(err => console.error('Error loading updates:', err)),
+        dataLoaderModule.loadNotifications().catch(err => console.error('Error loading notifications:', err)),
+        dataLoaderModule.loadUpcomingEvents().catch(err => console.error('Error loading events:', err))
+      ];
       
-      // Load secondary data in parallel (updates, notifications, events)
-      const secondaryDataPromise = Promise.all([
-        dataLoaderModule.loadRecentUpdates(),
-        dataLoaderModule.loadNotifications(),
-        dataLoaderModule.loadUpcomingEvents()
-      ]);
-      
-      // Start both, but don't wait for secondary data to show critical data
-      criticalDataPromise.then(() => {
-        console.log('Critical data loaded');
-      }).catch(error => {
-        console.error('Error loading critical data:', error);
-      });
-      
-      // Wait for critical data, then load secondary
-      await criticalDataPromise;
-      
-      // Load secondary data (non-blocking)
-      secondaryDataPromise.catch(error => {
-        console.error('Error loading secondary data:', error);
-      });
+      await Promise.all(dataPromises);
+      console.log(`[Perf] All data loaded in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
       
     } catch (importError) {
       console.warn('TypeScript data loader not available, using HTML functions:', importError);
-      // Fallback to HTML functions with progressive loading
-      const criticalDataPromise = Promise.all([
-        typeof updateYourStats === 'function' ? updateYourStats() : Promise.resolve(),
-        typeof loadAssignedAudits === 'function' ? loadAssignedAudits() : Promise.resolve()
-      ]);
+      // Fallback to HTML functions with parallel loading
+      // Each function has its own error handling to prevent one failure from blocking others
+      const promises = [];
       
-      const secondaryDataPromise = Promise.all([
-        typeof loadRecentUpdates === 'function' ? loadRecentUpdates() : Promise.resolve(),
-        typeof loadNotifications === 'function' ? loadNotifications() : Promise.resolve(),
-        typeof loadUpcomingEvents === 'function' ? loadUpcomingEvents() : Promise.resolve()
-      ]);
+      if (typeof updateYourStats === 'function') {
+        promises.push(updateYourStats().catch(err => console.error('Error loading stats:', err)));
+      }
+      if (typeof loadAssignedAudits === 'function') {
+        promises.push(loadAssignedAudits().catch(err => console.error('Error loading audits:', err)));
+      }
+      if (typeof loadRecentUpdates === 'function') {
+        promises.push(loadRecentUpdates().catch(err => console.error('Error loading updates:', err)));
+      }
+      if (typeof loadNotifications === 'function') {
+        promises.push(loadNotifications().catch(err => console.error('Error loading notifications:', err)));
+      }
+      if (typeof loadUpcomingEvents === 'function') {
+        promises.push(loadUpcomingEvents().catch(err => console.error('Error loading events:', err)));
+      }
       
-      await criticalDataPromise;
-      secondaryDataPromise.catch(error => {
-        console.error('Error loading secondary data (fallback):', error);
-      });
+      await Promise.all(promises);
+      console.log(`[Perf] All data loaded (fallback) in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
     }
 
     // Populate filter options after loading data (non-blocking)
@@ -4174,8 +4226,19 @@ async function loadAssignedAudits() {
       );
       
       // Update assignedAudits and render
-      if (auditsData) {
+      // Handle both array data and null/undefined cases
+      if (Array.isArray(auditsData)) {
         assignedAudits = auditsData;
+        renderAssignedAudits();
+      } else if (auditsData === null || auditsData === undefined) {
+        // Cache miss or fetch returned nothing - try direct fetch
+        console.log('No cached audits, fetching directly...');
+        showLoader('assignedAuditsList');
+        await fetchAndCacheAssignedAudits(period);
+        renderAssignedAudits();
+      } else {
+        // Unexpected data type, still try to render what we have
+        assignedAudits = auditsData || [];
         renderAssignedAudits();
       }
     } catch (error) {
@@ -4833,295 +4896,44 @@ async function fetchAndCacheStats(period) {
       return;
     }
     
-    // Load assignments for current user
-    // Filter by employee_email if agent, otherwise by auditor_email
-    const filterField = isAgent ? 'employee_email' : 'auditor_email';
+    // OPTIMIZATION: Fetch scorecards and assignments in parallel at the start
     const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
     const supabase = await getAuthenticatedSupabase();
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('audit_assignments')
-      .select('*')
-      .eq(filterField, currentUserEmail)
-      .order('created_at', { ascending: false });
+    const filterField = isAgent ? 'employee_email' : 'auditor_email';
+    const auditFilterField = isAgent ? 'employee_email' : 'auditor_email';
+    const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+    const currentPeriod = getCurrentPeriodDates();
     
-    if (assignmentsError) {
-      console.error('Error loading assignments for stats:', assignmentsError);
-      return;
+    // Parallel fetch: scorecards + assignments
+    const [scorecardsResult, assignmentsResult] = await Promise.all([
+      supabase.from('scorecards').select('id, name, table_name, scoring_type').eq('is_active', true),
+      supabase.from('audit_assignments').select('*').eq(filterField, currentUserEmail).order('created_at', { ascending: false })
+    ]);
+    
+    const scorecards = scorecardsResult.data || [];
+    const assignments = assignmentsResult.data || [];
+    
+    if (assignmentsResult.error) {
+      console.error('Error loading assignments for stats:', assignmentsResult.error);
     }
     
-    // Apply date filter to assignments (week or date range) for total assigned count
-    let allAssignments = assignments || [];
-    const period = getCurrentPeriodDates();
-    allAssignments = allAssignments.filter(assignment => {
-      // Use scheduled_date if available, otherwise fall back to created_at date
+    // Apply date filter to assignments
+    let allAssignments = assignments.filter(assignment => {
       const assignmentDate = assignment.scheduled_date 
-        ? new Date(assignment.scheduled_date + 'T00:00:00') // Convert DATE to Date object
+        ? new Date(assignment.scheduled_date + 'T00:00:00')
         : assignment.created_at;
       if (!assignmentDate) return false;
-      return isDateInRange(assignmentDate, period.start, period.end);
+      return isDateInRange(assignmentDate, currentPeriod.start, currentPeriod.end);
     });
     
     const totalAssigned = allAssignments.length;
     const inProgress = allAssignments.filter(a => a.status === 'in_progress').length;
     const pending = allAssignments.filter(a => a.status === 'pending').length;
     
-    // Count completed audits from scorecard tables (based on submitted_at, not created_at)
+    // Initialize stats variables
     let completed = 0;
-    try {
-      const scorecards = await getCachedScorecards(supabase, 'table_name');
-      
-      if (scorecards && scorecards.length > 0) {
-        const auditFilterField = isAgent ? 'employee_email' : 'auditor_email';
-        const completedPromises = scorecards.map(async (scorecard) => {
-          try {
-            // Query for completed audits (those with submitted_at)
-            let completedQuery = supabase
-              .from(scorecard.table_name)
-              .select('id, submitted_at')
-              .eq(auditFilterField, currentUserEmail)
-              .not('submitted_at', 'is', null);
-            
-            // Apply date filters server-side if possible (convert Dhaka to UTC)
-            if (period.start && window.dhakaDateToUTCISO) {
-              completedQuery = completedQuery.gte('submitted_at', window.dhakaDateToUTCISO(period.start));
-            } else if (period.start) {
-              completedQuery = completedQuery.gte('submitted_at', period.start.toISOString());
-            }
-            if (period.end && window.dhakaDateToUTCISO) {
-              completedQuery = completedQuery.lte('submitted_at', window.dhakaDateToUTCISO(period.end));
-            } else if (period.end) {
-              completedQuery = completedQuery.lte('submitted_at', period.end.toISOString());
-            }
-            
-            const completedResult = await completedQuery;
-            
-            if (completedResult.error) {
-              // If server-side date filter fails, try without date filter and filter client-side
-              const retryQuery = await window.supabaseClient
-                .from(scorecard.table_name)
-                .select('id, submitted_at')
-                .eq(auditFilterField, currentUserEmail)
-                .not('submitted_at', 'is', null);
-              
-              if (retryQuery.data) {
-                // Filter client-side by date
-                const filteredCompleted = retryQuery.data.filter(audit => {
-                  if (!audit.submitted_at) return false;
-                  const auditDate = toDhakaTime(audit.submitted_at);
-                  return (!period.start || auditDate >= period.start) && 
-                         (!period.end || auditDate <= period.end);
-                });
-                return filteredCompleted.length;
-              }
-              return 0;
-            }
-            
-            return (completedResult.data || []).length;
-          } catch (err) {
-            console.warn(`Error counting completed audits from ${scorecard.table_name}:`, err);
-            return 0;
-          }
-        });
-        
-        const completedCounts = await Promise.all(completedPromises);
-        completed = completedCounts.reduce((sum, count) => sum + count, 0);
-      } else {
-        // Fallback to assignment-based count if no scorecards
-        completed = allAssignments.filter(a => a.status === 'completed').length;
-      }
-    } catch (error) {
-      console.error('Error calculating completed count:', error);
-      // Fallback to assignment-based count on error
-      completed = allAssignments.filter(a => a.status === 'completed').length;
-    }
-    
-    const remaining = pending + inProgress;
-    
-    // Calculate percentage
-    const percentage = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
-    
-    // Calculate working days remaining (assuming 5 working days per week)
-    const today = new Date();
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(today.getDate() + (5 - today.getDay())); // Friday
-    const daysRemaining = Math.max(0, Math.ceil((endOfWeek - today) / (1000 * 60 * 60 * 24)));
-    
-    // Calculate average audit duration
     let avgDuration = 0;
     let avgDurationText = '-';
-    
-    try {
-      // Get all scorecards to query audit tables (using cache)
-      const scorecards = await getCachedScorecards(window.supabaseClient, 'table_name');
-      
-      if (scorecards && scorecards.length > 0) {
-        const auditFilterField = isAgent ? 'employee_email' : 'auditor_email';
-        
-        // Get period for date filtering (matching auditor-dashboard.html approach)
-        const period = getCurrentPeriodDates();
-        
-        // Parallelize all duration queries
-        const durationPromises = scorecards.map(async (scorecard) => {
-          try {
-            // Build query with date filters server-side first (matching auditor-dashboard.html)
-            let durationQuery = window.supabaseClient
-              .from(scorecard.table_name)
-              .select('audit_duration, submitted_at')
-              .eq(auditFilterField, currentUserEmail)
-              .not('audit_duration', 'is', null);
-            
-            // Apply date filters server-side if possible (convert Dhaka to UTC)
-            if (period.start) {
-              durationQuery = durationQuery.gte('submitted_at', dhakaDateToUTCISO(period.start));
-            }
-            if (period.end) {
-              durationQuery = durationQuery.lte('submitted_at', dhakaDateToUTCISO(period.end));
-            }
-            
-            // Execute query
-            let result = await durationQuery;
-            let audits = result.data;
-            let error = result.error;
-            
-            // If server-side date filter fails, try without date filter and filter client-side
-            if (error && period && (period.start || period.end)) {
-              console.warn(`Server-side date filter failed for ${scorecard.table_name}, falling back to client-side filtering:`, error);
-              const retryQuery = window.supabaseClient
-                .from(scorecard.table_name)
-                .select('audit_duration, submitted_at')
-                .eq(auditFilterField, currentUserEmail)
-                .not('audit_duration', 'is', null);
-              
-              const retryResult = await retryQuery;
-              if (retryResult.data && period.start) {
-                // Filter client-side by date
-                retryResult.data = retryResult.data.filter(audit => {
-                  if (!audit.submitted_at) return false;
-                  const auditDate = toDhakaTime(audit.submitted_at);
-                  return (!period.start || auditDate >= period.start) && 
-                         (!period.end || auditDate <= period.end);
-                });
-                audits = retryResult.data;
-                error = null;
-              } else if (retryResult.error) {
-                // If still error, table might not have the filter field column - skip this table silently
-                return [];
-              }
-            }
-            
-            // If error, try without audit_duration filter (some tables may not have this column)
-            if (error) {
-              let retryQuery = window.supabaseClient
-                .from(scorecard.table_name)
-                .select('audit_duration, submitted_at')
-                .eq(auditFilterField, currentUserEmail);
-              
-              // Apply date filters if period exists
-              if (period.start) {
-                retryQuery = retryQuery.gte('submitted_at', dhakaDateToUTCISO(period.start));
-              }
-              if (period.end) {
-                retryQuery = retryQuery.lte('submitted_at', dhakaDateToUTCISO(period.end));
-              }
-              
-              const retryResult = await retryQuery;
-              if (!retryResult.error && retryResult.data) {
-                // Filter client-side for non-null audit_duration
-                audits = retryResult.data.filter(a => a.audit_duration != null);
-                // Also apply client-side date filtering as fallback
-                if (period.start && audits) {
-                  audits = audits.filter(audit => {
-                    if (!audit.submitted_at) return false;
-                    const auditDate = toDhakaTime(audit.submitted_at);
-                    return (!period.start || auditDate >= period.start) && 
-                           (!period.end || auditDate <= period.end);
-                  });
-                }
-                error = null;
-              } else {
-                // If still error, table might not have the filter field column - skip this table silently
-                return [];
-              }
-            }
-            
-            if (!error && audits && audits.length > 0) {
-              // Fallback client-side filtering if server-side filter didn't work or data has no date
-              if (period.start) {
-                audits = audits.filter(audit => {
-                  if (!audit.submitted_at) return false;
-                  const auditDate = toDhakaTime(audit.submitted_at);
-                  return (!period.start || auditDate >= period.start) && 
-                         (!period.end || auditDate <= period.end);
-                });
-              }
-              
-              return audits.map(audit => {
-                // Handle duration conversion
-                // NEW FORMAT: All numeric values are in SECONDS (as of timer update)
-                // LEGACY FORMAT: String time formats (MM:SS or HH:MM:SS) or very old numeric values in minutes
-                let durationInMinutes = 0;
-                if (typeof audit.audit_duration === 'number') {
-                  // All numeric audit_duration values are now in seconds, convert to minutes
-                  durationInMinutes = audit.audit_duration / 60;
-                } else if (typeof audit.audit_duration === 'string') {
-                  // Try parsing as integer first
-                  const asInt = parseInt(audit.audit_duration);
-                  if (!isNaN(asInt)) {
-                    // If it's a numeric string, treat as seconds (new format)
-                    durationInMinutes = asInt / 60; // Convert seconds to minutes
-                  } else {
-                    // Legacy format: time string (MM:SS or HH:MM:SS)
-                    const timeParts = audit.audit_duration.split(':');
-                    if (timeParts.length === 2) {
-                      // MM:SS format
-                      const minutes = parseInt(timeParts[0]) || 0;
-                      const seconds = parseInt(timeParts[1]) || 0;
-                      durationInMinutes = minutes + (seconds / 60);
-                    } else if (timeParts.length === 3) {
-                      // HH:MM:SS format
-                      const hours = parseInt(timeParts[0]) || 0;
-                      const minutes = parseInt(timeParts[1]) || 0;
-                      const seconds = parseInt(timeParts[2]) || 0;
-                      durationInMinutes = (hours * 60) + minutes + (seconds / 60);
-                    }
-                  }
-                }
-                return durationInMinutes > 0 ? durationInMinutes : null;
-              }).filter(Boolean);
-            }
-            return [];
-          } catch (err) {
-            console.warn(`Error getting duration from ${scorecard.table_name}:`, err);
-            return [];
-          }
-        });
-        
-        const durationResults = await Promise.all(durationPromises);
-        const allDurations = durationResults.flat();
-        const totalDuration = allDurations.reduce((sum, d) => sum + d, 0);
-        const auditCount = allDurations.length;
-        
-        if (auditCount > 0) {
-          avgDuration = totalDuration / auditCount; // Average in minutes
-          
-          // Format duration (avgDuration is in minutes)
-          if (avgDuration >= 60) {
-            const hours = Math.floor(avgDuration / 60);
-            const minutes = Math.round(avgDuration % 60);
-            avgDurationText = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-          } else {
-            avgDurationText = `${Math.round(avgDuration)}m`;
-          }
-          console.log(`Calculated avgDuration: ${avgDurationText} from ${auditCount} audits`);
-        } else {
-          console.log('No audits with duration data found for avgDuration calculation');
-        }
-      }
-    } catch (error) {
-      console.error('Error calculating average duration:', error);
-    }
-    
-    // Calculate total audits conducted
     let totalAuditsConducted = 0;
     let totalScoreSum = 0;
     let totalAuditsWithScore = 0;
@@ -5129,200 +4941,192 @@ async function fetchAndCacheStats(period) {
     let avgQualityScoreText = '-';
     let passingCount = 0;
     let notPassingCount = 0;
+    let requiresAcknowledgment = 0;
     
-    if (isAgent) {
-      // For employees: Count completed audits from scorecard tables
-      // Use the same logic as loadCompletedAuditsForEmployee
-      try {
-        const { data: scorecards, error: scError } = await window.supabaseClient
-          .from('scorecards')
-          .select('id, name, table_name, scoring_type')
-          .eq('is_active', true);
-        
-        if (!scError && scorecards) {
-          const auditFilterField = 'employee_email';
-          const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+    // OPTIMIZATION: Run ALL scorecard queries in parallel instead of sequential loops
+    if (scorecards.length > 0) {
+      // Create unified queries for each scorecard that fetch all needed data at once
+      const unifiedQueryPromises = scorecards.map(async (scorecard) => {
+        try {
+          // Single query per scorecard with all fields needed for stats
+          const selectFields = isAgent 
+            ? 'id, submitted_at, audit_duration, average_score, passing_status, acknowledgement_status'
+            : 'id, submitted_at, audit_duration, average_score, passing_status, auditor_email';
           
-          // Parallelize all audit queries
-          const auditPromises = scorecards.map(async (scorecard) => {
-            try {
-              // For agents: Filter by employee_email server-side
-              const { data: audits, error } = await window.supabaseClient
-                .from(scorecard.table_name)
-                .select('*')
-                .eq('employee_email', currentUserEmail)
-                .order('submitted_at', { ascending: false })
-                .limit(100); // Reduced from 500 to 100 for better performance
-              
-              if (!error && audits && audits.length > 0) {
-                // No client-side filtering needed - already filtered server-side
-                let filteredAudits = audits;
-                
-                // Apply date filter (week or date range)
-                const period = getCurrentPeriodDates();
-                filteredAudits = filteredAudits.filter(audit => {
-                  const auditDate = audit.submitted_at;
-                  if (!auditDate) return false;
-                  return isDateInRange(auditDate, period.start, period.end);
-                });
-                
-                return filteredAudits.map(audit => {
-                  const score = parseFloat(audit.average_score || audit.averageScore || 0);
-                  const passingStatus = audit.passing_status || audit.passingStatus || '';
-                  const normalizedStatus = normalizePassingStatus(passingStatus);
-                  
-                  return { 
-                    score: !isNaN(score) ? score : null,
-                    passingStatus: normalizedStatus
-                  };
-                });
-              }
-              return [];
-            } catch (err) {
-              console.warn(`Error getting audits from ${scorecard.table_name}:`, err);
-              return [];
-            }
-          });
+          let query = supabase
+            .from(scorecard.table_name)
+            .select(selectFields)
+            .eq(auditFilterField, currentUserEmail)
+            .not('submitted_at', 'is', null);
           
-          const auditResults = await Promise.all(auditPromises);
-          const allAudits = auditResults.flat();
-          totalAuditsConducted = allAudits.length;
-          allAudits.forEach(audit => {
-            if (audit.score !== null) {
-              totalScoreSum += audit.score;
-              totalAuditsWithScore++;
-            }
-            // Count passing/not passing - use normalized status for consistency
-            const normalizedStatus = normalizePassingStatus(audit.passingStatus);
-            if (normalizedStatus === 'Passed') {
-              passingCount++;
-            } else {
-              // Count everything else (including 'Not Passed', 'Not Passing', empty, null, etc.) as 'Not Passed'
-              notPassingCount++;
-            }
-          });
-          
-          if (totalAuditsWithScore > 0) {
-            avgQualityScore = totalScoreSum / totalAuditsWithScore;
-            avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
+          // Apply date filters server-side
+          if (currentPeriod.start && window.dhakaDateToUTCISO) {
+            query = query.gte('submitted_at', window.dhakaDateToUTCISO(currentPeriod.start));
+          } else if (currentPeriod.start) {
+            query = query.gte('submitted_at', currentPeriod.start.toISOString());
+          }
+          if (currentPeriod.end && window.dhakaDateToUTCISO) {
+            query = query.lte('submitted_at', window.dhakaDateToUTCISO(currentPeriod.end));
+          } else if (currentPeriod.end) {
+            query = query.lte('submitted_at', currentPeriod.end.toISOString());
           }
           
-          console.log(`Stats for employee: ${totalAuditsConducted} audits conducted, ${avgQualityScoreText} average score, ${passingCount} passing, ${notPassingCount} not passing`);
+          const { data, error } = await query.limit(500);
+          
+          if (error) {
+            // Fallback: try without date filter and apply client-side
+            const retryResult = await supabase
+              .from(scorecard.table_name)
+              .select(selectFields)
+              .eq(auditFilterField, currentUserEmail)
+              .not('submitted_at', 'is', null)
+              .limit(500);
+            
+            if (retryResult.error) {
+              console.warn(`Error querying ${scorecard.table_name}:`, retryResult.error);
+              return { scorecard, audits: [] };
+            }
+            
+            // Filter client-side by date
+            const filteredAudits = (retryResult.data || []).filter(audit => {
+              if (!audit.submitted_at) return false;
+              const auditDate = toDhakaTime(audit.submitted_at);
+              return (!currentPeriod.start || auditDate >= currentPeriod.start) && 
+                     (!currentPeriod.end || auditDate <= currentPeriod.end);
+            });
+            return { scorecard, audits: filteredAudits };
+          }
+          
+          return { scorecard, audits: data || [] };
+        } catch (err) {
+          console.warn(`Error in unified query for ${scorecard.table_name}:`, err);
+          return { scorecard, audits: [] };
         }
-      } catch (error) {
-        console.error('Error calculating audits conducted and average score:', error);
+      });
+      
+      // Execute all queries in parallel
+      const queryResults = await Promise.all(unifiedQueryPromises);
+      
+      // Process results from unified queries
+      let allDurations = [];
+      
+      queryResults.forEach(({ scorecard, audits }) => {
+        // Count completed audits
+        completed += audits.length;
+        totalAuditsConducted += audits.length;
+        
+        // Process each audit for stats
+        audits.forEach(audit => {
+          // Duration calculation
+          if (audit.audit_duration != null) {
+            let durationInMinutes = 0;
+            if (typeof audit.audit_duration === 'number') {
+              durationInMinutes = audit.audit_duration / 60;
+            } else if (typeof audit.audit_duration === 'string') {
+              const asInt = parseInt(audit.audit_duration);
+              if (!isNaN(asInt)) {
+                durationInMinutes = asInt / 60;
+              } else {
+                const timeParts = audit.audit_duration.split(':');
+                if (timeParts.length === 2) {
+                  durationInMinutes = (parseInt(timeParts[0]) || 0) + ((parseInt(timeParts[1]) || 0) / 60);
+                } else if (timeParts.length === 3) {
+                  durationInMinutes = ((parseInt(timeParts[0]) || 0) * 60) + (parseInt(timeParts[1]) || 0) + ((parseInt(timeParts[2]) || 0) / 60);
+                }
+              }
+            }
+            if (durationInMinutes > 0) {
+              allDurations.push(durationInMinutes);
+            }
+          }
+          
+          // Score calculation
+          const score = parseFloat(audit.average_score || 0);
+          if (!isNaN(score) && score > 0) {
+            totalScoreSum += score;
+            totalAuditsWithScore++;
+          }
+          
+          // Passing status
+          const passingStatus = audit.passing_status || '';
+          const normalizedStatus = normalizePassingStatus(passingStatus);
+          if (normalizedStatus === 'Passed') {
+            passingCount++;
+          } else {
+            notPassingCount++;
+          }
+          
+          // Acknowledgment count (for agents only)
+          if (isAgent) {
+            const ackStatus = audit.acknowledgement_status || '';
+            if (ackStatus.toLowerCase() === 'pending') {
+              requiresAcknowledgment++;
+            }
+          }
+        });
+      });
+      
+      // Calculate average duration
+      if (allDurations.length > 0) {
+        const totalDuration = allDurations.reduce((sum, d) => sum + d, 0);
+        avgDuration = totalDuration / allDurations.length;
+        if (avgDuration >= 60) {
+          const hours = Math.floor(avgDuration / 60);
+          const minutes = Math.round(avgDuration % 60);
+          avgDurationText = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+        } else {
+          avgDurationText = `${Math.round(avgDuration)}m`;
+        }
+        console.log(`Calculated avgDuration: ${avgDurationText} from ${allDurations.length} audits`);
       }
+      
+      // Calculate average quality score
+      if (totalAuditsWithScore > 0) {
+        avgQualityScore = totalScoreSum / totalAuditsWithScore;
+        avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
+      }
+      
+      console.log(`Stats: ${totalAuditsConducted} audits, ${avgQualityScoreText} avg score, ${passingCount} passed, ${notPassingCount} not passed`);
     } else {
-      // For auditors: Count completed audits from scorecard tables (same as average quality score calculation)
-      // This ensures we count all audits, even if they don't exist in audit_assignments table
-      try {
-        const { data: scorecards, error: scError } = await window.supabaseClient
-          .from('scorecards')
-          .select('id, name, table_name, scoring_type')
-          .eq('is_active', true);
-        
-        if (!scError && scorecards) {
-          const auditFilterField = 'auditor_email';
-          const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
-          const period = getCurrentPeriodDates();
-          
-          // Parallelize all audit queries - get all audits conducted by this auditor
-          // Use the same logic as agents, but filter by auditor_email instead of employee_email
-          const auditPromises = scorecards.map(async (scorecard) => {
-            try {
-              const { data: audits, error } = await window.supabaseClient
-                .from(scorecard.table_name)
-                .select('*')
-                .order('submitted_at', { ascending: false })
-                .limit(100); // Reduced from 500 to 100 for better performance
-              
-              if (!error && audits && audits.length > 0) {
-                // Filter by auditor email (case-insensitive) - same logic as agents use for employee_email
-                let filteredAudits = audits.filter(audit => {
-                  const emailToCheck = audit[auditFilterField];
-                  if (!emailToCheck) return false;
-                  const normalizedEmailToCheck = emailToCheck.toLowerCase().trim();
-                  return normalizedEmailToCheck === normalizedCurrentEmail;
-                });
-                
-                // Apply date filter (week or date range)
-                filteredAudits = filteredAudits.filter(audit => {
-                  const auditDate = audit.submitted_at;
-                  if (!auditDate) return false;
-                  return isDateInRange(auditDate, period.start, period.end);
-                });
-                
-                return filteredAudits.map(audit => {
-                  const score = parseFloat(audit.average_score || audit.averageScore || 0);
-                  const passingStatus = audit.passing_status || audit.passingStatus || '';
-                  const normalizedStatus = normalizePassingStatus(passingStatus);
-                  
-                  return { 
-                    score: !isNaN(score) ? score : null,
-                    passingStatus: normalizedStatus
-                  };
-                });
-              }
-              return [];
-            } catch (err) {
-              console.warn(`Error getting audits from ${scorecard.table_name}:`, err);
-              return [];
-            }
-          });
-          
-          const auditResults = await Promise.all(auditPromises);
-          const allAudits = auditResults.flat();
-          
-          // Count total audits conducted from scorecard tables
-          totalAuditsConducted = allAudits.length;
-          
-          // Calculate average quality score from all audits conducted by this auditor
-          allAudits.forEach(audit => {
-            if (audit.score !== null) {
-              totalScoreSum += audit.score;
-              totalAuditsWithScore++;
-            }
-            // Count passing/not passing - use normalized status for consistency
-            const normalizedStatus = normalizePassingStatus(audit.passingStatus);
-            if (normalizedStatus === 'Passed') {
-              passingCount++;
-            } else {
-              // Count everything else (including 'Not Passed', 'Not Passing', empty, null, etc.) as 'Not Passed'
-              notPassingCount++;
-            }
-          });
-          
-          if (totalAuditsWithScore > 0) {
-            avgQualityScore = totalScoreSum / totalAuditsWithScore;
-            avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
-          }
-          
-          console.log(`Stats for auditor: ${totalAuditsConducted} audits conducted (from scorecard tables), ${avgQualityScoreText} average quality score (from ${totalAuditsWithScore} scored audits filtered by auditor_email), ${passingCount} passed, ${notPassingCount} not passed`);
-        }
-      } catch (error) {
-        console.error('Error calculating audits conducted and average quality score for auditor:', error);
-      }
+      // Fallback to assignment-based count if no scorecards
+      completed = allAssignments.filter(a => a.status === 'completed').length;
     }
+    
+    const remaining = pending + inProgress;
+    const percentage = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
+    
+    // Calculate working days remaining
+    const today = new Date();
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + (5 - today.getDay()));
+    const daysRemaining = Math.max(0, Math.ceil((endOfWeek - today) / (1000 * 60 * 60 * 24)));
     
     // Calculate reversal counts (active and resolved)
     let activeReversals = 0;
     let resolvedReversals = 0;
     let totalReversals = 0;
-    let requiresAcknowledgment = 0;
     
-    // For agents: Count audits with acknowledgement_status = 'pending'
-    if (isAgent) {
+    // For agents who need acknowledgment count beyond what we already calculated
+    if (isAgent && scorecards.length > 0) {
+      // Acknowledgment already calculated above in the unified query
+      // Just log it
+      console.log(`Requires acknowledgment: ${requiresAcknowledgment}`);
+    }
+    
+    // Skip the old sequential acknowledgment query since it's now handled above
+    // This block is kept for compatibility but the work is already done
+    if (false) { // Disabled - acknowledgment now calculated in unified query
       try {
-        const { data: scorecards, error: scError } = await window.supabaseClient
+        const { data: oldScorecards, error: scError } = await window.supabaseClient
           .from('scorecards')
           .select('table_name')
           .eq('is_active', true);
         
-        if (!scError && scorecards) {
-          const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+        if (!scError && oldScorecards) {
+          const normalizedOldEmail = currentUserEmail.toLowerCase().trim();
           
           // Parallelize all audit count queries
-          const auditPromises = scorecards.map(async (scorecard) => {
+          const auditPromises = oldScorecards.map(async (scorecard) => {
             try {
               // For agents: Filter by employee_email server-side
               const { data: allAudits, error: auditError } = await window.supabaseClient
@@ -5373,13 +5177,9 @@ async function fetchAndCacheStats(period) {
     }
     
     // Calculate reversal counts (for reversal card stats)
+    // OPTIMIZATION: Reuse scorecards fetched at the beginning instead of fetching again
     try {
-      const { data: scorecards, error: scError } = await window.supabaseClient
-        .from('scorecards')
-        .select('table_name')
-        .eq('is_active', true);
-      
-      if (!scError && scorecards) {
+      if (scorecards.length > 0) {
         const reversalFilterField = isAgent ? 'employee_email' : 'auditor_email';
         
         // Parallelize all reversal count queries
@@ -5408,14 +5208,11 @@ async function fetchAndCacheStats(period) {
             
             if (!allError && allReversals) {
               // No email filtering needed - already filtered server-side
-              let filteredReversals = allReversals;
-              
-              // Apply date filter based on reversal_requested_at (week or date range)
-              const period = getCurrentPeriodDates();
-              filteredReversals = filteredReversals.filter(reversal => {
+              // Apply date filter based on reversal_requested_at (using currentPeriod from outer scope)
+              const filteredReversals = allReversals.filter(reversal => {
                 const reversalDate = reversal.reversal_requested_at;
                 if (!reversalDate) return false;
-                return isDateInRange(reversalDate, period.start, period.end);
+                return isDateInRange(reversalDate, currentPeriod.start, currentPeriod.end);
               });
               
               return filteredReversals.map(reversal => {
@@ -5473,12 +5270,12 @@ async function fetchAndCacheStats(period) {
     try {
       const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
       const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
-      const cacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      const cacheKey = buildCacheKey('stats', currentUserEmail, JSON.stringify(currentPeriod), JSON.stringify(currentFilters));
       await persistentCacheService.set(cacheKey, statsData, 5 * 60 * 1000); // 5 minutes
     } catch (cacheError) {
       console.warn('Failed to cache in persistent storage, using sessionStorage:', cacheError);
       // Fallback to sessionStorage
-      const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+      const cacheKey = `stats_${currentUserEmail}_${JSON.stringify(currentPeriod)}_${JSON.stringify(currentFilters)}`;
       sessionStorage.setItem(cacheKey, JSON.stringify(statsData));
       sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
     }
@@ -5650,7 +5447,7 @@ function viewAudit(assignmentId) {
 }
 
 function viewAuditDetails(auditId, scorecardId, tableName) {
-  window.location.href = `audit-view.html?id=${auditId}&scorecard=${scorecardId || ''}&table=${tableName || ''}`;
+  window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId || ''}&table=${tableName || ''}`;
 }
 
 function formatTimestamp(timestamp) {
@@ -6813,7 +6610,7 @@ function handleNotificationClick(notificationId) {
     viewAudit(notification.assignmentId);
   } else if ((notification.type === 'reversal' || notification.type === 'reversal_status_update') && notification.auditId && notification.tableName) {
     // Navigate to audit view for reversal
-    window.location.href = `audit-view.html?id=${notification.auditId}&table=${notification.tableName}`;
+    window.location.href = `/audit-view.html?id=${notification.auditId}&table=${notification.tableName}`;
   }
 }
 

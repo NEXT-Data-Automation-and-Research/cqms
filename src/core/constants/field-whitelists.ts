@@ -48,7 +48,9 @@ export const AUDIT_FIELDS = 'id, employee_id, interaction_id, scorecard_id, tran
 // Generic audit table fields (for dynamic scorecard tables)
 // These are common fields across all audit scorecard tables
 // Used for audit reports feature - includes all fields needed for reporting
-export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, employee_type, auditor_email, auditor_name, interaction_id, interaction_date, audit_type, channel, quarter, week, country_of_employee, client_email, client_name, agent_pre_status, agent_post_status, passing_status, validation_status, average_score, critical_errors, total_errors_count, transcript, error_description, critical_fail_error, critical_error, significant_error, recommendations, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, acknowledgement_status_updated_at, audit_duration, submitted_at, audit_timestamp, audit_start_time, audit_end_time, created_at, updated_at';
+// NOTE: Only include fields that exist in ALL audit tables (fnchat_cfd, fnchat_cfd_v4_0_v2, etc.)
+// Removed: client_name, agent_pre_status, agent_post_status, audit_timestamp, updated_at (don't exist in all tables)
+export const AUDIT_TABLE_COMMON_FIELDS = 'id, employee_email, employee_name, employee_type, employee_department, auditor_email, auditor_name, interaction_id, interaction_date, audit_type, channel, quarter, week, country_of_employee, client_email, passing_status, validation_status, average_score, critical_errors, total_errors_count, transcript, error_description, critical_fail_error, significant_error, recommendations, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, acknowledgement_status_updated_at, audit_duration, submitted_at, audit_start_time, audit_end_time, created_at';
 
 // Audit form fields (for audit form feature)
 export const AUDIT_FORM_FIELDS = [

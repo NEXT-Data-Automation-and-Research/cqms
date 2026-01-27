@@ -1029,14 +1029,20 @@
                 </div>
             </h3>
             <div style="display: flex; align-items: center; gap: 0.3234rem; flex-wrap: wrap;">
-                <button id="createManualAuditBtn" onclick="createManualAudit()" style="padding: 0.2425rem 0.4852rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;" onmouseover="this.style.backgroundColor='#15582E'" onmouseout="this.style.backgroundColor='#1A733E'" title="Create a new audit manually (not from an assignment)">
+                <button id="createManualAuditBtn" style="padding: 0.2425rem 0.4852rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;" onmouseover="this.style.backgroundColor='#15582E'" onmouseout="this.style.backgroundColor='#1A733E'" title="Create a new audit manually (not from an assignment)">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                     <span>Create Manual Audit</span>
                 </button>
-                <button id="toggleAllAuditsBtn" onclick="toggleAllAuditsView()" style="padding: 0.2425rem 0.4852rem; background-color: var(--gray-100); color: var(--text-color); border: 0.0405rem solid var(--border-light); border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;" title="Toggle between viewing assigned/pending audits and completed audits">
+                <button id="goToAuditFormBtn" style="padding: 0.2425rem 0.4852rem; background-color: #2563eb; color: white; border: none; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;" onmouseover="this.style.backgroundColor='#1d4ed8'" onmouseout="this.style.backgroundColor='#2563eb'" title="Navigate to the audit form page">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                    <span>Go to Audit form</span>
+                </button>
+                <button id="toggleAllAuditsBtn" style="padding: 0.2425rem 0.4852rem; background-color: var(--gray-100); color: var(--text-color); border: 0.0405rem solid var(--border-light); border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.2425rem;" title="Toggle between viewing assigned/pending audits and completed audits">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                         <circle cx="9" cy="7" r="4"/>
@@ -2176,6 +2182,7 @@
     <input type="hidden" id="quarter" name="quarter">
     <input type="hidden" id="week" name="week">
     <input type="hidden" id="errorDescription" name="errorDescription">
+    <input type="hidden" id="employeeNameDisplay" name="employeeNameDisplay">
 
     <!-- Beautiful Header Section (Report-Style) -->
     <div id="auditFormHeader" style="background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); padding: 0.6469rem 0.9704rem; color: white; box-shadow: 0 0.1213rem 0.1819rem rgba(0,0,0,0.1); margin-bottom: 0.9704rem; transition: background 0.3s ease;">
@@ -2698,8 +2705,9 @@ async function loadScorecardParameters(scorecardId) {
         if (scorecardError) throw scorecardError;
         
         // Load parameters
+        // Note: Table name is 'scorecard_perameters' (with typo) in the database
         const { data: parameters, error: paramsError } = await window.supabaseClient
-            .from('scorecard_parameters')
+            .from('scorecard_perameters')
             .select('*')
             .eq('scorecard_id', scorecardId)
             .eq('is_active', true)
@@ -3513,7 +3521,7 @@ function toggleSortMenu() {
 window.toggleSortMenu = toggleSortMenu;
 
 // Toggle between pending/in_progress and completed audits for logged-in user
-function toggleAllAuditsView() {
+window.toggleAllAuditsView = function toggleAllAuditsView() {
     showAllAudits = !showAllAudits;
     
     // Update button text and title
@@ -3607,7 +3615,7 @@ window.viewCompletedAudit = function(auditId, scorecardId, tableName) {
         return;
     }
     // Use same format as audit-reports.html for consistency
-    window.location.href = `audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+    window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
 };
 
 // ============================================================================
@@ -3770,7 +3778,8 @@ function buildConversationLinkHTML(audit) {
                 <span style="font-size: 0.4043rem; color: #6b7280;">Conv:</span>
                 <span style="font-family: 'Poppins', sans-serif; font-size: 0.4043rem; color: #2563eb; font-weight: 500;">${conversationId}</span>
                 <button 
-                    onclick="event.stopPropagation(); window.open('${conversationUrl}', '_blank', 'noopener,noreferrer')" 
+                    class="view-intercom-btn"
+                    data-conversation-url="${conversationUrl}"
                     style="padding: 0.1617rem 0.3234rem; background-color: #2563eb; color: white; border: none; border-radius: 0.1213rem; font-size: 0.3639rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
                     onmouseover="this.style.backgroundColor='#1d4ed8'"
                     onmouseout="this.style.backgroundColor='#2563eb'"
@@ -5225,6 +5234,17 @@ function attachAuditButtonEventListeners() {
             return;
         }
         
+        // Handle View Intercom conversation button clicks
+        const viewIntercomBtn = target.closest('.view-intercom-btn');
+        if (viewIntercomBtn) {
+            e.stopPropagation();
+            const conversationUrl = viewIntercomBtn.getAttribute('data-conversation-url');
+            if (conversationUrl) {
+                window.open(conversationUrl, '_blank', 'noopener,noreferrer');
+            }
+            return;
+        }
+        
         // Handle nested card clicks (for selection)
         const nestedCard = target.closest('.select-nested-audit-card');
         if (nestedCard) {
@@ -5558,7 +5578,8 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                         </div>
                     ${conversationId && conversationUrl ? `
                         <button 
-                            onclick="event.stopPropagation(); window.open('${conversationUrl}', '_blank', 'noopener,noreferrer')" 
+                            class="view-intercom-btn"
+                            data-conversation-url="${conversationUrl}"
                             style="padding: 0.2425rem 0.4043rem; background-color: #f3f4f6; color: #374151; border: none; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem; height: 1.6169rem;"
                             onmouseover="this.style.backgroundColor='#e5e7eb'"
                             onmouseout="this.style.backgroundColor='#f3f4f6'"
@@ -6111,63 +6132,37 @@ window.loadPendingAuditIntoForm = async function(auditId) {
 // ============================================================================
 
 // Create a manual audit - open blank form for manual audit creation
-window.createManualAudit = async function() {
-    // Reset all editing and assignment tracking flags
-    isEditingPendingAudit = false;
-    currentEditingAuditId = null;
-    currentAssignmentId = null;
-    isEditingExistingAudit = false;
-    currentEditingTableName = null;
-    
-    // Reset the form
-    const auditForm = document.getElementById('auditForm');
-    if (auditForm) {
-        auditForm.reset();
+window.createManualAudit = function() {
+    try {
+        console.log('Create Manual Audit button clicked - navigating to audit form...');
+        // Navigate to audit form for manual audit creation with manual=true parameter
+        const auditFormUrl = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
+        console.log('Navigating to:', auditFormUrl);
+        window.location.href = auditFormUrl;
+    } catch (error) {
+        console.error('Error in createManualAudit:', error);
+        // Fallback navigation with manual parameter
+        window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
     }
-    
-    // Reset header back to green (passing state)
-    const headerElement = document.getElementById('auditFormHeader');
-    if (headerElement) {
-        headerElement.style.background = 'linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%)';
+}
+
+// ============================================================================
+// Go to Audit Form Function
+// ============================================================================
+
+// Navigate to the audit form page
+window.goToAuditForm = function() {
+    try {
+        console.log('Go to Audit form button clicked - navigating to audit form...');
+        // Navigate to audit form page
+        const auditFormUrl = '/src/features/audit-form/presentation/new-audit-form.html';
+        console.log('Navigating to:', auditFormUrl);
+        window.location.href = auditFormUrl;
+    } catch (error) {
+        console.error('Error in goToAuditForm:', error);
+        // Fallback navigation
+        window.location.href = '/src/features/audit-form/presentation/new-audit-form.html';
     }
-    
-    // Reset form header title
-    const scorecardDisplay = document.getElementById('formScorecardDisplay');
-    if (scorecardDisplay) {
-        scorecardDisplay.innerHTML = '<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Select a scorecard';
-    }
-    
-    // Clear scorecard parameters container
-    const parametersContainer = document.getElementById('scorecardParameters');
-    if (parametersContainer) {
-        parametersContainer.innerHTML = '';
-    }
-    
-    // Reset scorecard select
-    const scorecardSelect = document.getElementById('scorecardSelect');
-    if (scorecardSelect) {
-        scorecardSelect.value = '';
-    }
-    
-    // Remove default badge
-    removeDefaultScorecardBadge();
-    
-    // Reset employee select
-    const employeeSelect = document.getElementById('employeeName');
-    if (employeeSelect) {
-        employeeSelect.selectedIndex = 0;
-        // Trigger change event to clear employee-related fields
-        employeeSelect.dispatchEvent(new Event('change'));
-    }
-    
-    // Hide Intercom alias field
-    const intercomAliasContainer = document.getElementById('intercomAliasContainer');
-    if (intercomAliasContainer) {
-        intercomAliasContainer.style.display = 'none';
-    }
-    
-    // Navigate to new-audit-form.html for manual audit creation
-    window.location.href = '/src/features/audit-form/presentation/new-audit-form.html';
 }
 
 // ============================================================================
@@ -14559,23 +14554,21 @@ async function linkConversationToAudit(conversation, auditId) {
             const conversationUrl = `https://app.intercom.com/a/inbox/${workspaceId}/inbox/conversation/${conversationId}?view`;
             const rightSection = auditCard.querySelector('div[style*="flex-shrink: 0"]:last-child');
             if (rightSection) {
-                let viewBtn = rightSection.querySelector('button[onclick*="window.open"]');
-                if (!viewBtn || !viewBtn.textContent.includes('View')) {
-                    // Create or update View button
-                    if (viewBtn) {
-                        viewBtn.remove();
-                    }
+                let viewBtn = rightSection.querySelector('.view-intercom-btn');
+                if (!viewBtn) {
+                    // Create View button with class for event delegation
                     viewBtn = document.createElement('button');
-                    viewBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        window.open(conversationUrl, '_blank', 'noopener,noreferrer');
-                    };
+                    viewBtn.className = 'view-intercom-btn';
+                    viewBtn.setAttribute('data-conversation-url', conversationUrl);
                     viewBtn.style.cssText = 'padding: 0.2425rem 0.4043rem; background-color: #f3f4f6; color: #374151; border: none; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem; height: 1.6169rem;';
                     viewBtn.onmouseover = () => viewBtn.style.backgroundColor = '#e5e7eb';
                     viewBtn.onmouseout = () => viewBtn.style.backgroundColor = '#f3f4f6';
                     viewBtn.title = 'Open conversation in Intercom';
                     viewBtn.innerHTML = '<svg style="width: 0.8886rem; height: 0.8886rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg><span>View</span>';
                     rightSection.insertBefore(viewBtn, rightSection.firstChild);
+                } else {
+                    // Update existing button's URL
+                    viewBtn.setAttribute('data-conversation-url', conversationUrl);
                 }
             }
             
@@ -15989,6 +15982,7 @@ async function loadEmployees() {
             option.value = user.email; // Use email as the value
             option.textContent = user.name;
             option.dataset.email = user.email;
+            option.dataset.name = user.name || user.email; // Store name in dataset for reliable access
             option.dataset.role = user.role || '';
             option.dataset.department = user.department || '';
             option.dataset.designation = user.designation || '';
@@ -16715,6 +16709,14 @@ async function populateFormWithCalibrationSample(sampleAudit) {
             for (let i = 0; i < employeeSelect.options.length; i++) {
                 if (employeeSelect.options[i].dataset.email === sampleAudit.employee_email) {
                     employeeSelect.selectedIndex = i;
+                    // Set employeeNameDisplay hidden field
+                    const selectedOption = employeeSelect.options[i];
+                    const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                    if (employeeNameDisplayField) {
+                        const employeeName = selectedOption.dataset.name || selectedOption.textContent || sampleAudit.employee_name || '';
+                        employeeNameDisplayField.value = employeeName.trim();
+                        console.log('✅ [Calibration] Employee name display set:', employeeName.trim());
+                    }
                     break;
                 }
             }
@@ -17068,6 +17070,14 @@ async function populateFormWithATAOriginal(originalAudit) {
             for (let i = 0; i < employeeSelect.options.length; i++) {
                 if (employeeSelect.options[i].dataset.email === originalAudit.employee_email) {
                     employeeSelect.selectedIndex = i;
+                    // Set employeeNameDisplay hidden field
+                    const selectedOption = employeeSelect.options[i];
+                    const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                    if (employeeNameDisplayField) {
+                        const employeeName = selectedOption.dataset.name || selectedOption.textContent || originalAudit.employee_name || '';
+                        employeeNameDisplayField.value = employeeName.trim();
+                        console.log('✅ [ATA] Employee name display set:', employeeName.trim());
+                    }
                     break;
                 }
             }
@@ -17466,6 +17476,62 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     console.log('DOMContentLoaded fired');
     
+    // ============================================================================
+    // CRITICAL: Attach button event listeners BEFORE access control check
+    // These buttons must work regardless of access control status
+    // ============================================================================
+    (function setupNavigationButtons() {
+        console.log('Setting up navigation buttons...');
+        
+        // Create Manual Audit button
+        const createManualAuditBtn = document.getElementById('createManualAuditBtn');
+        if (createManualAuditBtn) {
+            console.log('Found createManualAuditBtn, attaching click handler');
+            createManualAuditBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Create Manual Audit button clicked!');
+                window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
+            });
+        } else {
+            console.warn('createManualAuditBtn not found');
+        }
+        
+        // Go to Audit form button
+        const goToAuditFormBtn = document.getElementById('goToAuditFormBtn');
+        if (goToAuditFormBtn) {
+            console.log('Found goToAuditFormBtn, attaching click handler');
+            goToAuditFormBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Go to Audit form button clicked!');
+                window.location.href = '/src/features/audit-form/presentation/new-audit-form.html';
+            });
+        } else {
+            console.warn('goToAuditFormBtn not found');
+        }
+        
+        // Toggle All Audits button
+        const toggleAllAuditsBtn = document.getElementById('toggleAllAuditsBtn');
+        if (toggleAllAuditsBtn) {
+            console.log('Found toggleAllAuditsBtn, attaching click handler');
+            toggleAllAuditsBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Toggle All Audits button clicked!');
+                if (typeof window.toggleAllAuditsView === 'function') {
+                    window.toggleAllAuditsView();
+                } else {
+                    console.error('toggleAllAuditsView function not found');
+                }
+            });
+        } else {
+            console.warn('toggleAllAuditsBtn not found');
+        }
+        
+        console.log('Navigation buttons setup complete');
+    })();
+    
     // Check page access using centralized access control
     if (!window.accessControl || !window.accessControl.enforcePageAccess('create-audit.html')) {
         return; // Access denied, user will be redirected
@@ -17507,6 +17573,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     const email = selectedOption.dataset.email || selectedOption.value;
                     if (employeeEmail) {
                         employeeEmail.value = email;
+                    }
+                    
+                    // Auto-populate employee name display (hidden field for reliable form submission)
+                    const employeeName = selectedOption.dataset.name || selectedOption.textContent || '';
+                    const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                    if (employeeNameDisplayField) {
+                        employeeNameDisplayField.value = employeeName.trim();
+                        console.log('✅ Employee name display set:', employeeName.trim());
                     }
                     
                     // Auto-populate employee type from designation
@@ -18157,9 +18231,82 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             // Update employeeName with the actual name from the selected option
-            const selectedEmployeeOption = employeeSelect.options[employeeSelect.selectedIndex];
-            if (selectedEmployeeOption && selectedEmployeeOption.textContent) {
-                auditData.employeeName = selectedEmployeeOption.textContent;
+            // Use multiple fallback methods to ensure we get the employee name
+            const employeeSelect = document.getElementById('employeeName');
+            let employeeNameFound = false;
+            
+            // Method 1: Get from selected option using selectedIndex
+            if (employeeSelect && employeeSelect.selectedIndex > 0) {
+                const selectedEmployeeOption = employeeSelect.options[employeeSelect.selectedIndex];
+                if (selectedEmployeeOption && selectedEmployeeOption.value && selectedEmployeeOption.textContent) {
+                    auditData.employeeName = selectedEmployeeOption.textContent.trim();
+                    employeeNameFound = true;
+                    console.log('✅ Employee name from selectedIndex:', auditData.employeeName);
+                }
+            }
+            
+            // Method 2: If Method 1 failed, try finding option by email value
+            if (!employeeNameFound && employeeSelect && auditData.employeeEmail) {
+                const emailToFind = auditData.employeeEmail.toLowerCase().trim();
+                for (let i = 0; i < employeeSelect.options.length; i++) {
+                    const opt = employeeSelect.options[i];
+                    if (opt.value && opt.value.toLowerCase().trim() === emailToFind) {
+                        const optName = opt.dataset.name || opt.textContent;
+                        if (optName && optName.trim()) {
+                            auditData.employeeName = optName.trim();
+                            employeeNameFound = true;
+                            console.log('✅ Employee name from email lookup:', auditData.employeeName);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Method 3: If still not found, try using the select's current value to find the option
+            if (!employeeNameFound && employeeSelect && employeeSelect.value) {
+                const currentValue = employeeSelect.value.toLowerCase().trim();
+                for (let i = 0; i < employeeSelect.options.length; i++) {
+                    const opt = employeeSelect.options[i];
+                    if (opt.value && opt.value.toLowerCase().trim() === currentValue) {
+                        const optName = opt.dataset.name || opt.textContent;
+                        if (optName && optName.trim()) {
+                            auditData.employeeName = optName.trim();
+                            employeeNameFound = true;
+                            console.log('✅ Employee name from select value lookup:', auditData.employeeName);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Method 4: If still not found, try the hidden employeeNameDisplay field
+            if (!employeeNameFound) {
+                const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
+                if (employeeNameDisplayField && employeeNameDisplayField.value && employeeNameDisplayField.value.trim()) {
+                    auditData.employeeName = employeeNameDisplayField.value.trim();
+                    employeeNameFound = true;
+                    console.log('✅ Employee name from hidden field:', auditData.employeeName);
+                }
+            }
+            
+            // Method 5: Last resort - use employeeNameDisplay from FormData if available
+            if (!employeeNameFound && auditData.employeeNameDisplay && auditData.employeeNameDisplay.trim()) {
+                auditData.employeeName = auditData.employeeNameDisplay.trim();
+                employeeNameFound = true;
+                console.log('✅ Employee name from FormData employeeNameDisplay:', auditData.employeeName);
+            }
+            
+            if (!employeeNameFound) {
+                console.warn('⚠️ Could not determine employee name. selectedIndex:', employeeSelect?.selectedIndex, 'value:', employeeSelect?.value, 'employeeEmail:', auditData.employeeEmail);
+            }
+            
+            // Update channel with the actual name from the selected option (not UUID)
+            const channelSelect = document.getElementById('channel');
+            if (channelSelect && channelSelect.selectedIndex > 0) {
+                const selectedChannelOption = channelSelect.options[channelSelect.selectedIndex];
+                if (selectedChannelOption && selectedChannelOption.value && selectedChannelOption.textContent) {
+                    auditData.channel = selectedChannelOption.textContent.trim();
+                }
             }
             
             // Ensure auditorName is populated (from hidden field)
@@ -18756,7 +18903,7 @@ async function loadAssignmentFromURL(assignmentId) {
         if (assignment.status === 'completed' || assignment.audit_status === 'completed') {
             // Redirect to view the completed audit
             if (scorecardId && assignmentTable) {
-                window.location.href = `audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
+                window.location.href = `/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
                 return;
             }
             alert('This assignment has already been completed.');
@@ -21668,26 +21815,51 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         const target = e.target.closest('[onclick]');
         if (target && target.onclick) {
+            // EXCLUDE specific buttons that have proper event listeners - let them work normally
+            const buttonId = target.id;
+            if (buttonId === 'createManualAuditBtn' || 
+                buttonId === 'goToAuditFormBtn' || 
+                buttonId === 'toggleAllAuditsBtn') {
+                // Don't intercept these buttons - they have proper event listeners
+                return;
+            }
+            
             // Get the onclick attribute value
             const onclickAttr = target.getAttribute('onclick');
             if (onclickAttr) {
+                // Parse the function name first to check if it exists
+                const match = onclickAttr.match(/^(\w+)\((.*?)\)/);
+                if (match) {
+                    const funcName = match[1];
+                    const func = window[funcName];
+                    
+                    // If function exists, let it execute normally (don't intercept)
+                    // This allows normal onclick handlers to work
+                    if (typeof func === 'function') {
+                        // Don't intercept - let the browser's normal onclick handler work
+                        // This is especially important for buttons that have both onclick and addEventListener
+                        return;
+                    }
+                }
+                
+                // Only intercept if function doesn't exist (CSP violation case)
+                // This prevents CSP errors while allowing normal handlers to work
                 e.preventDefault();
                 e.stopPropagation();
                 
                 // Remove the onclick attribute to prevent CSP violation
                 target.removeAttribute('onclick');
                 
-                // Try to execute the function call
+                // Try to execute the function call manually
                 try {
-                    // Parse common patterns: functionName(), functionName('arg'), etc.
-                    const match = onclickAttr.match(/^(\w+)\((.*?)\)/);
                     if (match) {
                         const funcName = match[1];
                         const argsStr = match[2];
                         
-                        // Get the function from window
+                        // Get the function from window (check again in case it was just defined)
                         const func = window[funcName];
                         if (typeof func === 'function') {
+                            console.log('Executing onclick function manually:', funcName);
                             // Parse arguments (handle strings, numbers, null, etc.)
                             let args = [];
                             if (argsStr.trim()) {
@@ -21716,16 +21888,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                     console.warn('Could not parse onclick arguments:', argsStr);
                                 }
                             }
+                            // Execute the function
                             func.apply(window, args);
+                            return;
                         } else {
-                            console.warn('Function not found:', funcName);
+                            console.error('Function not found after interception:', funcName);
+                            // Restore onclick if function still doesn't exist
+                            target.setAttribute('onclick', onclickAttr);
                         }
                     } else {
-                        // Try direct evaluation as fallback (only if it's a simple function call)
                         console.warn('Could not parse onclick:', onclickAttr);
+                        // Restore onclick if we can't parse it
+                        target.setAttribute('onclick', onclickAttr);
                     }
                 } catch (err) {
-                    console.error('Error executing onclick handler:', err);
+                    console.error('Error executing onclick handler:', err, 'onclick:', onclickAttr);
+                    // Restore onclick on error
+                    target.setAttribute('onclick', onclickAttr);
                 }
             }
         }

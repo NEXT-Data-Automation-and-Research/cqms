@@ -40,7 +40,7 @@ export class NavigationHelpers {
       }
       
       // Navigate to audit view page
-      window.location.href = `audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+      window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
     } catch (error) {
       logError('Error viewing completed audit:', error);
       alert('Error loading audit view. Please try again.');

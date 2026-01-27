@@ -12,7 +12,7 @@
     height: 100%;
     background: rgba(0, 0, 0, 0.6);
     z-index: 1000;
-    display: flex;
+    display: none;
     align-items: flex-start;
     justify-content: center;
     padding: 0;
@@ -232,5 +232,34 @@
 
 [data-theme="dark"] .modal > div {
     background: var(--background-white);
+}
+
+/* Chat view styling for modal */
+#modalChatView {
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #f0f2f5;
+}
+
+#modalChatView::-webkit-scrollbar {
+    width: 0.3234rem;
+}
+
+#modalChatView::-webkit-scrollbar-track {
+    background: #f0f2f5;
+}
+
+#modalChatView::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 0.1617rem;
+}
+
+#modalChatView::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Spin animation for loading spinner */
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 

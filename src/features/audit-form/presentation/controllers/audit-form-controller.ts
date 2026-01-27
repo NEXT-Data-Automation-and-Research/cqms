@@ -362,12 +362,75 @@ export class AuditFormController {
       }
     });
 
-    // Update employee name from selected option
+    // Update employee name from selected option using multiple fallback methods
     const employeeSelect = document.getElementById('employeeName') as HTMLSelectElement;
-    if (employeeSelect && employeeSelect.selectedIndex >= 0) {
+    let employeeNameFound = false;
+
+    // Method 1: Get from selected option using selectedIndex
+    if (employeeSelect && employeeSelect.selectedIndex > 0) {
       const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
-      if (selectedOption && selectedOption.textContent) {
-        auditData.employeeName = selectedOption.textContent;
+      if (selectedOption && selectedOption.value && selectedOption.textContent) {
+        auditData.employeeName = selectedOption.textContent.trim();
+        employeeNameFound = true;
+      }
+    }
+
+    // Method 2: If Method 1 failed, try finding option by email value
+    if (!employeeNameFound && employeeSelect && auditData.employeeEmail) {
+      const emailToFind = (auditData.employeeEmail as string).toLowerCase().trim();
+      for (let i = 0; i < employeeSelect.options.length; i++) {
+        const opt = employeeSelect.options[i];
+        if (opt.value && opt.value.toLowerCase().trim() === emailToFind) {
+          const optName = opt.dataset.name || opt.textContent;
+          if (optName && optName.trim()) {
+            auditData.employeeName = optName.trim();
+            employeeNameFound = true;
+          }
+          break;
+        }
+      }
+    }
+
+    // Method 3: If still not found, try using the select's current value
+    if (!employeeNameFound && employeeSelect && employeeSelect.value) {
+      const currentValue = employeeSelect.value.toLowerCase().trim();
+      for (let i = 0; i < employeeSelect.options.length; i++) {
+        const opt = employeeSelect.options[i];
+        if (opt.value && opt.value.toLowerCase().trim() === currentValue) {
+          const optName = opt.dataset.name || opt.textContent;
+          if (optName && optName.trim()) {
+            auditData.employeeName = optName.trim();
+            employeeNameFound = true;
+          }
+          break;
+        }
+      }
+    }
+
+    // Method 4: If still not found, try the hidden employeeNameDisplay field
+    if (!employeeNameFound) {
+      const employeeNameDisplayField = document.getElementById('employeeNameDisplay') as HTMLInputElement;
+      if (employeeNameDisplayField && employeeNameDisplayField.value && employeeNameDisplayField.value.trim()) {
+        auditData.employeeName = employeeNameDisplayField.value.trim();
+        employeeNameFound = true;
+      }
+    }
+
+    // Method 5: Last resort - use employeeNameDisplay from auditData if available
+    if (!employeeNameFound && auditData.employeeNameDisplay) {
+      const nameDisplay = auditData.employeeNameDisplay as string;
+      if (nameDisplay && nameDisplay.trim()) {
+        auditData.employeeName = nameDisplay.trim();
+        employeeNameFound = true;
+      }
+    }
+
+    // Update channel with the actual name from the selected option (not UUID)
+    const channelSelect = document.getElementById('channel') as HTMLSelectElement;
+    if (channelSelect && channelSelect.selectedIndex > 0) {
+      const selectedChannelOption = channelSelect.options[channelSelect.selectedIndex];
+      if (selectedChannelOption && selectedChannelOption.value && selectedChannelOption.textContent) {
+        auditData.channel = selectedChannelOption.textContent.trim();
       }
     }
 

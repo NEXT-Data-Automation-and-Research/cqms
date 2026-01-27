@@ -1,3 +1,8 @@
+/**
+ * Vercel Serverless Function Entry Point
+ * This file wraps the Express app for Vercel's serverless environment
+ */
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -5,9 +10,9 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { createLogger } from './utils/logger.js';
-import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
-import { getRouteMappings, getFilePathFromCleanPath } from './core/routing/route-mapper.js';
+import { createLogger } from '../src/utils/logger.js';
+import { injectVersionIntoHTML, getAppVersion } from '../src/utils/html-processor.js';
+import { getRouteMappings } from '../src/core/routing/route-mapper.js';
 
 // Load environment variables
 dotenv.config();
@@ -41,7 +46,6 @@ const logWithTimestamp = (level: 'info' | 'warn' | 'error' | 'debug', message: s
 };
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
 
 // Get __dirname equivalent for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -60,50 +64,23 @@ try {
   logWithTimestamp('warn', 'Version file not found, using default version');
 }
 
-// Log startup information
-logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-logWithTimestamp('info', '🚀 Starting Express Server');
-logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-
 // Define which env vars are safe to expose to client
 const SAFE_ENV_VARS: string[] = [
   'NODE_ENV',
   'APP_NAME',
   'API_URL',
-  'SUPABASE_URL',      // Safe - public URL
-  'SUPABASE_ANON_KEY', // Safe - public anon key (designed to be exposed)
-  'VAPID_PUBLIC_KEY',  // Safe - VAPID public key (designed to be exposed to client)
-  // Add only non-sensitive variables here
-];
-
-// Blacklist of patterns that should NEVER be exposed
-const SENSITIVE_PATTERNS: RegExp[] = [
-  /password/i,
-  /secret/i,
-  /key/i,
-  /token/i,
-  /api[_-]?key/i,
-  /auth/i,
-  /credential/i,
-  /private/i,
-  /database[_-]?url/i,
-  /connection[_-]?string/i,
-  /jwt/i,
-  /session/i,
-  /cookie[_-]?secret/i,
+  'SUPABASE_URL',
+  'SUPABASE_ANON_KEY',
+  'VAPID_PUBLIC_KEY',
 ];
 
 /**
  * Check if an environment variable name is safe to expose
  */
 function isSafeEnvVar(varName: string): boolean {
-  // Must be explicitly whitelisted
   if (!SAFE_ENV_VARS.includes(varName)) {
     return false;
   }
-  
-  // Whitelist takes precedence - if explicitly whitelisted, it's safe
-  // (This allows VAPID_PUBLIC_KEY even though it contains "key")
   return true;
 }
 
@@ -113,7 +90,6 @@ function isSafeEnvVar(varName: string): boolean {
 function getSafeEnvVars(): Record<string, string> {
   const safeEnv: Record<string, string> = {};
   
-  // Only include explicitly whitelisted and verified safe variables
   SAFE_ENV_VARS.forEach(varName => {
     if (isSafeEnvVar(varName) && process.env[varName]) {
       safeEnv[varName] = process.env[varName];
@@ -123,18 +99,16 @@ function getSafeEnvVars(): Record<string, string> {
   return safeEnv;
 }
 
-// Request logging middleware (placed early to log all requests)
+// Request logging middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const startTime = Date.now();
   const timestamp = getTimestamp();
   
-  // Log request
   logWithTimestamp('debug', `${req.method} ${req.path}`, {
     ip: req.ip || req.socket.remoteAddress,
     userAgent: req.get('user-agent')?.substring(0, 50) || 'unknown'
   });
   
-  // Log response when finished
   res.on('finish', () => {
     const duration = Date.now() - startTime;
     const statusColor = res.statusCode >= 500 ? 'error' : 
@@ -147,93 +121,84 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-// ✅ SECURITY: Security headers middleware (helmet)
-// Must be early in middleware chain
-logWithTimestamp('debug', 'Configuring security middleware (helmet)...');
+// Security headers middleware (helmet)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: [
-        "'self'", // Allows CSS from same origin (including /src/... paths)
-        "'unsafe-inline'", // Allow inline styles for Tailwind and dynamic styles
-        "https://fonts.googleapis.com", // Allow Google Fonts
-        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for Quill CSS and other libraries
-        "https://cdn.quilljs.com" // Allow Quill.js CDN for rich text editor CSS
+        "'self'",
+        "'unsafe-inline'",
+        "https://fonts.googleapis.com",
+        "https://cdn.jsdelivr.net",
+        "https://cdn.quilljs.com"
       ],
       scriptSrc: [
         "'self'", 
-        "'unsafe-inline'", // Allow inline scripts for ES modules
-        "'unsafe-eval'", // Required for some ES module features
-        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for loglevel and other libraries
-        "https://cdn.tailwindcss.com", // Allow Tailwind CDN
-        "https://accounts.google.com", // Allow Google Sign-In script
-        "https://cdn.quilljs.com" // Allow Quill.js CDN for rich text editor
+        "'unsafe-inline'",
+        "'unsafe-eval'",
+        "https://cdn.jsdelivr.net",
+        "https://cdn.tailwindcss.com",
+        "https://accounts.google.com",
+        "https://cdn.quilljs.com"
       ],
-      imgSrc: ["'self'", "data:", "https:"], // Allow images from any HTTPS source
+      imgSrc: ["'self'", "data:", "https:"],
       connectSrc: [
         "'self'", 
         "https://*.supabase.co", 
         "https://*.supabase.in",
-        "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for source maps and module loading
-        "http://127.0.0.1:7242" // Allow debug logging endpoint
-      ], // Allow Supabase connections and CDN
+        "https://cdn.jsdelivr.net",
+        "http://127.0.0.1:7242"
+      ],
       fontSrc: [
         "'self'", 
         "data:",
-        "https://fonts.gstatic.com" // Allow Google Fonts
+        "https://fonts.gstatic.com"
       ],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: [],
     },
   },
-  crossOriginEmbedderPolicy: false, // Allow Supabase iframe embeds if needed
+  crossOriginEmbedderPolicy: false,
 }));
 
-// ✅ SECURITY: Rate limiting for API endpoints
-logWithTimestamp('debug', 'Configuring rate limiting...');
+// Rate limiting for API endpoints
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// Apply rate limiting to all API routes
 app.use('/api/', apiLimiter);
 
-// ✅ SECURITY: Stricter rate limiting for auth endpoints
+// Stricter rate limiting for auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs for auth
+  windowMs: 15 * 60 * 1000,
+  max: 5,
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
 });
 
-// Apply stricter rate limiting to auth-related endpoints
 app.use('/api/users', authLimiter);
-logWithTimestamp('debug', 'Rate limiting configured: API (100/15min), Auth (5/15min)');
 
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
   
-  // HTML files - never cache (always fresh)
   if (url.endsWith('.html') || url === '/') {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('ETag', `"${appVersion}"`);
   }
-  // Static assets (JS, CSS, images) - cache with version
   else if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$/)) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     res.setHeader('ETag', `"${appVersion}"`);
   }
-  // API endpoints - no cache
   else if (url.startsWith('/api/')) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
@@ -243,30 +208,22 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-// ✅ SECURITY: Middleware to automatically inject auth-checker into HTML responses
-// This ensures all pages (except auth-page) are automatically protected
-// Runs after routes but before static file serving
+// Middleware to automatically inject auth-checker into HTML responses
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
   
-  // Only intercept HTML file requests
   if (!url.endsWith('.html') && url !== '/') {
     return next();
   }
   
-  // Skip auth-page.html and index.html (they're handled by specific routes)
   if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
     return next();
   }
   
-  // Intercept the response to inject auth-checker if not already present
   const originalSend = res.send;
   res.send = function(body: any) {
-    // Only process if it's HTML content
     if (typeof body === 'string' && body.trim().startsWith('<!')) {
-      // Check if auth-checker is already present
       if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
-        // Inject auth-checker before closing body tag
         const authCheckerScript = '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
         
         if (body.includes('</body>')) {
@@ -284,17 +241,19 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-// ✅ SECURITY: Serve public HTML files with auth-checker injection
-// These routes MUST be BEFORE express.static to intercept requests
-// Audit Reports route - serve migrated Clean Architecture version
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve static files from the src directory
+app.use('/src', express.static(path.join(__dirname, '../src')));
+
+// Specific routes
 app.get('/audit-reports.html', (req: express.Request, res: express.Response): void => {
   try {
-    // injectVersionIntoHTML will automatically find the file in feature directories
     const html = injectVersionIntoHTML('audit-reports.html', appVersion);
     res.send(html);
   } catch (error) {
     logWithTimestamp('error', 'Error processing audit-reports.html:', error);
-    // Fallback: try to serve from feature directory directly
     const featurePath = path.join(__dirname, '../src/features/audit-reports/presentation/audit-reports.html');
     if (fs.existsSync(featurePath)) {
       res.sendFile(featurePath);
@@ -311,7 +270,7 @@ app.get('/audit-view.html', (req: express.Request, res: express.Response): void 
     res.send(html);
   } catch (error) {
     logWithTimestamp('error', 'Error processing audit-view.html:', error);
-    const featurePath = path.join(__dirname, 'features/audit-view.html');
+    const featurePath = path.join(__dirname, '../src/features/audit-view.html');
     if (fs.existsSync(featurePath)) {
       res.sendFile(featurePath);
     } else {
@@ -340,14 +299,6 @@ app.get('/profile.html', (req: express.Request, res: express.Response): void => 
   }
 });
 
-
-// Serve static files from the public directory
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Serve static files from the src directory (for auth page and other assets)
-app.use('/src', express.static(path.join(__dirname, '../src')));
-
-// Serve auth-page.html with version injection
 app.get('/src/auth/presentation/auth-page.html', (req: express.Request, res: express.Response): void => {
   try {
     const html = injectVersionIntoHTML('auth/presentation/auth-page.html', appVersion);
@@ -358,7 +309,6 @@ app.get('/src/auth/presentation/auth-page.html', (req: express.Request, res: exp
   }
 });
 
-// Serve home-page.html with version injection (main home page) - MUST be before generic route
 app.get('/src/features/home/presentation/home-page.html', (req: express.Request, res: express.Response): void => {
   try {
     const html = injectVersionIntoHTML('src/features/home/presentation/home-page.html', appVersion);
@@ -369,33 +319,12 @@ app.get('/src/features/home/presentation/home-page.html', (req: express.Request,
   }
 });
 
-// Serve help.html with version injection - Direct route handler for /help
-app.get('/help', (req: express.Request, res: express.Response): void => {
-  try {
-    const html = injectVersionIntoHTML('src/features/help/help/presentation/help.html', appVersion);
-    res.send(html);
-  } catch (error) {
-    logWithTimestamp('error', 'Error processing help.html:', error);
-    const filePath = path.join(__dirname, '../src/features/help/help/presentation/help.html');
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      logWithTimestamp('error', `Help file not found at: ${filePath}`);
-      res.status(404).send('Page not found');
-    }
-  }
-});
-
-// ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
-// These routes are checked BEFORE the regex fallback for better performance
-// Backward compatibility: Old URLs still work via the regex route below
-logWithTimestamp('debug', 'Registering clean URL routes...');
+// Clean URL Routes
 const routeMappings = getRouteMappings();
 routeMappings.forEach((mapping) => {
   app.get(mapping.cleanPath, (req: express.Request, res: express.Response): void => {
-    const htmlPath = mapping.filePath.replace(/^\//, ''); // Remove leading slash for injectVersionIntoHTML
+    const htmlPath = mapping.filePath.replace(/^\//, '');
     
-    // Skip auth-page.html (handled separately, no auth-checker needed)
     if (htmlPath.includes('auth-page.html')) {
       try {
         const html = injectVersionIntoHTML(htmlPath, appVersion);
@@ -408,12 +337,10 @@ routeMappings.forEach((mapping) => {
     }
     
     try {
-      // This will automatically inject auth-checker via injectVersionIntoHTML
       const html = injectVersionIntoHTML(htmlPath, appVersion);
       res.send(html);
     } catch (error) {
       logWithTimestamp('error', `Error processing clean route ${mapping.cleanPath} -> ${htmlPath}:`, error);
-      // Fallback: try to serve file directly
       const filePath = path.join(__dirname, '..', mapping.filePath);
       if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
@@ -424,14 +351,10 @@ routeMappings.forEach((mapping) => {
   });
 });
 
-// ✅ SECURITY: Serve all HTML files from src directory with version injection and auto auth-checker
-// This catches all feature pages automatically - route must be BEFORE express.static
-// Using a more specific pattern that Express supports
-// NOTE: Specific routes above must be defined BEFORE this generic route
+// Generic HTML route handler
 app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void => {
   const htmlPath = req.path.replace('/src/', 'src/');
   
-  // Skip auth-page.html (handled separately, no auth-checker needed)
   if (htmlPath.includes('auth-page.html')) {
     try {
       const html = injectVersionIntoHTML(htmlPath, appVersion);
@@ -444,12 +367,10 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
   }
   
   try {
-    // This will automatically inject auth-checker via injectVersionIntoHTML
     const html = injectVersionIntoHTML(htmlPath, appVersion);
     res.send(html);
   } catch (error) {
     serverLogger.error(`Error processing ${htmlPath}:`, error);
-    // Fallback: try to serve file directly (auth-checker middleware will inject it)
     const filePath = path.join(__dirname, '..', htmlPath);
     if (fs.existsSync(filePath)) {
       res.sendFile(filePath);
@@ -459,7 +380,6 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
   }
 });
 
-// Keep dashboard.html route for backward compatibility (redirects to home)
 app.get('/dashboard.html', (req: express.Request, res: express.Response): void => {
   res.redirect('/home');
 });
@@ -467,37 +387,30 @@ app.get('/dashboard.html', (req: express.Request, res: express.Response): void =
 // Parse JSON bodies
 app.use(express.json());
 
-// ✅ SECURITY: CSRF Protection
-import { csrfProtection, csrfToken } from './api/middleware/csrf.middleware.js';
+// CSRF Protection
+import { csrfProtection, csrfToken } from '../src/api/middleware/csrf.middleware.js';
 
-// Add CSRF token to all responses
 app.use('/api', csrfToken);
-
-// Apply CSRF protection to state-changing API routes
 app.use('/api', csrfProtection);
 
 // API Routes
-logWithTimestamp('debug', 'Loading API routes...');
-import usersRouter from './api/routes/users.routes.js';
-import notificationsRouter from './api/routes/notifications.routes.js';
-import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
-import peopleRouter from './api/routes/people.routes.js';
-import permissionsRouter from './api/routes/permissions.routes.js';
-import { errorHandler } from './api/middleware/error-handler.middleware.js';
+import usersRouter from '../src/api/routes/users.routes.js';
+import notificationsRouter from '../src/api/routes/notifications.routes.js';
+import notificationSubscriptionsRouter from '../src/api/routes/notification-subscriptions.routes.js';
+import peopleRouter from '../src/api/routes/people.routes.js';
+import permissionsRouter from '../src/api/routes/permissions.routes.js';
+import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions');
 
 // Error handler (must be last)
 app.use(errorHandler);
 
-
-// Serve index.html for root route (with version injection)
-// Note: index.html handles auth and redirects authenticated users to /home
+// Serve index.html for root route
 app.get('/', (req: express.Request, res: express.Response): void => {
   try {
     const html = injectVersionIntoHTML('index.html', appVersion);
@@ -512,7 +425,6 @@ app.get('/', (req: express.Request, res: express.Response): void => {
 app.get('/api/env', (req: express.Request, res: express.Response): void => {
   const safeEnv = getSafeEnvVars();
   
-  // Add Supabase configuration (safe to expose - these are public keys)
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
   const hasSupabaseUrl = !!supabaseUrl;
@@ -525,7 +437,6 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
     safeEnv.SUPABASE_ANON_KEY = supabaseKey;
   }
   
-  // Log Supabase configuration status to terminal
   if (hasSupabaseUrl && hasSupabaseKey) {
     logWithTimestamp('info', 'Supabase: Configuration available - Client can initialize');
   } else {
@@ -560,74 +471,5 @@ app.get('/api/version', (req: express.Request, res: express.Response): void => {
   }
 });
 
-// Start server
-const server = app.listen(PORT, () => {
-  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-  logWithTimestamp('info', '✅ Server started successfully!');
-  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-  logWithTimestamp('info', `📍 URL: http://localhost:${PORT}`);
-  logWithTimestamp('info', `📁 Public directory: ${path.join(__dirname, '../public')}`);
-  logWithTimestamp('info', `📦 App version: ${appVersion}`);
-  logWithTimestamp('info', `🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logWithTimestamp('info', `📝 Log level: ${process.env.LOG_LEVEL || 'debug'}`);
-  
-  // Log route mappings count
-  const routeMappings = getRouteMappings();
-  logWithTimestamp('info', `🛣️  Registered routes: ${routeMappings.length} clean URL mappings`);
-  
-  // Log Supabase configuration status
-  const hasSupabaseUrl = !!process.env.SUPABASE_URL;
-  const hasSupabaseKey = !!process.env.SUPABASE_ANON_KEY;
-  if (hasSupabaseUrl && hasSupabaseKey) {
-    logWithTimestamp('info', '🔐 Supabase: Configuration loaded');
-  } else {
-    logWithTimestamp('warn', '⚠️  Supabase: Configuration incomplete');
-  }
-  
-  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-  logWithTimestamp('info', '📡 Server ready to accept connections');
-  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
-});
-
-// Handle server errors (e.g., port already in use)
-server.on('error', (error: NodeJS.ErrnoException) => {
-  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
-  logWithTimestamp('error', '❌ Server startup failed!');
-  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
-  
-  if (error.code === 'EADDRINUSE') {
-    logWithTimestamp('error', `Port ${PORT} is already in use.`);
-    logWithTimestamp('error', '');
-    logWithTimestamp('error', 'Solutions:');
-    logWithTimestamp('error', `  1. Stop the other process using port ${PORT}`);
-    logWithTimestamp('error', `  2. Set a different PORT in your .env file`);
-    logWithTimestamp('error', '');
-    logWithTimestamp('error', 'To find and kill the process on Windows:');
-    logWithTimestamp('error', `  netstat -ano | findstr :${PORT}`);
-    logWithTimestamp('error', `  taskkill /PID <PID> /F`);
-  } else {
-    logWithTimestamp('error', 'Server error:', error);
-  }
-  
-  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
-  process.exit(1);
-});
-
-// Handle graceful shutdown
-async function gracefulShutdown(signal: string) {
-  logWithTimestamp('info', `${signal} received, shutting down gracefully...`);
-  
-  server.close(() => {
-    logWithTimestamp('info', 'Server closed');
-    process.exit(0);
-  });
-}
-
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
-// Log when nodemon restarts (if running in nodemon)
-if (process.env.nodemon) {
-  logWithTimestamp('info', '🔄 Running under nodemon - server will auto-restart on file changes');
-}
-
+// Export the Express app for Vercel serverless functions
+export default app;

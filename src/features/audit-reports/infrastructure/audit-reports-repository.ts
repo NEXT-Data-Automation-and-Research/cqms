@@ -195,12 +195,13 @@ export class AuditReportsRepository extends BaseRepository {
 
   /**
    * Load scorecard parameters
+   * Note: Table name is 'scorecard_perameters' (with typo) in the database
    */
   async loadScorecardParameters(scorecardId: string) {
     return this.executeQuery(
       async () => {
         return await this.db
-          .from('scorecard_parameters')
+          .from('scorecard_perameters')
           .select(SCORECARD_PARAMETER_FIELDS)
           .eq('scorecard_id', scorecardId)
           .eq('is_active', true)

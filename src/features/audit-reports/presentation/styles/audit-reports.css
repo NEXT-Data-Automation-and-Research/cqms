@@ -479,6 +479,10 @@
     font-family: 'Poppins', sans-serif;
     white-space: nowrap;
     transition: all 0.2s ease-in-out;
+    /* Ensure button is always clickable */
+    position: relative;
+    z-index: 10;
+    pointer-events: auto !important;
 }
 
 .btn-view-details:hover {
@@ -488,6 +492,10 @@
 .btn-view-details:focus {
     outline: none;
     box-shadow: 0 0 0 0.25rem rgba(26, 115, 62, 0.3);
+}
+
+.btn-view-details:active {
+    transform: scale(0.98);
 }
 
 /* ============================================

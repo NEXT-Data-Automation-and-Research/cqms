@@ -28,19 +28,41 @@ export function renderAuditDetailModalHTML(audit: AuditReport, parameters: Score
   const statusIcon = normalizedStatus === 'Passed' ? '✓' : '✗';
   
   const errorDetailsHtml = generateErrorDetails(audit, parameters);
-  const transcriptHtml = audit.transcript ? `
+  
+  // Get interaction ID for loading conversation from Intercom
+  const interactionId = audit.interactionId || audit.interaction_id || '';
+  
+  // Transcript container with chat view support (like audit form)
+  const transcriptHtml = `
     <div style="background: #f9fafb; border-radius: 0.375rem; padding: 0; border: 0.0352rem solid #e5e7eb; display: flex; flex-direction: column; height: 80vh; transition: height 0.3s ease;">
-      <div style="background: #f9fafb; padding: 0.75rem; border-bottom: 0.0352rem solid #e5e7eb; flex-shrink: 0;">
+      <div style="background: #f9fafb; padding: 0.75rem; border-bottom: 0.0352rem solid #e5e7eb; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;">
         <h3 style="font-size: 0.7031rem; font-weight: 600; color: #1A733E; margin: 0; font-family: 'Poppins', sans-serif; display: flex; align-items: center; gap: 0.375rem;">
           <svg style="width: 0.8438rem; height: 0.8438rem;" viewBox="0 0 24 24" fill="#1A733E"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
-          Transcript
+          Conversation
         </h3>
+        ${interactionId ? `<span style="font-size: 0.5625rem; color: #6b7280; font-family: 'Poppins', sans-serif;">ID: ${escapeHtml(String(interactionId))}</span>` : ''}
       </div>
-      <div style="padding: 0.75rem; background: white; overflow-y: auto; flex: 1;">
-        <div style="white-space: pre-wrap; font-size: 0.6094rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif;">${escapeHtml(audit.transcript)}</div>
+      <!-- Chat View Container -->
+      <div id="modalChatView" data-interaction-id="${escapeHtml(String(interactionId))}" data-transcript="${audit.transcript ? 'true' : 'false'}" style="display: flex; padding: 0.75rem; background: #f0f2f5; overflow-y: auto; flex: 1; flex-direction: column; scrollbar-width: thin;">
+        <div id="modalChatMessagesContainer" style="display: flex; flex-direction: column; min-height: 0; width: 100%; gap: 0.3234rem; padding: 0.2426rem 0;">
+          ${interactionId ? `
+            <div style="text-align: center; padding: 1.2937rem; color: #6b7280;">
+              <div style="display: inline-block; width: 1.2937rem; height: 1.2937rem; border: 0.091rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+              <p style="margin-top: 0.6469rem; font-size: 0.5659rem;">Loading conversation from Intercom...</p>
+            </div>
+          ` : audit.transcript ? `
+            <div style="padding: 0.5rem; background: white; border-radius: 0.375rem; margin: 0.25rem;">
+              <div style="white-space: pre-wrap; font-size: 0.6094rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif;">${escapeHtml(audit.transcript)}</div>
+            </div>
+          ` : `
+            <div style="text-align: center; padding: 1.2937rem; color: #9ca3af; font-style: italic;">
+              <p>No conversation available</p>
+            </div>
+          `}
+        </div>
       </div>
     </div>
-  ` : '<div style="padding: 0.75rem; color: #9ca3af; font-style: italic;">No transcript available</div>';
+  `;
   
   const headerGradient = normalizedStatus === 'Not Passed' 
     ? 'linear-gradient(135deg, #d41212 0%, #b91c1c 100%)' 

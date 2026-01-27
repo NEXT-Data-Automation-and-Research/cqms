@@ -84,7 +84,7 @@ export class AssignmentLoader {
       // Check if assignment is already completed
       if (assignment.status === 'completed') {
         if (scorecardId && assignmentTable) {
-          window.location.href = `audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
+          window.location.href = `/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
           return;
         }
         alert('This assignment has already been completed.');
