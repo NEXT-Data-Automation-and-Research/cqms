@@ -7,13 +7,17 @@ import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logError, logInfo } from '../../../../utils/logging-helper.js';
 import type { AuditReportsController } from '../audit-reports-controller.js';
 import type { AuditReport } from '../../domain/entities.js';
+import type { ScorecardInfo } from '../../infrastructure/audit-reports-repository.js';
+import { mapAuditData } from '../../infrastructure/audit-data-mapper.js';
 import { renderAuditDetailModalHTML } from './utils/audit-detail-modal-renderer.js';
 import { setupModalResizer } from './utils/modal-resizer.js';
+import { ConversationPanel } from '../../../audit-form/presentation/components/conversation-panel.js';
 
 export class AuditDetailModal {
   private modal: HTMLElement | null = null;
   private controller: AuditReportsController | null = null;
   private currentAudit: AuditReport | null = null;
+  private conversationPanel: ConversationPanel | null = null;
 
   constructor(controller: AuditReportsController) {
     this.controller = controller;
@@ -24,6 +28,9 @@ export class AuditDetailModal {
    */
   async open(audit: AuditReport): Promise<void> {
     try {
+      console.log('[AuditDetailModal] ============================================');
+      console.log('[AuditDetailModal] OPENING MODAL - START');
+      console.log('[AuditDetailModal] ============================================');
       logInfo('Opening audit detail modal:', audit.id);
       console.log('[AuditDetailModal] Opening modal for audit:', audit.id);
       console.log('[AuditDetailModal] Audit transcript available:', !!audit.transcript, 'length:', audit.transcript?.length || 0);
@@ -35,6 +42,240 @@ export class AuditDetailModal {
         this.modal.className = 'modal';
         this.modal.id = 'auditDetailModal';
         document.body.appendChild(this.modal);
+      }
+
+      // Debug: Log audit object to see what we have
+      console.log('[AuditDetailModal] Audit object keys:', Object.keys(audit));
+      console.log('[AuditDetailModal] Audit _scorecard_table:', audit._scorecard_table);
+      console.log('[AuditDetailModal] Audit _scorecard_id:', audit._scorecard_id);
+      console.log('[AuditDetailModal] Audit id:', audit.id);
+      console.log('[AuditDetailModal] Full audit object:', JSON.stringify(audit, null, 2).substring(0, 500));
+      
+      // Load full audit data from database table to get all parameter values and feedbacks
+      let fullAuditData: AuditReport = audit;
+      
+      // Try multiple ways to get table name
+      let tableName = audit._scorecard_table;
+      console.log('[AuditDetailModal] Initial tableName from audit._scorecard_table:', tableName);
+      
+      if (!tableName && audit._scorecard_id && this.controller) {
+        // Try to get table name from scorecard via controller's scorecards
+        try {
+          console.log('[AuditDetailModal] Table name not found, trying to get from scorecard ID:', audit._scorecard_id);
+          
+          // First try: Get from controller's cached scorecards
+          const scorecards = this.controller.getScorecards();
+          if (scorecards && scorecards.length > 0) {
+            console.log('[AuditDetailModal] Found', scorecards.length, 'scorecards in controller');
+            const scorecard = scorecards.find(s => s.id === audit._scorecard_id);
+            if (scorecard && scorecard.table_name) {
+              tableName = scorecard.table_name;
+              console.log('[AuditDetailModal] Found table name from controller scorecards:', tableName);
+              (audit as any)._scorecard_table = tableName;
+            }
+          }
+          
+          // Second try: Load from repository if not found
+          if (!tableName) {
+            const repository = this.controller.getRepository();
+            if (repository) {
+              console.log('[AuditDetailModal] Loading scorecards from repository...');
+              const loadedScorecards = await repository.loadScorecards();
+              console.log('[AuditDetailModal] Loaded', loadedScorecards.length, 'scorecards from repository');
+              const scorecard = loadedScorecards.find((s: ScorecardInfo) => s.id === audit._scorecard_id);
+              if (scorecard && scorecard.table_name) {
+                tableName = scorecard.table_name;
+                console.log('[AuditDetailModal] Found table name from repository:', tableName);
+                (audit as any)._scorecard_table = tableName;
+              } else {
+                console.warn('[AuditDetailModal] Scorecard not found for ID:', audit._scorecard_id);
+              }
+            } else {
+              console.warn('[AuditDetailModal] Repository not available');
+            }
+          }
+        } catch (e) {
+          console.error('[AuditDetailModal] Error getting table name from scorecard:', e);
+        }
+      }
+      
+      // Final fallback: try to infer from audit data or use a default
+      if (!tableName) {
+        console.warn('[AuditDetailModal] Could not determine table name. Available options:');
+        console.warn('[AuditDetailModal] - audit._scorecard_table:', audit._scorecard_table);
+        console.warn('[AuditDetailModal] - audit._scorecard_id:', audit._scorecard_id);
+        console.warn('[AuditDetailModal] - controller available:', !!this.controller);
+      }
+      
+      const auditId = audit.id;
+      
+      // Ensure Supabase client is available - use secure client like audit reports page does
+      let supabaseClient = (window as any).supabaseClient;
+      console.log('[AuditDetailModal] Initial supabaseClient check:', !!supabaseClient);
+      
+      if (!supabaseClient) {
+        // Try to get secure Supabase client (like audit reports page uses)
+        try {
+          const { getSecureSupabase } = await import('../../../../utils/secure-supabase.js');
+          supabaseClient = await getSecureSupabase(false);
+          console.log('[AuditDetailModal] Got secure Supabase client:', !!supabaseClient);
+          if (supabaseClient) {
+            (window as any).supabaseClient = supabaseClient; // Cache it
+          }
+        } catch (e) {
+          console.warn('[AuditDetailModal] Could not get secure Supabase client:', e);
+        }
+        
+        // Fallback: Try to get it from the getSupabase function if available
+        if (!supabaseClient && typeof (window as any).getSupabase === 'function') {
+          supabaseClient = (window as any).getSupabase();
+          console.log('[AuditDetailModal] Got supabaseClient from getSupabase():', !!supabaseClient);
+        }
+        
+        // If still not available, wait a bit for it to initialize
+        if (!supabaseClient) {
+          console.log('[AuditDetailModal] Supabase client not immediately available, waiting...');
+          for (let i = 0; i < 10 && !supabaseClient; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            supabaseClient = (window as any).supabaseClient;
+            if (!supabaseClient && typeof (window as any).getSupabase === 'function') {
+              supabaseClient = (window as any).getSupabase();
+            }
+          }
+          if (supabaseClient) {
+            console.log('[AuditDetailModal] Supabase client became available after waiting');
+          } else {
+            console.warn('[AuditDetailModal] Supabase client still not available after waiting');
+          }
+        }
+      }
+      
+      console.log('[AuditDetailModal] ===== FINAL CHECK BEFORE LOADING =====');
+      console.log('[AuditDetailModal] tableName:', tableName);
+      console.log('[AuditDetailModal] auditId:', auditId);
+      console.log('[AuditDetailModal] supabaseClient available:', !!supabaseClient);
+      console.log('[AuditDetailModal] ========================================');
+      
+      // ALWAYS try to load full data if we have tableName and auditId
+      // This is critical to get all parameter values and feedbacks
+      if (tableName && auditId) {
+        console.log('[AuditDetailModal] ✅ CONDITIONS MET - Loading full audit data...');
+        try {
+          // Ensure we have a Supabase client
+          if (!supabaseClient) {
+            console.warn('[AuditDetailModal] Supabase client not available, trying to get secure client...');
+            try {
+              const { getSecureSupabase } = await import('../../../../utils/secure-supabase.js');
+              supabaseClient = await getSecureSupabase(false);
+              if (supabaseClient) {
+                (window as any).supabaseClient = supabaseClient;
+                console.log('[AuditDetailModal] Got secure Supabase client inside block');
+              }
+            } catch (e) {
+              console.error('[AuditDetailModal] Failed to get secure Supabase client:', e);
+            }
+          }
+          
+          if (!supabaseClient) {
+            console.error('[AuditDetailModal] Cannot load full audit data - Supabase client not available');
+            throw new Error('Supabase client not available');
+          }
+          
+          console.log('[AuditDetailModal] Loading full audit data from table:', tableName, 'for audit ID:', auditId);
+          console.log('[AuditDetailModal] Supabase client available:', !!supabaseClient);
+          
+          const { data: fullData, error: fetchError } = await supabaseClient
+            .from(tableName)
+            .select('*')
+            .eq('id', auditId)
+            .single();
+          
+          if (fetchError) {
+            console.error('[AuditDetailModal] Error loading full audit data:', fetchError);
+            console.error('[AuditDetailModal] Error details:', JSON.stringify(fetchError, null, 2));
+            logError('Error loading full audit data:', fetchError);
+            // Continue with partial data if fetch fails
+          } else if (fullData) {
+            console.log('[AuditDetailModal] Full audit data loaded successfully');
+            console.log('[AuditDetailModal] Total columns in fullData:', Object.keys(fullData).length);
+            
+            // Log feedback columns for debugging
+            const feedbackColumns = Object.keys(fullData).filter(key => 
+              key.toLowerCase().includes('feedback') || key.startsWith('feedback_')
+            );
+            console.log('[AuditDetailModal] Found', feedbackColumns.length, 'feedback columns:', feedbackColumns);
+            
+            // Log a sample of feedback data to see what's actually there
+            if (feedbackColumns.length > 0) {
+              feedbackColumns.slice(0, 3).forEach(col => {
+                const value = fullData[col];
+                console.log(`[AuditDetailModal] Sample feedback column "${col}":`, 
+                  typeof value, 
+                  value ? (Array.isArray(value) ? `Array[${value.length}]` : String(value).substring(0, 100)) : 'null/undefined'
+                );
+              });
+            }
+            
+            // Log parameter value columns for debugging
+            const parameterColumns = Object.keys(fullData).filter(key => 
+              !key.toLowerCase().includes('feedback') && 
+              !key.startsWith('_') && 
+              !['id', 'employee_email', 'employee_name', 'employee_type', 'employee_department', 
+                'auditor_email', 'auditor_name', 'interaction_id', 'interaction_date', 'audit_type',
+                'channel', 'quarter', 'week', 'country_of_employee', 'client_email', 'passing_status',
+                'validation_status', 'average_score', 'critical_errors', 'total_errors_count', 
+                'transcript', 'error_description', 'critical_fail_error', 'significant_error', 
+                'recommendations', 'reversal_requested_at', 'reversal_responded_at', 'reversal_approved',
+                'acknowledgement_status', 'acknowledgement_status_updated_at', 'audit_duration',
+                'submitted_at', 'audit_start_time', 'audit_end_time', 'created_at', 'updated_at',
+                'scorecard_id', 'client_name', 'agent_pre_status', 'agent_post_status'].includes(key.toLowerCase())
+            );
+            console.log('[AuditDetailModal] Found', parameterColumns.length, 'parameter columns (sample):', parameterColumns.slice(0, 15));
+            
+            // Map the full data from database (snake_case) to camelCase using the mapper
+            // This ensures all fields are properly converted and accessible
+            const mappedFullData = mapAuditData(fullData);
+            
+            // Merge: Start with original audit (has scorecard metadata), then add mapped full data
+            // This ensures we have both camelCase (for interface) and snake_case (for database columns)
+            fullAuditData = {
+              ...audit, // Start with metadata from audit report (scorecard info, etc.)
+              ...mappedFullData, // Add mapped full data (camelCase fields)
+              ...fullData, // Also keep original snake_case fields for direct column access
+              // Preserve scorecard metadata
+              _scorecard_id: audit._scorecard_id || mappedFullData._scorecard_id,
+              _scorecard_name: audit._scorecard_name || mappedFullData._scorecard_name,
+              _scorecard_table: audit._scorecard_table || mappedFullData._scorecard_table || tableName,
+              _scoring_type: audit._scoring_type || mappedFullData._scoring_type,
+            } as AuditReport;
+            
+            console.log('[AuditDetailModal] Merged audit data:');
+            console.log('[AuditDetailModal] - Original audit fields:', Object.keys(audit).length);
+            console.log('[AuditDetailModal] - Full data fields:', Object.keys(fullData).length);
+            console.log('[AuditDetailModal] - Mapped full data fields:', Object.keys(mappedFullData).length);
+            console.log('[AuditDetailModal] - Final merged fields:', Object.keys(fullAuditData).length);
+            console.log('[AuditDetailModal] - totalErrorsCount (camelCase):', (fullAuditData as any).totalErrorsCount);
+            console.log('[AuditDetailModal] - total_errors_count (snake_case):', (fullAuditData as any).total_errors_count);
+            console.log('[AuditDetailModal] - averageScore (camelCase):', (fullAuditData as any).averageScore);
+            console.log('[AuditDetailModal] - average_score (snake_case):', (fullAuditData as any).average_score);
+          } else {
+            console.warn('[AuditDetailModal] Full audit data query returned null/undefined');
+          }
+        } catch (error) {
+          console.error('[AuditDetailModal] Exception loading full audit data:', error);
+          console.error('[AuditDetailModal] Exception stack:', (error as Error).stack);
+          logError('Exception loading full audit data:', error);
+          // Continue with partial data if fetch fails
+        }
+      } else {
+        console.warn('[AuditDetailModal] Cannot load full audit data - missing requirements');
+        if (!tableName) console.warn('[AuditDetailModal] Missing table name (audit._scorecard_table)');
+        if (!auditId) console.warn('[AuditDetailModal] Missing audit ID (audit.id)');
+        if (!supabaseClient) {
+          console.warn('[AuditDetailModal] Missing Supabase client');
+          console.warn('[AuditDetailModal] window.supabaseClient:', !!(window as any).supabaseClient);
+          console.warn('[AuditDetailModal] window.getSupabase:', typeof (window as any).getSupabase);
+        }
       }
 
       // Load scorecard parameters if needed
@@ -55,12 +296,24 @@ export class AuditDetailModal {
         }
       }
 
-      // Store current audit reference
-      this.currentAudit = audit;
+      // Store current audit reference (use full data if available)
+      this.currentAudit = fullAuditData;
 
-      // Render modal HTML
+      // Debug: Verify data before rendering
+      console.log('[AuditDetailModal] ===== DATA VERIFICATION BEFORE RENDERING =====');
+      console.log('[AuditDetailModal] fullAuditData keys count:', Object.keys(fullAuditData).length);
+      console.log('[AuditDetailModal] totalErrorsCount:', (fullAuditData as any).totalErrorsCount);
+      console.log('[AuditDetailModal] total_errors_count:', (fullAuditData as any).total_errors_count);
+      console.log('[AuditDetailModal] averageScore:', (fullAuditData as any).averageScore);
+      console.log('[AuditDetailModal] average_score:', (fullAuditData as any).average_score);
+      const feedbackKeys = Object.keys(fullAuditData).filter(k => k.toLowerCase().includes('feedback'));
+      console.log('[AuditDetailModal] Feedback columns found:', feedbackKeys.length, feedbackKeys.slice(0, 5));
+      console.log('[AuditDetailModal] Scorecard parameters count:', scorecardParameters.length);
+      console.log('[AuditDetailModal] ============================================');
+
+      // Render modal HTML (use full audit data)
       console.log('[AuditDetailModal] Rendering modal HTML...');
-      const html = renderAuditDetailModalHTML(audit, scorecardParameters);
+      const html = renderAuditDetailModalHTML(fullAuditData, scorecardParameters);
       console.log('[AuditDetailModal] HTML generated, length:', html?.length || 0);
       safeSetHTML(this.modal, html);
       console.log('[AuditDetailModal] HTML injected into modal');
@@ -78,15 +331,15 @@ export class AuditDetailModal {
       setupModalResizer();
       console.log('[AuditDetailModal] Modal resizer setup complete');
       
-      // Load conversation from Intercom if interaction ID is available
-      const interactionId = audit.interactionId || audit.interaction_id;
+      // Load conversation using the reusable ConversationPanel component from audit-form
+      const interactionId = fullAuditData.interactionId || fullAuditData.interaction_id;
       if (interactionId) {
-        console.log('[AuditDetailModal] Loading conversation from Intercom for ID:', interactionId);
-        this.loadConversationFromIntercom(String(interactionId));
-      } else if (audit.transcript) {
+        console.log('[AuditDetailModal] Loading conversation using ConversationPanel for ID:', interactionId);
+        this.loadConversationWithPanel(String(interactionId));
+      } else if (fullAuditData.transcript) {
         // If no interaction ID but has transcript, parse and display it
         console.log('[AuditDetailModal] Parsing stored transcript');
-        this.parseTranscriptToChat(audit.transcript);
+        this.parseTranscriptToChat(fullAuditData.transcript);
       }
     } catch (error) {
       logError('Error opening audit detail modal:', error);
@@ -96,66 +349,46 @@ export class AuditDetailModal {
   }
   
   /**
-   * Load conversation from Intercom API
+   * Load conversation using the reusable ConversationPanel component from audit-form
    */
-  private async loadConversationFromIntercom(conversationId: string): Promise<void> {
-    const chatMessagesContainer = this.modal?.querySelector('#modalChatMessagesContainer');
-    if (!chatMessagesContainer) {
-      console.error('[AuditDetailModal] Chat messages container not found');
+  private async loadConversationWithPanel(conversationId: string): Promise<void> {
+    const conversationContainer = this.modal?.querySelector('#modalConversationContainer');
+    if (!conversationContainer) {
+      console.error('[AuditDetailModal] Conversation container not found');
       return;
     }
     
     try {
-      // Get Supabase URL for the edge function
-      const supabaseUrl = (window as any).envConfig?.SUPABASE_URL || (window as any).SUPABASE_URL;
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL not configured');
-      }
+      console.log('[AuditDetailModal] Initializing ConversationPanel for:', conversationId);
       
-      // Get user's JWT token for authenticated request
-      let userToken = null;
-      try {
-        if ((window as any).supabaseClient) {
-          const { data: { session } } = await (window as any).supabaseClient.auth.getSession();
-          userToken = session?.access_token || null;
+      // Create and initialize the ConversationPanel
+      this.conversationPanel = new ConversationPanel({
+        containerId: 'modalConversationContainer',
+        showInfoGrid: false,  // Don't show info grid in modal (already have audit details)
+        showAttributes: false, // Don't show attributes in modal
+        autoLoad: false,
+        onConversationLoaded: (conversation) => {
+          console.log('[AuditDetailModal] Conversation loaded successfully via ConversationPanel');
+        },
+        onError: (error) => {
+          console.error('[AuditDetailModal] ConversationPanel error:', error);
+          // Fallback to transcript if available
+          if (this.currentAudit?.transcript) {
+            this.parseTranscriptToChat(this.currentAudit.transcript);
+          }
         }
-      } catch (tokenError) {
-        console.warn('[AuditDetailModal] Could not get user token:', tokenError);
-      }
+      });
       
-      // Fetch conversation from Intercom via edge function
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?conversation_id=${encodeURIComponent(conversationId)}&display_as=plaintext`;
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      if (userToken) {
-        headers['Authorization'] = `Bearer ${userToken}`;
-      }
-      
-      const response = await fetch(edgeFunctionUrl, { headers });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch conversation: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      // Render conversation messages
-      this.renderConversationMessages(chatMessagesContainer as HTMLElement, data);
+      await this.conversationPanel.init();
+      await this.conversationPanel.loadConversation(conversationId);
       
     } catch (error: any) {
-      console.error('[AuditDetailModal] Error loading conversation:', error);
-      // Show error state with fallback to transcript if available
-      const transcript = this.currentAudit?.transcript;
-      if (transcript) {
-        this.parseTranscriptToChat(transcript);
+      console.error('[AuditDetailModal] Error initializing ConversationPanel:', error);
+      // Fallback to transcript if available
+      if (this.currentAudit?.transcript) {
+        this.parseTranscriptToChat(this.currentAudit.transcript);
       } else {
-        safeSetHTML(chatMessagesContainer as HTMLElement, `
+        safeSetHTML(conversationContainer as HTMLElement, `
           <div style="text-align: center; padding: 1.2937rem; color: #ef4444;">
             <p style="font-size: 0.5659rem;">Failed to load conversation</p>
             <p style="font-size: 0.5rem; color: #6b7280; margin-top: 0.5rem;">${error.message || 'Unknown error'}</p>
@@ -166,109 +399,18 @@ export class AuditDetailModal {
   }
   
   /**
-   * Render conversation messages from Intercom data
-   */
-  private renderConversationMessages(container: HTMLElement, data: any): void {
-    const conversation = data.conversation || data;
-    const parts = conversation?.conversation_parts?.conversation_parts || [];
-    const source = conversation?.source;
-    
-    let messagesHtml = '';
-    
-    // Add initial message from source if available
-    if (source?.body) {
-      const isAdmin = source.author?.type === 'admin' || source.author?.type === 'bot';
-      const authorName = source.author?.name || (isAdmin ? 'Agent' : 'Customer');
-      const timestamp = source.created_at ? new Date(source.created_at * 1000).toLocaleString() : '';
-      
-      messagesHtml += this.renderChatBubble(source.body, isAdmin, authorName, timestamp);
-    }
-    
-    // Add conversation parts
-    for (const part of parts) {
-      if (!part.body || part.part_type === 'note') continue;
-      
-      const isAdmin = part.author?.type === 'admin' || part.author?.type === 'bot';
-      const authorName = part.author?.name || (isAdmin ? 'Agent' : 'Customer');
-      const timestamp = part.created_at ? new Date(part.created_at * 1000).toLocaleString() : '';
-      
-      messagesHtml += this.renderChatBubble(part.body, isAdmin, authorName, timestamp);
-    }
-    
-    if (!messagesHtml) {
-      messagesHtml = `
-        <div style="text-align: center; padding: 1.2937rem; color: #9ca3af; font-style: italic;">
-          <p>No messages in this conversation</p>
-        </div>
-      `;
-    }
-    
-    safeSetHTML(container, messagesHtml);
-  }
-  
-  /**
-   * Render a single chat bubble
-   */
-  private renderChatBubble(body: string, isAdmin: boolean, authorName: string, timestamp: string): string {
-    // Strip HTML tags for plain text display
-    const plainText = body.replace(/<[^>]*>/g, '').trim();
-    if (!plainText) return '';
-    
-    const bubbleStyle = isAdmin
-      ? 'background: white; color: #374151; margin-left: auto; border-radius: 0.75rem 0.75rem 0 0.75rem;'
-      : 'background: #1A733E; color: white; margin-right: auto; border-radius: 0.75rem 0.75rem 0.75rem 0;';
-    
-    const alignStyle = isAdmin ? 'align-items: flex-end;' : 'align-items: flex-start;';
-    const nameColor = isAdmin ? '#6b7280' : '#9ca3af';
-    
-    return `
-      <div style="display: flex; flex-direction: column; ${alignStyle} margin-bottom: 0.5rem; max-width: 80%;">
-        <span style="font-size: 0.5rem; color: ${nameColor}; margin-bottom: 0.125rem; font-family: 'Poppins', sans-serif;">${authorName}</span>
-        <div style="${bubbleStyle} padding: 0.5rem 0.75rem; max-width: 100%; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
-          <p style="font-size: 0.5659rem; line-height: 1.5; margin: 0; font-family: 'Poppins', sans-serif; word-wrap: break-word;">${plainText}</p>
-        </div>
-        ${timestamp ? `<span style="font-size: 0.4375rem; color: #9ca3af; margin-top: 0.125rem; font-family: 'Poppins', sans-serif;">${timestamp}</span>` : ''}
-      </div>
-    `;
-  }
-  
-  /**
-   * Parse stored transcript text into chat format
+   * Parse stored transcript text into chat format (fallback when ConversationPanel fails)
    */
   private parseTranscriptToChat(transcript: string): void {
-    const container = this.modal?.querySelector('#modalChatMessagesContainer');
+    const container = this.modal?.querySelector('#modalConversationContainer');
     if (!container) return;
     
-    // Try to parse transcript into messages
-    const lines = transcript.split('\n').filter(line => line.trim());
-    let messagesHtml = '';
-    
-    for (const line of lines) {
-      // Try to detect agent vs customer messages (common patterns)
-      const isAgent = /^(agent|admin|support|bot|representative|csr)[:]/i.test(line) || 
-                     line.includes('[Agent]') || line.includes('[Admin]');
-      const isCustomer = /^(customer|client|user|visitor)[:]/i.test(line) ||
-                        line.includes('[Customer]') || line.includes('[User]');
-      
-      // Remove speaker prefix if present
-      const cleanLine = line.replace(/^(agent|admin|support|bot|customer|client|user|visitor|representative|csr)[:]/i, '').trim();
-      
-      if (cleanLine) {
-        const isAdmin = isAgent || (!isCustomer && messagesHtml.split('<div style="display: flex;').length % 2 === 0);
-        messagesHtml += this.renderChatBubble(cleanLine, isAdmin, isAdmin ? 'Agent' : 'Customer', '');
-      }
-    }
-    
-    if (!messagesHtml) {
-      // Fallback: show as single message block
-      messagesHtml = `
-        <div style="padding: 0.5rem; background: white; border-radius: 0.375rem; margin: 0.25rem;">
-          <div style="white-space: pre-wrap; font-size: 0.6094rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif;">${transcript}</div>
-        </div>
-      `;
-    }
-    
-    safeSetHTML(container as HTMLElement, messagesHtml);
+    // Display transcript as simple text (ConversationPanel handles full chat formatting)
+    safeSetHTML(container as HTMLElement, `
+      <div style="padding: 0.5rem; background: white; border-radius: 0.375rem; margin: 0.25rem; height: 100%; overflow-y: auto;">
+        <div style="white-space: pre-wrap; font-size: 0.6094rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif;">${transcript}</div>
+      </div>
+    `);
   }
 
   /**

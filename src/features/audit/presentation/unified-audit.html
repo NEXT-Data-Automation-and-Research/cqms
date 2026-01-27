@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Audit | CQMS</title>
+<meta name="description" content="Quality Management System - Unified Audit Page">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+
+<!-- External Styles -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/public/styles/global.css">
+<link rel="stylesheet" href="/public/styles/audit-form.css">
+
+<!-- Quill Editor for rich text -->
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- DOMPurify for sanitization -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
+<!-- Confirmation Dialog -->
+<script src="/confirmation-dialog.js"></script>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Poppins', sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #f3f4f6;
+        min-height: 100vh;
+    }
+    
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    
+    .loading-spinner {
+        width: 3rem;
+        height: 3rem;
+        border: 0.25rem solid #e5e7eb;
+        border-top-color: #1A733E;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+        margin-top: 1rem;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+</style>
+</head>
+
+<body>
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading audit...</div>
+</div>
+
+<!-- Main Container -->
+<main id="auditContainer" class="main-content" role="main" style="display: none;">
+    <form id="auditForm" style="background: white; width: 100%; min-height: 100vh; display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0;">
+        
+        <!-- Hidden Fields -->
+        <input type="hidden" id="auditDuration" name="auditDuration">
+        <input type="hidden" id="auditorEmail" name="auditorEmail">
+        <input type="hidden" id="auditorName" name="auditorName">
+        <input type="hidden" id="quarter" name="quarter">
+        <input type="hidden" id="week" name="week">
+        <input type="hidden" id="errorDescription" name="errorDescription">
+        <input type="hidden" id="employeeNameDisplay" name="employeeNameDisplay">
+        <input type="hidden" id="totalErrorsCount" name="totalErrorsCount">
+        <input type="hidden" id="criticalErrors" name="criticalErrors">
+        <input type="hidden" id="criticalFailError" name="criticalFailError">
+        <input type="hidden" id="significantError" name="significantError">
+        <input type="hidden" id="acknowledgementStatus" name="acknowledgementStatus" value="Pending">
+        <input type="hidden" id="acknowledgementStatusUpdatedAt" name="acknowledgementStatusUpdatedAt">
+        <input type="hidden" id="reversalRequestedAt" name="reversalRequestedAt">
+        <input type="hidden" id="reversalRespondedAt" name="reversalRespondedAt">
+        <input type="hidden" id="reversalStatus" name="reversalStatus">
+        <input type="hidden" id="reversalApproved" name="reversalApproved">
+        <input type="hidden" id="reversalType" name="reversalType">
+        <input type="hidden" id="reversalJustificationFromAgent" name="reversalJustificationFromAgent">
+        <input type="hidden" id="scoreBeforeAppeal" name="scoreBeforeAppeal">
+        <input type="hidden" id="scoreAfterAppeal" name="scoreAfterAppeal">
+        
+        <!-- Header Section -->
+        <div id="auditFormHeader" style="position: relative; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); padding: 0.6469rem 0.9704rem; color: white; box-shadow: 0 0.1213rem 0.1819rem rgba(0,0,0,0.1); margin-bottom: 0.5rem; flex-shrink: 0; transition: background 0.3s ease;">
+            <!-- Background Score -->
+            <div id="headerBackgroundScore" style="position: absolute; top: 0; right: 0; height: 100%; display: none; align-items: center; justify-content: flex-end; padding-right: 0.9704rem; pointer-events: none; z-index: 0;">
+                <span style="font-size: 10rem; font-weight: 900; font-family: 'Poppins', sans-serif; color: rgba(10, 50, 30, 0.4); line-height: 1; opacity: 0.6; user-select: none;">
+                    <span id="headerScoreValue">0</span><span style="font-weight: 400;">%</span>
+                </span>
+            </div>
+            
+            <div style="position: relative; z-index: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.4852rem;">
+                    <div style="flex: 1;">
+                        <h2 id="pageTitle" style="font-size: 0.7278rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif;">Audit</h2>
+                    </div>
+                    <div style="display: flex; gap: 0.4852rem; align-items: center;">
+                        <!-- Close Button -->
+                        <button type="button" id="closeBtn" onclick="window.history.back()" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; display: flex; align-items: center; justify-content: center;" title="Close (Esc)">×</button>
+                    </div>
+                </div>
+                
+                <!-- Employee Info Row -->
+                <div id="employeeInfoRow" style="display: flex; gap: 0.6469rem; flex-wrap: wrap; margin-bottom: 0.4852rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.0808rem;">
+                        <span style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.0151rem;">Employee</span>
+                        <select id="employeeName" name="employeeName" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; min-width: 6rem;">
+                            <option value="">Select Employee...</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.0808rem;">
+                        <span style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.0151rem;">Email</span>
+                        <input type="email" id="employeeEmail" name="employeeEmail" required readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; width: 100%;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.0808rem;">
+                        <span style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.0151rem;">Country</span>
+                        <input type="text" id="countryOfEmployee" name="countryOfEmployee" required readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; width: 100%;">
+                    </div>
+                </div>
+                
+                <!-- Metadata Cards Row -->
+                <div id="metadataCardsRow" style="display: flex; gap: 0.4852rem; flex-wrap: wrap;">
+                    <!-- Scorecard Selection -->
+                    <div style="background: rgba(255,255,255,0.15); padding: 0.3234rem 0.4852rem; border-radius: 0.2425rem; min-width: 4rem;">
+                        <p style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; text-transform: uppercase; letter-spacing: 0.0151rem;">Scorecard</p>
+                        <select id="scorecardSelect" name="scorecardSelect" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; min-width: 4rem;">
+                            <option value="">Select...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Channel -->
+                    <div style="background: rgba(255,255,255,0.15); padding: 0.3234rem 0.4852rem; border-radius: 0.2425rem;">
+                        <p style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; text-transform: uppercase; letter-spacing: 0.0151rem;">Channel</p>
+                        <select id="channel" name="channel" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">
+                            <option value="">Select...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Audit Type -->
+                    <div style="background: rgba(255,255,255,0.15); padding: 0.3234rem 0.4852rem; border-radius: 0.2425rem;">
+                        <p style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; text-transform: uppercase; letter-spacing: 0.0151rem;">Audit Type</p>
+                        <select id="auditType" name="auditType" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">
+                            <option value="">Select...</option>
+                            <option value="Live Audit">Live Audit</option>
+                            <option value="AI Assisted Audit">AI Assisted Audit</option>
+                            <option value="Re-audit">Re-audit</option>
+                            <option value="Calibration">Calibration</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Average Score -->
+                    <div style="background: rgba(255,255,255,0.15); padding: 0.3234rem 0.4852rem; border-radius: 0.2425rem;">
+                        <p style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; text-transform: uppercase; letter-spacing: 0.0151rem;">Score</p>
+                        <input type="text" id="averageScore" name="averageScore" value="100.00" readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 700; width: 3rem;">
+                    </div>
+                    
+                    <!-- Passing Status -->
+                    <div style="background: rgba(255,255,255,0.15); padding: 0.3234rem 0.4852rem; border-radius: 0.2425rem;">
+                        <p style="font-size: 0.4447rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; text-transform: uppercase; letter-spacing: 0.0151rem;">Status</p>
+                        <input type="text" id="passingStatus" name="passingStatus" value="PASS" readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 700; width: 3rem;">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content - Two Column Layout -->
+        <div id="auditMainContent" style="display: flex; padding: 0.5rem 0.9704rem 0.9704rem 0.9704rem; max-width: 100%; gap: 0; flex-wrap: nowrap; overflow-x: visible; align-items: stretch; flex: 1; min-height: 0;">
+            
+            <!-- LEFT COLUMN: Transcript Section -->
+            <div id="leftColumn" style="display: flex; flex-direction: column; gap: 0.3234rem; flex: 0 0 33%; min-width: 13.6451rem; max-width: 75%; padding-right: 0.6469rem; overflow-x: visible; overflow-y: visible; box-sizing: border-box;">
+                <div style="background: #f9fafb; border-radius: 0.3234rem; padding: 0; border: 0.0304rem solid #e5e7eb; display: flex; flex-direction: column; flex: 1; min-height: 75vh;">
+                    <!-- Transcript Header -->
+                    <div style="background: #f9fafb; padding: 0.6469rem; border-bottom: 0.0304rem solid #e5e7eb; flex-shrink: 0;">
+                        <div style="display: flex; align-items: center; gap: 0.3234rem; flex-wrap: wrap; justify-content: space-between;">
+                            <h3 style="font-size: 0.6064rem; font-weight: 600; color: #1A733E; margin: 0; font-family: 'Poppins', sans-serif; display: flex; align-items: center; gap: 0.3234rem;">
+                                <svg style="width: 0.7278rem; height: 0.7278rem;" viewBox="0 0 24 24" fill="#1A733E"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 9h12v2H6V9zm8 5H6v-2h8v2zm4-6H6V6h12v2z"/></svg>
+                                Transcript
+                            </h3>
+                            <div style="display: flex; align-items: center; gap: 0.3234rem;">
+                                <span style="font-size: 0.4447rem; color: #6b7280;">ID:</span>
+                                <input type="text" id="interactionId" name="interactionId" required placeholder="Enter ID..." style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; min-width: 3rem;">
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.3234rem; margin-top: 0.3234rem;">
+                            <span style="font-size: 0.4447rem; color: #6b7280;">Date:</span>
+                            <input type="date" id="interactionDate" name="interactionDate" required style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif;">
+                            <span style="font-size: 0.4447rem; color: #6b7280; margin-left: 0.3234rem;">Client:</span>
+                            <input type="email" id="clientEmail" name="clientEmail" placeholder="client@..." style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; min-width: 4rem;">
+                        </div>
+                    </div>
+                    
+                    <!-- Transcript Content -->
+                    <div id="transcriptChatView" style="display: flex; padding: 0.4852rem; background: #f0f2f5; overflow-y: auto; flex: 1; flex-direction: column;">
+                        <div id="chatMessagesContainer" style="display: flex; flex-direction: column; min-height: 0; width: 100%; gap: 0.3234rem; padding: 0.2426rem 0;">
+                            <div style="text-align: center; padding: 1.2937rem; color: #6b7280; font-size: 0.5659rem;">
+                                <p>Enter an Interaction ID to load the conversation</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Text View (Hidden) -->
+                    <div id="transcriptTextView" style="display: none; padding: 0.6469rem; background: white; overflow-y: auto; flex: 1;">
+                        <textarea id="transcript" name="transcript" placeholder="Paste transcript here..." style="width: 100%; height: 100%; padding: 0; border: none; font-size: 0.5257rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif; background-color: transparent; resize: none; outline: none;"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Splitter -->
+            <div id="splitter" style="width: 0.2425rem; background: #e5e7eb; cursor: col-resize; flex-shrink: 0; transition: background 0.2s;" onmouseover="this.style.background='#1A733E'" onmouseout="this.style.background='#e5e7eb'"></div>
+            
+            <!-- RIGHT COLUMN: Error Details & Actions -->
+            <div id="rightColumn" style="flex: 1; min-width: 9.0967rem; padding-left: 0.3234rem; display: flex; flex-direction: column; min-height: 0; overflow-y: auto;">
+                
+                <!-- Error Counts Section -->
+                <div id="errorCountsSection" style="background: #d1fae5; padding: 0.4852rem; border-radius: 0.2425rem; border: 0.0304rem solid #a7f3d0; margin-bottom: 0.4852rem;">
+                    <div style="display: flex; gap: 0.6469rem; flex-wrap: wrap;">
+                        <div><p style="font-size: 0.4447rem; color: #065f46; margin: 0;">Total: <span id="totalErrorsCountDisplay">0</span></p></div>
+                        <div><p style="font-size: 0.4447rem; color: #065f46; margin: 0;">Critical Fail: <span id="criticalFailErrorDisplay">0</span></p></div>
+                        <div><p style="font-size: 0.4447rem; color: #065f46; margin: 0;">Critical: <span id="criticalErrorsDisplay">0</span></p></div>
+                        <div><p style="font-size: 0.4447rem; color: #065f46; margin: 0;">Significant: <span id="significantErrorDisplay">0</span></p></div>
+                    </div>
+                </div>
+                
+                <!-- Error Parameters Container -->
+                <div id="errorParametersContainer" style="flex: 1; overflow-y: auto; margin-bottom: 0.4852rem;">
+                    <!-- Parameters will be dynamically loaded -->
+                    <div style="text-align: center; padding: 1rem; color: #6b7280;">
+                        Select a scorecard to view parameters
+                    </div>
+                </div>
+                
+                <!-- Recommendations Section -->
+                <div id="recommendationsSection" style="background: #f9fafb; border-radius: 0.3234rem; padding: 0.4852rem; border: 0.0304rem solid #e5e7eb; margin-bottom: 0.4852rem;">
+                    <h4 style="font-size: 0.5659rem; font-weight: 600; color: #374151; margin: 0 0 0.3234rem 0; font-family: 'Poppins', sans-serif;">Recommendations</h4>
+                    <div id="recommendations-editor" style="min-height: 4rem; background: white; border: 0.0304rem solid #d1d5db; border-radius: 0.2425rem;"></div>
+                    <input type="hidden" id="recommendations" name="recommendations">
+                </div>
+                
+                <!-- Rating Section (View Mode Only) -->
+                <div id="ratingSection" style="display: none;"></div>
+                
+                <!-- Reversal Section (View Mode Only) -->
+                <div id="reversalSection" style="display: none;"></div>
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div id="actionButtonsContainer" style="display: flex; justify-content: flex-end; gap: 0.6469rem; padding: 0.6469rem 0.9704rem; background: #f9fafb; border-top: 0.0304rem solid #e5e7eb;">
+            <button type="button" id="cancelBtn" style="padding: 0.4852rem 0.9704rem; background: #f3f4f6; color: #374151; border: 0.0304rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">
+                Cancel
+            </button>
+            <button type="submit" id="submitAuditBtn" style="padding: 0.4852rem 0.9704rem; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">
+                Submit Audit
+            </button>
+        </div>
+    </form>
+</main>
+
+<!-- Scripts -->
+<script type="module">
+    import { isAuthenticated, getCurrentUser } from '/js/auth-checker.js';
+    import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
+    import { getAuthenticatedSupabase } from '/js/utils/authenticated-supabase.js';
+    
+    // State
+    let currentMode = 'create';
+    let currentAudit = null;
+    let currentScorecard = null;
+    let currentParameters = [];
+    let supabaseClient = null;
+    
+    // Parse URL parameters
+    function parseUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const auditId = urlParams.get('id') || urlParams.get('edit');
+        const scorecardId = urlParams.get('scorecard');
+        const tableName = urlParams.get('table');
+        const modeParam = urlParams.get('mode');
+        
+        // Determine mode
+        let mode = 'create';
+        if (urlParams.has('edit')) {
+            mode = 'edit';
+        } else if (auditId && !urlParams.has('mode')) {
+            mode = 'view';
+        } else if (modeParam === 'create' || modeParam === 'edit' || modeParam === 'view') {
+            mode = modeParam;
+        }
+        
+        return { mode, auditId, scorecardId, tableName };
+    }
+    
+    // Load audit data
+    async function loadAuditData(auditId, tableName, scorecardId) {
+        if (!supabaseClient) {
+            console.error('[UnifiedAudit] Supabase client not available');
+            return null;
+        }
+        
+        try {
+            const { data, error } = await supabaseClient
+                .from(tableName)
+                .select('*')
+                .eq('id', auditId)
+                .single();
+            
+            if (error) throw error;
+            return data;
+        } catch (err) {
+            console.error('[UnifiedAudit] Failed to load audit:', err);
+            return null;
+        }
+    }
+    
+    // Update UI for mode
+    function updateUIForMode(mode, audit) {
+        const pageTitle = document.getElementById('pageTitle');
+        const header = document.getElementById('auditFormHeader');
+        const submitBtn = document.getElementById('submitAuditBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const container = document.getElementById('auditContainer');
+        
+        // Update title
+        if (pageTitle) {
+            switch (mode) {
+                case 'create': pageTitle.textContent = 'Create New Audit'; break;
+                case 'edit': pageTitle.textContent = 'Edit Audit'; break;
+                case 'view': pageTitle.textContent = 'Audit Details'; break;
+            }
+        }
+        
+        // Update header color based on passing status in view/edit mode
+        if (header && audit && (mode === 'view' || mode === 'edit')) {
+            const passingStatus = audit.passing_status || '';
+            if (passingStatus.toUpperCase() === 'FAIL') {
+                header.style.background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)';
+            }
+        }
+        
+        // Update buttons visibility
+        if (submitBtn) {
+            submitBtn.style.display = (mode === 'create' || mode === 'edit') ? '' : 'none';
+            submitBtn.textContent = mode === 'create' ? 'Submit Audit' : 'Update Audit';
+        }
+        
+        if (cancelBtn) {
+            cancelBtn.style.display = (mode === 'create' || mode === 'edit') ? '' : 'none';
+        }
+        
+        // Make fields read-only in view mode
+        if (mode === 'view') {
+            const inputs = document.querySelectorAll('#auditForm input:not([type="hidden"]), #auditForm select, #auditForm textarea');
+            inputs.forEach(input => {
+                input.setAttribute('readonly', 'true');
+                if (input.tagName === 'SELECT') {
+                    input.setAttribute('disabled', 'true');
+                }
+            });
+        }
+        
+        // Hide loading, show content
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+        if (container) container.style.display = 'block';
+    }
+    
+    // Populate form with audit data
+    function populateForm(audit) {
+        if (!audit) return;
+        
+        // Map of field IDs to audit properties
+        const fieldMappings = {
+            'employeeEmail': audit.employee_email,
+            'employeeName': audit.employee_name,
+            'countryOfEmployee': audit.country_of_employee,
+            'interactionId': audit.interaction_id,
+            'interactionDate': audit.interaction_date,
+            'channel': audit.channel,
+            'clientEmail': audit.client_email,
+            'averageScore': audit.average_score,
+            'passingStatus': audit.passing_status,
+            'recommendations': audit.recommendations,
+            'transcript': audit.transcript,
+        };
+        
+        for (const [fieldId, value] of Object.entries(fieldMappings)) {
+            const element = document.getElementById(fieldId);
+            if (element && value !== undefined && value !== null) {
+                element.value = String(value);
+            }
+        }
+        
+        // Update header background score
+        if (audit.average_score) {
+            const scoreEl = document.getElementById('headerScoreValue');
+            const scoreBg = document.getElementById('headerBackgroundScore');
+            if (scoreEl) scoreEl.textContent = Math.round(parseFloat(audit.average_score));
+            if (scoreBg) scoreBg.style.display = 'flex';
+        }
+        
+        console.log('[UnifiedAudit] Form populated with audit data');
+    }
+    
+    // Show error
+    function showError(message) {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) {
+            loadingOverlay.innerHTML = `
+                <div style="text-align: center; padding: 2rem;">
+                    <svg style="width: 4rem; height: 4rem; color: #ef4444; margin-bottom: 1rem;" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                    </svg>
+                    <h2 style="font-size: 1.5rem; color: #374151; margin-bottom: 0.5rem;">Error Loading Audit</h2>
+                    <p style="color: #6b7280; max-width: 400px;">${message}</p>
+                    <button onclick="window.history.back()" style="margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: #1A733E; color: white; border: none; border-radius: 0.5rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">
+                        Go Back
+                    </button>
+                </div>
+            `;
+        }
+    }
+    
+    // Initialize
+    async function initialize() {
+        console.log('[UnifiedAudit] Initializing...');
+        
+        try {
+            // Check authentication
+            const authenticated = await isAuthenticated();
+            if (!authenticated) {
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            // Get Supabase client
+            supabaseClient = await getAuthenticatedSupabase();
+            if (!supabaseClient) {
+                throw new Error('Failed to initialize database connection');
+            }
+            
+            // Store globally for other scripts
+            window.supabaseClient = supabaseClient;
+            
+            // Parse URL parameters
+            const { mode, auditId, scorecardId, tableName } = parseUrlParams();
+            currentMode = mode;
+            
+            console.log('[UnifiedAudit] Mode:', mode, { auditId, scorecardId, tableName });
+            
+            // Load audit data if in edit/view mode
+            if ((mode === 'edit' || mode === 'view') && auditId && tableName) {
+                currentAudit = await loadAuditData(auditId, tableName, scorecardId);
+                
+                if (!currentAudit) {
+                    showError('Failed to load audit data. The audit may not exist or you may not have permission to view it.');
+                    return;
+                }
+                
+                // Populate form
+                populateForm(currentAudit);
+            }
+            
+            // Update UI for mode
+            updateUIForMode(mode, currentAudit);
+            
+            console.log('[UnifiedAudit] Initialization complete');
+            
+        } catch (error) {
+            console.error('[UnifiedAudit] Initialization error:', error);
+            showError(error.message || 'An unexpected error occurred');
+        }
+    }
+    
+    // Button handlers
+    document.getElementById('cancelBtn')?.addEventListener('click', () => {
+        window.history.back();
+    });
+    
+    document.getElementById('closeBtn')?.addEventListener('click', () => {
+        window.history.back();
+    });
+    
+    // ESC key to close
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            window.history.back();
+        }
+    });
+    
+    // Wait for DOM then initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        initialize();
+    }
+</script>
+</body>
+</html>

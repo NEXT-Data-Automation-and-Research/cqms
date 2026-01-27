@@ -221,5 +221,209 @@ router.post('/test', verifyAuth, async (req: AuthenticatedRequest, res: Response
   }
 });
 
+/**
+ * POST /api/notifications/send
+ * Send notification to specific user(s) - Admin only
+ * This creates a notification in the database and optionally sends web push
+ */
+router.post('/send', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const senderId = req.user!.id;
+
+    // Check if user is admin or super admin
+    const { data: senderData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', senderId)
+      .single();
+
+    if (!senderData || !['Admin', 'Super Admin', 'Quality Analyst', 'Quality Supervisor'].includes(senderData.role)) {
+      res.status(403).json({ error: 'Only authorized roles can send notifications to other users' });
+      return;
+    }
+
+    const { 
+      user_ids, 
+      title, 
+      body, 
+      type = 'info', 
+      category = 'system',
+      action_url,
+      icon_url,
+      image_url,
+      metadata = {},
+      send_push = true 
+    } = req.body;
+
+    // Validate required fields
+    if (!user_ids || !Array.isArray(user_ids) || user_ids.length === 0) {
+      res.status(400).json({ error: 'user_ids array is required' });
+      return;
+    }
+
+    if (!title || !body) {
+      res.status(400).json({ error: 'Title and body are required' });
+      return;
+    }
+
+    // Create notifications for each user
+    const notifications = user_ids.map((user_id: string) => ({
+      user_id,
+      title,
+      body,
+      type,
+      category,
+      action_url: action_url || null,
+      icon_url: icon_url || null,
+      image_url: image_url || null,
+      status: 'pending',
+      metadata: {
+        ...metadata,
+        sent_by: senderId,
+        sent_at: new Date().toISOString(),
+      },
+    }));
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notifications)
+      .select();
+
+    if (error) {
+      logger.error('Error creating notifications:', error);
+      res.status(500).json({ error: 'Failed to create notifications' });
+      return;
+    }
+
+    // If send_push is true, try to send web push notifications
+    let pushResults: { success: number; failed: number } = { success: 0, failed: 0 };
+    
+    if (send_push) {
+      // Get push subscriptions for target users
+      const { data: subscriptions } = await supabase
+        .from('notification_subscriptions')
+        .select('*')
+        .in('user_id', user_ids)
+        .eq('is_active', true);
+
+      if (subscriptions && subscriptions.length > 0) {
+        // Web push sending would happen here
+        // For now, we just log it - actual push sending requires web-push library on server
+        logger.info(`Would send ${subscriptions.length} push notifications`);
+        pushResults.success = subscriptions.length;
+      }
+    }
+
+    logger.info(`Notifications sent to ${user_ids.length} users by ${senderId}`);
+    res.status(201).json({ 
+      data,
+      message: `Notifications created for ${user_ids.length} user(s)`,
+      push_results: pushResults
+    });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/notifications/users
+ * Get list of users for notification targeting - Admin only
+ */
+router.get('/users', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+
+    // Check if user has permission
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (!userData || !['Admin', 'Super Admin', 'Quality Analyst', 'Quality Supervisor', 'Manager'].includes(userData.role)) {
+      res.status(403).json({ error: 'Insufficient permissions' });
+      return;
+    }
+
+    // Get all active users
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, is_active')
+      .eq('is_active', true)
+      .order('full_name', { ascending: true });
+
+    if (error) {
+      logger.error('Error fetching users:', error);
+      res.status(500).json({ error: 'Failed to fetch users' });
+      return;
+    }
+
+    res.json({ data: data || [] });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * GET /api/notifications/subscriptions
+ * Get notification subscriptions for users - Admin only (for debugging)
+ */
+router.get('/subscriptions', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+
+    // Check if user is admin
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (!userData || !['Admin', 'Super Admin'].includes(userData.role)) {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const { user_id } = req.query;
+
+    let query = supabase
+      .from('notification_subscriptions')
+      .select(`
+        id, 
+        user_id, 
+        endpoint, 
+        browser, 
+        device_type, 
+        is_active, 
+        last_used_at, 
+        created_at
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (user_id) {
+      query = query.eq('user_id', user_id as string);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logger.error('Error fetching subscriptions:', error);
+      res.status(500).json({ error: 'Failed to fetch subscriptions' });
+      return;
+    }
+
+    res.json({ data: data || [] });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

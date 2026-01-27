@@ -44,6 +44,26 @@ export interface AuditFormData {
   submittedAt?: string;
   created_at?: string;
   updated_at?: string;
+  
+  // Acknowledgement fields
+  acknowledgementStatus?: string;
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  
+  // Rating fields
+  auditRating?: number;
+  auditRatingFeedback?: string;
+  auditRatedAt?: string;
+  
+  // Reversal fields
+  reversalRequestedAt?: string;
+  reversalRespondedAt?: string;
+  reversalStatus?: string;
+  reversalApproved?: boolean | null;
+  reversalType?: string;
+  reversalJustificationFromAgent?: string;
+  responseFromAuditor?: string;
+  reversalResolvedBy?: string;
 }
 
 export interface ParameterComment {

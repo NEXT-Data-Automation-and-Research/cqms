@@ -909,8 +909,14 @@
           console.log('✓ All initialization complete');
           
           // Auto-select scorecard from URL after a short delay to ensure DOM is ready
+          // Skip if in edit mode (scorecard is loaded separately in loadAuditForEditing)
           setTimeout(async () => {
             try {
+              // Skip auto-selection if in edit mode - the edit flow handles scorecard loading
+              if (window._editModeLoading || window._editModePopulating || window.isEditingExistingAudit) {
+                console.log('⏭️ Skipping scorecard auto-selection - edit mode active');
+                return;
+              }
               console.log('🚀 Auto-selecting scorecard from URL...');
               await autoSelectScorecardFromURL();
               console.log('✅ Scorecard auto-selection complete');
@@ -961,6 +967,21 @@
     <input type="hidden" id="criticalFailError" name="criticalFailError">
     <input type="hidden" id="significantError" name="significantError">
     <!-- Note: majorError and minorError are display-only, not saved to database -->
+    <!-- Hidden acknowledgement fields for preserving state during edit -->
+    <input type="hidden" id="acknowledgementStatus" name="acknowledgementStatus" value="Pending">
+    <input type="hidden" id="acknowledgementStatusUpdatedAt" name="acknowledgementStatusUpdatedAt">
+    <!-- Hidden reversal fields for preserving state during edit -->
+    <input type="hidden" id="reversalRequestedAt" name="reversalRequestedAt">
+    <input type="hidden" id="reversalRespondedAt" name="reversalRespondedAt">
+    <input type="hidden" id="reversalStatus" name="reversalStatus">
+    <input type="hidden" id="reversalApproved" name="reversalApproved">
+    <input type="hidden" id="reversalType" name="reversalType">
+    <input type="hidden" id="reversalJustificationFromAgent" name="reversalJustificationFromAgent">
+    <input type="hidden" id="reversalAttachments" name="reversalAttachments">
+    <input type="hidden" id="scoreBeforeAppeal" name="scoreBeforeAppeal">
+    <input type="hidden" id="scoreAfterAppeal" name="scoreAfterAppeal">
+    <input type="hidden" id="reversalApprovedBy" name="reversalApprovedBy">
+    <input type="hidden" id="reversalResolvedBy" name="reversalResolvedBy">
 
     <!-- Beautiful Header Section (Report-Style) -->
     <div id="auditFormHeader" style="position: relative; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); padding: 0.6469rem 0.9704rem; color: white; box-shadow: 0 0.1213rem 0.1819rem rgba(0,0,0,0.1); margin-bottom: 0.5rem; flex-shrink: 0; transition: background 0.3s ease; overflow: visible;">
@@ -9052,9 +9073,15 @@ function hideNoScorecardMessage() {
 // Render error parameter fields dynamically
 function renderErrorParameters() {
     // Skip if values have already been populated (would wipe them)
-    // Note: We DON'T skip during _editModeLoading because we need to render the fields first
     if (window._editModeValuesPopulated) {
         console.log('[renderErrorParameters] Skipping - edit mode values already populated, would wipe values');
+        return;
+    }
+    
+    // Also skip if we're in the middle of populating edit mode data
+    // This prevents race conditions where the scorecard is re-loaded from URL auto-selection
+    if (window._editModePopulating) {
+        console.log('[renderErrorParameters] Skipping - edit mode currently populating form data');
         return;
     }
     
@@ -10631,6 +10658,12 @@ function checkCalibrationMode() {
 
 // Auto-select scorecard from URL parameters or channel
 async function autoSelectScorecardFromURL() {
+    // Skip if in edit mode - the edit flow handles scorecard loading separately
+    if (window._editModeLoading || window._editModePopulating || window.isEditingExistingAudit || window._editModeValuesPopulated) {
+        console.log('⏭️ [autoSelectScorecardFromURL] Skipping - edit mode active');
+        return false;
+    }
+    
     console.log('🔍 Checking URL for scorecard or channel...');
     const urlParams = new URLSearchParams(window.location.search);
     const scorecardId = urlParams.get('scorecardId') || urlParams.get('scorecard');
@@ -10768,20 +10801,35 @@ async function loadAuditForEditing() {
         }
         
         // Load the audit data from the specified table
+        // Use select('*') to get all columns including dynamic parameter columns
         const { data, error } = await window.supabaseClient
             .from(tableName)
             .select('*')
             .eq('id', auditId)
             .single();
         
-        if (error) throw error;
+        if (error) {
+            console.error('[Edit Mode] ❌ Error loading audit data:', error);
+            throw error;
+        }
         
         if (!data) {
+            console.error('[Edit Mode] ❌ Audit not found with ID:', auditId, 'in table:', tableName);
             alert('Audit not found');
             return;
         }
         
-        console.log('Loaded audit data:', data);
+        console.log('[Edit Mode] ✅ Loaded audit data:', {
+            id: data.id,
+            employee_email: data.employee_email,
+            employee_name: data.employee_name,
+            interaction_id: data.interaction_id,
+            scorecard_id: data.scorecard_id,
+            average_score: data.average_score,
+            total_errors_count: data.total_errors_count,
+            parameterCount: Object.keys(data).filter(k => !k.startsWith('feedback_') && !['id', 'employee_email', 'employee_name', 'interaction_id', 'scorecard_id', 'average_score', 'total_errors_count', 'created_at', 'updated_at', 'submitted_at'].includes(k)).length
+        });
+        console.log('[Edit Mode] Full audit data keys:', Object.keys(data));
         
         // Set editing mode flag FIRST to prevent event handlers from interfering
         isEditingExistingAudit = true;
@@ -10803,6 +10851,23 @@ async function loadAuditForEditing() {
             pendingAuditsSection.style.display = 'none';
         }
         
+        // Ensure employees are loaded before proceeding
+        console.log('[Edit Mode] Ensuring employees are loaded...');
+        if (typeof loadEmployees === 'function') {
+            await loadEmployees();
+            console.log('[Edit Mode] Employees loaded');
+        } else {
+            console.warn('[Edit Mode] loadEmployees function not found, waiting for employees to load...');
+            const employeeSelect = document.getElementById('employeeName');
+            if (employeeSelect) {
+                let attempts = 0;
+                while (employeeSelect.options.length <= 1 && attempts < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    attempts++;
+                }
+            }
+        }
+        
         // Load and select the scorecard
         if (scorecardId) {
             const scorecardSelect = document.getElementById('scorecardSelect');
@@ -10815,15 +10880,32 @@ async function loadAuditForEditing() {
                 }
                 
                 if (scorecardSelect.options.length > 1) {
+                    // Temporarily remove change event listener to prevent interference
+                    const originalValue = scorecardSelect.value;
+                    
                     // Set the value (this will trigger the change event, but that's okay since we're in edit mode)
                     scorecardSelect.value = scorecardId;
                     
                     // Wait for scorecard parameters to fully load
                     // The isEditingExistingAudit flag should prevent the change handler from clearing the form
+                    console.log('[Edit Mode] Loading scorecard parameters...');
                     await loadScorecardParameters(scorecardId);
                     
-                    // Additional wait to ensure parameters are rendered in DOM
+                    // Wait for parameters to be fully rendered in DOM
+                    let renderAttempts = 0;
+                    while (renderAttempts < 30) {
+                        const container = document.getElementById('errorParametersContainer');
+                        if (container && container.children.length > 0) {
+                            console.log('[Edit Mode] Parameters rendered in DOM');
+                            break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        renderAttempts++;
+                    }
+                    
+                    // Additional wait to ensure parameters are fully rendered
                     await new Promise(resolve => setTimeout(resolve, 300));
+                    console.log('[Edit Mode] Scorecard parameters loaded and rendered');
                 } else {
                     console.error('Scorecard dropdown not populated yet');
                     alert('Error: Scorecard dropdown not ready. Please refresh the page.');
@@ -10837,7 +10919,16 @@ async function loadAuditForEditing() {
         }
         
         // Populate form fields with audit data
-        await populateFormWithAuditData(data);
+        // Set populating flag to prevent race conditions with scorecard re-rendering
+        window._editModePopulating = true;
+        console.log('[Edit Mode] Starting to populate form with audit data...');
+        try {
+            await populateFormWithAuditData(data);
+            console.log('[Edit Mode] Form population completed');
+        } finally {
+            // Clear populating flag after population is done (even if there's an error)
+            window._editModePopulating = false;
+        }
         
         // Clear the loading flag after a delay to ensure all async operations complete
         setTimeout(() => {
@@ -10894,29 +10985,48 @@ async function populateFormWithAuditData(audit) {
         const countryOfEmployee = document.getElementById('countryOfEmployee');
         
         if (employeeSelect && audit.employee_email) {
-            // Wait for employee options to be populated if not ready
+            // Wait for employee options to be populated if not ready (check for > 1 to account for default option)
             let attempts = 0;
-            while (employeeSelect.options.length === 0 && attempts < 50) {
+            while (employeeSelect.options.length <= 1 && attempts < 50) {
                 await new Promise(resolve => setTimeout(resolve, 100));
                 attempts++;
+            }
+            
+            if (employeeSelect.options.length <= 1) {
+                console.warn('[Edit Mode] Employee dropdown not populated, attempting to load employees...');
+                if (typeof loadEmployees === 'function') {
+                    await loadEmployees();
+                    // Wait a bit more for options to appear
+                    attempts = 0;
+                    while (employeeSelect.options.length <= 1 && attempts < 30) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        attempts++;
+                    }
+                }
             }
             
             // Find and select the employee in dropdown
             let employeeFound = false;
             const normalizedEmail = (audit.employee_email || '').toLowerCase().trim();
+            console.log('[Edit Mode] Looking for employee with email:', normalizedEmail, 'in', employeeSelect.options.length, 'options');
+            
             for (let i = 0; i < employeeSelect.options.length; i++) {
-                const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
+                const option = employeeSelect.options[i];
+                const optionEmail = (option.dataset.email || '').toLowerCase().trim();
                 if (optionEmail === normalizedEmail) {
                     employeeSelect.selectedIndex = i;
                     // DON'T trigger change event - it causes cascade that resets form
                     // We'll populate fields directly from audit data instead
                     employeeFound = true;
+                    console.log('[Edit Mode] ✅ Employee found and selected in dropdown');
                     break;
                 }
             }
             
-            if (!employeeFound && employeeSelect.options.length > 0) {
-                console.warn('Employee not found in dropdown:', audit.employee_email);
+            if (!employeeFound && employeeSelect.options.length > 1) {
+                console.warn('[Edit Mode] ⚠️ Employee not found in dropdown:', audit.employee_email, 'Available options:', Array.from(employeeSelect.options).map(opt => ({ text: opt.text, email: opt.dataset.email })));
+            } else if (employeeSelect.options.length <= 1) {
+                console.warn('[Edit Mode] ⚠️ Employee dropdown not populated');
             }
         }
         
@@ -10969,15 +11079,83 @@ async function populateFormWithAuditData(audit) {
         const channel = document.getElementById('channel');
         const clientEmail = document.getElementById('clientEmail');
         
-        if (interactionId) interactionId.value = audit.interaction_id || '';
+        if (interactionId) {
+            // Convert to string in case it's stored as a number in the database
+            interactionId.value = audit.interaction_id != null ? String(audit.interaction_id) : '';
+            console.log('[Edit Mode] ✅ Interaction ID set:', interactionId.value || '(none)');
+        }
         if (interactionDate) {
           interactionDate.value = audit.interaction_date || '';
           if (audit.interaction_date) {
             interactionDate.dispatchEvent(new Event('change', { bubbles: true }));
+            console.log('[Edit Mode] ✅ Interaction date set:', audit.interaction_date);
           }
         }
-        if (channel) channel.value = audit.channel || '';
-        if (clientEmail) clientEmail.value = audit.client_email || '';
+        if (channel) {
+            channel.value = audit.channel || '';
+            console.log('[Edit Mode] ✅ Channel set:', audit.channel || '(none)');
+        }
+        if (clientEmail) {
+            clientEmail.value = audit.client_email || '';
+            console.log('[Edit Mode] ✅ Client email set:', audit.client_email || '(none)');
+        }
+        
+        // Automatically load conversation if interaction_id exists
+        // Note: interaction_id might be a number or string depending on database schema
+        const interactionIdValue = audit.interaction_id ? String(audit.interaction_id).trim() : '';
+        if (interactionIdValue) {
+            console.log('[Edit Mode] 🔄 Auto-loading conversation for interaction_id:', interactionIdValue);
+            
+            // Ensure chat view is shown (not text view)
+            const transcriptChatView = document.getElementById('transcriptChatView');
+            const transcriptTextView = document.getElementById('transcriptTextView');
+            if (transcriptChatView && transcriptTextView) {
+                transcriptChatView.style.display = 'flex';
+                transcriptTextView.style.display = 'none';
+                if (typeof window !== 'undefined') {
+                    window.isChatViewActive = true;
+                }
+                console.log('[Edit Mode] ✅ Switched to chat view for conversation loading');
+            }
+            
+            // Load the conversation after a delay to ensure form is ready
+            setTimeout(async () => {
+                if (window.loadConversationFromIntercom && typeof window.loadConversationFromIntercom === 'function') {
+                    try {
+                        console.log('[Edit Mode] 🔄 Calling loadConversationFromIntercom...');
+                        await window.loadConversationFromIntercom(interactionIdValue);
+                        console.log('[Edit Mode] ✅ Conversation loaded successfully');
+                    } catch (error) {
+                        console.error('[Edit Mode] ❌ Error loading conversation:', error);
+                        // Fallback to text view if conversation loading fails
+                        if (transcriptChatView && transcriptTextView) {
+                            transcriptChatView.style.display = 'none';
+                            transcriptTextView.style.display = 'flex';
+                            if (typeof window !== 'undefined') {
+                                window.isChatViewActive = false;
+                            }
+                        }
+                    }
+                } else {
+                    console.warn('[Edit Mode] ⚠️ loadConversationFromIntercom function not available, retrying...');
+                    // Retry after a longer delay
+                    setTimeout(async () => {
+                        if (window.loadConversationFromIntercom && typeof window.loadConversationFromIntercom === 'function') {
+                            try {
+                                await window.loadConversationFromIntercom(interactionIdValue);
+                                console.log('[Edit Mode] ✅ Conversation loaded successfully (retry)');
+                            } catch (error) {
+                                console.error('[Edit Mode] ❌ Error loading conversation (retry):', error);
+                            }
+                        } else {
+                            console.error('[Edit Mode] ❌ loadConversationFromIntercom function still not available');
+                        }
+                    }, 1000);
+                }
+            }, 500); // Wait 500ms for form to be ready
+        } else {
+            console.log('[Edit Mode] ℹ️ No interaction_id found, skipping conversation auto-load');
+        }
         
         // Populate audit type and validation
         const auditType = document.getElementById('auditType');
@@ -10986,73 +11164,135 @@ async function populateFormWithAuditData(audit) {
         if (auditType) auditType.value = audit.audit_type || '';
         if (validationStatus) validationStatus.value = audit.validation_status || '';
         
+        // Populate acknowledgement status (preserve during edit)
+        const acknowledgementStatusField = document.getElementById('acknowledgementStatus');
+        const acknowledgementStatusUpdatedAtField = document.getElementById('acknowledgementStatusUpdatedAt');
+        if (acknowledgementStatusField) {
+            acknowledgementStatusField.value = audit.acknowledgement_status || 'Pending';
+            console.log('[Edit Mode] ✅ Acknowledgement status set:', audit.acknowledgement_status || 'Pending');
+        }
+        if (acknowledgementStatusUpdatedAtField && audit.acknowledgement_status_updated_at) {
+            acknowledgementStatusUpdatedAtField.value = audit.acknowledgement_status_updated_at;
+        }
+        
+        // Populate reversal fields (preserve during edit to avoid losing reversal data)
+        const reversalFields = {
+            'reversalRequestedAt': 'reversal_requested_at',
+            'reversalRespondedAt': 'reversal_responded_at',
+            'reversalStatus': 'reversal_status',
+            'reversalApproved': 'reversal_approved',
+            'reversalType': 'reversal_type',
+            'reversalJustificationFromAgent': 'reversal_justification_from_agent',
+            'reversalAttachments': 'reversal_attachments',
+            'scoreBeforeAppeal': 'score_before_appeal',
+            'scoreAfterAppeal': 'score_after_appeal',
+            'reversalApprovedBy': 'reversal_approved_by',
+            'reversalResolvedBy': 'reversal_resolved_by'
+        };
+        
+        for (const [fieldId, auditKey] of Object.entries(reversalFields)) {
+            const field = document.getElementById(fieldId);
+            if (field && audit[auditKey] !== undefined && audit[auditKey] !== null) {
+                field.value = typeof audit[auditKey] === 'object' ? JSON.stringify(audit[auditKey]) : audit[auditKey];
+            }
+        }
+        console.log('[Edit Mode] ✅ Reversal fields preserved');
+        
         // Populate transcript and recommendations
         const transcript = document.getElementById('transcript');
         
-        if (transcript) transcript.value = audit.transcript || '';
+        if (transcript) {
+            transcript.value = audit.transcript || '';
+            console.log('[Edit Mode] ✅ Transcript set:', audit.transcript ? `${audit.transcript.length} characters` : '(empty)');
+        }
         
         // Populate recommendations in Quill editor
         if (quillInstances.has('recommendations')) {
             const quill = quillInstances.get('recommendations');
-            if (audit.recommendations) {
+            const recommendationsText = audit.recommendations != null ? String(audit.recommendations) : '';
+            if (recommendationsText) {
                 // Check if it's already HTML (contains tags) or plain text
-                if (audit.recommendations.trim().startsWith('<')) {
+                if (recommendationsText.trim().startsWith('<')) {
                     // It's HTML, set directly
-                    quill.root.innerHTML = audit.recommendations;
+                    quill.root.innerHTML = recommendationsText;
+                    console.log('[Edit Mode] ✅ Recommendations set as HTML');
                 } else {
                     // It's plain text, convert to HTML
-                    const htmlContent = audit.recommendations.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                    const htmlContent = recommendationsText.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
                     quill.root.innerHTML = htmlContent;
+                    console.log('[Edit Mode] ✅ Recommendations set as plain text converted to HTML');
                 }
             } else {
                 quill.root.innerHTML = '';
+                console.log('[Edit Mode] ℹ️ No recommendations to set');
             }
         } else {
             // Fallback to textarea for backward compatibility
             const recommendations = document.getElementById('recommendations');
-            if (recommendations) recommendations.value = audit.recommendations || '';
+            if (recommendations) {
+                recommendations.value = audit.recommendations != null ? String(audit.recommendations) : '';
+                console.log('[Edit Mode] ✅ Recommendations set in textarea fallback');
+            }
         }
         
         // Wait for scorecard parameters to be fully loaded and rendered
         let attempts = 0;
-        while ((!currentParameters || currentParameters.length === 0) && attempts < 30) {
+        while ((!currentParameters || currentParameters.length === 0) && attempts < 50) {
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
         
-        if (attempts >= 30) {
-            console.warn('Timeout waiting for scorecard parameters to load');
+        if (attempts >= 50) {
+            console.warn('[Edit Mode] ⚠️ Timeout waiting for scorecard parameters to load');
+        } else {
+            console.log('[Edit Mode] ✅ Scorecard parameters loaded:', currentParameters.length, 'parameters');
         }
         
         // Populate error parameters
         if (currentParameters && currentParameters.length > 0) {
+            console.log('[Edit Mode] Populating', currentParameters.length, 'error parameters...');
+            
             // STEP 1: First, set all error count values (radio buttons and counters)
-            currentParameters.forEach(param => {
+            currentParameters.forEach((param, index) => {
                 const fieldValue = audit[param.field_id];
+                console.log(`[Edit Mode] Parameter ${index + 1}/${currentParameters.length}: ${param.field_id} = ${fieldValue} (type: ${param.field_type})`);
                 
                 if (param.field_type === 'radio') {
                     // Set radio button selection
                     const radioYes = document.getElementById(`${param.field_id}_yes`);
                     const radioNo = document.getElementById(`${param.field_id}_no`);
                     
-                    if (fieldValue === 1 || fieldValue === true || fieldValue === 'true' || fieldValue === '1') {
+                    // Handle various truthy representations (database might store as string, number, or boolean)
+                    const isYes = fieldValue === 1 || fieldValue === true || fieldValue === 'true' || fieldValue === '1' || parseInt(fieldValue) === 1;
+                    if (isYes) {
                         if (radioYes) {
                             radioYes.checked = true;
                             radioYes.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log(`[Edit Mode] ✅ Set ${param.field_id} to YES`);
+                        } else {
+                            console.warn(`[Edit Mode] ⚠️ Radio YES button not found for ${param.field_id}`);
                         }
                     } else {
                         if (radioNo) {
                             radioNo.checked = true;
                             radioNo.dispatchEvent(new Event('change', { bubbles: true }));
+                            console.log(`[Edit Mode] ✅ Set ${param.field_id} to NO`);
+                        } else {
+                            console.warn(`[Edit Mode] ⚠️ Radio NO button not found for ${param.field_id}`);
                         }
                     }
                 } else {
-                    // Set counter value
+                    // Set counter value - parse as integer since database might store as string or number
                     const field = document.getElementById(param.field_id);
-                    const counterValue = fieldValue || 0;
+                    const rawValue = fieldValue != null ? fieldValue : 0;
+                    const counterValue = typeof rawValue === 'string' ? parseInt(rawValue, 10) || 0 : (rawValue || 0);
+                    
                     if (field) {
                         field.value = counterValue;
                         field.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.log(`[Edit Mode] ✅ Set ${param.field_id} counter to ${counterValue} (raw: ${rawValue}, type: ${typeof rawValue})`);
+                    } else {
+                        console.warn(`[Edit Mode] ⚠️ Counter field not found for ${param.field_id}`);
                     }
                     
                     // Update plain text display
@@ -11075,57 +11315,81 @@ async function populateFormWithAuditData(audit) {
             await new Promise(resolve => setTimeout(resolve, 200));
             
             // STEP 3: Now update feedback boxes (they will read the correct error counts) and populate feedbacks
-            currentParameters.forEach(param => {
+            for (let paramIndex = 0; paramIndex < currentParameters.length; paramIndex++) {
+                const param = currentParameters[paramIndex];
                 const paramType = param.parameter_type || 'error';
                 
                 // Update feedback boxes based on error count (will now read correct values from DOM)
                 updateFeedbackBoxesForParameter(param.field_id, param.field_type || 'counter', paramType);
                 
                 // Populate feedback - handle both old format (string) and new format (JSON array)
-                const feedbackData = audit[`feedback_${param.field_id}`];
+                const feedbackKey = `feedback_${param.field_id}`;
+                const feedbackData = audit[feedbackKey];
                 let feedbackArray = [];
                 
-                if (feedbackData) {
+                console.log(`[Edit Mode] Feedback data for ${param.field_id}:`, feedbackData, 'Type:', typeof feedbackData);
+                
+                if (feedbackData != null) {
+                    // Convert to string if needed before processing
+                    const feedbackStr = typeof feedbackData === 'string' ? feedbackData : JSON.stringify(feedbackData);
+                    
                     if (typeof feedbackData === 'string') {
                         // Try to parse as JSON array, fallback to single string
                         try {
                             const parsed = JSON.parse(feedbackData);
-                            feedbackArray = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+                            feedbackArray = Array.isArray(parsed) ? parsed : (parsed ? [String(parsed)] : []);
+                            console.log(`[Edit Mode] Parsed feedback as JSON for ${param.field_id}:`, feedbackArray.length, 'items');
                         } catch (e) {
                             // If not valid JSON, treat as single string (backward compatibility)
-                            feedbackArray = feedbackData.trim() ? [feedbackData] : [];
+                            const trimmed = feedbackData.trim();
+                            feedbackArray = trimmed ? [trimmed] : [];
+                            console.log(`[Edit Mode] Using feedback as plain string for ${param.field_id}:`, feedbackArray.length, 'items');
                         }
                     } else if (Array.isArray(feedbackData)) {
-                        feedbackArray = feedbackData;
+                        // Ensure all items are strings
+                        feedbackArray = feedbackData.map(item => item != null ? String(item) : '').filter(item => item);
+                        console.log(`[Edit Mode] Using feedback as array for ${param.field_id}:`, feedbackArray.length, 'items');
                     } else {
-                        feedbackArray = feedbackData ? [feedbackData] : [];
+                        // Handle non-string, non-array values (convert to string)
+                        feedbackArray = [String(feedbackData)];
+                        console.log(`[Edit Mode] Converting feedback to array for ${param.field_id}:`, feedbackArray.length, 'items');
                     }
+                } else {
+                    console.log(`[Edit Mode] No feedback data found for ${param.field_id}`);
                 }
                 
                 // Populate feedback values into the boxes (wait for boxes to be created)
                 if (feedbackArray.length > 0) {
+                    console.log(`[Edit Mode] Preparing to populate ${feedbackArray.length} feedback items for ${param.field_id}...`);
+                    
                     // Wait a bit for feedback boxes to be created by updateFeedbackBoxesForParameter
-                    const delay = 150 * (currentParameters.indexOf(param) + 1);
+                    const delay = 200 * (paramIndex + 1); // Increased delay for better reliability
                     await new Promise(resolve => setTimeout(resolve, delay));
                     
                     const feedbackContainer = document.getElementById(`feedback_container_${param.field_id}`);
                     if (feedbackContainer) {
+                        console.log(`[Edit Mode] ✅ Feedback container found for ${param.field_id}`);
                         // Populate each feedback with retry logic for Quill instances
                         for (let index = 0; index < feedbackArray.length; index++) {
-                            const feedbackText = feedbackArray[index];
+                            const rawFeedbackText = feedbackArray[index];
+                            // Ensure feedbackText is a string
+                            const feedbackText = rawFeedbackText != null ? String(rawFeedbackText) : '';
                             if (!feedbackText) continue;
                             
                             const feedbackId = `feedback_${param.field_id}_${index}`;
                             const quillId = `quill_${feedbackId}`;
                             
                             // Try to populate with Quill editor (with retries)
+                            // Note: Quill instances are stored with feedbackId (not quillId)
                             let populated = false;
                             for (let retry = 0; retry < 5; retry++) {
                                 const quillDiv = document.getElementById(quillId);
-                                if (quillDiv && quillInstances.has(quillId)) {
-                                    const quill = quillInstances.get(quillId);
+                                // Check both quillId and feedbackId since registration can vary
+                                const hasQuillInstance = quillInstances.has(quillId) || quillInstances.has(feedbackId);
+                                if (quillDiv && hasQuillInstance) {
+                                    const quill = quillInstances.get(quillId) || quillInstances.get(feedbackId);
                                     // Check if feedbackText is HTML or plain text
-                                    if (feedbackText && feedbackText.trim().startsWith('<')) {
+                                    if (feedbackText.trim().startsWith('<')) {
                                         quill.root.innerHTML = feedbackText;
                                     } else {
                                         // Convert plain text to HTML
@@ -11133,35 +11397,64 @@ async function populateFormWithAuditData(audit) {
                                         quill.root.innerHTML = htmlContent || '';
                                     }
                                     populated = true;
-                                    console.log(`✅ Populated feedback ${feedbackId} in Quill editor`);
+                                    console.log(`[Edit Mode] ✅ Populated feedback ${feedbackId} in Quill editor (${feedbackText.length} chars)`);
                                     break;
                                 }
                                 // Wait a bit before retrying
-                                await new Promise(resolve => setTimeout(resolve, 100));
+                                await new Promise(resolve => setTimeout(resolve, 150)); // Increased retry delay
                             }
                             
-                            // Fallback to textarea if Quill not available
+                            // Fallback methods if Quill instance not found
                             if (!populated) {
-                                const textarea = document.getElementById(feedbackId);
-                                if (textarea && feedbackText) {
-                                    textarea.value = feedbackText;
-                                    // Trigger auto-expand
-                                    setTimeout(() => {
-                                        textarea.style.height = 'auto';
-                                        const scrollHeightRem = textarea.scrollHeight / 16;
-                                        textarea.style.height = Math.min(scrollHeightRem, 50.0) + 'rem';
-                                    }, 100);
-                                    console.log(`✅ Populated feedback ${feedbackId} in textarea (fallback)`);
-                                } else {
-                                    console.warn(`⚠️ Could not populate feedback ${feedbackId} - element not found`);
+                                const quillElement = document.getElementById(quillId);
+                                
+                                // Try to directly set the Quill editor content if the div exists
+                                if (quillElement) {
+                                    const qlEditor = quillElement.querySelector('.ql-editor');
+                                    if (qlEditor) {
+                                        if (feedbackText.trim().startsWith('<')) {
+                                            qlEditor.innerHTML = feedbackText;
+                                        } else {
+                                            const htmlContent = feedbackText.split('\n').map(line => `<p>${escapeHtml(line)}</p>`).join('');
+                                            qlEditor.innerHTML = htmlContent || '';
+                                        }
+                                        populated = true;
+                                        console.log(`[Edit Mode] ✅ Populated feedback ${feedbackId} via direct DOM (${feedbackText.length} chars)`);
+                                    }
+                                }
+                                
+                                // Fallback to textarea if Quill not available
+                                if (!populated) {
+                                    const textarea = document.getElementById(feedbackId);
+                                    if (textarea && feedbackText) {
+                                        textarea.value = feedbackText;
+                                        // Trigger auto-expand
+                                        setTimeout(() => {
+                                            textarea.style.height = 'auto';
+                                            const scrollHeightRem = textarea.scrollHeight / 16;
+                                            textarea.style.height = Math.min(scrollHeightRem, 50.0) + 'rem';
+                                        }, 100);
+                                        console.log(`[Edit Mode] ✅ Populated feedback ${feedbackId} in textarea (fallback, ${feedbackText.length} chars)`);
+                                    } else {
+                                        console.warn(`[Edit Mode] ⚠️ Could not populate feedback ${feedbackId} - element not found (Quill: ${quillElement ? 'found' : 'not found'}, textarea: ${textarea ? 'found' : 'not found'}, quillInstances: ${quillInstances.has(feedbackId) ? 'has feedbackId' : quillInstances.has(quillId) ? 'has quillId' : 'missing'})`);
+                                    }
                                 }
                             }
                         }
                     } else {
-                        console.warn(`⚠️ Feedback container not found for ${param.field_id}`);
+                        console.warn(`[Edit Mode] ⚠️ Feedback container not found for ${param.field_id} - feedback boxes may not be created yet`);
+                        // Try waiting a bit more and retry
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        const retryContainer = document.getElementById(`feedback_container_${param.field_id}`);
+                        if (retryContainer && feedbackArray.length > 0) {
+                            console.log(`[Edit Mode] ✅ Feedback container found on retry for ${param.field_id}, attempting to populate...`);
+                            // Retry population logic here if needed
+                        }
                     }
+                } else {
+                    console.log(`[Edit Mode] ℹ️ No feedback to populate for ${param.field_id} (empty array)`);
                 }
-            });
+            }
             
             // Wait for all feedback boxes to be created and populated (max delay based on parameter count)
             const maxDelay = Math.max(500, currentParameters.length * 150);
@@ -11201,11 +11494,25 @@ async function populateFormWithAuditData(audit) {
         
         // Mark that values have been populated to prevent renderErrorParameters from wiping them
         window._editModeValuesPopulated = true;
-        console.log('✅ Form populated with audit data - values populated flag set');
+        
+        // Summary log of what was populated
+        const populatedSummary = {
+            employee: audit.employee_name || audit.employee_email ? '✅' : '❌',
+            interactionId: audit.interaction_id ? '✅' : '❌',
+            transcript: audit.transcript ? `✅ (${audit.transcript.length} chars)` : '❌',
+            parameters: currentParameters ? `${currentParameters.length} parameters` : '❌',
+            recommendations: audit.recommendations ? '✅' : '❌',
+            averageScore: audit.average_score !== null && audit.average_score !== undefined ? `✅ (${audit.average_score})` : '❌',
+            totalErrors: audit.total_errors_count !== null && audit.total_errors_count !== undefined ? `✅ (${audit.total_errors_count})` : '❌'
+        };
+        
+        console.log('[Edit Mode] ✅ Form populated with audit data - Summary:', populatedSummary);
+        console.log('[Edit Mode] ✅ Values populated flag set - form is ready for editing');
         
     } catch (error) {
-        console.error('Error populating form with audit data:', error);
+        console.error('[Edit Mode] ❌ Error populating form with audit data:', error);
         window._editModeValuesPopulated = false; // Clear flag on error
+        throw error; // Re-throw to let caller handle it
     }
 }
 
@@ -12691,6 +12998,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
+            // Validate employee is selected (skip in calibration mode)
+            if (!isCalibrationMode) {
+                const employeeSelect = document.getElementById('employeeName');
+                const employeeEmailField = document.getElementById('employeeEmail');
+                
+                // Check if employee is selected (either dropdown or email field)
+                const hasEmployee = (employeeSelect && employeeSelect.selectedIndex > 0) || 
+                                   (employeeEmailField && employeeEmailField.value && employeeEmailField.value.trim());
+                
+                if (!hasEmployee) {
+                    await window.confirmationDialog.show({
+                        title: 'Validation Error',
+                        message: 'Please select an employee before submitting the audit.',
+                        confirmText: 'OK',
+                        type: 'error'
+                    });
+                    if (employeeSelect) {
+                        employeeSelect.focus();
+                    }
+                    // Reset button state on validation error
+                    updateSubmitButtonState('reset', originalButtonText);
+                    isSubmitting = false;
+                    return;
+                }
+            }
+            
             // Validate feedback fields when error count > 0
             let validationErrors = [];
             currentParameters.forEach(param => {
@@ -12854,13 +13187,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const employeeSelect = document.getElementById('employeeName');
             let employeeNameFound = false;
             
+            // Helper to check if a name is valid (not a placeholder)
+            const isValidEmployeeName = (name) => {
+                if (!name || typeof name !== 'string') return false;
+                const trimmed = name.trim().toLowerCase();
+                const invalidNames = ['select employee', 'select employee...', 'select', 'n/a', '', 'employee'];
+                return !invalidNames.includes(trimmed) && trimmed.length > 1;
+            };
+            
             // Method 1: Get from selected option using selectedIndex
             if (employeeSelect && employeeSelect.selectedIndex > 0) {
                 const selectedEmployeeOption = employeeSelect.options[employeeSelect.selectedIndex];
                 if (selectedEmployeeOption && selectedEmployeeOption.value && selectedEmployeeOption.textContent) {
-                    auditData.employeeName = selectedEmployeeOption.textContent.trim();
-                    employeeNameFound = true;
-                    console.log('✅ Employee name from selectedIndex:', auditData.employeeName);
+                    const candidateName = selectedEmployeeOption.textContent.trim();
+                    if (isValidEmployeeName(candidateName)) {
+                        auditData.employeeName = candidateName;
+                        employeeNameFound = true;
+                        console.log('✅ Employee name from selectedIndex:', auditData.employeeName);
+                    }
                 }
             }
             
@@ -12872,7 +13216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (opt.value && opt.value.toLowerCase().trim() === emailToFind) {
                         // Found the option, get name from dataset.name or textContent
                         const optName = opt.dataset.name || opt.textContent;
-                        if (optName && optName.trim()) {
+                        if (isValidEmployeeName(optName)) {
                             auditData.employeeName = optName.trim();
                             employeeNameFound = true;
                             console.log('✅ Employee name from email lookup:', auditData.employeeName);
@@ -12889,7 +13233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const opt = employeeSelect.options[i];
                     if (opt.value && opt.value.toLowerCase().trim() === currentValue) {
                         const optName = opt.dataset.name || opt.textContent;
-                        if (optName && optName.trim()) {
+                        if (isValidEmployeeName(optName)) {
                             auditData.employeeName = optName.trim();
                             employeeNameFound = true;
                             console.log('✅ Employee name from select value lookup:', auditData.employeeName);
@@ -12902,7 +13246,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Method 4: If still not found, try the hidden employeeNameDisplay field
             if (!employeeNameFound) {
                 const employeeNameDisplayField = document.getElementById('employeeNameDisplay');
-                if (employeeNameDisplayField && employeeNameDisplayField.value && employeeNameDisplayField.value.trim()) {
+                if (employeeNameDisplayField && isValidEmployeeName(employeeNameDisplayField.value)) {
                     auditData.employeeName = employeeNameDisplayField.value.trim();
                     employeeNameFound = true;
                     console.log('✅ Employee name from hidden field:', auditData.employeeName);
@@ -12910,7 +13254,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Method 5: Last resort - use employeeNameDisplay from FormData if available
-            if (!employeeNameFound && auditData.employeeNameDisplay && auditData.employeeNameDisplay.trim()) {
+            if (!employeeNameFound && isValidEmployeeName(auditData.employeeNameDisplay)) {
                 auditData.employeeName = auditData.employeeNameDisplay.trim();
                 employeeNameFound = true;
                 console.log('✅ Employee name from FormData employeeNameDisplay:', auditData.employeeName);
@@ -13114,7 +13458,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     reversal_resolved_by: auditData.reversalResolvedBy || null,
                     // Acknowledgement tracking fields
                     acknowledgement_status: auditData.acknowledgementStatus || 'Pending',
-                    acknowledgement_status_updated_at: auditData.acknowledgementStatusUpdatedAt || null
+                    acknowledgement_status_updated_at: auditData.acknowledgementStatusUpdatedAt || null,
+                    // Scorecard reference fields (important for audit-view to load correct scorecard)
+                    _scorecard_id: currentScorecard?.id || null,
+                    _scorecard_table: currentScorecard?.table_name || null
                 };
                 
                 // Add dynamic error fields based on currentParameters
@@ -16253,6 +16600,68 @@ document.addEventListener('DOMContentLoaded', function() {
             date: conversationDate ? conversationDate.toISOString() : 'not found',
             formattedDate: conversationDate ? `${String(conversationDate.getDate()).padStart(2, '0')}-${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][conversationDate.getMonth()]}-${String(conversationDate.getFullYear()).slice(-2)}` : 'not found'
         });
+        
+        // Extract and auto-fill admin/employee from conversation (if employee not already selected)
+        const employeeSelect = document.getElementById('employeeName');
+        const employeeEmailField = document.getElementById('employeeEmail');
+        const intercomAliasField = document.getElementById('intercomAlias');
+        const intercomAliasContainer = document.getElementById('intercomAliasContainer');
+        
+        // Only auto-fill employee if not already selected
+        if (employeeSelect && (!employeeSelect.value || employeeSelect.value === '')) {
+            // Extract admin info using the existing function
+            const adminInfo = extractAdminFromConversation(conversation);
+            console.log('[autofillConversationFields] Extracted admin info:', adminInfo);
+            
+            if (adminInfo) {
+                // Set the Intercom alias field if available
+                if (adminInfo.name && intercomAliasField) {
+                    intercomAliasField.value = adminInfo.name;
+                    if (intercomAliasContainer) {
+                        intercomAliasContainer.style.display = '';
+                    }
+                    console.log('[autofillConversationFields] ✅ Set Intercom alias:', adminInfo.name);
+                }
+                
+                // Try to find matching employee by email first
+                let employeeFound = false;
+                if (adminInfo.email) {
+                    const normalizedAdminEmail = adminInfo.email.toLowerCase().trim();
+                    for (let i = 0; i < employeeSelect.options.length; i++) {
+                        const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
+                        if (optionEmail === normalizedAdminEmail) {
+                            employeeSelect.selectedIndex = i;
+                            employeeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            employeeFound = true;
+                            console.log('[autofillConversationFields] ✅ Employee matched by email:', adminInfo.email);
+                            break;
+                        }
+                    }
+                }
+                
+                // If not found by email, try to match by Intercom alias
+                if (!employeeFound && adminInfo.name) {
+                    const normalizedAlias = adminInfo.name.toLowerCase().trim();
+                    for (let i = 0; i < employeeSelect.options.length; i++) {
+                        const optionAlias = (employeeSelect.options[i].dataset.intercomAlias || '').toLowerCase().trim();
+                        const optionName = (employeeSelect.options[i].text || '').toLowerCase().trim();
+                        if (optionAlias === normalizedAlias || optionName === normalizedAlias) {
+                            employeeSelect.selectedIndex = i;
+                            employeeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                            employeeFound = true;
+                            console.log('[autofillConversationFields] ✅ Employee matched by alias/name:', adminInfo.name);
+                            break;
+                        }
+                    }
+                }
+                
+                if (!employeeFound) {
+                    console.warn('[autofillConversationFields] ⚠️ Could not find matching employee for admin:', adminInfo);
+                }
+            }
+        } else if (employeeSelect && employeeSelect.value) {
+            console.log('[autofillConversationFields] Employee already selected, skipping auto-fill');
+        }
     }
 
     // Display conversation messages in chat interface
@@ -19248,6 +19657,48 @@ async function loadConversationDataIntoForm(conversationData) {
       `;
 
       metadataContainer.innerHTML = metadataCardsHtml;
+      
+      // Update background score display
+      const backgroundScoreContainer = document.getElementById('headerBackgroundScore');
+      const headerScoreValue = document.getElementById('headerScoreValue');
+      const headerElement = document.getElementById('auditFormHeader');
+      
+      // Check if a scorecard is loaded - only show background score if scorecard exists
+      const currentScorecard = window.currentScorecard;
+      if (currentScorecard && backgroundScoreContainer) {
+        // Determine score text color based on passing status
+        const scoreTextColor = isPassing 
+          ? 'rgba(10, 50, 30, 0.4)' // Darker green for passing
+          : 'rgba(100, 10, 10, 0.4)'; // Darker red for not passing
+        
+        // Set the score value
+        if (headerScoreValue) {
+          headerScoreValue.textContent = score.toFixed(0);
+        }
+        
+        // Update background score color
+        const scoreSpan = backgroundScoreContainer.querySelector('span');
+        if (scoreSpan) {
+          scoreSpan.style.color = scoreTextColor;
+        }
+        
+        // Display the background score
+        backgroundScoreContainer.style.display = 'flex';
+        
+        // Update header background gradient based on passing status
+        if (headerElement && passingStatus) {
+          if (isPassing) {
+            headerElement.style.background = 'linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%)';
+          } else {
+            headerElement.style.background = 'linear-gradient(135deg, #d41212 0%, #b91c1c 100%)';
+          }
+        }
+      } else {
+        // Hide background score when no scorecard is loaded
+        if (backgroundScoreContainer) {
+          backgroundScoreContainer.style.display = 'none';
+        }
+      }
     }
     
     // Make function available globally for event listeners

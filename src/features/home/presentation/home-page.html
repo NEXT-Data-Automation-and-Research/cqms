@@ -6660,9 +6660,10 @@ window.testNotification = testNotification;
   import { getSecureSupabase } from '/js/utils/secure-supabase.js';
 
   // Initialize notification consent manager after user is authenticated
+  // IMPORTANT: This runs in the background and should NOT block data loading
   async function initializeNotificationConsent() {
     try {
-      // Wait for Supabase to be ready
+      // Wait for Supabase to be ready (non-blocking check)
       if (!window.supabaseReady) {
         await new Promise((resolve) => {
           if (window.supabaseReady) {
@@ -6690,27 +6691,48 @@ window.testNotification = testNotification;
       // Initialize consent manager
       const consentManager = new NotificationConsentManager();
       
-      // Check and show consent if needed
-      await consentManager.checkAndShowConsent(user.id, isNewDevice);
+      // Check and show consent if needed (non-blocking - don't await)
+      consentManager.checkAndShowConsent(user.id, isNewDevice)
+        .then(() => {
+          // Mark device as known after consent check completes
+          if (isNewDevice) {
+            localStorage.setItem(`device_${user.id}`, 'true');
+          }
+        })
+        .catch(err => console.error('Error in notification consent check:', err));
       
-      // Mark device as known
-      if (isNewDevice) {
-        localStorage.setItem(`device_${user.id}`, 'true');
-      }
     } catch (error) {
       console.error('Error initializing notification consent:', error);
       // Don't block page load on notification consent errors
     }
   }
 
-  // Initialize after DOM is ready and user is authenticated
+  // Schedule notification consent to run AFTER data loading completes
+  // Use requestIdleCallback if available, otherwise use a longer timeout
+  function scheduleNotificationConsent() {
+    // Wait for homepage data to load first (listen for custom event or use delay)
+    // Using a 3-second delay ensures data loading has started/completed
+    const runWhenIdle = () => {
+      if (typeof requestIdleCallback === 'function') {
+        // Run when browser is idle (data loading likely complete)
+        requestIdleCallback(() => {
+          initializeNotificationConsent();
+        }, { timeout: 5000 }); // Max 5 second wait
+      } else {
+        // Fallback: run after short delay
+        setTimeout(initializeNotificationConsent, 500);
+      }
+    };
+    
+    // Wait 3 seconds to ensure data loading has priority
+    setTimeout(runWhenIdle, 3000);
+  }
+
+  // Initialize after DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      // Wait a bit for auth to complete
-      setTimeout(initializeNotificationConsent, 1000);
-    });
+    document.addEventListener('DOMContentLoaded', scheduleNotificationConsent);
   } else {
-    setTimeout(initializeNotificationConsent, 1000);
+    scheduleNotificationConsent();
   }
 </script>
 

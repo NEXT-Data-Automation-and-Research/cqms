@@ -41,7 +41,7 @@ export class AuditReportsController {
   private scorecards: ScorecardInfo[] = [];
   private currentUserEmail: string = '';
   private currentUserRole: string = '';
-  private showAllAudits: boolean = true;
+  private showAllAudits: boolean = false; // Default to false (safer - will be set correctly by applyRoleBasedSettings)
 
   constructor(service: AuditReportsService) {
     this.service = service;
@@ -70,6 +70,9 @@ export class AuditReportsController {
       this.renderer.renderHeaderActions();
     }
     
+    // IMPORTANT: Apply role-based settings AFTER header is rendered
+    // This ensures the "View All" button exists before we try to show/hide it
+    this.applyRoleBasedSettings();
   }
   
 
@@ -103,15 +106,118 @@ export class AuditReportsController {
    */
   private initializeUserInfo(): void {
     try {
-      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const userInfoStr = localStorage.getItem('userInfo');
+      console.log('[AuditReports] 📋 Raw localStorage userInfo:', userInfoStr);
+      
+      const userInfo = JSON.parse(userInfoStr || '{}');
+      console.log('[AuditReports] 📋 Parsed userInfo:', userInfo);
+      
       this.currentUserEmail = (userInfo.email || '').toLowerCase().trim();
       this.currentUserRole = userInfo.role || '';
-      this.showAllAudits = this.currentUserRole !== 'Employee';
       
-      // Show "View All" button for employees
-      this.renderer.toggleViewAllButton(this.currentUserRole === 'Employee');
+      console.log('[AuditReports] 👤 User info extracted:', {
+        email: this.currentUserEmail,
+        role: this.currentUserRole
+      });
+      
+      // If role is missing, assume restricted user (Employee) for safety
+      // This ensures employees don't see all audits by default
+      // The role will be fetched and updated asynchronously
+      if (!this.currentUserRole && this.currentUserEmail) {
+        // Temporarily set to empty string (which is treated as restricted)
+        // This will be updated when we fetch the actual role
+        logInfo('[AuditReports] Role missing, assuming restricted user until role is fetched');
+      }
+      
+      // Apply initial role-based settings
+      this.applyRoleBasedSettings();
+      
+      // If role is missing, try to fetch it from the database
+      if (!this.currentUserRole && this.currentUserEmail) {
+        this.fetchAndApplyUserRole();
+      }
     } catch (error) {
       logError('Error initializing user info:', error);
+      // On error, assume restricted user for safety
+      this.currentUserRole = '';
+      this.applyRoleBasedSettings();
+    }
+  }
+
+  /**
+   * Apply role-based settings for visibility and controls
+   */
+  private applyRoleBasedSettings(): void {
+    // Roles that can only see their own audits (not all)
+    // Based on access_control_rules: view_all_audits requires min_role_level: 2
+    // Level 0: General User, Level 1: Employee -> cannot view all audits
+    // IMPORTANT: If role is missing/undefined, treat as restricted for safety
+    const restrictedRoles = ['Employee', 'General User', ''];
+    const isRestrictedUser = !this.currentUserRole || restrictedRoles.includes(this.currentUserRole);
+    
+    // Restricted users start with their own audits only
+    // Non-restricted users (Quality Analyst, Auditor, Manager, Admin, Super Admin) see all by default
+    this.showAllAudits = !isRestrictedUser;
+    
+    console.log('[AuditReports] 🎭 Applied role-based settings:', {
+      role: this.currentUserRole || '(missing)',
+      isRestrictedUser,
+      showAllAudits: this.showAllAudits,
+      currentUserEmail: this.currentUserEmail
+    });
+    logInfo('[AuditReports] Applied role-based settings:', {
+      role: this.currentUserRole || '(missing)',
+      isRestrictedUser,
+      showAllAudits: this.showAllAudits,
+      currentUserEmail: this.currentUserEmail
+    });
+    
+    // Show "View All" button for restricted users (they can toggle to see all)
+    this.renderer.toggleViewAllButton(isRestrictedUser);
+    
+    // Update button state and show mode indicator for restricted users
+    if (isRestrictedUser) {
+      this.renderer.updateViewAllButtonState(this.showAllAudits);
+      this.renderer.showEmployeeModeIndicator(this.showAllAudits, this.currentUserEmail);
+    } else {
+      this.renderer.hideEmployeeModeIndicator();
+    }
+  }
+
+  /**
+   * Fetch user role from database if not available in localStorage
+   */
+  private async fetchAndApplyUserRole(): Promise<void> {
+    try {
+      const { getSecureSupabase } = await import('../../../utils/secure-supabase.js');
+      const supabase = await getSecureSupabase(false);
+      
+      const { data: peopleData, error } = await supabase
+        .from('people')
+        .select('role, department, designation')
+        .eq('email', this.currentUserEmail)
+        .maybeSingle();
+      
+      if (!error && peopleData?.role) {
+        this.currentUserRole = peopleData.role;
+        
+        // Update localStorage with the role
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+        userInfo.role = peopleData.role;
+        if (peopleData.department) userInfo.department = peopleData.department;
+        if (peopleData.designation) userInfo.designation = peopleData.designation;
+        localStorage.setItem('userInfo', JSON.stringify(userInfo));
+        
+        logInfo('[AuditReports] Fetched user role from database:', peopleData.role);
+        
+        // Re-apply role-based settings with the new role
+        this.applyRoleBasedSettings();
+        
+        // Reload audits with the correct filter
+        this.loadAudits();
+      }
+    } catch (error) {
+      logError('Error fetching user role:', error);
     }
   }
 
@@ -135,9 +241,47 @@ export class AuditReportsController {
       this.isLoading = true;
       this.renderer.showLoading();
       
-      const employeeEmail = this.currentUserRole === 'Employee' && !this.showAllAudits
-        ? this.currentUserEmail
-        : undefined;
+      // Determine if we should filter by employee email
+      // Restricted roles (Employee, General User, or empty) should only see their own audits
+      // unless they've toggled "View All"
+      const restrictedRoles = ['Employee', 'General User', ''];
+      const isRestrictedUser = !this.currentUserRole || restrictedRoles.includes(this.currentUserRole);
+      
+      // For restricted users, filter by their email unless they've toggled "View All"
+      // CRITICAL: If restricted user has no email, don't show any audits (safer than showing all)
+      let employeeEmail: string | undefined = undefined;
+      if (isRestrictedUser && !this.showAllAudits) {
+        if (this.currentUserEmail) {
+          employeeEmail = this.currentUserEmail.toLowerCase().trim();
+        } else {
+          // Restricted user with no email - show no audits for safety
+          logInfo('[AuditReports] Restricted user has no email - showing no audits');
+          this.audits = [];
+          this.filteredAudits = [];
+          this.stats = this.service.calculateStats([]);
+          this.renderer.renderStats(this.stats);
+          this.renderer.renderAudits([], this.pagination, false);
+          this.renderer.renderPagination(this.pagination);
+          this.renderer.hideLoading();
+          return;
+        }
+      }
+
+      // Debug logging - use console.log to ensure it shows in browser
+      console.log('[AuditReports] 🔍 Loading audits with params:', {
+        role: this.currentUserRole || '(missing)',
+        isRestrictedUser,
+        currentUserEmail: this.currentUserEmail || '(missing)',
+        employeeEmail: employeeEmail || '(not filtering)',
+        showAllAudits: this.showAllAudits
+      });
+      logInfo('[AuditReports] Loading audits:', {
+        role: this.currentUserRole || '(missing)',
+        isRestrictedUser,
+        currentUserEmail: this.currentUserEmail || '(missing)',
+        employeeEmail: employeeEmail || '(not filtering)',
+        showAllAudits: this.showAllAudits
+      });
 
       this.audits = await this.service.loadAudits(
         this.currentScorecardId,
@@ -400,13 +544,20 @@ export class AuditReportsController {
   }
 
   /**
-   * Toggle view all audits (for employees)
+   * Toggle view all audits (for restricted users like Employees and General Users)
    */
   toggleViewAll(): void {
-    if (this.currentUserRole !== 'Employee') return;
+    // Only allow toggle for restricted roles
+    const restrictedRoles = ['Employee', 'General User', ''];
+    if (!restrictedRoles.includes(this.currentUserRole)) return;
     
     this.showAllAudits = !this.showAllAudits;
     this.pagination.currentPage = 1;
+    
+    // Update button state and mode indicator
+    this.renderer.updateViewAllButtonState(this.showAllAudits);
+    this.renderer.showEmployeeModeIndicator(this.showAllAudits, this.currentUserEmail);
+    
     this.loadAudits();
   }
 

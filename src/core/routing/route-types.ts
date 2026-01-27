@@ -5,8 +5,24 @@
 
 /**
  * User roles that can access routes
+ * Matches the role_hierarchy table in the database:
+ * - Level 5: Super Admin
+ * - Level 4: Admin
+ * - Level 3: Manager
+ * - Level 2: Quality Analyst, Quality Supervisor (Auditor-level access)
+ * - Level 1: Employee
+ * - Level 0: General User
  */
-export type UserRole = 'all' | 'Employee' | 'Auditor' | 'Admin' | 'Manager' | 'Super Admin'
+export type UserRole = 
+  | 'all' 
+  | 'General User'
+  | 'Employee' 
+  | 'Quality Analyst'
+  | 'Quality Supervisor'
+  | 'Auditor' // Legacy role - kept for backwards compatibility
+  | 'Manager'
+  | 'Admin' 
+  | 'Super Admin'
 
 /**
  * Route metadata for navigation and permissions

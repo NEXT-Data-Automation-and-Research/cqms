@@ -11,3 +11,8 @@ export { ErrorDetailsSection, type ErrorDetailsSectionConfig } from './error-det
 export { FormActions, type FormActionsConfig } from './form-actions.js';
 export { SplitterComponent } from './splitter-component.js';
 export { AuditFormOrchestrator, type AuditFormOrchestratorConfig } from './audit-form-orchestrator.js';
+
+// New unified page components
+export { RatingSection, type RatingSectionConfig } from './rating-section.js';
+export { ReversalSection, type ReversalSectionConfig, type ReversalData } from './reversal-section.js';
+export { ActionButtons, type ActionButtonsConfig } from './action-buttons.js';

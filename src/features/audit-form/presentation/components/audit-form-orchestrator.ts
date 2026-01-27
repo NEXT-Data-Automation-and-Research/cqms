@@ -1,6 +1,7 @@
 /**
  * Audit Form Orchestrator
  * Main controller that ties all components together
+ * Supports create, edit, and view modes
  */
 
 import { AuditTimer, type AuditTimerConfig } from './audit-timer.js';
@@ -10,8 +11,21 @@ import { TranscriptSection, type TranscriptSectionConfig } from './transcript-se
 import { ErrorDetailsSection, type ErrorDetailsSectionConfig } from './error-details-section.js';
 import { FormActions, type FormActionsConfig } from './form-actions.js';
 import { SplitterComponent } from './splitter-component.js';
+import type { AuditFormMode } from '../../domain/types.js';
+import { isEditableMode, getDefaultHeaderTitle, getHeaderGradient } from '../../domain/types.js';
+import type { AuditFormData } from '../../domain/entities.js';
 
 export interface AuditFormOrchestratorConfig {
+  /** Form mode: 'create', 'edit', or 'view' */
+  mode?: AuditFormMode;
+  /** Audit data for edit/view modes */
+  audit?: Partial<AuditFormData>;
+  /** Audit ID for edit/view modes */
+  auditId?: string;
+  /** Scorecard ID */
+  scorecardId?: string;
+  /** Table name for the scorecard */
+  tableName?: string;
   timer?: AuditTimerConfig;
   header?: FormHeaderConfig;
   aiIndicator?: AIAuditIndicatorConfig;
@@ -20,6 +34,12 @@ export interface AuditFormOrchestratorConfig {
   formActions?: FormActionsConfig;
   onFormSubmit?: (formData: FormData) => void | Promise<void>;
   onFormCancel?: () => void;
+  /** Called when edit button is clicked in view mode */
+  onEdit?: () => void;
+  /** Called when acknowledge button is clicked in view mode */
+  onAcknowledge?: () => void;
+  /** Called when reversal request button is clicked in view mode */
+  onRequestReversal?: () => void;
 }
 
 export class AuditFormOrchestrator {
@@ -31,9 +51,121 @@ export class AuditFormOrchestrator {
   private formActions: FormActions | null = null;
   private config: AuditFormOrchestratorConfig;
   private formElement: HTMLFormElement | null = null;
+  private mode: AuditFormMode = 'create';
 
   constructor(config: AuditFormOrchestratorConfig = {}) {
     this.config = config;
+    this.mode = config.mode || 'create';
+  }
+
+  /**
+   * Get current mode
+   */
+  getMode(): AuditFormMode {
+    return this.mode;
+  }
+
+  /**
+   * Set mode and update UI accordingly
+   */
+  setMode(mode: AuditFormMode): void {
+    this.mode = mode;
+    this.updateModeUI();
+  }
+
+  /**
+   * Check if current mode is editable
+   */
+  isEditable(): boolean {
+    return isEditableMode(this.mode);
+  }
+
+  /**
+   * Update UI based on current mode
+   */
+  private updateModeUI(): void {
+    const isViewMode = this.mode === 'view';
+    
+    // Update form fields editability
+    if (this.formElement) {
+      const inputs = this.formElement.querySelectorAll('input, select, textarea');
+      inputs.forEach((input) => {
+        const el = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+        // Don't disable hidden fields
+        if (el.type === 'hidden') return;
+        
+        if (isViewMode) {
+          el.setAttribute('readonly', 'true');
+          if (el.tagName === 'SELECT') {
+            el.setAttribute('disabled', 'true');
+          }
+        } else {
+          el.removeAttribute('readonly');
+          el.removeAttribute('disabled');
+        }
+      });
+    }
+
+    // Update header title
+    if (this.header) {
+      const title = this.config.header?.headerOptions?.title || getDefaultHeaderTitle(this.mode);
+      this.header.updateTitle(title);
+    }
+
+    // Show/hide timer based on mode (timer only in create/edit modes)
+    if (this.timer) {
+      if (isViewMode) {
+        this.timer.hide();
+      } else {
+        this.timer.show();
+      }
+    }
+
+    // Update form actions visibility
+    this.updateFormActionsForMode();
+  }
+
+  /**
+   * Update form actions based on mode
+   */
+  private updateFormActionsForMode(): void {
+    const submitBtn = document.getElementById('submitAuditBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const editBtn = document.getElementById('editAuditBtn');
+    const acknowledgeBtn = document.getElementById('acknowledgeBtn');
+    const reversalBtn = document.getElementById('requestReversalBtn');
+
+    const isViewMode = this.mode === 'view';
+    const isCreateMode = this.mode === 'create';
+    const isEditMode = this.mode === 'edit';
+
+    // Submit button: visible in create/edit modes
+    if (submitBtn) {
+      submitBtn.style.display = (isCreateMode || isEditMode) ? '' : 'none';
+      if (submitBtn.textContent) {
+        submitBtn.textContent = isCreateMode ? 'Submit Audit' : 'Update Audit';
+      }
+    }
+
+    // Cancel button: visible in create/edit modes
+    if (cancelBtn) {
+      cancelBtn.style.display = (isCreateMode || isEditMode) ? '' : 'none';
+    }
+
+    // Edit button: visible in view mode (visibility controlled by permissions elsewhere)
+    if (editBtn) {
+      editBtn.style.display = isViewMode ? '' : 'none';
+    }
+
+    // Acknowledge button: visible in view mode (visibility controlled by permissions elsewhere)
+    if (acknowledgeBtn) {
+      acknowledgeBtn.style.display = isViewMode ? '' : 'none';
+    }
+
+    // Reversal button: visible in view mode (visibility controlled by permissions elsewhere)
+    if (reversalBtn) {
+      reversalBtn.style.display = isViewMode ? '' : 'none';
+    }
   }
 
   /**
@@ -42,10 +174,13 @@ export class AuditFormOrchestrator {
    */
   async initialize(formElement: HTMLFormElement): Promise<void> {
     this.formElement = formElement;
+    this.mode = this.config.mode || 'create';
 
-    // Initialize Timer - use existing timer element if it exists
+    const isViewMode = this.mode === 'view';
+
+    // Initialize Timer - use existing timer element if it exists (not in view mode)
     const existingTimer = document.getElementById('auditTimer');
-    if (existingTimer) {
+    if (existingTimer && !isViewMode) {
       const timerContainer = document.createElement('div');
       timerContainer.id = 'auditTimerContainer';
       existingTimer.parentNode?.insertBefore(timerContainer, existingTimer);
@@ -58,6 +193,9 @@ export class AuditFormOrchestrator {
         ...this.config.timer
       });
       this.timer.render(timerContainer);
+    } else if (existingTimer && isViewMode) {
+      // Hide timer in view mode
+      existingTimer.style.display = 'none';
     }
 
     // Initialize Header - enhance existing header
@@ -165,8 +303,8 @@ export class AuditFormOrchestrator {
       this.formActions.initializeWithExistingDOM();
     }
 
-    // Setup form submission handler
-    if (this.formElement) {
+    // Setup form submission handler (only in editable modes)
+    if (this.formElement && !isViewMode) {
       this.formElement.addEventListener('submit', (e) => {
         e.preventDefault();
         this.handleFormSubmit();
@@ -175,6 +313,81 @@ export class AuditFormOrchestrator {
 
     // Setup splitter if it exists
     this.setupSplitter();
+
+    // Apply mode-specific UI updates
+    this.updateModeUI();
+
+    console.log(`[Orchestrator] Initialized in ${this.mode} mode`);
+  }
+
+  /**
+   * Load audit data for edit/view modes
+   */
+  async loadAuditData(auditId: string, tableName: string, scorecardId?: string): Promise<boolean> {
+    try {
+      const { getAuditDataService } = await import('../../domain/services/audit-data-service.js');
+      const service = getAuditDataService();
+      
+      const result = await service.loadAudit(auditId, tableName, scorecardId);
+      
+      if (result.error || !result.audit) {
+        console.error('[Orchestrator] Failed to load audit:', result.error);
+        return false;
+      }
+
+      // Store audit data in config for components to access
+      this.config.audit = result.audit;
+      
+      // Populate form with audit data
+      await this.populateForm(result.audit);
+      
+      return true;
+    } catch (error) {
+      console.error('[Orchestrator] Error loading audit data:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Populate form with audit data
+   */
+  async populateForm(audit: Partial<AuditFormData>): Promise<void> {
+    if (!this.formElement) return;
+
+    // Map of field IDs to audit properties
+    const fieldMappings: Record<string, keyof AuditFormData> = {
+      'employeeEmail': 'employeeEmail',
+      'employeeName': 'employeeName',
+      'employeeType': 'employeeType',
+      'employeeDepartment': 'employeeDepartment',
+      'countryOfEmployee': 'countryOfEmployee',
+      'interactionId': 'interactionId',
+      'interactionDate': 'interactionDate',
+      'channel': 'channel',
+      'clientEmail': 'clientEmail',
+      'transcript': 'transcript',
+      'averageScore': 'averageScore',
+      'passingStatus': 'passingStatus',
+      'recommendations': 'recommendations',
+      'validationStatus': 'validationStatus',
+    };
+
+    for (const [fieldId, auditKey] of Object.entries(fieldMappings)) {
+      const element = document.getElementById(fieldId) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+      if (element && audit[auditKey] !== undefined && audit[auditKey] !== null) {
+        element.value = String(audit[auditKey]);
+      }
+    }
+
+    // Update header gradient based on passing status in view mode
+    if (this.mode === 'view' && audit.passingStatus) {
+      const header = document.getElementById('auditFormHeader');
+      if (header) {
+        header.style.background = getHeaderGradient(this.mode, audit.passingStatus);
+      }
+    }
+
+    console.log('[Orchestrator] Form populated with audit data');
   }
 
   /**

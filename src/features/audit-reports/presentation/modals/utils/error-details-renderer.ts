@@ -13,6 +13,54 @@ import type { ScorecardParameter } from './audit-detail-modal-renderer.js';
 export function generateErrorDetails(audit: AuditReport, parameters: ScorecardParameter[]): string {
   const isDarkMode = document.documentElement.getAttribute('data-theme') === 'dark';
   
+  // Debug: Log available feedback columns in audit data
+  const auditKeys = Object.keys(audit || {});
+  const feedbackKeys = auditKeys.filter(key => key.toLowerCase().includes('feedback'));
+  const parameterValueKeys = auditKeys.filter(key => 
+    !key.toLowerCase().includes('feedback') && 
+    !key.startsWith('_') &&
+    !['id', 'employee_email', 'employee_name', 'transcript', 'recommendations', 'created_at', 'updated_at', 'submitted_at'].includes(key.toLowerCase())
+  );
+  
+  console.log('[ErrorDetails] ===== ERROR DETAILS DEBUG =====');
+  console.log('[ErrorDetails] Total audit keys:', auditKeys.length);
+  console.log('[ErrorDetails] Available feedback columns:', feedbackKeys.length > 0 ? feedbackKeys : 'none found');
+  console.log('[ErrorDetails] Available parameter value columns (sample):', parameterValueKeys.slice(0, 15));
+  
+  if (feedbackKeys.length > 0) {
+    // Log sample feedback values
+    feedbackKeys.slice(0, 3).forEach(key => {
+      const value = (audit as any)[key];
+      console.log(`[ErrorDetails] Feedback "${key}":`, 
+        value === null ? 'null' : 
+        value === undefined ? 'undefined' : 
+        typeof value === 'string' ? `string(${value.length} chars)` :
+        Array.isArray(value) ? `array[${value.length}]` :
+        typeof value
+      );
+    });
+  }
+  console.log('[ErrorDetails] Parameters count:', parameters.length);
+  if (parameters.length > 0) {
+    console.log('[ErrorDetails] First 3 parameter field_ids:', parameters.slice(0, 3).map(p => p.field_id));
+    console.log('[ErrorDetails] Expected feedback keys:', parameters.slice(0, 3).map(p => `feedback_${p.field_id}`));
+    
+    // Try to match parameter field_ids to actual columns
+    parameters.slice(0, 3).forEach(param => {
+      const fieldId = param.field_id;
+      const matchingValueCol = parameterValueKeys.find(k => 
+        k.toLowerCase().includes(fieldId.toLowerCase()) || 
+        fieldId.toLowerCase().includes(k.toLowerCase().replace('_', ''))
+      );
+      const matchingFeedbackCol = feedbackKeys.find(k => 
+        k.toLowerCase().includes(fieldId.toLowerCase()) || 
+        fieldId.toLowerCase().includes(k.toLowerCase().replace('feedback_', '').replace('_', ''))
+      );
+      console.log(`[ErrorDetails] Parameter "${fieldId}": value_col="${matchingValueCol || 'NOT FOUND'}", feedback_col="${matchingFeedbackCol || 'NOT FOUND'}"`);
+    });
+  }
+  console.log('[ErrorDetails] ==============================');
+  
   // Build error fields from parameters, or use fallback defaults
   let errorFields: Array<{
     key: string;
@@ -25,17 +73,64 @@ export function generateErrorDetails(audit: AuditReport, parameters: ScorecardPa
   }>;
   
   if (parameters.length > 0) {
-    errorFields = parameters.map(param => ({
-      key: param.field_id,
-      label: param.error_name,
-      feedback: `feedback_${param.field_id}`,
-      severity: param.error_category.includes('Fail') ? 'Critical Fail' : 
-               param.error_category.includes('Critical') ? 'Critical' : 
-               'Significant',
-      field_type: param.field_type || 'counter',
-      parameter_type: param.parameter_type || 'error',
-      points: param.penalty_points || 0
-    }));
+    // Get all available keys from audit data for dynamic matching
+    const auditKeys = Object.keys(audit || {});
+    const auditKeysLower = auditKeys.map(k => k.toLowerCase());
+    
+    errorFields = parameters.map(param => {
+      const fieldId = param.field_id;
+      const fieldIdLower = fieldId.toLowerCase();
+      
+      // Try to find matching parameter value column (might have different name than field_id)
+      let matchingValueKey = auditKeys.find(k => {
+        const kLower = k.toLowerCase();
+        // Exact match
+        if (kLower === fieldIdLower) return true;
+        // Contains field_id
+        if (kLower.includes(fieldIdLower) || fieldIdLower.includes(kLower.replace(/_/g, ''))) return true;
+        // Try matching by removing common suffixes/prefixes
+        const kClean = kLower.replace(/^(error_|count_|total_)/, '').replace(/_count$|_errors$/, '');
+        const fieldIdClean = fieldIdLower.replace(/_deduction$|_error$/, '');
+        if (kClean === fieldIdClean || kClean.includes(fieldIdClean) || fieldIdClean.includes(kClean)) return true;
+        return false;
+      });
+      
+      // Try to find matching feedback column
+      let matchingFeedbackKey = auditKeys.find(k => {
+        const kLower = k.toLowerCase();
+        if (!kLower.includes('feedback')) return false;
+        const kWithoutFeedback = kLower.replace('feedback_', '').replace('_', '');
+        const fieldIdClean = fieldIdLower.replace(/_deduction$|_error$/, '').replace(/_/g, '');
+        // Exact match after removing feedback prefix
+        if (kWithoutFeedback === fieldIdLower) return true;
+        // Contains field_id
+        if (kWithoutFeedback.includes(fieldIdClean) || fieldIdClean.includes(kWithoutFeedback)) return true;
+        return false;
+      });
+      
+      // Use found keys or fallback to expected pattern
+      const valueKey = matchingValueKey || fieldId;
+      const feedbackKey = matchingFeedbackKey || `feedback_${fieldId}`;
+      
+      if (matchingValueKey && matchingValueKey !== fieldId) {
+        console.log(`[ErrorDetails] Mapped parameter "${fieldId}" to value column "${matchingValueKey}"`);
+      }
+      if (matchingFeedbackKey && matchingFeedbackKey !== `feedback_${fieldId}`) {
+        console.log(`[ErrorDetails] Mapped parameter "${fieldId}" to feedback column "${matchingFeedbackKey}"`);
+      }
+      
+      return {
+        key: valueKey, // Use actual column name from database
+        label: param.error_name,
+        feedback: feedbackKey, // Use actual feedback column name from database
+        severity: param.error_category.includes('Fail') ? 'Critical Fail' : 
+                 param.error_category.includes('Critical') ? 'Critical' : 
+                 'Significant',
+        field_type: param.field_type || 'counter',
+        parameter_type: param.parameter_type || 'error',
+        points: param.penalty_points || 0
+      };
+    });
   } else {
     // Fallback to default fields if no parameters loaded
     errorFields = [
@@ -56,13 +151,44 @@ export function generateErrorDetails(audit: AuditReport, parameters: ScorecardPa
     ];
   }
 
-  // Calculate totals
+  // Filter error parameters: only show error parameters that have values or feedback
+  // For non-error parameters (achievements/bonus), always show them
+  const filteredErrorFields = errorFields.filter(field => {
+    // If it's not an error parameter, always show it
+    if (field.parameter_type !== 'error') {
+      return true;
+    }
+    
+    // For error parameters, only show if they have a value > 0 OR have feedback
+    const camelKey = field.key;
+    const snakeKey = camelKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+    const rawValue = audit[camelKey] ?? audit[snakeKey] ?? (audit as any)[camelKey] ?? (audit as any)[snakeKey];
+    const count = rawValue ? parseInt(String(rawValue)) : 0;
+    
+    // Check if there's feedback
+    const feedbackKey = field.feedback;
+    const feedbackData = (audit as any)[feedbackKey] ?? 
+                         (audit as any)[feedbackKey.replace(/([A-Z])/g, '_$1').toLowerCase()];
+    const hasFeedback = feedbackData && (
+      (typeof feedbackData === 'string' && feedbackData.trim()) ||
+      (Array.isArray(feedbackData) && feedbackData.some(f => f && String(f).trim()))
+    );
+    
+    // Show if count > 0 OR has feedback
+    return count > 0 || hasFeedback;
+  });
+  
+  // Calculate totals from filtered error fields
   let criticalFailTotal = 0;
   let criticalTotal = 0;
   let significantTotal = 0;
   
-  errorFields.forEach(field => {
-    const count = audit[field.key] ? parseInt(String(audit[field.key])) : 0;
+  filteredErrorFields.forEach(field => {
+    // Try both camelCase and snake_case field names
+    const camelKey = field.key;
+    const snakeKey = camelKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+    const rawValue = audit[camelKey] ?? audit[snakeKey] ?? (audit as any)[camelKey] ?? (audit as any)[snakeKey];
+    const count = rawValue ? parseInt(String(rawValue)) : 0;
     if (count > 0) {
       if (field.severity === 'Critical Fail') {
         criticalFailTotal += count;
@@ -74,8 +200,11 @@ export function generateErrorDetails(audit: AuditReport, parameters: ScorecardPa
     }
   });
   
-  const errorRows = errorFields.map(field => {
-    const rawValue = audit[field.key];
+  const errorRows = filteredErrorFields.map(field => {
+    // Try both camelCase and snake_case field names for parameter values
+    const camelKey = field.key;
+    const snakeKey = camelKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+    const rawValue = audit[camelKey] ?? audit[snakeKey] ?? (audit as any)[camelKey] ?? (audit as any)[snakeKey];
     let displayValue = '';
     let count = 0;
     
@@ -88,8 +217,110 @@ export function generateErrorDetails(audit: AuditReport, parameters: ScorecardPa
       displayValue = count.toString();
     }
     
-    const feedbackKey = field.feedback;
-    const feedback = audit[feedbackKey] && String(audit[feedbackKey]).trim() ? String(audit[feedbackKey]) : '-';
+    // Try multiple variations of feedback key to find the feedback data
+    // Feedback keys are typically stored as: feedback_${field_id} (snake_case)
+    const feedbackKey = field.feedback; // e.g., "feedback_revenue_or_policy_violation"
+    
+    // Get all keys from audit object for case-insensitive search
+    const auditKeys = Object.keys(audit || {});
+    const auditKeysLower = auditKeys.map(k => k.toLowerCase());
+    
+    // Try direct access first (most common)
+    let feedbackData = (audit as any)[feedbackKey];
+    
+    // If not found, try case-insensitive search
+    if (!feedbackData) {
+      const feedbackKeyLower = feedbackKey.toLowerCase();
+      const matchingKey = auditKeys.find(k => k.toLowerCase() === feedbackKeyLower);
+      if (matchingKey) {
+        feedbackData = (audit as any)[matchingKey];
+      }
+    }
+    
+    // If still not found, try snake_case variations
+    if (!feedbackData) {
+      const feedbackSnakeKey = feedbackKey.replace(/([A-Z])/g, '_$1').toLowerCase();
+      feedbackData = (audit as any)[feedbackSnakeKey];
+      if (!feedbackData) {
+        const matchingKey = auditKeys.find(k => k.toLowerCase() === feedbackSnakeKey.toLowerCase());
+        if (matchingKey) {
+          feedbackData = (audit as any)[matchingKey];
+        }
+      }
+    }
+    
+    // If still not found, try accessing via field key pattern
+    if (!feedbackData && field.key) {
+      const fieldKeySnake = field.key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      const alternativeFeedbackKey = `feedback_${fieldKeySnake}`;
+      feedbackData = (audit as any)[alternativeFeedbackKey];
+      if (!feedbackData) {
+        const matchingKey = auditKeys.find(k => k.toLowerCase() === alternativeFeedbackKey.toLowerCase());
+        if (matchingKey) {
+          feedbackData = (audit as any)[matchingKey];
+        }
+      }
+    }
+    
+    // Also try camelCase version
+    if (!feedbackData && field.key) {
+      const alternativeFeedbackKeyCamel = `feedback${field.key.charAt(0).toUpperCase() + field.key.slice(1)}`;
+      feedbackData = (audit as any)[alternativeFeedbackKeyCamel];
+      if (!feedbackData) {
+        const matchingKey = auditKeys.find(k => k.toLowerCase() === alternativeFeedbackKeyCamel.toLowerCase());
+        if (matchingKey) {
+          feedbackData = (audit as any)[matchingKey];
+        }
+      }
+    }
+    
+    // Last resort: search for any column that contains the field_id and "feedback"
+    if (!feedbackData && field.key) {
+      const fieldIdLower = field.key.toLowerCase();
+      const matchingFeedbackKey = auditKeys.find(k => {
+        const kLower = k.toLowerCase();
+        return kLower.includes('feedback') && kLower.includes(fieldIdLower);
+      });
+      if (matchingFeedbackKey) {
+        feedbackData = (audit as any)[matchingFeedbackKey];
+        console.log(`[ErrorDetails] Found feedback via fuzzy search: "${matchingFeedbackKey}" for field "${field.key}"`);
+      }
+    }
+    
+    let feedback = '-';
+    
+    // Handle feedback - support both old format (string) and new format (JSON array)
+    if (feedbackData) {
+      if (typeof feedbackData === 'string') {
+        // Try to parse as JSON array, fallback to single string
+        try {
+          const parsed = JSON.parse(feedbackData);
+          if (Array.isArray(parsed)) {
+            // Filter out empty feedbacks and join with separator
+            const filtered = parsed.filter(f => f && String(f).trim());
+            feedback = filtered.length > 0 ? filtered.join('\n\n---\n\n') : '-';
+          } else if (parsed && String(parsed).trim()) {
+            feedback = String(parsed);
+          }
+        } catch (e) {
+          // If not valid JSON, treat as single string (backward compatibility)
+          if (feedbackData.trim()) {
+            feedback = feedbackData;
+          }
+        }
+      } else if (Array.isArray(feedbackData)) {
+        // Already an array - filter and join
+        const filtered = feedbackData.filter(f => f && String(f).trim());
+        feedback = filtered.length > 0 ? filtered.join('\n\n---\n\n') : '-';
+      } else if (feedbackData && String(feedbackData).trim()) {
+        feedback = String(feedbackData);
+      }
+    }
+    
+    // Debug logging for first few fields to help troubleshoot
+    if (filteredErrorFields.indexOf(field) < 3) {
+      console.log(`[ErrorDetails] Field: ${field.key}, FeedbackKey: ${feedbackKey}, Found: ${!!feedbackData}, Value: ${feedback !== '-' ? 'has feedback' : 'no feedback'}`);
+    }
     
     let severityColor = '#3b82f6';
     let severityBg = '#eff6ff';

@@ -2083,6 +2083,9 @@ async function loadAuditFromURL() {
     }
 
     currentTableName = tableName;
+    
+    // Store URL params for error handling
+    const urlParamsForError = { auditId, scorecardId, tableName };
 
     try {
         console.log('[audit-view] Waiting for Supabase client...');
@@ -2094,16 +2097,23 @@ async function loadAuditFromURL() {
             throw new Error('Supabase client not initialized - timeout or initialization failed');
         }
         
+        // Set window.supabaseClient for backward compatibility with existing code
+        window.supabaseClient = supabaseClient;
+        console.log('[audit-view] Supabase client set globally for backward compatibility');
+        
         // Verify auth session is available
         try {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.warn('[audit-view] Error checking auth session:', sessionError);
+            }
             if (session) {
-                console.log('Auth session verified for audit-view:', session.user?.email);
+                console.log('[audit-view] Auth session verified:', session.user?.email);
             } else {
-                console.warn('No auth session found, query may fail due to RLS');
+                console.warn('[audit-view] No auth session found, query may fail due to RLS');
             }
         } catch (e) {
-            console.warn('Could not verify auth session:', e);
+            console.warn('[audit-view] Could not verify auth session:', e);
         }
 
         // Load audit data
@@ -2135,10 +2145,24 @@ async function loadAuditFromURL() {
             data = null;
         }
 
-        if (error) throw error;
-        if (!data) throw new Error('Audit not found');
+        if (error) {
+            console.error('[audit-view] Error loading audit data:', error);
+            throw error;
+        }
+        if (!data) {
+            console.error('[audit-view] Audit data is null or undefined');
+            throw new Error('Audit not found');
+        }
 
-        console.log('[audit-view] Audit data loaded successfully:', { id: data.id, employeeName: data.employee_name });
+        console.log('[audit-view] Audit data loaded successfully:', { 
+            id: data.id, 
+            employeeName: data.employee_name,
+            employeeEmail: data.employee_email,
+            averageScore: data.average_score,
+            totalErrors: data.total_errors_count,
+            hasTranscript: !!data.transcript,
+            scorecardId: data.scorecard_id
+        });
         currentAudit = data;
         
         // Get scorecard ID from URL parameter, or try to get it from audit data or table name
@@ -2329,26 +2353,42 @@ async function loadAuditFromURL() {
 
         if (finalScorecardId) {
             try {
-                // Load scorecard info
-                const { data: scorecardData, error: scorecardError } = await window.supabaseClient
+                console.log('[audit-view] Loading scorecard info for ID:', finalScorecardId);
+                // Use the same supabaseClient instance that was used to load the audit
+                const { data: scorecardData, error: scorecardError } = await supabaseClient
                     .from('scorecards')
                     .select('*')
                     .eq('id', finalScorecardId)
                     .single();
 
-                if (!scorecardError && scorecardData) {
+                if (scorecardError) {
+                    console.error('[audit-view] Error loading scorecard:', scorecardError);
+                    throw new Error(`Failed to load scorecard: ${scorecardError.message}`);
+                }
+
+                if (scorecardData) {
                     auditScorecard = scorecardData;
+                    console.log('[audit-view] Scorecard loaded:', scorecardData.name);
+                } else {
+                    console.warn('[audit-view] Scorecard not found for ID:', finalScorecardId);
                 }
 
                 // Load parameters
-                const { data: parameters, error: paramsError } = await window.supabaseClient
+                console.log('[audit-view] Loading scorecard parameters for scorecard ID:', finalScorecardId);
+                const { data: parameters, error: paramsError } = await supabaseClient
                     .from('scorecard_perameters')
                     .select('*')
                     .eq('scorecard_id', finalScorecardId)
                     .eq('is_active', true)
                     .order('display_order', { ascending: true });
 
-                if (!paramsError && parameters) {
+                if (paramsError) {
+                    console.error('[audit-view] Error loading scorecard parameters:', paramsError);
+                    throw new Error(`Failed to load scorecard parameters: ${paramsError.message}`);
+                }
+
+                if (parameters && parameters.length > 0) {
+                    console.log('[audit-view] Loaded', parameters.length, 'scorecard parameters');
                     errorFields = parameters.map(param => {
                         // Map error category to severity label
                         const category = param.error_category || '';
@@ -2375,10 +2415,19 @@ async function loadAuditFromURL() {
                             points: param.penalty_points || 0
                         };
                     });
+                } else {
+                    console.warn('[audit-view] No active parameters found for scorecard ID:', finalScorecardId);
                 }
             } catch (err) {
-                console.error('Error loading scorecard parameters:', err);
+                console.error('[audit-view] Error loading scorecard parameters:', err);
+                // Don't throw - continue with empty errorFields so the audit can still be displayed
+                // but log the error for debugging
+                if (err.message) {
+                    console.error('[audit-view] Error details:', err.message);
+                }
             }
+        } else {
+            console.warn('[audit-view] No scorecard ID provided, cannot load parameters');
         }
 
         // Store errorFields globally for reversal form
@@ -2392,12 +2441,34 @@ async function loadAuditFromURL() {
 
         // Render the audit
         try {
-        console.log('[audit-view] Starting renderAudit with', { auditId: audit.id, hasScorecard: !!auditScorecard, errorFieldsCount: errorFields.length });
+        console.log('[audit-view] Starting renderAudit with', { 
+            auditId: audit.id, 
+            hasScorecard: !!auditScorecard, 
+            errorFieldsCount: errorFields.length,
+            hasEmployeeName: !!audit.employeeName,
+            hasAverageScore: audit.averageScore !== undefined,
+            hasParameters: errorFields.length > 0
+        });
+        
+        // Verify all required data is present before rendering
+        if (!audit.employeeName && !audit.employee_name) {
+            console.warn('[audit-view] Warning: Employee name not found in audit data');
+        }
+        if (audit.averageScore === undefined && audit.average_score === undefined) {
+            console.warn('[audit-view] Warning: Average score not found in audit data');
+        }
+        if (errorFields.length === 0 && finalScorecardId) {
+            console.warn('[audit-view] Warning: No parameters loaded for scorecard:', finalScorecardId);
+        }
+        
         await renderAudit(audit, auditScorecard, errorFields);
         console.log('[audit-view] renderAudit completed successfully');
 
         // Hide loading indicator
-        document.getElementById('loadingIndicator').style.display = 'none';
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
         } catch (renderError) {
             console.error('[audit-view] Error rendering audit:', renderError);
             showError('Error rendering audit: ' + (renderError.message || 'Unknown error'));
@@ -2405,7 +2476,45 @@ async function loadAuditFromURL() {
 
     } catch (error) {
         console.error('[audit-view] Error loading audit:', error);
-        showError(error.message);
+        
+        // Enhanced error message with troubleshooting info
+        let errorMessage = error.message || 'Unknown error occurred';
+        
+        // Check if it's a network/connection error
+        if (error.message && (
+            error.message.includes('Failed to fetch') ||
+            error.message.includes('NetworkError') ||
+            error.message.includes('timeout') ||
+            error.message.includes('not initialized')
+        )) {
+            errorMessage = `Database connection error: ${error.message}\n\nPlease check:\n1. Your internet connection\n2. Database server status\n3. Try refreshing the page`;
+        }
+        
+        // Check if it's an RLS (Row Level Security) error
+        if (error.message && (
+            error.message.includes('permission denied') ||
+            error.message.includes('row-level security') ||
+            error.message.includes('RLS')
+        )) {
+            errorMessage = `Access denied: ${error.message}\n\nYou may not have permission to view this audit. Please contact your administrator.`;
+        }
+        
+        // Check if it's a missing data error
+        if (error.message && (
+            error.message.includes('not found') ||
+            error.message.includes('Missing')
+        )) {
+            errorMessage = `Data not found: ${error.message}\n\nThe audit may have been deleted or moved.`;
+        }
+        
+        showError(errorMessage);
+        
+        // Log detailed error for debugging
+        console.error('[audit-view] Full error details:', {
+            message: error.message,
+            stack: error.stack,
+            urlParams: urlParamsForError
+        });
     }
 }
 

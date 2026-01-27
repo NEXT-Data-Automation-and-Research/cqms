@@ -290,7 +290,32 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       logWarn('⚠️ Could not fetch full user profile from database, using metadata:', error);
     }
 
+    // Fetch role and other profile data from people table (critical for role-based access control)
+    let peopleData: { role?: string; department?: string; designation?: string; team?: string; team_supervisor?: string } | null = null;
+    try {
+      const userEmail = (fullUserData?.email || user.email || '').toLowerCase().trim();
+      const { data: peopleResult, error: peopleError } = await supabase
+        .from('people')
+        .select('role, department, designation, team, team_supervisor')
+        .eq('email', userEmail)
+        .maybeSingle();
+      
+      if (!peopleError && peopleResult) {
+        peopleData = peopleResult;
+        logInfo('✅ Loaded role and profile data from people table:', { 
+          role: peopleResult.role, 
+          department: peopleResult.department,
+          designation: peopleResult.designation 
+        });
+      } else if (peopleError) {
+        logWarn('⚠️ Could not fetch role from people table:', peopleError);
+      }
+    } catch (error) {
+      logWarn('⚠️ Could not fetch people data:', error);
+    }
+
     // Save user info to localStorage with database data if available
+    // IMPORTANT: Include role from people table for role-based access control
     const userInfo = {
       id: user.id,
       email: fullUserData?.email || user.email,
@@ -299,10 +324,16 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       picture: fullUserData?.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       avatar_url: fullUserData?.avatar_url || null,
       provider: 'google',
+      // Role-based access control fields (from people table)
+      role: peopleData?.role || 'Employee', // Default to Employee if not found
+      department: peopleData?.department || null,
+      designation: peopleData?.designation || null,
+      team: peopleData?.team || null,
+      team_supervisor: peopleData?.team_supervisor || null,
     };
 
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
-    logInfo('✅ Updated localStorage with full user profile data');
+    logInfo('✅ Updated localStorage with full user profile data including role:', userInfo.role);
 
     // ✅ SECURITY: Store device fingerprint for this session to prevent token copying
     // ✅ FIX: Pass userId to ensure fingerprint is stored with user-based key

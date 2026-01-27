@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notification Test | CQMS</title>
+<meta name="description" content="Quality Management System - Notification Testing">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/sidebar.css">
+
+<script type="importmap">
+{
+  "imports": {
+    "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+    "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+  }
+}
+</script>
+
+<!-- Authentication Guard - Must be loaded first -->
+<script type="module" src="/js/auth-checker.js"></script>
+
+<!-- Sidebar Loader -->
+<script type="module" src="/js/load-sidebar.js" defer></script>
+
+<style>
+.notification-test-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.test-section {
+  background: white;
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.test-section h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.test-section h2 svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+}
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.375rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.user-select-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.user-select-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+}
+
+.user-select-header label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+.selected-count {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.user-list {
+  padding: 0.5rem;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+
+.user-item:hover {
+  background: #f3f4f6;
+}
+
+.user-item input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+}
+
+.user-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-item-email {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-item-role {
+  font-size: 0.625rem;
+  font-weight: 500;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  background: #e5e7eb;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #3b82f6;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-primary:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.btn-primary svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+.button-group {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.alert {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.alert-success {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+.alert-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+}
+
+.alert-info {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+}
+
+.alert svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.alert-message {
+  flex: 1;
+}
+
+.notification-preview {
+  background: #1f2937;
+  color: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 320px;
+  margin-top: 1rem;
+}
+
+.notification-preview-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: #3b82f6;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notification-preview-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.notification-preview-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.notification-preview-body {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+}
+
+.status-indicator.granted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-indicator.denied {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-indicator.default {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.permission-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.permission-info h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.permission-info p {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.search-input-container {
+  position: relative;
+  margin-bottom: 0.5rem;
+}
+
+.search-input-container input {
+  padding-left: 2.5rem;
+}
+
+.search-input-container svg {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: #9ca3af;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+
+.empty-state svg {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  color: #9ca3af;
+}
+
+.notification-history {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.history-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.375rem;
+}
+
+.history-item-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+.history-item-time {
+  font-size: 0.625rem;
+  color: #9ca3af;
+}
+
+.history-item-body {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+</style>
+</head>
+
+<body>
+<!-- Sidebar will be loaded dynamically by load-sidebar.js -->
+<main class="main-content" role="main">
+  <h1 class="page-heading-global">Notification Test Center</h1>
+
+  <div class="notification-test-container">
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- Browser Permission Section -->
+    <div class="test-section">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        Browser Notification Permission
+      </h2>
+      
+      <div class="permission-section">
+        <div class="permission-info">
+          <h3>Current Status</h3>
+          <p id="permissionDescription">Checking browser permission status...</p>
+        </div>
+        <div id="permissionStatus">
+          <span class="status-indicator default">Checking...</span>
+        </div>
+      </div>
+      
+      <button id="requestPermissionBtn" class="btn-primary" style="display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Enable Browser Notifications
+      </button>
+    </div>
+
+    <!-- Send Notification Section -->
+    <div class="test-section">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+        Send Test Notification
+      </h2>
+
+      <form id="sendNotificationForm">
+        <div class="form-group">
+          <label for="notificationTitle">Title *</label>
+          <input type="text" id="notificationTitle" placeholder="Enter notification title" required maxlength="100">
+        </div>
+
+        <div class="form-group">
+          <label for="notificationBody">Body *</label>
+          <textarea id="notificationBody" placeholder="Enter notification message" required maxlength="500"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="notificationType">Type</label>
+          <select id="notificationType">
+            <option value="info">Info</option>
+            <option value="success">Success</option>
+            <option value="warning">Warning</option>
+            <option value="error">Error</option>
+            <option value="system">System</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="notificationCategory">Category</label>
+          <select id="notificationCategory">
+            <option value="system">System</option>
+            <option value="task">Task</option>
+            <option value="message">Message</option>
+            <option value="reminder">Reminder</option>
+            <option value="audit">Audit</option>
+            <option value="reversal">Reversal</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="actionUrl">Action URL (optional)</label>
+          <input type="text" id="actionUrl" placeholder="/path/to/page">
+        </div>
+
+        <!-- User Selection -->
+        <div class="form-group">
+          <label>Select Recipients *</label>
+          <div class="search-input-container">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="text" id="userSearchInput" placeholder="Search users...">
+          </div>
+          <div class="user-select-container">
+            <div class="user-select-header">
+              <label>
+                <input type="checkbox" id="selectAllUsers">
+                Select All
+              </label>
+              <span class="selected-count" id="selectedCount">0 selected</span>
+            </div>
+            <div class="user-list" id="userList">
+              <div class="empty-state">
+                <div class="loading-spinner"></div>
+                <p>Loading users...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Preview -->
+        <div class="form-group">
+          <label>Preview</label>
+          <div class="notification-preview">
+            <div class="notification-preview-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="white" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/>
+              </svg>
+            </div>
+            <div class="notification-preview-content">
+              <div class="notification-preview-title" id="previewTitle">Notification Title</div>
+              <div class="notification-preview-body" id="previewBody">Notification message will appear here...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="button-group">
+          <button type="submit" class="btn-primary" id="sendBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+            Send Notification
+          </button>
+          <button type="button" class="btn-secondary" id="testSelfBtn">
+            Test on Myself
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Self Test Section -->
+    <div class="test-section">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+        </svg>
+        Quick Browser Test
+      </h2>
+      <p style="color: #6b7280; font-size: 0.875rem; margin-bottom: 1rem;">
+        Send a test notification directly to your browser (bypasses database).
+      </p>
+      <button type="button" class="btn-secondary" id="browserTestBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+        </svg>
+        Show Browser Notification
+      </button>
+    </div>
+
+    <!-- Subscription Status Section -->
+    <div class="test-section">
+      <h2>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        Push Subscription Status
+      </h2>
+      <div id="subscriptionStatus">
+        <p style="color: #6b7280; font-size: 0.875rem;">Checking subscription status...</p>
+      </div>
+      <button type="button" class="btn-secondary" id="subscribeBtn" style="margin-top: 1rem; display: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Subscribe to Push Notifications
+      </button>
+    </div>
+  </div>
+</main>
+
+<script type="module">
+import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
+
+// State
+let users = [];
+let selectedUserIds = new Set();
+let currentUserId = null;
+let csrfToken = null;
+let supabaseClient = null;
+
+/**
+ * Wait for Supabase to be initialized
+ */
+async function waitForSupabase() {
+  // First try to initialize directly
+  supabaseClient = await initSupabase();
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+
+  // If not available, wait for the ready event
+  return new Promise((resolve) => {
+    if (window.supabaseReady && getSupabase()) {
+      supabaseClient = getSupabase();
+      resolve(supabaseClient);
+      return;
+    }
+
+    const handler = () => {
+      supabaseClient = getSupabase();
+      window.removeEventListener('supabaseReady', handler);
+      resolve(supabaseClient);
+    };
+    window.addEventListener('supabaseReady', handler);
+
+    // Timeout after 10 seconds
+    setTimeout(() => {
+      window.removeEventListener('supabaseReady', handler);
+      supabaseClient = getSupabase();
+      resolve(supabaseClient);
+    }, 10000);
+  });
+}
+
+/**
+ * Get authentication token from Supabase
+ */
+async function getAuthToken() {
+  if (!supabaseClient) {
+    supabaseClient = await waitForSupabase();
+  }
+  if (!supabaseClient) return null;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  return session?.access_token || null;
+}
+
+/**
+ * Make an authenticated API request with CSRF handling
+ */
+async function apiRequest(endpoint, options = {}) {
+  const token = await getAuthToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+
+  const method = options.method || 'GET';
+  const needsCSRF = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase());
+
+  // If we need CSRF, fetch a fresh token from a GET request
+  if (needsCSRF && !csrfToken) {
+    try {
+      const tokenResponse = await fetch('/api/notifications', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      csrfToken = tokenResponse.headers.get('X-CSRF-Token') || tokenResponse.headers.get('x-csrf-token');
+    } catch (e) {
+      console.warn('Failed to get CSRF token:', e);
+    }
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+    ...(needsCSRF && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
+    ...options.headers
+  };
+
+  const response = await fetch(endpoint, { ...options, headers });
+  const data = await response.json();
+
+  // Refresh CSRF token from response
+  const newToken = response.headers.get('X-CSRF-Token') || response.headers.get('x-csrf-token');
+  if (newToken) csrfToken = newToken;
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Request failed');
+  }
+
+  return data;
+}
+
+// DOM Elements
+const alertContainer = document.getElementById('alertContainer');
+const permissionStatus = document.getElementById('permissionStatus');
+const permissionDescription = document.getElementById('permissionDescription');
+const requestPermissionBtn = document.getElementById('requestPermissionBtn');
+const sendNotificationForm = document.getElementById('sendNotificationForm');
+const userList = document.getElementById('userList');
+const userSearchInput = document.getElementById('userSearchInput');
+const selectAllUsers = document.getElementById('selectAllUsers');
+const selectedCount = document.getElementById('selectedCount');
+const sendBtn = document.getElementById('sendBtn');
+const testSelfBtn = document.getElementById('testSelfBtn');
+const browserTestBtn = document.getElementById('browserTestBtn');
+const subscriptionStatus = document.getElementById('subscriptionStatus');
+const subscribeBtn = document.getElementById('subscribeBtn');
+
+// Preview elements
+const previewTitle = document.getElementById('previewTitle');
+const previewBody = document.getElementById('previewBody');
+const notificationTitle = document.getElementById('notificationTitle');
+const notificationBody = document.getElementById('notificationBody');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializePage();
+});
+
+async function initializePage() {
+  // Wait for Supabase to be initialized
+  try {
+    await waitForSupabase();
+    if (!supabaseClient) {
+      console.error('Failed to initialize Supabase');
+      showAlert('error', 'Failed to initialize. Please refresh the page.');
+      return;
+    }
+  } catch (error) {
+    console.error('Error initializing Supabase:', error);
+    showAlert('error', 'Failed to initialize. Please refresh the page.');
+    return;
+  }
+
+  // Get current user
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (user) {
+      currentUserId = user.id;
+    }
+  } catch (error) {
+    console.error('Error getting user:', error);
+  }
+
+  // Check browser permission
+  updatePermissionStatus();
+  
+  // Load users
+  await loadUsers();
+  
+  // Check subscription status
+  await checkSubscriptionStatus();
+  
+  // Setup event listeners
+  setupEventListeners();
+}
+
+function updatePermissionStatus() {
+  if (!('Notification' in window)) {
+    permissionStatus.innerHTML = '<span class="status-indicator denied">Not Supported</span>';
+    permissionDescription.textContent = 'Your browser does not support notifications.';
+    return;
+  }
+
+  const permission = Notification.permission;
+  
+  if (permission === 'granted') {
+    permissionStatus.innerHTML = '<span class="status-indicator granted">Enabled</span>';
+    permissionDescription.textContent = 'Browser notifications are enabled. You will receive push notifications.';
+    requestPermissionBtn.style.display = 'none';
+  } else if (permission === 'denied') {
+    permissionStatus.innerHTML = '<span class="status-indicator denied">Blocked</span>';
+    permissionDescription.textContent = 'Browser notifications are blocked. Please enable them in browser settings.';
+    requestPermissionBtn.style.display = 'none';
+  } else {
+    permissionStatus.innerHTML = '<span class="status-indicator default">Not Set</span>';
+    permissionDescription.textContent = 'Browser notifications have not been enabled yet.';
+    requestPermissionBtn.style.display = 'inline-flex';
+  }
+}
+
+async function loadUsers() {
+  try {
+    const result = await apiRequest('/api/notifications/users');
+    users = result.data || [];
+    renderUserList(users);
+  } catch (error) {
+    console.error('Error loading users:', error);
+    userList.innerHTML = `
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <p>Failed to load users</p>
+      </div>
+    `;
+  }
+}
+
+function renderUserList(usersToRender) {
+  if (usersToRender.length === 0) {
+    userList.innerHTML = `
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+        <p>No users found</p>
+      </div>
+    `;
+    return;
+  }
+
+  userList.innerHTML = usersToRender.map(user => `
+    <label class="user-item" data-user-id="${user.id}">
+      <input type="checkbox" ${selectedUserIds.has(user.id) ? 'checked' : ''}>
+      <div class="user-item-info">
+        <div class="user-item-name">${escapeHtml(user.full_name || 'Unnamed User')}</div>
+        <div class="user-item-email">${escapeHtml(user.email)}</div>
+      </div>
+      <span class="user-item-role">${escapeHtml(user.role || 'User')}</span>
+    </label>
+  `).join('');
+
+  // Add click handlers
+  userList.querySelectorAll('.user-item input').forEach(checkbox => {
+    checkbox.addEventListener('change', (e) => {
+      const userId = e.target.closest('.user-item').dataset.userId;
+      if (e.target.checked) {
+        selectedUserIds.add(userId);
+      } else {
+        selectedUserIds.delete(userId);
+      }
+      updateSelectedCount();
+    });
+  });
+}
+
+function updateSelectedCount() {
+  selectedCount.textContent = `${selectedUserIds.size} selected`;
+  selectAllUsers.checked = selectedUserIds.size === users.length && users.length > 0;
+  selectAllUsers.indeterminate = selectedUserIds.size > 0 && selectedUserIds.size < users.length;
+}
+
+async function checkSubscriptionStatus() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    subscriptionStatus.innerHTML = '<p style="color: #6b7280; font-size: 0.875rem;">Push notifications are not supported in this browser.</p>';
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      subscriptionStatus.innerHTML = `
+        <div class="alert alert-success">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="alert-message">
+            <strong>Subscribed!</strong> You are subscribed to push notifications on this device.
+          </div>
+        </div>
+      `;
+      subscribeBtn.style.display = 'none';
+    } else {
+      subscriptionStatus.innerHTML = `
+        <div class="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="alert-message">
+            <strong>Not Subscribed</strong> Enable push notifications to receive alerts on this device.
+          </div>
+        </div>
+      `;
+      subscribeBtn.style.display = 'inline-flex';
+    }
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    subscriptionStatus.innerHTML = '<p style="color: #6b7280; font-size: 0.875rem;">Unable to check subscription status.</p>';
+  }
+}
+
+function setupEventListeners() {
+  // Request permission button
+  requestPermissionBtn.addEventListener('click', async () => {
+    const permission = await Notification.requestPermission();
+    updatePermissionStatus();
+    if (permission === 'granted') {
+      showAlert('success', 'Browser notifications enabled!');
+    }
+  });
+
+  // Select all users
+  selectAllUsers.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      users.forEach(user => selectedUserIds.add(user.id));
+    } else {
+      selectedUserIds.clear();
+    }
+    renderUserList(users);
+    updateSelectedCount();
+  });
+
+  // Search users
+  userSearchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    const filtered = users.filter(user => 
+      (user.full_name || '').toLowerCase().includes(query) ||
+      (user.email || '').toLowerCase().includes(query) ||
+      (user.role || '').toLowerCase().includes(query)
+    );
+    renderUserList(filtered);
+  });
+
+  // Live preview
+  notificationTitle.addEventListener('input', (e) => {
+    previewTitle.textContent = e.target.value || 'Notification Title';
+  });
+
+  notificationBody.addEventListener('input', (e) => {
+    previewBody.textContent = e.target.value || 'Notification message will appear here...';
+  });
+
+  // Send notification form
+  sendNotificationForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await sendNotification();
+  });
+
+  // Test on self button
+  testSelfBtn.addEventListener('click', async () => {
+    if (!currentUserId) {
+      showAlert('error', 'Could not determine your user ID');
+      return;
+    }
+    selectedUserIds.clear();
+    selectedUserIds.add(currentUserId);
+    renderUserList(users);
+    updateSelectedCount();
+    await sendNotification();
+  });
+
+  // Browser test button
+  browserTestBtn.addEventListener('click', () => {
+    if (Notification.permission !== 'granted') {
+      showAlert('error', 'Please enable browser notifications first');
+      return;
+    }
+
+    new Notification('CQMS Test Notification', {
+      body: 'This is a test notification from the CQMS notification system.',
+      icon: '/icon.png',
+      badge: '/badge.png',
+      tag: 'test-notification',
+      requireInteraction: false
+    });
+
+    showAlert('success', 'Browser notification sent!');
+  });
+
+  // Subscribe button
+  subscribeBtn.addEventListener('click', async () => {
+    await subscribeToPush();
+  });
+}
+
+async function sendNotification() {
+  if (selectedUserIds.size === 0) {
+    showAlert('error', 'Please select at least one recipient');
+    return;
+  }
+
+  const title = notificationTitle.value.trim();
+  const body = notificationBody.value.trim();
+
+  if (!title || !body) {
+    showAlert('error', 'Title and body are required');
+    return;
+  }
+
+  sendBtn.disabled = true;
+  sendBtn.innerHTML = '<span class="loading-spinner"></span> Sending...';
+
+  try {
+    const result = await apiRequest('/api/notifications/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_ids: Array.from(selectedUserIds),
+        title,
+        body,
+        type: document.getElementById('notificationType').value,
+        category: document.getElementById('notificationCategory').value,
+        action_url: document.getElementById('actionUrl').value || null,
+        send_push: true
+      })
+    });
+
+    showAlert('success', result.message || 'Notification sent successfully!');
+    
+    // Clear form
+    sendNotificationForm.reset();
+    selectedUserIds.clear();
+    renderUserList(users);
+    updateSelectedCount();
+    previewTitle.textContent = 'Notification Title';
+    previewBody.textContent = 'Notification message will appear here...';
+
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    showAlert('error', error.message || 'Failed to send notification');
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+      </svg>
+      Send Notification
+    `;
+  }
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    showAlert('error', 'Push notifications are not supported');
+    return;
+  }
+
+  try {
+    // Request permission if needed
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        showAlert('error', 'Please allow notifications to subscribe');
+        return;
+      }
+      updatePermissionStatus();
+    }
+
+    // Get or register service worker
+    let registration;
+    try {
+      registration = await navigator.serviceWorker.ready;
+    } catch {
+      registration = await navigator.serviceWorker.register('/sw.js');
+      registration = await navigator.serviceWorker.ready;
+    }
+
+    // Get VAPID public key from environment
+    const envResponse = await fetch('/api/env');
+    const env = await envResponse.json();
+    const vapidPublicKey = env.VAPID_PUBLIC_KEY;
+
+    if (!vapidPublicKey) {
+      showAlert('error', 'VAPID key not configured. Please set VAPID_PUBLIC_KEY in environment.');
+      return;
+    }
+
+    // Subscribe
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+    });
+
+    // Save to server
+    const subscriptionJson = subscription.toJSON();
+    
+    await apiRequest('/api/notification-subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({
+        endpoint: subscriptionJson.endpoint,
+        p256dh: subscriptionJson.keys.p256dh,
+        auth: subscriptionJson.keys.auth,
+        browser: getBrowserName(),
+        device_type: getDeviceType()
+      })
+    });
+
+    showAlert('success', 'Successfully subscribed to push notifications!');
+    await checkSubscriptionStatus();
+
+  } catch (error) {
+    console.error('Error subscribing:', error);
+    showAlert('error', 'Failed to subscribe: ' + error.message);
+  }
+}
+
+// Utility functions
+function showAlert(type, message) {
+  const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
+  const icon = type === 'success' 
+    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />'
+    : type === 'error'
+    ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />'
+    : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+
+  alertContainer.innerHTML = `
+    <div class="alert ${alertClass}">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        ${icon}
+      </svg>
+      <div class="alert-message">${escapeHtml(message)}</div>
+    </div>
+  `;
+
+  // Auto-hide after 5 seconds
+  setTimeout(() => {
+    alertContainer.innerHTML = '';
+  }, 5000);
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+function getBrowserName() {
+  const ua = navigator.userAgent;
+  if (ua.includes('Firefox')) return 'Firefox';
+  if (ua.includes('Chrome')) return 'Chrome';
+  if (ua.includes('Safari')) return 'Safari';
+  if (ua.includes('Edge')) return 'Edge';
+  return 'Unknown';
+}
+
+function getDeviceType() {
+  const ua = navigator.userAgent;
+  if (/mobile/i.test(ua)) return 'mobile';
+  if (/tablet/i.test(ua)) return 'tablet';
+  return 'desktop';
+}
+</script>
+</body>
+</html>

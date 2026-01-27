@@ -25,8 +25,19 @@ export async function queryAuditTable(
       .order('submitted_at', { ascending: false });
 
     // Filter by employee email if provided and not showing all
+    // Normalize email to lowercase for case-insensitive comparison
+    console.log(`[QueryHelper] 🗄️ queryAuditTable called for ${tableName}:`, {
+      employeeEmail: employeeEmail || '(undefined)',
+      showAllAudits,
+      willFilter: !!(employeeEmail && !showAllAudits)
+    });
+    
     if (employeeEmail && !showAllAudits) {
-      query = query.eq('employee_email', employeeEmail);
+      const normalizedEmail = employeeEmail.toLowerCase().trim();
+      console.log(`[QueryHelper] ✅ FILTERING audits by employee_email: "${normalizedEmail}"`);
+      query = query.eq('employee_email', normalizedEmail);
+    } else {
+      console.log(`[QueryHelper] ❌ NOT filtering - employeeEmail: "${employeeEmail || 'undefined'}", showAllAudits: ${showAllAudits}`);
     }
 
     const { data, error } = await query.execute<AuditReport[]>();
@@ -113,7 +124,9 @@ async function retryQueryWithMinimalFields(
       .order('submitted_at', { ascending: false });
 
     if (employeeEmail && !showAllAudits) {
-      query = query.eq('employee_email', employeeEmail);
+      const normalizedEmail = employeeEmail.toLowerCase().trim();
+      logInfo(`[QueryHelper] Retry query - Filtering audits by employee_email: ${normalizedEmail}`);
+      query = query.eq('employee_email', normalizedEmail);
     }
 
     const { data, error } = await query.execute<AuditReport[]>();

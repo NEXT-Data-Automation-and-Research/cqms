@@ -265,12 +265,88 @@ export class AuditReportsRenderer {
   }
 
   /**
-   * Toggle view all button visibility
+   * Toggle view all button visibility and update its state
    */
   toggleViewAllButton(show: boolean): void {
     const btn = document.getElementById('viewAllBtn');
     if (btn) {
-      btn.style.display = show ? 'block' : 'none';
+      btn.style.display = show ? 'inline-flex' : 'none';
+    }
+  }
+
+  /**
+   * Update view all button state (text and styling)
+   */
+  updateViewAllButtonState(showingAllAudits: boolean): void {
+    const btn = document.getElementById('viewAllBtn');
+    if (!btn) return;
+
+    if (showingAllAudits) {
+      // Currently showing all audits - button should offer to show "My Audits Only"
+      btn.textContent = 'My Audits Only';
+      btn.style.backgroundColor = '#1A733E';
+      btn.style.color = 'white';
+      btn.style.borderColor = '#1A733E';
+    } else {
+      // Currently showing own audits - button should offer to "View All"
+      btn.textContent = 'View All';
+      btn.style.backgroundColor = '#f3f4f6';
+      btn.style.color = '#374151';
+      btn.style.borderColor = '#d1d5db';
+    }
+  }
+
+  /**
+   * Show employee mode indicator
+   */
+  showEmployeeModeIndicator(showingAllAudits: boolean, employeeEmail: string): void {
+    const container = document.getElementById('employeeModeIndicator');
+    if (!container) {
+      // Create the indicator if it doesn't exist
+      const headerActions = document.getElementById('headerActions');
+      if (headerActions) {
+        const indicator = document.createElement('div');
+        indicator.id = 'employeeModeIndicator';
+        indicator.style.cssText = 'display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem; background-color: #fef3c7; border: 1px solid #fcd34d; border-radius: 0.375rem; font-size: 0.625rem; color: #92400e; font-family: "Poppins", sans-serif;';
+        headerActions.insertBefore(indicator, headerActions.firstChild);
+        this.updateEmployeeModeIndicator(indicator, showingAllAudits, employeeEmail);
+      }
+      return;
+    }
+    this.updateEmployeeModeIndicator(container, showingAllAudits, employeeEmail);
+  }
+
+  private updateEmployeeModeIndicator(container: HTMLElement, showingAllAudits: boolean, employeeEmail: string): void {
+    if (showingAllAudits) {
+      container.style.backgroundColor = '#dbeafe';
+      container.style.borderColor = '#93c5fd';
+      container.style.color = '#1e40af';
+      container.innerHTML = `
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+        </svg>
+        <span>Viewing all audits</span>
+      `;
+    } else {
+      container.style.backgroundColor = '#fef3c7';
+      container.style.borderColor = '#fcd34d';
+      container.style.color = '#92400e';
+      container.innerHTML = `
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        <span>Viewing your audits only</span>
+      `;
+    }
+  }
+
+  /**
+   * Hide employee mode indicator (for non-employees)
+   */
+  hideEmployeeModeIndicator(): void {
+    const container = document.getElementById('employeeModeIndicator');
+    if (container) {
+      container.remove();
     }
   }
 

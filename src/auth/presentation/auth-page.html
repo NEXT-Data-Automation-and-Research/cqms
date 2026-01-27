@@ -33,9 +33,10 @@
             --auth-off-white: #F8F5EF;
         }
         
-        /* Left panel - solid dark green background */
+        /* Left panel - match sidebar gradient */
         .auth-page-override .auth-left-panel {
-            background: var(--auth-dark-green) !important;
+            background: linear-gradient(135deg, #0d5e3a 0%, #1a733e 50%, #2d8f5a 100%) !important;
+            background-color: #1a733e !important; /* Fallback for older browsers */
             overflow-y: auto !important;
             overflow-x: hidden !important;
         }

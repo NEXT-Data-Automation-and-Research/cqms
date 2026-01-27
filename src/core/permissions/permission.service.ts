@@ -11,11 +11,19 @@ const logger = createLogger('PermissionService');
 
 /**
  * Role hierarchy levels (higher number = more permissions)
+ * 
+ * Note: Quality Analyst should be at level 2 to access auditor features like:
+ * - view_all_audits
+ * - create_audit
+ * - edit_audit
+ * - approve_reversals
+ * 
+ * This matches the access_control_rules where min_role_level: 2 is required for these features.
  */
 const ROLE_HIERARCHY: Record<string, number> = {
   'General User': 0,
   'Employee': 1,
-  'Quality Analyst': 1,
+  'Quality Analyst': 2,  // Elevated to level 2 to match auditor access
   'Auditor': 2,
   'Quality Supervisor': 2,
   'Manager': 3,

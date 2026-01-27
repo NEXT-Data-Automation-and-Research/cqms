@@ -93,6 +93,27 @@ export class FormHeaderComponent {
   }
 
   /**
+   * Update header title
+   */
+  updateTitle(title: string): void {
+    if (!this.container) return;
+
+    // Find the title element within the header
+    const titleElement = this.container.querySelector('h2');
+    if (titleElement) {
+      titleElement.textContent = title;
+    }
+  }
+
+  /**
+   * Update header background gradient
+   */
+  updateGradient(gradient: string): void {
+    if (!this.container) return;
+    this.container.style.background = gradient;
+  }
+
+  /**
    * Get employee name select element
    */
   getEmployeeNameSelect(): HTMLSelectElement | null {

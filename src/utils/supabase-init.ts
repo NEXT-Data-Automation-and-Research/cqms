@@ -66,6 +66,19 @@ export async function initSupabase(): Promise<any> {
 
     supabaseLogger.debug(`URL: ${env.SUPABASE_URL.substring(0, 30)}...`);
     supabaseLogger.debug(`Anon Key: ${env.SUPABASE_ANON_KEY.substring(0, 20)}...`);
+    
+    // Store URL globally so other components (like modals) can access it
+    if (typeof window !== 'undefined') {
+      (window as any).SUPABASE_URL = env.SUPABASE_URL;
+      (window as any).envConfig = (window as any).envConfig || {};
+      (window as any).envConfig.SUPABASE_URL = env.SUPABASE_URL;
+      // Also cache in localStorage for reliability
+      try {
+        localStorage.setItem('supabase_url', env.SUPABASE_URL);
+      } catch (e) {
+        // localStorage might not be available
+      }
+    }
 
     // Dynamic import of Supabase client
     const { createClient } = await import('@supabase/supabase-js');

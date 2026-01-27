@@ -765,7 +765,12 @@ async function showAuditModal(controller: AuditReportsController, auditId: strin
       id: audit.id, 
       employeeName: audit.employeeName,
       hasTranscript: !!audit.transcript,
-      transcriptLength: audit.transcript?.length || 0
+      transcriptLength: audit.transcript?.length || 0,
+      _scorecard_table: audit._scorecard_table,
+      _scorecard_id: audit._scorecard_id,
+      _scorecard_name: audit._scorecard_name,
+      averageScore: audit.averageScore,
+      totalErrorsCount: audit.totalErrorsCount
     });
     
     // Import modal dynamically to avoid circular dependencies

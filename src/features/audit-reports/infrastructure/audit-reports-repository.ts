@@ -255,6 +255,12 @@ export class AuditReportsRepository extends BaseRepository {
     employeeEmail?: string,
     showAllAudits: boolean = true
   ): Promise<AuditReport[]> {
+    logInfo(`[Repository] loadAuditsFromTable:`, {
+      table: tableInfo.table_name,
+      employeeEmail: employeeEmail || '(undefined)',
+      showAllAudits
+    });
+    
     try {
       const audits = await queryAuditTable(
         this.db,

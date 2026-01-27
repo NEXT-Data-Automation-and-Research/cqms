@@ -3,7 +3,8 @@
  * Main orchestrator for generating complete audit form HTML structure
  */
 
-import type { AuditFormOptions } from '../../domain/types.js';
+import type { AuditFormOptions, AuditFormMode } from '../../domain/types.js';
+import { getDefaultHeaderTitle } from '../../domain/types.js';
 import { generateAuditHeader } from './header-template.js';
 import { generateTranscriptSection } from './transcript-template.js';
 import { generateSplitter } from './splitter-template.js';
@@ -15,7 +16,7 @@ export function generateAuditFormHTML(options: AuditFormOptions = {}): string {
   const {
     audit = {},
     mode = 'view',
-    headerTitle = mode === 'edit' ? 'Create New Audit' : 'Audit Details',
+    headerTitle = getDefaultHeaderTitle(mode as AuditFormMode),
     headerGradient = 'linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%)',
     headerActions = '',
     interactionIdHtml = '',
