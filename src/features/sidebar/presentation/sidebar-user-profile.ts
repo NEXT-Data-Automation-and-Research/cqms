@@ -225,7 +225,29 @@ export class SidebarUserProfile {
       }
 
       // Get user info from database
-      const userInfo = await (await this.getRepository()).getUserInfoFromDatabase(authUser.id)
+      let userInfo: UserInfo | null = null
+      try {
+        userInfo = await (await this.getRepository()).getUserInfoFromDatabase(authUser.id)
+      } catch (dbError: any) {
+        // If database query fails, fall back to auth user data
+        logWarn('[Sidebar] Database query failed, falling back to auth user data:', {
+          error: dbError?.message || String(dbError),
+          code: dbError?.code
+        })
+        
+        // Create basic UserInfo from auth user data
+        userInfo = {
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+          email: authUser.email || '',
+          avatar: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
+          picture: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
+          avatar_url: authUser.user_metadata?.avatar_url || null,
+          role: authUser.user_metadata?.role || undefined,
+          department: undefined,
+          designation: undefined,
+        }
+      }
       
       if (!userInfo) {
         logWarn('[Sidebar] No user data returned from database')

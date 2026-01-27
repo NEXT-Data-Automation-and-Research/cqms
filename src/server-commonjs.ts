@@ -443,24 +443,6 @@ app.use('/api', csrfToken);
 // Apply CSRF protection to state-changing API routes
 app.use('/api', csrfProtection);
 
-// Initialize Redis connection (non-blocking)
-logWithTimestamp('debug', 'Initializing Redis connection...');
-import { getRedisClient, getRedisConfig } from './core/cache/redis-client.js';
-const redisConfig = getRedisConfig();
-if (redisConfig.enabled) {
-  getRedisClient().then((client) => {
-    if (client) {
-      logWithTimestamp('info', '✅ Redis connected and ready for caching');
-    } else {
-      logWithTimestamp('warn', '⚠️  Redis connection failed, using in-memory cache fallback');
-    }
-  }).catch((error) => {
-    logWithTimestamp('warn', '⚠️  Redis initialization error, using fallback:', error);
-  });
-} else {
-  logWithTimestamp('debug', 'Redis is disabled, using in-memory cache');
-}
-
 // API Routes
 logWithTimestamp('debug', 'Loading API routes...');
 import usersRouter from './api/routes/users.routes.js';
@@ -469,16 +451,6 @@ import notificationSubscriptionsRouter from './api/routes/notification-subscript
 import peopleRouter from './api/routes/people.routes.js';
 import permissionsRouter from './api/routes/permissions.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
-import { redisCacheMiddleware } from './api/middleware/redis-cache.middleware.js';
-
-// Apply Redis caching middleware to GET endpoints
-if (redisConfig.enabled) {
-  app.use('/api', redisCacheMiddleware({ 
-    ttl: redisConfig.ttlDefault || 300,
-    includeQueryParams: true
-  }));
-  logWithTimestamp('debug', 'Redis cache middleware enabled for API routes');
-}
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
@@ -611,17 +583,6 @@ server.on('error', (error: NodeJS.ErrnoException) => {
 // Handle graceful shutdown
 async function gracefulShutdown(signal: string) {
   logWithTimestamp('info', `${signal} received, shutting down gracefully...`);
-  
-  // Close Redis connection
-  if (redisConfig.enabled) {
-    try {
-      const { closeRedisClient } = await import('./core/cache/redis-client.js');
-      await closeRedisClient();
-      logWithTimestamp('info', 'Redis connection closed');
-    } catch (error) {
-      logWithTimestamp('warn', 'Error closing Redis connection:', error);
-    }
-  }
   
   server.close(() => {
     logWithTimestamp('info', 'Server closed');

@@ -28,9 +28,10 @@ export class SidebarRepository {
     }
 
     // Fetch user data from database
+    // Note: department and role are in the people table, not users table
     const { data: userData, error: dbError } = await this.db
       .from('users')
-      .select(['full_name', 'email', 'avatar_url', 'department', 'role'])
+      .select(['full_name', 'email', 'avatar_url'])
       .eq('id', authUser.id)
       .single()
       .execute<any>()

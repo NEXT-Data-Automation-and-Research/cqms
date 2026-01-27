@@ -64,14 +64,6 @@ services:
       
       # Logging
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      
-      # Redis Configuration
-      - REDIS_ENABLED=${REDIS_ENABLED:-true}
-      - REDIS_HOST=${REDIS_HOST:-redis}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - REDIS_TTL_DEFAULT=${REDIS_TTL_DEFAULT:-300}
     env_file:
       - .env
     volumes:
@@ -80,42 +72,12 @@ services:
     restart: unless-stopped
     networks:
       - express-cqms-network
-    depends_on:
-      - redis
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 40s
-
-  redis:
-    image: redis:7-alpine
-    container_name: express-cqms-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    command: >
-      sh -c "
-        if [ -n \"$$REDIS_PASSWORD\" ]; then
-          redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes
-        else
-          redis-server --appendonly yes
-        fi
-      "
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
-    networks:
-      - express-cqms-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 3
-
-volumes:
-  redis-data:
-    driver: local
 
 networks:
   express-cqms-network:

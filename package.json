@@ -55,7 +55,6 @@
     "express-rate-limit": "^8.2.1",
     "googleapis": "^144.0.0",
     "helmet": "^8.1.0",
-    "ioredis": "^5.9.2",
     "loglevel": "^1.9.1",
     "postgres": "^3.4.7"
   },

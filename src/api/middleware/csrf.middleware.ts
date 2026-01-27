@@ -9,7 +9,7 @@ import crypto from 'crypto';
 
 const logger = createLogger('CSRFMiddleware');
 
-// Store CSRF tokens in memory (in production, use Redis or session store)
+// Store CSRF tokens in memory (in production, consider using a session store)
 const csrfTokens = new Map<string, { token: string; expiresAt: number }>();
 
 // Clean up expired tokens every 5 minutes
