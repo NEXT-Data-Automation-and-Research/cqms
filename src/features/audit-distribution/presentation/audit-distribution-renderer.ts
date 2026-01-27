@@ -55,7 +55,7 @@ export class AuditDistributionRenderer {
     // Page Heading - At the top of content area
     const headingDiv = document.createElement('div');
     headingDiv.className = 'px-4 pt-4 pb-2 text-center';
-    headingDiv.innerHTML = '<h1 class="text-xl font-bold text-gray-900 m-0">Audit Distribution</h1>';
+    headingDiv.innerHTML = '<h1 class="page-heading-global">Audit Distribution</h1>';
     
     // Tab Navigation - Below heading
     const tabNavDiv = document.createElement('div');

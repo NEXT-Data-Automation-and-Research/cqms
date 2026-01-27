@@ -595,3 +595,36 @@ body::-webkit-scrollbar {
   margin: 0;
   z-index: 1;
 }
+
+/* Global Page Heading Styles - Consistent styling for all page headings */
+.page-heading-global {
+  font-size: 1.25rem; /* text-xl = 1.25rem */
+  font-weight: 700; /* font-bold */
+  line-height: 1.5;
+  margin: 0;
+  margin-bottom: 1rem; /* mb-4 = 1rem */
+  padding: 0;
+  font-family: var(--font-family-primary, 'Poppins', sans-serif);
+  color: var(--text-primary, #111827); /* text-gray-900 */
+  width: 100%;
+  display: block;
+  min-height: 1.875rem; /* ~30px to ensure consistent height */
+  box-sizing: border-box;
+}
+
+/* Dark theme support */
+[data-theme="dark"] .page-heading-global {
+  color: var(--text-primary-dark, #f9fafb);
+}
+
+/* For pages with dark backgrounds (like Create Audit, Reversal) */
+.page-heading-global.dark-bg {
+  color: #ffffff; /* text-white */
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .page-heading-global {
+    font-size: 1.125rem; /* Slightly smaller on mobile */
+  }
+}
