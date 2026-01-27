@@ -5,6 +5,8 @@
 
 import { IDatabaseClient } from '../../../core/database/database-client.interface.js';
 import type { UserInfo, ScorecardTable } from '../domain/entities.js'
+import { logInfo, logWarn } from '../../../utils/logging-helper.js'
+import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js'
 
 /**
  * This class gets data from the database
@@ -28,7 +30,7 @@ export class SidebarRepository {
     // Fetch user data from database
     const { data: userData, error: dbError } = await this.db
       .from('users')
-      .select(['full_name', 'email', 'avatar_url'])
+      .select(['full_name', 'email', 'avatar_url', 'department', 'role'])
       .eq('id', authUser.id)
       .single()
       .execute<any>()
@@ -41,15 +43,79 @@ export class SidebarRepository {
       return null
     }
 
+    // Fetch additional data from people table (designation, department if not in users table)
+    // Use getAuthenticatedSupabase directly (same approach as ProfileRepository) to ensure proper RLS
+    let peopleData: any = null
+    const userEmail = userData.email || authUser.email
+    if (userEmail) {
+      try {
+        // Use getAuthenticatedSupabase directly for people table query (ensures RLS works correctly)
+        const supabase = await getAuthenticatedSupabase()
+        const { data: peopleResult, error: peopleError } = await supabase
+          .from('people')
+          .select('designation, department, role')
+          .eq('email', userEmail)
+          .maybeSingle()
+
+        if (peopleError) {
+          // Log error but continue - not all users may have people records
+          logWarn('[SidebarRepository] Error fetching from people table:', {
+            error: peopleError,
+            email: userEmail,
+            code: peopleError.code,
+            message: peopleError.message
+          })
+        } else if (peopleResult) {
+          peopleData = peopleResult
+          logInfo('[SidebarRepository] People data fetched successfully:', {
+            email: userEmail,
+            designation: peopleResult.designation,
+            department: peopleResult.department,
+            role: peopleResult.role,
+            hasDesignation: !!peopleResult.designation,
+            hasDepartment: !!peopleResult.department
+          })
+        } else {
+          logWarn('[SidebarRepository] No people record found for email:', userEmail)
+        }
+      } catch (peopleErr) {
+        // Log error but continue - not all users may have people records
+        logWarn('[SidebarRepository] Exception fetching from people table:', {
+          error: peopleErr,
+          email: userEmail
+        })
+      }
+    }
+
+    // Helper to convert empty strings to undefined
+    const cleanValue = (value: any): string | undefined => {
+      if (!value || value === '' || value === 'null' || value === 'undefined') {
+        return undefined
+      }
+      return String(value).trim() || undefined
+    }
+
     // Convert database data to UserInfo format
-    return {
+    // Prefer people table data for department/role/designation, fallback to users table
+    const result = {
       id: authUser.id,
       name: userData.full_name || authUser.email?.split('@')[0] || 'User',
       email: userData.email || authUser.email || '',
       avatar: userData.avatar_url || authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
       picture: userData.avatar_url || authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
       avatar_url: userData.avatar_url || null,
+      role: cleanValue(peopleData?.role || userData.role),
+      department: cleanValue(peopleData?.department || userData.department),
+      designation: cleanValue(peopleData?.designation),
     }
+
+    logInfo('[SidebarRepository] Final user info:', {
+      designation: result.designation,
+      department: result.department,
+      role: result.role
+    })
+
+    return result
   }
 
   /**

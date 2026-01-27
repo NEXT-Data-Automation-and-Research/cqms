@@ -7,12 +7,38 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { createLogger } from './utils/logger.js';
 import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
+import { getRouteMappings, getFilePathFromCleanPath } from './core/routing/route-mapper.js';
 
 // Load environment variables
 dotenv.config();
 
 // Initialize logger
 const serverLogger = createLogger('Server');
+
+// Helper function to format timestamps
+const getTimestamp = (): string => {
+  return new Date().toISOString();
+};
+
+// Helper function to format log messages with timestamp
+const logWithTimestamp = (level: 'info' | 'warn' | 'error' | 'debug', message: string, ...args: any[]) => {
+  const timestamp = getTimestamp();
+  const prefix = `[${timestamp}]`;
+  switch (level) {
+    case 'info':
+      serverLogger.info(prefix, message, ...args);
+      break;
+    case 'warn':
+      serverLogger.warn(prefix, message, ...args);
+      break;
+    case 'error':
+      serverLogger.error(prefix, message, ...args);
+      break;
+    case 'debug':
+      serverLogger.debug(prefix, message, ...args);
+      break;
+  }
+};
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
@@ -28,11 +54,16 @@ try {
   if (fs.existsSync(versionPath)) {
     const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf-8'));
     appVersion = versionData.hash || versionData.version || '1.0.0';
-    serverLogger.info(`App version: ${appVersion}`);
+    logWithTimestamp('info', `App version: ${appVersion}`);
   }
 } catch (error) {
-  serverLogger.warn('Version file not found, using default version');
+  logWithTimestamp('warn', 'Version file not found, using default version');
 }
+
+// Log startup information
+logWithTimestamp('info', '═══════════════════════════════════════════════════════');
+logWithTimestamp('info', '🚀 Starting Express Server');
+logWithTimestamp('info', '═══════════════════════════════════════════════════════');
 
 // Define which env vars are safe to expose to client
 const SAFE_ENV_VARS: string[] = [
@@ -92,8 +123,33 @@ function getSafeEnvVars(): Record<string, string> {
   return safeEnv;
 }
 
+// Request logging middleware (placed early to log all requests)
+app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const startTime = Date.now();
+  const timestamp = getTimestamp();
+  
+  // Log request
+  logWithTimestamp('debug', `${req.method} ${req.path}`, {
+    ip: req.ip || req.socket.remoteAddress,
+    userAgent: req.get('user-agent')?.substring(0, 50) || 'unknown'
+  });
+  
+  // Log response when finished
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    const statusColor = res.statusCode >= 500 ? 'error' : 
+                       res.statusCode >= 400 ? 'warn' : 
+                       res.statusCode >= 300 ? 'debug' : 'debug';
+    
+    logWithTimestamp(statusColor, `${req.method} ${req.path} → ${res.statusCode} (${duration}ms)`);
+  });
+  
+  next();
+});
+
 // ✅ SECURITY: Security headers middleware (helmet)
 // Must be early in middleware chain
+logWithTimestamp('debug', 'Configuring security middleware (helmet)...');
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -135,6 +191,7 @@ app.use(helmet({
 }));
 
 // ✅ SECURITY: Rate limiting for API endpoints
+logWithTimestamp('debug', 'Configuring rate limiting...');
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
@@ -158,6 +215,7 @@ const authLimiter = rateLimit({
 
 // Apply stricter rate limiting to auth-related endpoints
 app.use('/api/users', authLimiter);
+logWithTimestamp('debug', 'Rate limiting configured: API (100/15min), Auth (5/15min)');
 
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -235,7 +293,7 @@ app.get('/audit-reports.html', (req: express.Request, res: express.Response): vo
     const html = injectVersionIntoHTML('audit-reports.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing audit-reports.html:', error);
+    logWithTimestamp('error', 'Error processing audit-reports.html:', error);
     // Fallback: try to serve from feature directory directly
     const featurePath = path.join(__dirname, '../src/features/audit-reports/presentation/audit-reports.html');
     if (fs.existsSync(featurePath)) {
@@ -251,7 +309,7 @@ app.get('/event-management.html', (req: express.Request, res: express.Response):
     const html = injectVersionIntoHTML('event-management.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing event-management.html:', error);
+    logWithTimestamp('error', 'Error processing event-management.html:', error);
     res.sendFile(path.join(__dirname, '../public', 'event-management.html'));
   }
 });
@@ -261,7 +319,7 @@ app.get('/profile.html', (req: express.Request, res: express.Response): void => 
     const html = injectVersionIntoHTML('profile.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing profile.html:', error);
+    logWithTimestamp('error', 'Error processing profile.html:', error);
     res.sendFile(path.join(__dirname, '../public', 'profile.html'));
   }
 });
@@ -279,7 +337,7 @@ app.get('/src/auth/presentation/auth-page.html', (req: express.Request, res: exp
     const html = injectVersionIntoHTML('auth/presentation/auth-page.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing auth-page.html:', error);
+    logWithTimestamp('error', 'Error processing auth-page.html:', error);
     res.sendFile(path.join(__dirname, '../src/auth/presentation/auth-page.html'));
   }
 });
@@ -290,9 +348,47 @@ app.get('/src/features/home/presentation/home-page.html', (req: express.Request,
     const html = injectVersionIntoHTML('src/features/home/presentation/home-page.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing home-page.html:', error);
+    logWithTimestamp('error', 'Error processing home-page.html:', error);
     res.sendFile(path.join(__dirname, '../src/features/home/presentation/home-page.html'));
   }
+});
+
+// ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
+// These routes are checked BEFORE the regex fallback for better performance
+// Backward compatibility: Old URLs still work via the regex route below
+logWithTimestamp('debug', 'Registering clean URL routes...');
+const routeMappings = getRouteMappings();
+routeMappings.forEach((mapping) => {
+  app.get(mapping.cleanPath, (req: express.Request, res: express.Response): void => {
+    const htmlPath = mapping.filePath.replace(/^\//, ''); // Remove leading slash for injectVersionIntoHTML
+    
+    // Skip auth-page.html (handled separately, no auth-checker needed)
+    if (htmlPath.includes('auth-page.html')) {
+      try {
+        const html = injectVersionIntoHTML(htmlPath, appVersion);
+        res.send(html);
+      } catch (error) {
+        logWithTimestamp('error', `Error processing ${htmlPath}:`, error);
+        res.sendFile(path.join(__dirname, '..', mapping.filePath));
+      }
+      return;
+    }
+    
+    try {
+      // This will automatically inject auth-checker via injectVersionIntoHTML
+      const html = injectVersionIntoHTML(htmlPath, appVersion);
+      res.send(html);
+    } catch (error) {
+      logWithTimestamp('error', `Error processing clean route ${mapping.cleanPath} -> ${htmlPath}:`, error);
+      // Fallback: try to serve file directly
+      const filePath = path.join(__dirname, '..', mapping.filePath);
+      if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+      } else {
+        res.status(404).send('Page not found');
+      }
+    }
+  });
 });
 
 // ✅ SECURITY: Serve all HTML files from src directory with version injection and auto auth-checker
@@ -308,7 +404,7 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
       const html = injectVersionIntoHTML(htmlPath, appVersion);
       res.send(html);
     } catch (error) {
-      serverLogger.error(`Error processing ${htmlPath}:`, error);
+      logWithTimestamp('error', `Error processing ${htmlPath}:`, error);
       res.sendFile(path.join(__dirname, '..', htmlPath));
     }
     return;
@@ -332,7 +428,7 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
 
 // Keep dashboard.html route for backward compatibility (redirects to home)
 app.get('/dashboard.html', (req: express.Request, res: express.Response): void => {
-  res.redirect('/src/features/home/presentation/home-page.html');
+  res.redirect('/home');
 });
 
 // Parse JSON bodies
@@ -347,31 +443,62 @@ app.use('/api', csrfToken);
 // Apply CSRF protection to state-changing API routes
 app.use('/api', csrfProtection);
 
+// Initialize Redis connection (non-blocking)
+logWithTimestamp('debug', 'Initializing Redis connection...');
+import { getRedisClient, getRedisConfig } from './core/cache/redis-client.js';
+const redisConfig = getRedisConfig();
+if (redisConfig.enabled) {
+  getRedisClient().then((client) => {
+    if (client) {
+      logWithTimestamp('info', '✅ Redis connected and ready for caching');
+    } else {
+      logWithTimestamp('warn', '⚠️  Redis connection failed, using in-memory cache fallback');
+    }
+  }).catch((error) => {
+    logWithTimestamp('warn', '⚠️  Redis initialization error, using fallback:', error);
+  });
+} else {
+  logWithTimestamp('debug', 'Redis is disabled, using in-memory cache');
+}
+
 // API Routes
+logWithTimestamp('debug', 'Loading API routes...');
 import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
 import permissionsRouter from './api/routes/permissions.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
+import { redisCacheMiddleware } from './api/middleware/redis-cache.middleware.js';
+
+// Apply Redis caching middleware to GET endpoints
+if (redisConfig.enabled) {
+  app.use('/api', redisCacheMiddleware({ 
+    ttl: redisConfig.ttlDefault || 300,
+    includeQueryParams: true
+  }));
+  logWithTimestamp('debug', 'Redis cache middleware enabled for API routes');
+}
 
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions');
 
 // Error handler (must be last)
 app.use(errorHandler);
 
 
 // Serve index.html for root route (with version injection)
+// Note: index.html handles auth and redirects authenticated users to /home
 app.get('/', (req: express.Request, res: express.Response): void => {
   try {
     const html = injectVersionIntoHTML('index.html', appVersion);
     res.send(html);
   } catch (error) {
-    serverLogger.error('Error processing index.html:', error);
+    logWithTimestamp('error', 'Error processing index.html:', error);
     res.sendFile(path.join(__dirname, '../public', 'index.html'));
   }
 });
@@ -395,9 +522,9 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   
   // Log Supabase configuration status to terminal
   if (hasSupabaseUrl && hasSupabaseKey) {
-    serverLogger.info('Supabase: Configuration available - Client can initialize');
+    logWithTimestamp('info', 'Supabase: Configuration available - Client can initialize');
   } else {
-    serverLogger.warn('Supabase: Configuration incomplete - Missing URL or Anon Key');
+    logWithTimestamp('warn', 'Supabase: Configuration incomplete - Missing URL or Anon Key');
   }
   
   res.json(safeEnv);
@@ -419,7 +546,7 @@ app.get('/api/version', (req: express.Request, res: express.Response): void => {
       });
     }
   } catch (error) {
-    serverLogger.error('Error reading version:', error);
+    logWithTimestamp('error', 'Error reading version:', error);
     res.json({ 
       version: appVersion, 
       timestamp: Date.now(),
@@ -430,24 +557,83 @@ app.get('/api/version', (req: express.Request, res: express.Response): void => {
 
 // Start server
 const server = app.listen(PORT, () => {
-  serverLogger.info(`Server running on http://localhost:${PORT}`);
-  serverLogger.info(`Serving files from: ${path.join(__dirname, '../public')}`);
-  serverLogger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
+  logWithTimestamp('info', '✅ Server started successfully!');
+  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
+  logWithTimestamp('info', `📍 URL: http://localhost:${PORT}`);
+  logWithTimestamp('info', `📁 Public directory: ${path.join(__dirname, '../public')}`);
+  logWithTimestamp('info', `📦 App version: ${appVersion}`);
+  logWithTimestamp('info', `🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logWithTimestamp('info', `📝 Log level: ${process.env.LOG_LEVEL || 'debug'}`);
+  
+  // Log route mappings count
+  const routeMappings = getRouteMappings();
+  logWithTimestamp('info', `🛣️  Registered routes: ${routeMappings.length} clean URL mappings`);
+  
+  // Log Supabase configuration status
+  const hasSupabaseUrl = !!process.env.SUPABASE_URL;
+  const hasSupabaseKey = !!process.env.SUPABASE_ANON_KEY;
+  if (hasSupabaseUrl && hasSupabaseKey) {
+    logWithTimestamp('info', '🔐 Supabase: Configuration loaded');
+  } else {
+    logWithTimestamp('warn', '⚠️  Supabase: Configuration incomplete');
+  }
+  
+  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
+  logWithTimestamp('info', '📡 Server ready to accept connections');
+  logWithTimestamp('info', '═══════════════════════════════════════════════════════');
 });
 
 // Handle server errors (e.g., port already in use)
 server.on('error', (error: NodeJS.ErrnoException) => {
+  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
+  logWithTimestamp('error', '❌ Server startup failed!');
+  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
+  
   if (error.code === 'EADDRINUSE') {
-    serverLogger.error(`Port ${PORT} is already in use. Please:`);
-    serverLogger.error(`  1. Stop the other process using port ${PORT}`);
-    serverLogger.error(`  2. Or set a different PORT in your .env file`);
-    serverLogger.error(`\nTo find and kill the process on Windows, run:`);
-    serverLogger.error(`  netstat -ano | findstr :${PORT}`);
-    serverLogger.error(`  taskkill /PID <PID> /F`);
-    process.exit(1);
+    logWithTimestamp('error', `Port ${PORT} is already in use.`);
+    logWithTimestamp('error', '');
+    logWithTimestamp('error', 'Solutions:');
+    logWithTimestamp('error', `  1. Stop the other process using port ${PORT}`);
+    logWithTimestamp('error', `  2. Set a different PORT in your .env file`);
+    logWithTimestamp('error', '');
+    logWithTimestamp('error', 'To find and kill the process on Windows:');
+    logWithTimestamp('error', `  netstat -ano | findstr :${PORT}`);
+    logWithTimestamp('error', `  taskkill /PID <PID> /F`);
   } else {
-    serverLogger.error('Server error:', error);
-    process.exit(1);
+    logWithTimestamp('error', 'Server error:', error);
   }
+  
+  logWithTimestamp('error', '═══════════════════════════════════════════════════════');
+  process.exit(1);
 });
+
+// Handle graceful shutdown
+async function gracefulShutdown(signal: string) {
+  logWithTimestamp('info', `${signal} received, shutting down gracefully...`);
+  
+  // Close Redis connection
+  if (redisConfig.enabled) {
+    try {
+      const { closeRedisClient } = await import('./core/cache/redis-client.js');
+      await closeRedisClient();
+      logWithTimestamp('info', 'Redis connection closed');
+    } catch (error) {
+      logWithTimestamp('warn', 'Error closing Redis connection:', error);
+    }
+  }
+  
+  server.close(() => {
+    logWithTimestamp('info', 'Server closed');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Log when nodemon restarts (if running in nodemon)
+if (process.env.nodemon) {
+  logWithTimestamp('info', '🔄 Running under nodemon - server will auto-restart on file changes');
+}
 

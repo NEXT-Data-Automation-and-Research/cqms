@@ -168,9 +168,16 @@ export function renderAuditDetailModalHTML(audit: AuditReport, parameters: Score
           <!-- Recommendations -->
           ${audit.recommendations ? `<div style="background: #f9fafb; border-radius: 0.375rem; padding: 0.75rem; margin-bottom: 0.75rem; border: 0.0352rem solid #e5e7eb;"><h3 style="font-size: 0.7031rem; font-weight: 600; color: #1A733E; margin: 0 0 0.5625rem 0; font-family: 'Poppins', sans-serif; display: flex; align-items: center; gap: 0.375rem;"><svg style="width: 0.8438rem; height: 0.8438rem;" viewBox="0 0 24 24" fill="#1A733E"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>Recommendations / Next Steps</h3><div style="background: white; padding: 0.6562rem; border-radius: 0.2812rem; border: 0.0352rem solid #e5e7eb; white-space: pre-wrap; font-size: 0.6094rem; line-height: 1.6; color: #374151; font-family: 'Poppins', sans-serif;">${escapeHtml(audit.recommendations)}</div></div>` : ''}
           
-          <!-- Close Button -->
-          <div style="display: flex; justify-content: center; margin-top: 0.75rem; padding-bottom: 0.75rem;">
-            <button id="auditDetailModalBottomClose" style="background: #1A733E; color: white; border: none; border-radius: 0.375rem; padding: 0.5625rem 1.5rem; font-size: 0.75rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s; box-shadow: 0 0.1406rem 0.2109rem rgba(0,0,0,0.1);">Close</button>
+          <!-- Action Buttons -->
+          <div style="display: flex; justify-content: center; gap: 0.75rem; margin-top: 0.75rem; padding-bottom: 0.75rem;">
+            <button id="auditDetailModalViewFull" style="background: #1A733E; color: white; border: none; border-radius: 0.375rem; padding: 0.5625rem 1.5rem; font-size: 0.75rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s; box-shadow: 0 0.1406rem 0.2109rem rgba(0,0,0,0.1); display: flex; align-items: center; gap: 0.375rem;">
+              <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+              View Full Audit
+            </button>
+            <button id="auditDetailModalBottomClose" style="background: #6b7280; color: white; border: none; border-radius: 0.375rem; padding: 0.5625rem 1.5rem; font-size: 0.75rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s; box-shadow: 0 0.1406rem 0.2109rem rgba(0,0,0,0.1);">Close</button>
           </div>
         </div>
       </div>

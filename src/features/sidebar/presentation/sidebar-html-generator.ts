@@ -6,6 +6,7 @@
 import { router } from '../../../core/routing/router.js'
 import type { RouteConfig } from '../../../core/routing/route-types.js'
 import type { UserInfo } from '../domain/entities.js'
+import { getCleanPathFromFilePath } from '../../../core/routing/route-mapper.js'
 
 /**
  * Generate sidebar HTML from route configuration
@@ -53,6 +54,9 @@ export class SidebarHTMLGenerator {
       return this.generateSubmenuItem(route, currentPath, userRole)
     }
 
+    // Use clean URL if available, fallback to original path (backward compatible)
+    const href = getCleanPathFromFilePath(route.path) || route.path
+
     const badge = route.meta.badge 
       ? `<span class="coming-soon-chip">${route.meta.badge}</span>` 
       : ''
@@ -67,7 +71,7 @@ export class SidebarHTMLGenerator {
 
     return `
       <li role="none">
-        <a href="${route.path}" class="menu-item ${isActive ? 'active' : ''}" 
+        <a href="${href}" class="menu-item ${isActive ? 'active' : ''}" 
            role="menuitem" tabindex="0" aria-label="${route.meta.label}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             ${route.meta.icon}
@@ -110,6 +114,8 @@ export class SidebarHTMLGenerator {
     const submenuItems = accessibleSubmenuItems
       .map(item => {
         const itemActive = router.isRouteActive(item.path)
+        // Use clean URL if available, fallback to original path (backward compatible)
+        const href = getCleanPathFromFilePath(item.path) || item.path
         const accessControlId = item.path.includes('access-control') 
           ? 'id="accessControlMenuItem"' 
           : ''
@@ -119,7 +125,7 @@ export class SidebarHTMLGenerator {
         return `
           <li role="none" ${accessControlId} ${accessControlStyle}>
             <a class="submenu-item ${itemActive ? 'active' : ''}" 
-               href="${item.path}" role="menuitem" tabindex="-1">
+               href="${href}" role="menuitem" tabindex="-1">
               <span>${item.label}</span>
             </a>
           </li>
@@ -209,6 +215,8 @@ export class SidebarHTMLGenerator {
             <div class="user-info">
                 <div class="user-name">Loading...</div>
                 <div class="user-email">Loading...</div>
+                <div class="user-designation" style="display: none;"></div>
+                <div class="user-department" style="display: none;"></div>
             </div>
         </div>
         

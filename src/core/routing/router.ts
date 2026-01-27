@@ -6,6 +6,7 @@
 import type { RouteConfig, UserRole } from './route-types.js'
 import { routes } from './route-config.js'
 import { navigateWithTransition } from '../../utils/page-transition.js'
+import { getCleanPathFromFilePath, getFilePathFromCleanPath } from './route-mapper.js'
 
 /**
  * Router class for navigation and route management
@@ -20,18 +21,33 @@ export class Router {
 
   /**
    * Check if a route matches the current path
+   * Supports both clean URLs and old file paths for backward compatibility
    */
   isRouteActive(routePath: string, exact: boolean = false): boolean {
     const currentPath = this.getCurrentPath()
     
+    // Convert routePath to clean URL if it's a file path
+    const cleanRoutePath = getCleanPathFromFilePath(routePath) || routePath
+    
+    // Convert currentPath to clean URL if it's a file path
+    const cleanCurrentPath = getCleanPathFromFilePath(currentPath) || currentPath
+    
     if (exact) {
-      return currentPath === routePath
+      // Check both clean URLs and original paths for exact match
+      return currentPath === routePath || 
+             cleanCurrentPath === cleanRoutePath ||
+             cleanCurrentPath === routePath ||
+             currentPath === cleanRoutePath
     }
     
     // Check if current path starts with route path or vice versa
+    // Support both clean URLs and file paths
     return currentPath === routePath || 
+           cleanCurrentPath === cleanRoutePath ||
            currentPath.startsWith(routePath) ||
-           routePath.startsWith(currentPath)
+           routePath.startsWith(currentPath) ||
+           cleanCurrentPath.startsWith(cleanRoutePath) ||
+           cleanRoutePath.startsWith(cleanCurrentPath)
   }
 
   /**
@@ -66,9 +82,14 @@ export class Router {
 
   /**
    * Navigate to a route
+   * Automatically converts file paths to clean URLs when available
+   * Falls back to original path if no clean URL mapping exists (backward compatible)
    */
   navigate(path: string, options: { replace?: boolean } = {}): void {
-    navigateWithTransition(path, options)
+    // Try to convert file path to clean URL
+    const cleanPath = getCleanPathFromFilePath(path)
+    const finalPath = cleanPath || path
+    navigateWithTransition(finalPath, options)
   }
 
   /**
@@ -128,34 +149,42 @@ export class Router {
 
   /**
    * Get active route
+   * Supports both clean URLs and old file paths
    */
   getActiveRoute(): RouteConfig | undefined {
     const currentPath = this.getCurrentPath()
     
-    // Try exact match first
-    let route = routes.find(r => r.path === currentPath)
+    // Convert clean URL to file path if needed
+    const filePath = getFilePathFromCleanPath(currentPath) || currentPath
+    
+    // Try exact match first (check both clean URL and file path)
+    let route = routes.find(r => r.path === currentPath || r.path === filePath)
     if (route) {
       return route
     }
 
-    // Try submenu match
+    // Try submenu match (check both clean URL and file path)
     for (const r of routes) {
       if (r.submenu) {
-        const submenuMatch = r.submenu.find(item => item.path === currentPath)
+        const submenuMatch = r.submenu.find(item => 
+          item.path === currentPath || item.path === filePath
+        )
         if (submenuMatch) {
           return r
         }
       }
     }
 
-    // Try partial match
+    // Try partial match (check both clean URL and file path)
     return routes.find(r => {
-      if (currentPath.includes(r.path) || r.path.includes(currentPath)) {
+      if (currentPath.includes(r.path) || r.path.includes(currentPath) ||
+          filePath.includes(r.path) || r.path.includes(filePath)) {
         return true
       }
       if (r.submenu) {
         return r.submenu.some(item => 
-          currentPath.includes(item.path) || item.path.includes(currentPath)
+          currentPath.includes(item.path) || item.path.includes(currentPath) ||
+          filePath.includes(item.path) || item.path.includes(filePath)
         )
       }
       return false

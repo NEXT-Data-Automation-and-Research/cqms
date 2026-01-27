@@ -1,6 +1,7 @@
 /**
  * Page Transition Styles
  * Provides smooth page transitions with loading indicators
+ * Updated to match the green theme and structure
  */
 
 /* Page Transition Overlay */
@@ -10,8 +11,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(4px);
+  background: rgba(17, 24, 39, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   z-index: 9999;
   display: flex;
   align-items: center;
@@ -31,25 +33,45 @@
 /* Dark mode support */
 @media (prefers-color-scheme: dark) {
   .page-transition-overlay {
-    background: rgba(17, 24, 39, 0.95);
+    background: rgba(17, 24, 39, 0.92);
   }
+}
+
+[data-theme="dark"] .page-transition-overlay,
+.dark .page-transition-overlay {
+  background: rgba(17, 24, 39, 0.92);
 }
 
 .page-transition-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
-/* Spinner Animation */
+/* Spinner Animation - Updated to use green theme */
 .page-transition-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(59, 130, 246, 0.2);
-  border-top-color: #3b82f6;
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 0.375rem solid rgba(26, 115, 62, 0.2);
+  border-top-color: #1a733e;
+  border-right-color: #2d8f5a;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  position: relative;
+}
+
+.page-transition-spinner::before {
+  content: '';
+  position: absolute;
+  top: -0.375rem;
+  left: -0.375rem;
+  right: -0.375rem;
+  bottom: -0.375rem;
+  border-radius: 50%;
+  border: 0.375rem solid transparent;
+  border-top-color: rgba(26, 115, 62, 0.4);
+  animation: spin 1.2s linear infinite reverse;
 }
 
 @keyframes spin {
@@ -59,21 +81,48 @@
 }
 
 .page-transition-text {
-  color: #6b7280;
-  font-size: 0.875rem;
+  color: #f9fafb;
+  font-size: 1rem;
   font-weight: 500;
   margin: 0;
+  font-family: var(--font-family-primary, 'Poppins', sans-serif);
+  letter-spacing: 0.025em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
   .page-transition-text {
-    color: #9ca3af;
+    color: #e5e7eb;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   }
   
   .page-transition-spinner {
-    border-color: rgba(59, 130, 246, 0.3);
-    border-top-color: #60a5fa;
+    border-color: rgba(45, 143, 90, 0.25);
+    border-top-color: #2d8f5a;
+    border-right-color: #3a9d61;
   }
+
+  .page-transition-spinner::before {
+    border-top-color: rgba(45, 143, 90, 0.5);
+  }
+}
+
+[data-theme="dark"] .page-transition-text,
+.dark .page-transition-text {
+  color: #e5e7eb;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .page-transition-spinner,
+.dark .page-transition-spinner {
+  border-color: rgba(45, 143, 90, 0.25);
+  border-top-color: #2d8f5a;
+  border-right-color: #3a9d61;
+}
+
+[data-theme="dark"] .page-transition-spinner::before,
+.dark .page-transition-spinner::before {
+  border-top-color: rgba(45, 143, 90, 0.5);
 }
 
 /* Page fade transition */

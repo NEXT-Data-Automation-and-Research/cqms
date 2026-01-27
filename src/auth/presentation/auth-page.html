@@ -28,27 +28,187 @@
             --auth-primary-green: #1f9e4b;
             --auth-primary-green-dark: #1a733e;
             --auth-primary-green-darker: #124f2a;
+            --auth-dark-green: #2E7D32;
+            --auth-light-green: #DFFF8C;
+            --auth-off-white: #F8F5EF;
         }
         
-        /* Primary button - green */
-        .auth-page-override .primary-button {
-            background: linear-gradient(135deg, var(--auth-primary-green-dark) 0%, var(--auth-primary-green) 100%) !important;
-            box-shadow: 0 2px 4px rgba(31, 158, 75, 0.2) !important;
+        /* Left panel - solid dark green background */
+        .auth-page-override .auth-left-panel {
+            background: var(--auth-dark-green) !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
         }
         
-        .auth-page-override .primary-button:hover:not(:disabled) {
-            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 100%) !important;
-            box-shadow: 0 4px 8px rgba(31, 158, 75, 0.3) !important;
+        /* Main content spacing */
+        .auth-page-override .auth-left-panel .main-content {
+            flex: 1;
+            padding-top: clamp(2rem, 5vh, 4rem);
+            padding-left: clamp(2rem, 4vw, 4rem);
         }
         
-        .auth-page-override .primary-button:active:not(:disabled) {
-            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 100%) !important;
-            box-shadow: 0 2px 4px rgba(31, 158, 75, 0.2) !important;
+        /* Hide logo image if it exists */
+        .auth-page-override .auth-logo {
+            display: none !important;
         }
         
-        .auth-page-override .primary-button:focus-visible {
-            outline: 2px solid var(--auth-primary-green) !important;
-            box-shadow: 0 0 0 4px rgba(31, 158, 75, 0.1) !important;
+        /* Main heading - light green/chartreuse */
+        .auth-page-override .auth-main-heading {
+            color: var(--auth-light-green) !important;
+            font-size: clamp(2.5rem, 5vw, 4rem) !important;
+            font-weight: 900 !important;
+            line-height: 1.1 !important;
+            letter-spacing: -0.02em !important;
+        }
+        
+        /* Sub heading - light green/chartreuse */
+        .auth-page-override .auth-sub-heading {
+            color: var(--auth-light-green) !important;
+            font-size: clamp(1rem, 1.5vw, 1.25rem) !important;
+            font-weight: 400 !important;
+            margin-top: 1rem !important;
+        }
+        
+        /* Branding section - white text */
+        .auth-page-override .auth-branding {
+            position: absolute;
+            bottom: var(--spacing-xxl);
+            left: var(--spacing-container);
+        }
+        
+        .auth-page-override .auth-brand-name {
+            color: white !important;
+            font-size: clamp(1.5rem, 2vw, 2rem) !important;
+            font-weight: 700 !important;
+            line-height: 1.2 !important;
+            margin-bottom: 0.25rem !important;
+        }
+        
+        .auth-page-override .auth-brand-name-small {
+            color: white !important;
+            font-size: clamp(0.875rem, 1.2vw, 1rem) !important;
+            font-weight: 400 !important;
+            margin-left: 0 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .auth-page-override .auth-brand-text {
+            color: var(--auth-light-green) !important;
+            font-size: clamp(0.875rem, 1.2vw, 1rem) !important;
+            font-weight: 700 !important;
+            margin-left: 0 !important;
+            margin-top: 0.5rem !important;
+        }
+        
+        /* Right panel - off-white/light beige background */
+        .auth-page-override .auth-right-panel {
+            background-color: var(--auth-off-white) !important;
+        }
+        
+        /* Heading in right panel - black, centered */
+        .auth-page-override .auth-form .heading {
+            color: #000 !important;
+            font-weight: 700 !important;
+            text-align: center !important;
+        }
+        
+        /* Google button styling - white background with grey border */
+        .auth-page-override #googleSignInButton {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+            background: white !important;
+            color: #1f2937 !important;
+            border: 1px solid #d1d5db !important;
+            padding: 12px 16px !important;
+            border-radius: 8px !important;
+            box-shadow: none !important;
+        }
+        
+        .auth-page-override #googleSignInButton:hover:not(:disabled) {
+            background: #f9fafb !important;
+            border-color: #9ca3af !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+        }
+        
+        .auth-page-override #googleSignInButton:active:not(:disabled) {
+            background: #f3f4f6 !important;
+        }
+        
+        /* Google button content */
+        .auth-page-override .google-button-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .auth-page-override .google-button-user-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            flex: 1;
+            min-width: 0;
+            text-align: left;
+        }
+        
+        .auth-page-override .google-button-user-name {
+            font-weight: 700;
+            color: #000;
+            font-size: 0.9375rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+        
+        .auth-page-override .google-button-user-email {
+            font-weight: 400;
+            color: #000;
+            font-size: 0.875rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+        }
+        
+        .auth-page-override .google-button-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            background: #e5e7eb;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+        
+        .auth-page-override .google-button-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        
+        .auth-page-override .google-button-logo {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        
+        /* Ensure button text is black when no user info */
+        .auth-page-override #googleSignInButton .primary-button__text {
+            color: #1f2937 !important;
         }
         
         /* Link primary - green */
@@ -71,36 +231,6 @@
         
         .auth-page-override #devBypassButton:hover {
             background: var(--auth-primary-green-dark) !important;
-        }
-        
-        /* Left panel - green background and scrollable */
-        .auth-page-override .auth-left-panel {
-            background: linear-gradient(135deg, var(--auth-primary-green-darker) 0%, var(--auth-primary-green-dark) 50%, var(--auth-primary-green) 100%) !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-        }
-        
-        /* Ensure main content can scroll */
-        .auth-page-override .auth-left-panel .main-content {
-            flex: 1;
-        }
-        
-        /* Right panel - offwhite background matching home page */
-        .auth-page-override .auth-right-panel {
-            background-color: #FAF9F6 !important;
-        }
-        
-        /* Google button styling - ensure it uses green primary button style */
-        .auth-page-override #googleSignInButton {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            gap: 10px !important;
-        }
-        
-        /* Ensure button text is white */
-        .auth-page-override #googleSignInButton .primary-button__text {
-            color: white !important;
         }
         
         /* Hide email login form - only Google OAuth available */
@@ -138,8 +268,9 @@
                 <p class="auth-sub-heading">The Art of Perfection Begins Here</p>
             </div>
             <div class="auth-branding">
-                <img src="https://careers.recruiteecdn.com/image/upload/production/images/BpRN/wCefCTnrj5fG.png" alt="QMS Logo" class="auth-logo">
-                <div class="auth-brand-text">Communication Quality Management System</div>
+                <div class="auth-brand-name">NEXT</div>
+                <div class="auth-brand-name-small">VENTURES</div>
+                <div class="auth-brand-text">Communications Quality Management System</div>
             </div>
         </div>
         
@@ -154,15 +285,17 @@
                     <button 
                         type="button" 
                         id="googleSignInButton" 
-                        class="primary-button primary-button--md primary-button--full"
-                        style="display: flex; align-items: center; justify-content: center; gap: 10px; background: white; color: #1f2937; border: 1px solid #d1d5db;">
-                        <svg width="20" height="20" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        class="primary-button primary-button--md primary-button--full">
+                        <div class="google-button-content" id="googleButtonContent">
+                            <!-- User info will be populated here if available -->
+                            <span class="primary-button__text">Continue with Google</span>
+                        </div>
+                        <svg class="google-button-logo" width="20" height="20" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
                             <path d="M9 18c2.43 0 4.467-.806 5.965-2.184l-2.908-2.258c-.806.54-1.837.86-3.057.86-2.35 0-4.34-1.587-5.053-3.72H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
                             <path d="M3.947 10.698c-.18-.54-.282-1.117-.282-1.698s.102-1.158.282-1.698V4.97H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.03l2.99-2.332z" fill="#FBBC05"/>
                             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.97L3.947 7.302C4.66 5.167 6.65 3.58 9 3.58z" fill="#EA4335"/>
                         </svg>
-                        <span class="primary-button__text">Continue with Google</span>
                     </button>
                     <div id="googleError" class="password-error"></div>
                 </div>
@@ -295,11 +428,19 @@
         async function checkAndHandleCallback() {
             // ✅ FIX: Prevent multiple simultaneous callback handling attempts
             if (callbackHandlingInProgress || callbackHandled) {
+                console.log('Callback already in progress or handled, skipping...');
                 return false;
+            }
+            
+            // ✅ CRITICAL: Ensure Supabase is initialized FIRST before checking for callback
+            if (!supabaseInitialized) {
+                console.log('Supabase not initialized yet, initializing...');
+                await initializeSupabase();
             }
             
             const supabase = getSupabase();
             if (!supabase) {
+                console.error('Supabase client not available after initialization');
                 return false;
             }
             
@@ -312,47 +453,34 @@
                                   urlHash.includes('access_token') || 
                                   urlHash.includes('code');
             
+            console.log('Checking for OAuth callback:', {
+                hasHash: !!urlHash,
+                hasSearch: !!urlParams.toString(),
+                hasOAuthParams,
+                hashPreview: urlHash.substring(0, 50)
+            });
+            
             if (!hasOAuthParams) {
-                // No OAuth parameters - check if user has a valid session and redirect
-                // (but don't call callback handler to avoid loops)
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session && session.user) {
-                    // User has a session but no OAuth params - likely already logged in
-                    // Redirect to home page (but mark as handled to prevent callback)
-                    const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/src/features/home/presentation/home-page.html';
-                    sessionStorage.removeItem('redirectAfterLogin');
-                    window.location.replace(redirectPath);
-                    callbackHandled = true;
-                    return true;
-                }
+                // ✅ FIX: Remove session check redirect - let auth-checker handle authenticated users
+                // This prevents redirect loops between auth page and home page
+                // If user is authenticated and wants to go home, they can navigate manually
+                // or the auth-checker will handle it when they visit protected pages
+                console.log('No OAuth parameters found, skipping callback handling');
                 return false;
             }
             
             // OAuth parameters present - handle callback
+            console.log('OAuth parameters detected, handling callback...');
             callbackHandlingInProgress = true;
             
             try {
-                // Wait a bit for Supabase to process the callback
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                const { data: { session }, error } = await supabase.auth.getSession();
-                
-                if (error) {
-                    console.error('Error getting session after OAuth:', error);
-                    callbackHandlingInProgress = false;
-                    return false;
-                }
-                
-                if (session && session.user) {
-                    // User has a session after OAuth - handle the callback
-                    await handleGoogleOAuthCallback();
-                    callbackHandled = true;
-                    callbackHandlingInProgress = false;
-                    return true; // Callback handled
-                }
-                
+                // Call handleGoogleOAuthCallback which will wait for Supabase to process the callback
+                // It handles all the session waiting and retry logic internally
+                await handleGoogleOAuthCallback();
+                callbackHandled = true;
                 callbackHandlingInProgress = false;
-                return false;
+                console.log('Callback handled successfully');
+                return true; // Callback handled (redirect happens inside handleGoogleOAuthCallback)
             } catch (error) {
                 console.error('Error handling OAuth callback:', error);
                 callbackHandlingInProgress = false;
@@ -361,11 +489,60 @@
         }
         
         // Check for callback on page load
+        console.log('Page loaded, checking for OAuth callback...');
         const callbackHandledResult = await checkAndHandleCallback();
         if (!callbackHandledResult) {
             // No callback detected, continue with normal page setup
             
-            // Google Sign-In button handler
+            // Function to populate Google button with user info if available
+        function populateGoogleButton() {
+            const googleButtonContent = document.getElementById('googleButtonContent');
+            if (!googleButtonContent) return;
+            
+            // Check if there's user info in localStorage (from previous session or dev mode)
+            const userInfoStr = localStorage.getItem('userInfo');
+            if (userInfoStr) {
+                try {
+                    const userInfo = JSON.parse(userInfoStr);
+                    // Only show if it's a real Google user (not dev bypass)
+                    if (userInfo.provider === 'google' && userInfo.email) {
+                        const avatarUrl = userInfo.avatar || userInfo.picture || userInfo.avatar_url;
+                        const userName = userInfo.name || userInfo.email.split('@')[0];
+                        const userEmail = userInfo.email;
+                        
+                        // Format name for display (e.g., "Saif Ivna" from "saif.alam@nextventures.io")
+                        const displayName = userName.split(' ').map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                        ).join(' ');
+                        
+                        // Generate initials for avatar fallback
+                        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                        
+                        googleButtonContent.innerHTML = `
+                            ${avatarUrl ? 
+                                `<img src="${avatarUrl}" alt="User avatar" class="google-button-avatar" onerror="this.outerHTML='<div class=\\'google-button-avatar\\'>${initials}</div>'">` : 
+                                `<div class="google-button-avatar">${initials}</div>`
+                            }
+                            <div class="google-button-user-info">
+                                <div class="google-button-user-name">Sign in as ${displayName}</div>
+                                <div class="google-button-user-email">${userEmail}</div>
+                            </div>
+                        `;
+                        return;
+                    }
+                } catch (error) {
+                    console.error('Error parsing userInfo:', error);
+                }
+            }
+            
+            // Default: show "Continue with Google" text
+            googleButtonContent.innerHTML = '<span class="primary-button__text">Continue with Google</span>';
+        }
+        
+        // Populate button on page load
+        populateGoogleButton();
+        
+        // Google Sign-In button handler
         const googleSignInButton = document.getElementById('googleSignInButton');
         const googleError = document.getElementById('googleError');
         
@@ -377,9 +554,11 @@
                 
                 googleError.textContent = '';
                 googleSignInButton.disabled = true;
-                const buttonText = googleSignInButton.querySelector('.primary-button__text');
-                if (buttonText) {
-                    buttonText.textContent = 'Redirecting to Google...';
+                
+                // Update button text
+                const googleButtonContent = document.getElementById('googleButtonContent');
+                if (googleButtonContent) {
+                    googleButtonContent.innerHTML = '<span class="primary-button__text">Redirecting to Google...</span>';
                 }
                 
                 try {
@@ -388,9 +567,7 @@
                 } catch (error) {
                     googleError.textContent = error.message || 'Failed to sign in with Google. Please try again.';
                     googleSignInButton.disabled = false;
-                    if (buttonText) {
-                        buttonText.textContent = 'Continue with Google';
-                    }
+                    populateGoogleButton(); // Restore button content
                 }
             });
         }
@@ -440,5 +617,7 @@
             }
         });
     </script>
+    <!-- Authentication Guard - Checks if user is already authenticated and redirects to home -->
+    <script type="module" src="/js/auth-checker.js"></script>
 </body>
 </html>

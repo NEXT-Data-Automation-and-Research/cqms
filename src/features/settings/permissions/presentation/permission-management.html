@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/theme.css">
     <link rel="stylesheet" href="/sidebar.css">
-    <link rel="stylesheet" href="permission-management.css">
+    <link rel="stylesheet" href="/src/features/settings/permissions/presentation/permission-management.css">
     
     <script 
       src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" 
@@ -29,7 +29,7 @@
     }
     </script>
     
-    <!-- Authentication Guard - Must be loaded first -->
+    <!-- Authentication Guard - Auto-injected by server, but we need it early for admin check -->
     <script type="module" src="/js/auth-checker.js"></script>
     
     <!-- Initialize Supabase FIRST before any components load -->

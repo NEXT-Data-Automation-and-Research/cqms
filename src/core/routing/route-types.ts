@@ -40,6 +40,8 @@ export interface SubmenuRoute {
   label: string
   /** Roles that can access */
   roles: UserRole[]
+  /** Clean URL slug (e.g., 'scorecards' for /settings/scorecards) */
+  slug?: string
 }
 
 /**
@@ -48,6 +50,8 @@ export interface SubmenuRoute {
 export interface RouteWithSubmenu {
   /** Route path (parent) */
   path: string
+  /** Clean URL slug (e.g., 'settings' for /settings) */
+  slug?: string
   /** Route metadata */
   meta: RouteMeta
   /** Submenu items */
@@ -60,6 +64,8 @@ export interface RouteWithSubmenu {
 export interface Route {
   /** Route path */
   path: string
+  /** Clean URL slug (e.g., 'home' for /home) */
+  slug?: string
   /** Route metadata */
   meta: RouteMeta
   /** Submenu (if any) */

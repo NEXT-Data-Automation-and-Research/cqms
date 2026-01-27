@@ -1,0 +1,131 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables (will be passed via docker-compose or runtime)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+.env.staging
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.cursor/
+.mcp.json
+.claude/
+
+# Logs
+logs/
+*.log
+
+# Build files (will be built inside container)
+dist/
+build/
+out/
+.next/
+.nuxt/
+.cache/
+
+# Compiled TypeScript (will be built in container)
+public/js/**/*.js
+public/js/**/*.js.map
+
+# TypeScript source maps
+*.map
+!tsconfig.json.map
+
+# Compiled CSS (will be built in container)
+public/styles.css
+
+# Generated version file (will be generated during build)
+public/version.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+*.egg
+
+# Supabase CLI local files
+supabase/.temp/
+supabase/.branches/
+.supabase/
+
+# Database migration data
+db-migration-data/
+
+# Test coverage
+coverage/
+*.lcov
+.nyc_output/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+*.bak
+*.backup
+*.old
+
+# Tailwind CSS cache
+.tailwindcss-cache/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (optional - comment out if you want docs in image)
+docs/
+
+# Docker files themselves
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Misc
+*.md
+!README.md
+tech-issues.md

@@ -1,0 +1,122 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: express-cqms-app
+    ports:
+      - "${PORT:-4000}:4000"
+    environment:
+      # Server Configuration
+      - PORT=4000
+      - NODE_ENV=${NODE_ENV:-production}
+      
+      # Application Configuration
+      - APP_NAME=${APP_NAME:-Express CQMS}
+      - API_URL=${API_URL:-http://localhost:4000}
+      
+      # Database Configuration
+      - DATABASE_TYPE=${DATABASE_TYPE:-supabase}
+      - DATABASE_URL=${DATABASE_URL:-}
+      
+      # Supabase Configuration
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # VAPID Keys for Web Push Notifications (Optional)
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      
+      # Google Calendar API Configuration (Optional)
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID:-primary}
+      
+      # Analytics Configuration
+      - ANALYTICS_ENABLED=${ANALYTICS_ENABLED:-true}
+      - ANALYTICS_SAMPLE_RATE=${ANALYTICS_SAMPLE_RATE:-1.0}
+      - ANALYTICS_BATCH_SIZE=${ANALYTICS_BATCH_SIZE:-10}
+      - ANALYTICS_BATCH_INTERVAL_MS=${ANALYTICS_BATCH_INTERVAL_MS:-5000}
+      
+      # APM Configuration
+      - APM_ENABLED=${APM_ENABLED:-true}
+      - APM_SLOW_QUERY_THRESHOLD_MS=${APM_SLOW_QUERY_THRESHOLD_MS:-1000}
+      - APM_SLOW_API_THRESHOLD_MS=${APM_SLOW_API_THRESHOLD_MS:-500}
+      - APM_FRONTEND_ENABLED=${APM_FRONTEND_ENABLED:-true}
+      - APM_SERVER_ENABLED=${APM_SERVER_ENABLED:-true}
+      
+      # Crashlytics Configuration
+      - CRASHLYTICS_ENABLED=${CRASHLYTICS_ENABLED:-true}
+      - CRASHLYTICS_ENVIRONMENT=${CRASHLYTICS_ENVIRONMENT:-production}
+      - CRASHLYTICS_RELEASE_VERSION=${CRASHLYTICS_RELEASE_VERSION:-1.0.0}
+      - CRASHLYTICS_MAX_BREADCRUMBS=${CRASHLYTICS_MAX_BREADCRUMBS:-50}
+      
+      # Third-Party Analytics (Optional)
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_ENVIRONMENT=${SENTRY_ENVIRONMENT:-}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:-}
+      - POSTHOG_API_KEY=${POSTHOG_API_KEY:-}
+      - POSTHOG_HOST=${POSTHOG_HOST:-https://app.posthog.com}
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY:-}
+      - NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME:-express-cqms}
+      
+      # Logging
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      
+      # Redis Configuration
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_TTL_DEFAULT=${REDIS_TTL_DEFAULT:-300}
+    env_file:
+      - .env
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - express-cqms-network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: express-cqms-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes
+        else
+          redis-server --appendonly yes
+        fi
+      "
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - express-cqms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  express-cqms-network:
+    driver: bridge

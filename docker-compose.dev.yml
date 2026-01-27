@@ -1,0 +1,111 @@
+# Development Docker Compose Configuration
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: express-cqms-dev
+    ports:
+      - "${PORT:-4000}:4000"
+    environment:
+      # Server Configuration
+      - PORT=4000
+      - NODE_ENV=development
+      
+      # Application Configuration
+      - APP_NAME=${APP_NAME:-Express CQMS Development}
+      - API_URL=${API_URL:-http://localhost:4000}
+      
+      # Database Configuration
+      - DATABASE_TYPE=${DATABASE_TYPE:-supabase}
+      - DATABASE_URL=${DATABASE_URL:-}
+      
+      # Supabase Configuration
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      
+      # VAPID Keys (Optional)
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+      
+      # Google Calendar API (Optional)
+      - GOOGLE_SERVICE_ACCOUNT_EMAIL=${GOOGLE_SERVICE_ACCOUNT_EMAIL:-}
+      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID:-primary}
+      
+      # Analytics (disabled in dev by default)
+      - ANALYTICS_ENABLED=${ANALYTICS_ENABLED:-false}
+      - ANALYTICS_SAMPLE_RATE=${ANALYTICS_SAMPLE_RATE:-0.1}
+      
+      # APM (enabled in dev for debugging)
+      - APM_ENABLED=${APM_ENABLED:-true}
+      - APM_SLOW_QUERY_THRESHOLD_MS=${APM_SLOW_QUERY_THRESHOLD_MS:-500}
+      - APM_SLOW_API_THRESHOLD_MS=${APM_SLOW_API_THRESHOLD_MS:-200}
+      
+      # Crashlytics
+      - CRASHLYTICS_ENABLED=${CRASHLYTICS_ENABLED:-false}
+      - CRASHLYTICS_ENVIRONMENT=development
+      
+      # Logging (verbose in dev)
+      - LOG_LEVEL=${LOG_LEVEL:-debug}
+      
+      # Redis Configuration
+      - REDIS_ENABLED=${REDIS_ENABLED:-true}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - REDIS_TTL_DEFAULT=${REDIS_TTL_DEFAULT:-300}
+    env_file:
+      - .env
+    volumes:
+      # Mount source code for hot-reload - changes reflect automatically!
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./dist:/app/dist
+      - ./logs:/app/logs
+      # Exclude node_modules from volume mount (use container's)
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - express-cqms-network
+    depends_on:
+      - redis
+    # Use dev command with watch mode for automatic rebuilds
+    command: npm run dev
+
+  redis:
+    image: redis:7-alpine
+    container_name: express-cqms-redis-dev
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: >
+      sh -c "
+        if [ -n \"$$REDIS_PASSWORD\" ]; then
+          redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes
+        else
+          redis-server --appendonly yes
+        fi
+      "
+    volumes:
+      - redis-data-dev:/data
+    restart: unless-stopped
+    networks:
+      - express-cqms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis-data-dev:
+    driver: local
+
+networks:
+  express-cqms-network:
+    driver: bridge

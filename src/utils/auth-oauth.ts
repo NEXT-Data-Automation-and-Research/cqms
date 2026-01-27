@@ -3,7 +3,7 @@
  * Handles Google OAuth sign-in and callback processing
  */
 
-import { getSupabase } from './supabase-init.js';
+import { getSupabase, initSupabase, isSupabaseInitialized } from './supabase-init.js';
 import { clearAuthCache } from './secure-supabase.js';
 import { saveUserProfileToDatabase } from './auth-user-profile.js';
 import { storeDeviceFingerprint } from './auth-device.js';
@@ -11,10 +11,42 @@ import { logError, logWarn, logInfo } from './logging-helper.js';
 import { showLoadingOverlay, hideLoadingOverlay } from './loading-overlay.js';
 
 /**
+ * Wait for Supabase to be initialized with timeout
+ */
+async function waitForSupabaseInit(maxWait: number = 5000): Promise<any> {
+  // If already initialized, return immediately
+  if (isSupabaseInitialized()) {
+    return getSupabase();
+  }
+
+  // Try to initialize
+  const initResult = await initSupabase();
+  if (initResult) {
+    return initResult;
+  }
+
+  // If initialization didn't complete, wait for it with timeout
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWait) {
+    if (isSupabaseInitialized()) {
+      return getSupabase();
+    }
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  // Final check
+  if (isSupabaseInitialized()) {
+    return getSupabase();
+  }
+
+  throw new Error('Supabase initialization timeout. Please refresh the page and try again.');
+}
+
+/**
  * Sign in with Google using Supabase OAuth
  */
 export async function signInWithGoogle(): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = await waitForSupabaseInit();
   if (!supabase) {
     throw new Error('Supabase not initialized. Please wait a moment and try again.');
   }
@@ -39,51 +71,172 @@ export async function signInWithGoogle(): Promise<void> {
  * Handle OAuth callback when user returns from Google
  */
 export async function handleGoogleOAuthCallback(): Promise<void> {
-  const supabase = getSupabase();
+  logInfo('🔄 Starting OAuth callback handling...');
+  
+  const supabase = await waitForSupabaseInit();
   if (!supabase) {
-    logError('Supabase not initialized');
+    logError('❌ Supabase not initialized - cannot handle OAuth callback');
+    hideLoadingOverlay();
     return;
   }
+  
+  logInfo('✅ Supabase initialized, proceeding with callback handling');
 
   // Show loading overlay immediately
   showLoadingOverlay('Completing sign in...');
 
   try {
-    // Get the current session (Supabase processes OAuth callback automatically)
-    // Wait a bit for session to be fully established
-    let session = null;
-    let attempts = 0;
-    const maxAttempts = 5;
+    // Check for OAuth parameters in URL
+    const urlHash = window.location.hash;
+    const urlSearch = window.location.search;
+    const hasOAuthParams = urlHash.includes('access_token') || 
+                           urlHash.includes('code') ||
+                           urlSearch.includes('code') ||
+                           urlSearch.includes('access_token');
     
-    while (attempts < maxAttempts && !session) {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+    logInfo('OAuth callback detected:', {
+      hasHash: !!urlHash,
+      hasSearch: !!urlSearch,
+      hasOAuthParams,
+      hashPreview: urlHash.substring(0, 100)
+    });
+    
+    // Supabase processes OAuth callback automatically from URL hash when detectSessionInUrl is true
+    // Wait for Supabase to process the callback and establish session
+    let session = null;
+    
+    // Try to get session immediately (Supabase may have already processed the hash)
+    const { data: { session: initialSession }, error: initialError } = await supabase.auth.getSession();
+    if (!initialError && initialSession && initialSession.user) {
+      session = initialSession;
+      logInfo('✅ Session already available');
+    } else if (initialError) {
+      logWarn('Initial session check error:', initialError);
+    }
+    
+    // If no session yet, wait for Supabase to process the OAuth callback
+    if (!session) {
+      logInfo('Waiting for Supabase to process OAuth callback...');
       
-      if (error) {
-        logError('Auth callback error:', error);
-        if (attempts === maxAttempts - 1) {
-          return; // Give up after max attempts
+      // CRITICAL: Supabase with detectSessionInUrl should process the hash automatically
+      // But we need to give it time and potentially trigger it explicitly
+      // First, wait a moment for Supabase to initialize and process the hash
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try getSession again - this should trigger hash processing if not already done
+      const { data: { session: secondCheckSession }, error: secondCheckError } = await supabase.auth.getSession();
+      if (!secondCheckError && secondCheckSession && secondCheckSession.user) {
+        session = secondCheckSession;
+        logInfo('✅ Session established after initial wait');
+      } else {
+        logInfo('Session not yet available, setting up listener and polling...');
+        
+        let subscription: any = null;
+        let resolved = false;
+        
+        // Set up auth state change listener to catch when Supabase processes the hash
+        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event: string, currentSession: any) => {
+          logInfo(`Auth state change event: ${event}`, {
+            hasSession: !!currentSession,
+            hasUser: !!(currentSession?.user)
+          });
+          
+          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && currentSession && currentSession.user && !resolved) {
+            resolved = true;
+            if (subscription) {
+              subscription.unsubscribe();
+            }
+            session = currentSession;
+            logInfo(`✅ Session established via ${event} event`);
+          }
+        });
+        subscription = authSubscription;
+        
+        // Poll getSession as fallback (in case auth state change doesn't fire immediately)
+        let attempts = 0;
+        const maxAttempts = 30; // 15 seconds total (30 * 500ms) - increased for reliability
+        
+        while (!session && attempts < maxAttempts && !resolved) {
+          await new Promise(r => setTimeout(r, 500));
+          const { data: { session: polledSession }, error } = await supabase.auth.getSession();
+          if (!error && polledSession && polledSession.user) {
+            resolved = true;
+            if (subscription) {
+              subscription.unsubscribe();
+            }
+            session = polledSession;
+            logInfo('✅ Session established via polling');
+            break;
+          }
+          attempts++;
+          if (attempts % 5 === 0) {
+            logInfo(`Still waiting for session... (attempt ${attempts}/${maxAttempts})`);
+          }
+        }
+        
+        // Clean up subscription if still active
+        if (subscription && !resolved) {
+          subscription.unsubscribe();
         }
       }
-      
-      if (currentSession && currentSession.user) {
-        session = currentSession;
-        break;
+    }
+    
+    // Final check - try getSession one more time
+    if (!session) {
+      const { data: { session: finalSession }, error: finalError } = await supabase.auth.getSession();
+      if (!finalError && finalSession && finalSession.user) {
+        session = finalSession;
       }
-      
-      // Wait a bit before retrying
-      if (attempts < maxAttempts - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      attempts++;
     }
     
     if (!session || !session.user) {
       logError('❌ No session found after OAuth callback - user may not be authenticated yet');
-      logInfo('Attempted to get session', { maxAttempts });
+      logError('Debug info:', {
+        hasSession: !!session,
+        hasUser: !!(session?.user),
+        urlHash: window.location.hash.substring(0, 50),
+        urlSearch: window.location.search
+      });
+      hideLoadingOverlay();
+      // Show error to user
+      const errorDiv = document.createElement('div');
+      errorDiv.style.cssText = `
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        background: #ef4444;
+        color: white;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        z-index: 10001;
+        max-width: 400px;
+      `;
+      errorDiv.textContent = 'Sign in failed. Please try again.';
+      document.body.appendChild(errorDiv);
+      setTimeout(() => errorDiv.remove(), 5000);
       return;
     }
+    
+    console.log('✅✅✅ SESSION ESTABLISHED - User ID:', session.user.id, 'Email:', session.user.email);
+    logInfo('✅ Session established after OAuth callback');
+    logInfo('User ID:', session.user.id);
+    logInfo('User Email:', session.user.email);
 
     const user = session.user;
+    
+    // ✅ CRITICAL: Set login flag IMMEDIATELY to prevent auth-checker from interfering
+    // Set multiple flags to ensure auth-checker doesn't block us
+    sessionStorage.setItem('loginJustCompleted', 'true');
+    sessionStorage.setItem('oauthCallbackInProgress', 'true');
+    (window as any).__oauthRedirectInProgress = true;
+    
+    setTimeout(() => {
+      sessionStorage.removeItem('loginJustCompleted');
+      sessionStorage.removeItem('oauthCallbackInProgress');
+      delete (window as any).__oauthRedirectInProgress;
+    }, 10000); // Extended to 10 seconds for safety
+    
+    console.log('✅ Login flags set to prevent auth-checker interference');
     
     // Clear auth cache to ensure fresh verification
     clearAuthCache();
@@ -166,21 +319,102 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       window.history.replaceState({}, document.title, cleanUrl);
     }
 
-    // Check for stored redirect path, otherwise go to home
-    const redirectPath = sessionStorage.getItem('redirectAfterLogin') || '/src/features/home/presentation/home-page.html';
-    sessionStorage.removeItem('redirectAfterLogin');
-    
-    // ✅ FIX: Set a flag to indicate login just completed (prevents immediate validation failures)
-    sessionStorage.setItem('loginJustCompleted', 'true');
-    setTimeout(() => {
-      sessionStorage.removeItem('loginJustCompleted');
-    }, 5000); // Remove flag after 5 seconds
-    
-    // Use navigation utility for consistency
-    const { redirectAfterAction } = await import('./navigation.js');
-    redirectAfterAction(redirectPath);
+    // ✅ CRITICAL: Ensure redirect happens - wrap in try-catch to prevent any errors from blocking redirect
+    try {
+      // Check for stored redirect path, otherwise go to home
+      // Use clean URL /home instead of full path for consistency with auth-checker
+      let redirectPath = sessionStorage.getItem('redirectAfterLogin');
+      if (redirectPath) {
+        sessionStorage.removeItem('redirectAfterLogin');
+        // Convert full path to clean URL if it's the home page
+        if (redirectPath === '/src/features/home/presentation/home-page.html') {
+          redirectPath = '/home';
+        }
+      } else {
+        redirectPath = '/home';
+      }
+      
+      console.log('🔄🔄🔄 REDIRECTING TO:', redirectPath);
+      console.log('Session established, user authenticated, proceeding with redirect...');
+      console.log('Current URL before redirect:', window.location.href);
+      logInfo(`🔄 Redirecting to: ${redirectPath}`);
+      logInfo('Session established, user authenticated, proceeding with redirect...');
+      logInfo('Current URL before redirect:', window.location.href);
+      
+      hideLoadingOverlay();
+      
+      // CRITICAL: Ensure redirect happens - use both setTimeout and immediate attempt
+      // This handles cases where one method might be blocked
+      const performRedirect = () => {
+        logInfo('Executing redirect...');
+        try {
+          window.location.replace(redirectPath);
+        } catch (redirectErr) {
+          logError('window.location.replace failed, trying href:', redirectErr);
+          try {
+            window.location.href = redirectPath;
+          } catch (hrefErr) {
+            logError('Both redirect methods failed:', hrefErr);
+            // Last resort: assign to location
+            (window as any).location = redirectPath;
+          }
+        }
+      };
+      
+      // Try immediate redirect first
+      console.log('🚀 ABOUT TO REDIRECT TO:', redirectPath);
+      console.log('Current location:', window.location.href);
+      performRedirect();
+      
+      // Backup: also schedule redirect in case immediate one was blocked
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        console.log('Backup redirect check - current path:', currentPath);
+        if (currentPath.includes('auth-page') || currentPath.includes('auth-page.html')) {
+          console.log('Still on auth page after 500ms, forcing redirect...');
+          logInfo('Still on auth page, forcing redirect...');
+          performRedirect();
+        }
+      }, 500);
+      
+      // Final safety net - force redirect after 1 second no matter what
+      setTimeout(() => {
+        const currentPath = window.location.pathname;
+        if (currentPath.includes('auth-page') || currentPath.includes('auth-page.html')) {
+          console.error('CRITICAL: Still on auth page after 1 second, forcing redirect with window.location.href');
+          window.location.href = redirectPath;
+        }
+      }, 1000);
+    } catch (redirectError) {
+      logError('Error during redirect setup, attempting direct redirect:', redirectError);
+      // Fallback: try direct redirect even if setup failed
+      hideLoadingOverlay();
+      try {
+        window.location.replace('/home');
+      } catch (finalError) {
+        logError('Final redirect attempt failed:', finalError);
+        // Last resort: use href instead of replace
+        window.location.href = '/home';
+      }
+    }
   } catch (error) {
     logError('Error in handleGoogleOAuthCallback:', error);
+    
+    // Even if there's an error, if we have a session, try to redirect anyway
+    try {
+      const { data: { session: errorSession } } = await supabase.auth.getSession();
+      if (errorSession && errorSession.user) {
+        logInfo('Error occurred but session exists, attempting redirect anyway...');
+        sessionStorage.setItem('loginJustCompleted', 'true');
+        hideLoadingOverlay();
+        await new Promise(resolve => setTimeout(resolve, 200));
+        window.location.replace('/home');
+        return;
+      }
+    } catch (sessionCheckError) {
+      logError('Could not check session after error:', sessionCheckError);
+    }
+    
     hideLoadingOverlay();
     // Show error to user
     const errorDiv = document.createElement('div');

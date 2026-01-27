@@ -134,27 +134,50 @@ export class SidebarUserProfile {
   }
 
   /**
-   * Update role and department info
+   * Update designation and department info
    */
   private updateUserRoleAndDepartment(user: UserInfo): void {
-    if (!user.role && !user.department) return
-
-    const userEmailElement = document.querySelector('.user-email')
-    if (!userEmailElement) return
-
-    const additionalInfo: string[] = []
-    if (user.role) additionalInfo.push(user.role)
-    if (user.department) additionalInfo.push(user.department)
-    
-    // Create a small info element below email
-    let infoElement = document.querySelector('.user-info-extra')
-    if (!infoElement) {
-      infoElement = document.createElement('div')
-      infoElement.className = 'user-info-extra'
-      infoElement.setAttribute('style', 'font-size: 0.6875rem; color: rgba(255, 255, 255, 0.7); margin-top: 0.125rem;')
-      userEmailElement.parentNode?.insertBefore(infoElement, userEmailElement.nextSibling)
+    // Helper to check if value is valid
+    const hasValue = (val: any): boolean => {
+      return val !== null && val !== undefined && val !== '' && String(val).trim() !== ''
     }
-    infoElement.textContent = additionalInfo.join(' • ')
+
+    logInfo('[Sidebar] Updating designation and department', {
+      hasDesignation: hasValue(user.designation),
+      designation: user.designation,
+      hasDepartment: hasValue(user.department),
+      department: user.department
+    })
+
+    // Update designation
+    const designationElement = document.querySelector('.user-designation')
+    if (designationElement) {
+      if (hasValue(user.designation)) {
+        const designationText = String(user.designation).trim()
+        designationElement.textContent = designationText
+        ;(designationElement as HTMLElement).style.display = 'block'
+        logInfo('[Sidebar] Designation displayed:', designationText)
+      } else {
+        ;(designationElement as HTMLElement).style.display = 'none'
+      }
+    } else {
+      logWarn('[Sidebar] Designation element not found in DOM')
+    }
+
+    // Update department
+    const departmentElement = document.querySelector('.user-department')
+    if (departmentElement) {
+      if (hasValue(user.department)) {
+        const departmentText = String(user.department).trim()
+        departmentElement.textContent = departmentText
+        ;(departmentElement as HTMLElement).style.display = 'block'
+        logInfo('[Sidebar] Department displayed:', departmentText)
+      } else {
+        ;(departmentElement as HTMLElement).style.display = 'none'
+      }
+    } else {
+      logWarn('[Sidebar] Department element not found in DOM')
+    }
   }
 
   /**

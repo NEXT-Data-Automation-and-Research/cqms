@@ -1,0 +1,25 @@
+# Development Dockerfile for Express CQMS Platform
+# This Dockerfile is optimized for development with hot-reload support
+
+FROM node:20-alpine AS development
+
+# Set working directory
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDependencies)
+RUN npm ci
+
+# Copy source files
+COPY . .
+
+# Expose port
+EXPOSE 4000
+
+# Default command (can be overridden in docker-compose)
+CMD ["npm", "run", "dev"]

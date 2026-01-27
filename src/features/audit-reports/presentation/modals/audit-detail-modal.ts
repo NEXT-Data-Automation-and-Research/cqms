@@ -13,6 +13,7 @@ import { setupModalResizer } from './utils/modal-resizer.js';
 export class AuditDetailModal {
   private modal: HTMLElement | null = null;
   private controller: AuditReportsController | null = null;
+  private currentAudit: AuditReport | null = null;
 
   constructor(controller: AuditReportsController) {
     this.controller = controller;
@@ -47,6 +48,9 @@ export class AuditDetailModal {
           logError('Error loading scorecard parameters:', error);
         }
       }
+
+      // Store current audit reference
+      this.currentAudit = audit;
 
       // Render modal HTML
       const html = renderAuditDetailModalHTML(audit, scorecardParameters);
@@ -95,6 +99,28 @@ export class AuditDetailModal {
         this.close();
       }
     });
+
+    // View Full Audit button
+    const viewFullBtn = this.modal.querySelector('#auditDetailModalViewFull');
+    if (viewFullBtn) {
+      viewFullBtn.addEventListener('click', () => {
+        // Use stored audit reference
+        const audit = this.currentAudit;
+        
+        if (audit && audit._scorecard_id && audit._scorecard_table) {
+          // Navigate to unified audit-view page in view mode
+          window.location.href = `audit-view.html?id=${audit.id}&scorecard=${audit._scorecard_id}&table=${audit._scorecard_table}&mode=view`;
+          this.close();
+        } else {
+          logError('Cannot navigate: Missing audit information', { 
+            audit, 
+            hasScorecardId: !!audit?._scorecard_id,
+            hasScorecardTable: !!audit?._scorecard_table 
+          });
+          alert('Cannot view full audit: Missing required information.');
+        }
+      });
+    }
 
     // Close button at bottom
     const bottomCloseBtn = this.modal.querySelector('#auditDetailModalBottomClose');

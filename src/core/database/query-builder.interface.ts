@@ -118,6 +118,11 @@ export interface IQueryBuilder {
   single(): IQueryBuilder;
   
   /**
+   * Return single result or null if not found (doesn't throw error)
+   */
+  maybeSingle(): IQueryBuilder;
+  
+  /**
    * Execute the query
    * @returns Promise with data and error
    */

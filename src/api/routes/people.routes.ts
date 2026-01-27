@@ -13,6 +13,7 @@ import { PEOPLE_USER_MANAGEMENT_FIELDS } from '../../core/constants/field-whitel
 import { sanitizeString, isValidEmail } from '../utils/validation.js';
 import { generateDefaultPasswordHash } from '../../utils/password-utils.js';
 import { validateRequestBody, VALIDATION_RULES, validateRequestSize } from '../middleware/validation.middleware.js';
+import { invalidatePathCache } from '../middleware/redis-cache.middleware.js';
 
 const router = Router();
 const logger = createLogger('PeopleAPI');
@@ -173,6 +174,12 @@ router.post('/',
     }
 
     logger.info(`Person created: ${sanitizedEmail}`);
+    
+    // Invalidate cache for people list
+    await invalidatePathCache('/api/people').catch(err => 
+      logger.warn('Failed to invalidate cache:', err)
+    );
+    
     res.status(201).json({ data });
   } catch (error: any) {
     logger.error('Unexpected error:', error);
@@ -259,6 +266,12 @@ router.put('/:email', verifyAuth, requireAdmin, async (req: AuthenticatedRequest
     }
 
     logger.info(`Person updated: ${sanitizedEmail}`);
+    
+    // Invalidate cache for people list and this specific person
+    await invalidatePathCache('/api/people').catch(err => 
+      logger.warn('Failed to invalidate cache:', err)
+    );
+    
     res.json({ data });
   } catch (error: any) {
     logger.error('Unexpected error:', error);
@@ -351,6 +364,12 @@ router.post('/bulk-update', verifyAuth, requireAdmin, async (req: AuthenticatedR
     }
 
     logger.info(`Bulk updated ${results.length} people, ${errors.length} errors`);
+    
+    // Invalidate cache for people list
+    await invalidatePathCache('/api/people').catch(err => 
+      logger.warn('Failed to invalidate cache:', err)
+    );
+    
     res.json({ data: results, errors: errors.length > 0 ? errors : undefined });
   } catch (error: any) {
     logger.error('Unexpected error:', error);

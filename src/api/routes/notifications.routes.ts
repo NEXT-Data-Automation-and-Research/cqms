@@ -172,5 +172,54 @@ router.delete('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Respons
   }
 });
 
+/**
+ * POST /api/notifications/test
+ * Create a test notification for the current user
+ * Useful for testing the notification system
+ */
+router.post('/test', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const supabase = getServerSupabase();
+    const userId = req.user!.id;
+
+    const { type = 'info', title, body } = req.body;
+
+    // Default test notification
+    const testNotification = {
+      user_id: userId,
+      title: title || 'Test Notification',
+      body: body || `This is a test notification created at ${new Date().toLocaleString()}`,
+      type: type || 'info',
+      category: 'system',
+      status: 'pending',
+      metadata: {
+        test: true,
+        created_at: new Date().toISOString(),
+      },
+    };
+
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(testNotification)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Error creating test notification:', error);
+      res.status(500).json({ error: 'Failed to create test notification' });
+      return;
+    }
+
+    logger.info(`Test notification created for user ${userId}`);
+    res.status(201).json({ 
+      data,
+      message: 'Test notification created successfully' 
+    });
+  } catch (error: any) {
+    logger.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router;
 

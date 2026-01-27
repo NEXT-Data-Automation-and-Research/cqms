@@ -15,6 +15,7 @@ export interface UserInfo {
   avatar_url: string | null      // Same as avatar (for compatibility)
   role?: string                 // User's role (Employee, Auditor, etc.)
   department?: string            // User's department
+  designation?: string          // User's designation/job title
 }
 
 /**

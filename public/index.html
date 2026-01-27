@@ -11,9 +11,15 @@
     {
         "imports": {
             "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
-            "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm"
+            "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+            "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
         }
     }
+    </script>
+    <script type="module">
+        // Enable automatic XSS protection - sanitizes all innerHTML automatically
+        import { enableAutoXSSProtection } from './js/utils/auto-xss-protection.js';
+        enableAutoXSSProtection();
     </script>
     <script type="module">
         // Initialize theme before page renders

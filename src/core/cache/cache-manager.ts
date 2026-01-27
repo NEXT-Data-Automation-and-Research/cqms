@@ -23,7 +23,7 @@ export interface CacheEntry<T> {
 
 export class CacheManager {
   private memoryCache: Map<string, CacheEntry<any>> = new Map();
-  private defaultOptions: Required<CacheOptions>;
+  protected defaultOptions: Required<CacheOptions>;
 
   constructor(defaultOptions: CacheOptions = {}) {
     this.defaultOptions = {
@@ -34,7 +34,7 @@ export class CacheManager {
   }
 
   /**
-   * Get cached data
+   * Get cached data (synchronous for backward compatibility)
    */
   get<T>(key: string, options?: CacheOptions): T | null {
     const opts = { ...this.defaultOptions, ...options };
@@ -64,7 +64,7 @@ export class CacheManager {
   }
 
   /**
-   * Set cached data
+   * Set cached data (synchronous for backward compatibility)
    */
   set<T>(key: string, data: T, options?: CacheOptions): void {
     const opts = { ...this.defaultOptions, ...options };
@@ -84,7 +84,7 @@ export class CacheManager {
   }
 
   /**
-   * Delete cached data
+   * Delete cached data (synchronous for backward compatibility)
    */
   delete(key: string, options?: CacheOptions): void {
     const opts = { ...this.defaultOptions, ...options };

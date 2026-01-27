@@ -225,6 +225,14 @@ export class SupabaseQueryBuilder implements IQueryBuilder {
   }
 
   /**
+   * Return single result or null if not found (doesn't throw error)
+   */
+  maybeSingle(): IQueryBuilder {
+    this.query = this.query.maybeSingle();
+    return this;
+  }
+
+  /**
    * Execute the query
    * @returns Promise with data and error in Supabase format
    */

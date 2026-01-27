@@ -3,6 +3,13 @@
   "ext": "js",
   "ignore": ["node_modules", "public", "src"],
   "delay": 1000,
-  "exec": "node dist/server-commonjs.js"
+  "exec": "node dist/server-commonjs.js",
+  "env": {
+    "nodemon": "true"
+  },
+  "verbose": true,
+  "events": {
+    "restart": "echo [Nodemon] Restarting server due to file changes..."
+  }
 }
 

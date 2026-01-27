@@ -9,6 +9,8 @@
 
 import { IDatabaseClient } from '../database/database-client.interface.js';
 import { CacheManager, defaultCacheManager } from '../cache/cache-manager.js';
+import { RedisCacheManager } from '../cache/redis-cache-manager.js';
+import { getRedisConfig } from '../cache/redis-client.js';
 import { AppError, createDatabaseError } from '../errors/app-error.js';
 import { logger } from '../../utils/logger.js';
 
@@ -20,11 +22,22 @@ export abstract class BaseRepository {
   constructor(
     db: IDatabaseClient,
     tableName: string,
-    cache?: CacheManager
+    cache?: CacheManager | RedisCacheManager
   ) {
     this.db = db;
     this.tableName = tableName;
-    this.cache = cache || defaultCacheManager;
+    
+    // Use Redis cache if enabled, otherwise use default (memory/sessionStorage)
+    if (!cache) {
+      const redisConfig = getRedisConfig();
+      if (redisConfig.enabled) {
+        this.cache = new RedisCacheManager({ keyPrefix: `repo:${tableName}:` }) as any;
+      } else {
+        this.cache = defaultCacheManager;
+      }
+    } else {
+      this.cache = cache as any;
+    }
   }
 
   /**
@@ -87,8 +100,12 @@ export abstract class BaseRepository {
   /**
    * Invalidate cache for a key
    */
-  protected invalidateCache(key: string): void {
-    this.cache.delete(key);
+  protected async invalidateCache(key: string): Promise<void> {
+    if (this.cache instanceof RedisCacheManager) {
+      await (this.cache as any).deleteAsync(key);
+    } else {
+      this.cache.delete(key);
+    }
   }
 
   /**

@@ -623,6 +623,7 @@ body {
   background-color: rgba(0, 0, 0, 0.15);
   color: rgba(255, 255, 255, 1);
   outline: none;
+  text-decoration: none;
 }
 
 .sidebar.collapsed .menu-item:hover,
@@ -974,6 +975,7 @@ body {
   background-color: rgba(0, 0, 0, 0.2);
   color: rgba(255, 255, 255, 1);
   outline: none;
+  text-decoration: none;
 }
 
 .submenu-item.active {
@@ -1192,6 +1194,17 @@ body {
   transform: translateX(0);
 }
 
+/* Ensure child elements are visible when parent is visible */
+.sidebar:not(.collapsed) .user-info .user-designation,
+.sidebar.collapsed:hover .user-info .user-designation {
+  display: block !important;
+}
+
+.sidebar:not(.collapsed) .user-info .user-department,
+.sidebar.collapsed:hover .user-info .user-department {
+  display: block !important;
+}
+
 .user-name {
   font-weight: 600;
   font-size: 0.625rem;
@@ -1214,6 +1227,32 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.2;
+}
+
+.user-designation {
+  font-size: 0.5625rem;
+  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--font-family);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin-top: 0.125rem;
+}
+
+.user-department {
+  font-size: 0.5625rem;
+  opacity: 0.85;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: var(--font-family);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+  margin-top: 0.125rem;
 }
 
 /* User Profile Section */

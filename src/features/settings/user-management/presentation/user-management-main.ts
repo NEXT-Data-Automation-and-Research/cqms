@@ -335,14 +335,37 @@ async function waitForSupabaseClient(maxWait: number = 10000): Promise<void> {
 
 async function initializeUserManagement(): Promise<void> {
   if (!mainInstance) {
-    // Wait for Supabase client to be ready before creating UserManagementMain
-    await waitForSupabaseClient();
-    
-    mainInstance = new UserManagementMain();
-    setupWindowHandlers(mainInstance);
-    mainInstance.initialize().catch((error) => {
+    try {
+      // Wait for Supabase client to be ready before creating UserManagementMain
+      await waitForSupabaseClient();
+      
+      mainInstance = new UserManagementMain();
+      setupWindowHandlers(mainInstance);
+      await mainInstance.initialize();
+    } catch (error) {
       logError('[UserManagementMain] Failed to initialize:', error);
-    });
+      // Show error message to user
+      const container = document.getElementById('usersTableContent');
+      if (container) {
+        container.innerHTML = `
+          <div class="error-state" style="text-align: center; padding: 2rem; max-width: 600px; margin: 0 auto;">
+            <div style="margin-bottom: 1.5rem;">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ef4444; margin: 0 auto;">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.75rem;">Failed to Initialize</h3>
+            <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">${error instanceof Error ? error.message : 'An error occurred while loading the page.'}</p>
+            <button onclick="window.location.reload()" 
+                    style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer;">
+              Reload Page
+            </button>
+          </div>
+        `;
+      }
+    }
   }
 }
 

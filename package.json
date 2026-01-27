@@ -22,7 +22,18 @@
     "apply-rls": "node -r ts-node/register src/scripts/apply-rls-migration.ts || node dist/scripts/apply-rls-migration.js",
     "apply-audit-migrations": "npx tsx src/scripts/apply-audit-reports-migrations.ts",
     "validate:css": "node scripts/css-pattern-validator.js",
-    "postinstall": "node setup-env.js || echo 'Setup skipped - .env file may already exist'"
+    "postinstall": "node setup-env.js || echo 'Setup skipped - .env file may already exist'",
+    "docker:build": "docker build -t express-cqms:latest .",
+    "docker:build:dev": "docker build -f Dockerfile.dev -t express-cqms:dev .",
+    "docker:up": "docker-compose up -d",
+    "docker:up:dev": "docker-compose -f docker-compose.dev.yml up",
+    "docker:down": "docker-compose down",
+    "docker:down:dev": "docker-compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
+    "docker:restart": "docker-compose restart",
+    "docker:rebuild": "docker-compose build --no-cache",
+    "docker:rebuild:dev": "docker-compose -f docker-compose.dev.yml build --no-cache"
   },
   "keywords": [
     "html",
@@ -44,6 +55,7 @@
     "express-rate-limit": "^8.2.1",
     "googleapis": "^144.0.0",
     "helmet": "^8.1.0",
+    "ioredis": "^5.9.2",
     "loglevel": "^1.9.1",
     "postgres": "^3.4.7"
   },
@@ -60,5 +72,8 @@
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.3",
     "web-push": "^3.6.7"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   }
 }
