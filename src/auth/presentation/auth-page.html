@@ -3,664 +3,288 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | QMS</title>
+    <title>Sign in | QMS</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
     <link rel="stylesheet" href="/styles.css">
-    <!-- Import map for npm packages in browser -->
     <script type="importmap">
-    {
-        "imports": {
-            "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
-            "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
-            "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
-        }
-    }
+    {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
     </script>
     <style>
-        /* Minimal page-specific overrides */
-        body {
+        /* Typewriter cursor */
+        #typewriterCursor { animation: blink 0.8s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        /* Luxury section typography */
+        .font-display { font-family: ui-serif, Georgia, Cambria, 'Times New Roman', serif; }
+        /* Scroll indicator: gentle bounce down */
+        #scrollIndicator { animation: scrollBounce 2s ease-in-out infinite; }
+        @keyframes scrollBounce {
+            0%, 100% { transform: translateY(0); opacity: 1; }
+            50% { transform: translateY(8px); opacity: 0.85; }
+        }
+        /* First section: exactly one viewport so scroll icon is always visible at 100% zoom */
+        .auth-viewport {
             height: 100vh;
-            overflow: hidden;
+            height: 100dvh;
+            max-height: 100vh;
+            max-height: 100dvh;
         }
-        
-        /* Green primary color overrides for auth page */
-        :root {
-            --auth-primary-green: #1f9e4b;
-            --auth-primary-green-dark: #1a733e;
-            --auth-primary-green-darker: #124f2a;
-            --auth-dark-green: #2E7D32;
-            --auth-light-green: #DFFF8C;
-            --auth-off-white: #F8F5EF;
+        /* Hero "Every Detail Matters." – explicit font-size so it applies (avoids Tailwind purge/build issues) */
+        #typewriterHeading {
+            font-size: 5rem;
         }
-        
-        /* Left panel - match sidebar gradient */
-        .auth-page-override .auth-left-panel {
-            background: linear-gradient(135deg, #0d5e3a 0%, #1a733e 50%, #2d8f5a 100%) !important;
-            background-color: #1a733e !important; /* Fallback for older browsers */
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
+        @media (min-width: 640px) {
+            #typewriterHeading { font-size: 5rem; }
         }
-        
-        /* Main content spacing */
-        .auth-page-override .auth-left-panel .main-content {
-            flex: 1;
-            padding-top: clamp(2rem, 5vh, 4rem);
-            padding-left: clamp(2rem, 4vw, 4rem);
-        }
-        
-        /* Hide logo image if it exists */
-        .auth-page-override .auth-logo {
-            display: none !important;
-        }
-        
-        /* Main heading - light green/chartreuse */
-        .auth-page-override .auth-main-heading {
-            color: var(--auth-light-green) !important;
-            font-size: clamp(2.5rem, 5vw, 4rem) !important;
-            font-weight: 900 !important;
-            line-height: 1.1 !important;
-            letter-spacing: -0.02em !important;
-        }
-        
-        /* Sub heading - light green/chartreuse */
-        .auth-page-override .auth-sub-heading {
-            color: var(--auth-light-green) !important;
-            font-size: clamp(1rem, 1.5vw, 1.25rem) !important;
-            font-weight: 400 !important;
-            margin-top: 1rem !important;
-        }
-        
-        /* Branding section - white text */
-        .auth-page-override .auth-branding {
-            position: absolute;
-            bottom: var(--spacing-xxl);
-            left: var(--spacing-container);
-        }
-        
-        .auth-page-override .auth-brand-name {
-            color: white !important;
-            font-size: clamp(1.5rem, 2vw, 2rem) !important;
-            font-weight: 700 !important;
-            line-height: 1.2 !important;
-            margin-bottom: 0.25rem !important;
-        }
-        
-        .auth-page-override .auth-brand-name-small {
-            color: white !important;
-            font-size: clamp(0.875rem, 1.2vw, 1rem) !important;
-            font-weight: 400 !important;
-            margin-left: 0 !important;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        
-        .auth-page-override .auth-brand-text {
-            color: var(--auth-light-green) !important;
-            font-size: clamp(0.875rem, 1.2vw, 1rem) !important;
-            font-weight: 700 !important;
-            margin-left: 0 !important;
-            margin-top: 0.5rem !important;
-        }
-        
-        /* Right panel - off-white/light beige background */
-        .auth-page-override .auth-right-panel {
-            background-color: var(--auth-off-white) !important;
-        }
-        
-        /* Heading in right panel - black, centered */
-        .auth-page-override .auth-form .heading {
-            color: #000 !important;
-            font-weight: 700 !important;
-            text-align: center !important;
-        }
-        
-        /* Google button styling - white background with grey border */
-        .auth-page-override #googleSignInButton {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            gap: 12px !important;
-            background: white !important;
-            color: #1f2937 !important;
-            border: 1px solid #d1d5db !important;
-            padding: 12px 16px !important;
-            border-radius: 8px !important;
-            box-shadow: none !important;
-        }
-        
-        .auth-page-override #googleSignInButton:hover:not(:disabled) {
-            background: #f9fafb !important;
-            border-color: #9ca3af !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
-        }
-        
-        .auth-page-override #googleSignInButton:active:not(:disabled) {
-            background: #f3f4f6 !important;
-        }
-        
-        /* Google button content */
-        .auth-page-override .google-button-content {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .auth-page-override .google-button-user-info {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            flex: 1;
-            min-width: 0;
-            text-align: left;
-        }
-        
-        .auth-page-override .google-button-user-name {
-            font-weight: 700;
-            color: #000;
-            font-size: 0.9375rem;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 100%;
-        }
-        
-        .auth-page-override .google-button-user-email {
-            font-weight: 400;
-            color: #000;
-            font-size: 0.875rem;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 100%;
-        }
-        
-        .auth-page-override .google-button-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: #e5e7eb;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: #6b7280;
-            text-transform: uppercase;
-        }
-        
-        .auth-page-override .google-button-avatar img {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            object-fit: cover;
-        }
-        
-        .auth-page-override .google-button-logo {
-            width: 20px;
-            height: 20px;
-            flex-shrink: 0;
-        }
-        
-        /* Ensure button text is black when no user info */
-        .auth-page-override #googleSignInButton .primary-button__text {
-            color: #1f2937 !important;
-        }
-        
-        /* Link primary - green */
-        .auth-page-override .link-primary {
-            color: var(--auth-primary-green-dark) !important;
-        }
-        
-        .auth-page-override .link-primary::after {
-            background-color: var(--auth-primary-green-dark) !important;
-        }
-        
-        .auth-page-override .link-primary:hover {
-            color: var(--auth-primary-green-darker) !important;
-        }
-        
-        /* Dev bypass button - green */
-        .auth-page-override #devBypassButton {
-            background: var(--auth-primary-green) !important;
-        }
-        
-        .auth-page-override #devBypassButton:hover {
-            background: var(--auth-primary-green-dark) !important;
-        }
-        
-        /* Hide email login form - only Google OAuth available */
-        .auth-page-override .divider {
-            display: none !important;
-        }
-        
-        /* Hide email form group */
-        .auth-page-override .form-group:has(#email) {
-            display: none !important;
-        }
-        
-        /* Hide password form group */
-        .auth-page-override .form-group:has(#password) {
-            display: none !important;
-        }
-        
-        /* Hide login submit button */
-        .auth-page-override #loginForm button[type="submit"] {
-            display: none !important;
-        }
-        
-        /* Hide forgot password link */
-        .auth-page-override #forgotPasswordLink {
-            display: none !important;
+        @media (min-width: 1280px) {
+            #typewriterHeading { font-size: 5rem; }
         }
     </style>
 </head>
-<body class="auth-page-override">
-    <div class="auth-container">
-        <!-- Left Panel: Branding Section -->
-        <div class="auth-left-panel">
-            <div class="main-content">
-                <h1 class="auth-main-heading">Every Detail<br>Matters.</h1>
-                <p class="auth-sub-heading">The Art of Perfection Begins Here</p>
+<body class="min-h-screen antialiased">
+    <!-- Fixed viewport: only login visible on load; height = viewport so scroll icon is visible at 100% zoom -->
+    <section class="auth-viewport relative flex overflow-hidden shrink-0" aria-label="Sign in">
+    <div class="min-h-0 flex-1 w-full flex overflow-hidden">
+        <!-- Left: Brand -->
+        <div class="hidden lg:flex lg:w-[70%] lg:min-w-0 flex-col justify-between bg-[#1A733E] p-6 lg:p-10 xl:p-14 overflow-hidden">
+            <div class="min-h-0 flex-shrink">
+                <h1 id="typewriterHeading" class="font-extrabold tracking-tight text-[#E0FFB3] leading-[1.1] min-h-[1.2em]">
+                    <span id="typewriterText"></span><span id="typewriterCursor" aria-hidden="true">|</span>
+                </h1>
+                <p id="typewriterSubline" class="mt-3 text-[#E0FFB3] text-base opacity-0 translate-y-4 transition-all duration-700 ease-out">The art of perfection begins here.</p>
             </div>
-            <div class="auth-branding">
-                <div class="auth-brand-name">NEXT</div>
-                <div class="auth-brand-name-small">VENTURES</div>
-                <div class="auth-brand-text">Communications Quality Management System</div>
+            <div class="flex flex-col gap-1 items-start flex-shrink-0">
+                <img src="https://careers.recruiteecdn.com/image/upload/production/images/BpRN/wCefCTnrj5fG.png" alt="NEXT Ventures" class="h-8 w-auto object-contain object-left opacity-90 -ml-[0.4rem]" width="160" height="32" loading="lazy">
+                <p class="text-[#E0FFB3] text-sm xl:text-base font-bold">Communications Quality Management System</p>
             </div>
         </div>
-        
-        <!-- Right Panel: Form Section -->
-        <div class="auth-right-panel">
-            <!-- Login Form Component -->
-            <form class="auth-form" id="loginForm">
-                <h2 class="heading">Login to continue</h2>
-                
-                <!-- Google Sign-In Component (Supabase OAuth) -->
-                <div class="google-signin-container">
-                    <button 
-                        type="button" 
-                        id="googleSignInButton" 
-                        class="primary-button primary-button--md primary-button--full">
-                        <div class="google-button-content" id="googleButtonContent">
-                            <!-- User info will be populated here if available -->
-                            <span class="primary-button__text">Continue with Google</span>
-                        </div>
-                        <svg class="google-button-logo" width="20" height="20" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
-                            <path d="M9 18c2.43 0 4.467-.806 5.965-2.184l-2.908-2.258c-.806.54-1.837.86-3.057.86-2.35 0-4.34-1.587-5.053-3.72H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
-                            <path d="M3.947 10.698c-.18-.54-.282-1.117-.282-1.698s.102-1.158.282-1.698V4.97H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.03l2.99-2.332z" fill="#FBBC05"/>
-                            <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.97L3.947 7.302C4.66 5.167 6.65 3.58 9 3.58z" fill="#EA4335"/>
-                        </svg>
-                    </button>
-                    <div id="googleError" class="password-error"></div>
-                </div>
-                
-                <!-- Dev Bypass Section (only visible in dev mode) -->
-                <div id="devBypassSection" style="display: none; margin-top: 1.5rem; padding: 1rem; background: #f3f4f6; border-radius: 8px; border: 2px dashed #9ca3af;">
-                    <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 0.75rem; font-weight: 600;">🔧 Dev Mode: Bypass Authentication</p>
-                    <div class="form-group" style="margin-bottom: 0.75rem;">
-                        <label for="devEmailInput" class="textfield-label" style="font-size: 0.75rem;">Test Email:</label>
-                        <input 
-                            type="email" 
-                            id="devEmailInput" 
-                            class="textfield" 
-                            placeholder="dev@test.com"
-                            value="dev@test.com"
-                            style="font-size: 0.875rem;">
+
+        <!-- Right: Sign in (full width on mobile, left panel hidden) -->
+        <div class="flex-1 min-w-0 min-h-0 flex flex-col lg:flex-row lg:items-center lg:justify-center bg-[#F6F5F0] p-4 sm:p-6 lg:p-10 overflow-auto">
+            <!-- Mobile: minimal brand -->
+            <div class="lg:hidden mb-4 sm:mb-6 flex justify-start flex-shrink-0">
+                <img src="https://careers.recruiteecdn.com/image/upload/production/images/BpRN/wCefCTnrj5fG.png" alt="NEXT Ventures" class="h-7 w-auto object-contain object-left opacity-80" width="140" height="28" loading="eager">
+            </div>
+            <div class="w-full max-w-[360px] lg:mx-0 mx-auto text-center flex-shrink-0">
+                <h2 class="text-xl sm:text-2xl font-semibold text-slate-900 tracking-tight">Sign in</h2>
+                <p class="mt-1 text-slate-500 text-sm">Use your work account to continue.</p>
+
+                <form id="loginForm" class="mt-4 sm:mt-6 lg:mt-8">
+                    <div class="space-y-4 flex flex-col items-center">
+                        <button
+                            type="button"
+                            id="googleSignInButton"
+                            class="w-auto min-w-[240px] flex items-center justify-center gap-3 rounded-full border border-[#dadce0] bg-white py-2.5 px-5 text-sm font-bold text-black transition hover:bg-[#f8f9fa] focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30 disabled:opacity-60">
+                            <svg class="h-5 w-5 flex-shrink-0" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                                <path d="M9 18c2.43 0 4.467-.806 5.965-2.184l-2.908-2.258c-.806.54-1.837.86-3.057.86-2.35 0-4.34-1.587-5.053-3.72H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                                <path d="M3.947 10.698c-.18-.54-.282-1.117-.282-1.698s.102-1.158.282-1.698V4.97H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.03l2.99-2.332z" fill="#FBBC05"/>
+                                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.97L3.947 7.302C4.66 5.167 6.65 3.58 9 3.58z" fill="#EA4335"/>
+                            </svg>
+                            <span id="googleButtonContent">Sign in with Google</span>
+                        </button>
+                        <p id="googleError" class="text-sm text-red-600 empty:hidden text-center"></p>
                     </div>
-                    <button 
-                        type="button" 
-                        id="devBypassButton"
-                        class="primary-button primary-button--sm primary-button--full"
-                        style="font-size: 0.875rem;">
-                        <span class="primary-button__text">Bypass Auth (Dev Only)</span>
-                    </button>
+                </form>
+
+                <!-- Dev bypass (shown only in dev) -->
+                <div id="devBypassSection" class="mt-8 hidden rounded-lg border border-dashed border-slate-300 bg-slate-100/50 p-4">
+                    <p class="text-xs font-medium text-slate-500">Dev: Bypass auth</p>
+                    <input type="email" id="devEmailInput" value="dev@test.com" class="mt-2 w-full rounded border border-slate-200 px-3 py-2 text-sm" placeholder="Email">
+                    <button type="button" id="devBypassButton" class="mt-2 w-full rounded-lg bg-slate-700 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">Bypass (dev only)</button>
                 </div>
-                
-                <!-- Email Login Section (Hidden - Email login disabled) -->
-                <div id="emailLoginSection" style="display: none;">
-                    <!-- Divider Component -->
-                    <div class="divider">
-                        <span>or</span>
-                    </div>
-                    
-                    <!-- Email Text Field Component -->
-                    <div class="form-group">
-                        <label for="email" class="textfield-label">Email</label>
-                        <input type="email" 
-                               id="email" 
-                               class="textfield" 
-                               placeholder="Enter your email address" 
-                               required>
-                    </div>
-                    
-                    <!-- Password Text Field Component -->
-                    <div class="form-group">
-                        <label for="password" class="textfield-label">Password</label>
-                        <input type="password" 
-                               id="password" 
-                               class="textfield" 
-                               placeholder="Enter your password" 
-                               required>
-                        <div id="passwordError" class="password-error"></div>
-                    </div>
-                    
-                    <!-- Submit Button Component -->
-                    <button type="submit" class="primary-button primary-button--md primary-button--full">
-                        <span class="primary-button__text">Login</span>
-                    </button>
-                    
-                    <!-- Link Component -->
-                    <a href="#" class="link-primary" id="forgotPasswordLink">Forgot your password?</a>
-                </div>
-            </form>
-            
-            <!-- Reset Password Form Component -->
-            <form class="reset-form" id="resetForm">
-                <h2 class="heading">Reset Password</h2>
-                <p class="text">Enter your email address and we'll send you a link to reset your password.</p>
-                
-                <!-- Message Container Component -->
-                <div id="messageContainer"></div>
-                
-                <!-- Email Text Field Component -->
-                <div class="form-group">
-                    <label for="resetEmail" class="textfield-label">Email Address</label>
-                    <input type="email" 
-                           id="resetEmail" 
-                           class="textfield" 
-                           placeholder="Enter your email address" 
-                           required>
-                </div>
-                
-                <!-- Submit Button Component -->
-                <button type="submit" class="primary-button primary-button--md primary-button--full" id="submitReset">
-                    <span class="primary-button__text">Send Reset Link</span>
-                </button>
-                
-                <!-- Link Component -->
-                <a href="#" class="link-primary" id="backToLogin" style="margin-top: 0.7031rem;">Back to Login</a>
-            </form>
+            </div>
         </div>
     </div>
-    
-    <!-- Supabase Authentication Handler -->
+    <!-- Scroll indicator: overlay layer at bottom center; always visible because section height = viewport -->
+    <div class="absolute inset-0 pointer-events-none z-10 flex items-end justify-center pb-4 flex-shrink-0" aria-hidden="true">
+        <a href="#features" id="scrollIndicator" class="pointer-events-auto flex flex-col items-center text-black/50 hover:text-black/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-black/30 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F6F5F0] rounded-full transition-colors shrink-0" aria-label="Scroll down to learn more">
+            <svg xmlns="http://www.w3.org/2000/svg" height="48" viewBox="0 -960 960 960" width="48" fill="currentColor" class="w-9 h-9 sm:w-10 sm:h-10 lg:w-12 lg:h-12" aria-hidden="true"><path d="M481-350q-8 0-14.5-2.5T455-361L255-561q-11-10-10.5-25.5T256-613q11-10 26-10t26 10l173 174 173-174q11-10 25.5-9.5T705-612q11 11 11 26.5T705-560L506-361q-5 6-11.5 8.5T481-350Z"/></svg>
+        </a>
+    </div>
+    </section>
+
+    <!-- Features: luxury showcase below the fold (theme: cream + green) -->
+    <section id="features" class="relative bg-[#F6F5F0] text-slate-900 overflow-hidden" aria-label="Platform features">
+        <!-- Subtle grid texture -->
+        <div class="absolute inset-0 opacity-[0.04]" style="background-image: linear-gradient(#1A733E 1px, transparent 1px), linear-gradient(90deg, #1A733E 1px, transparent 1px); background-size: 64px 64px;"></div>
+
+        <div class="relative max-w-7xl mx-auto px-6 sm:px-10 py-24 lg:py-32">
+            <!-- Section label -->
+            <p class="font-display text-[#1A733E] text-sm uppercase tracking-[0.35em] mb-4">Why QMS</p>
+            <h2 class="font-display text-4xl sm:text-5xl lg:text-6xl font-normal tracking-tight text-slate-900 max-w-3xl leading-[1.15]">
+                Where quality meets clarity.
+            </h2>
+            <p class="mt-6 text-lg text-slate-600 max-w-xl leading-relaxed">
+                One platform to audit, measure, and elevate every communication. Built for teams that refuse to compromise.
+            </p>
+
+            <!-- Feature blocks -->
+            <div class="mt-20 lg:mt-28 grid gap-px sm:grid-cols-2 lg:grid-cols-3 bg-[#1A733E]/10 rounded-2xl overflow-hidden border border-[#1A733E]/20">
+                <article class="group bg-white hover:bg-[#1A733E] p-8 lg:p-10 flex flex-col border border-slate-200/80 hover:border-[#1A733E] transition-colors duration-300">
+                    <div class="w-12 h-12 rounded-xl bg-[#1A733E]/15 group-hover:bg-white/20 flex items-center justify-center mb-6 transition-colors duration-300">
+                        <svg class="w-6 h-6 text-[#1A733E] group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+                    </div>
+                    <h3 class="font-display text-xl lg:text-2xl text-slate-900 group-hover:text-white font-medium transition-colors duration-300">Quality Audits</h3>
+                    <p class="mt-3 text-slate-600 group-hover:text-white text-sm lg:text-base leading-relaxed transition-colors duration-300">Structured evaluations with clear criteria. Score calls, emails, and interactions—then act on what matters.</p>
+                </article>
+                <article class="group bg-white hover:bg-[#1A733E] p-8 lg:p-10 flex flex-col border border-slate-200/80 hover:border-[#1A733E] transition-colors duration-300">
+                    <div class="w-12 h-12 rounded-xl bg-[#1A733E]/15 group-hover:bg-white/20 flex items-center justify-center mb-6 transition-colors duration-300">
+                        <svg class="w-6 h-6 text-[#1A733E] group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </div>
+                    <h3 class="font-display text-xl lg:text-2xl text-slate-900 group-hover:text-white font-medium transition-colors duration-300">Reporting & Analytics</h3>
+                    <p class="mt-3 text-slate-600 group-hover:text-white text-sm lg:text-base leading-relaxed transition-colors duration-300">Dashboards and trends at a glance. From team performance to compliance—decisions backed by data.</p>
+                </article>
+                <article class="group bg-white hover:bg-[#1A733E] p-8 lg:p-10 flex flex-col sm:col-span-2 lg:col-span-1 border border-slate-200/80 hover:border-[#1A733E] transition-colors duration-300">
+                    <div class="w-12 h-12 rounded-xl bg-[#1A733E]/15 group-hover:bg-white/20 flex items-center justify-center mb-6 transition-colors duration-300">
+                        <svg class="w-6 h-6 text-[#1A733E] group-hover:text-white transition-colors duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                    </div>
+                    <h3 class="font-display text-xl lg:text-2xl text-slate-900 group-hover:text-white font-medium transition-colors duration-300">Communications Hub</h3>
+                    <p class="mt-3 text-slate-600 group-hover:text-white text-sm lg:text-base leading-relaxed transition-colors duration-300">Centralize every channel. Review, tag, and improve how your team communicates—internally and with customers.</p>
+                </article>
+            </div>
+
+            <!-- Bottom line -->
+            <div class="mt-20 lg:mt-24 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pt-12 border-t border-[#1A733E]/20">
+                <p class="font-display text-2xl sm:text-3xl text-[#1A733E]">Every detail matters.</p>
+                <p class="text-slate-600 text-sm max-w-md">NEXT Ventures · Communications Quality Management System</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Hidden forms for script compatibility -->
+    <form id="resetForm" class="hidden" aria-hidden="true">
+        <div id="messageContainer"></div>
+        <input type="email" id="resetEmail" placeholder="Email">
+        <button type="submit" id="submitReset">Send reset link</button>
+        <a href="#" id="backToLogin">Back to login</a>
+    </form>
+
     <script type="module">
+        /* Typewriter: "Every detail" then "matters." – one letter at a time */
+        (function runTypewriter() {
+            const textEl = document.getElementById('typewriterText');
+            const cursorEl = document.getElementById('typewriterCursor');
+            if (!textEl || !cursorEl) return;
+            const line1 = 'Every Detail';
+            const line2 = 'Matters.';
+            const full = line1 + '\n' + line2;
+            let i = 0;
+            const ms = 85;
+            function type() {
+                if (i < full.length) {
+                    textEl.innerHTML += full[i] === '\n' ? '<br>' : full[i];
+                    i++;
+                    setTimeout(type, ms);
+                } else {
+                    cursorEl.style.display = 'none';
+                    const sub = document.getElementById('typewriterSubline');
+                    if (sub) sub.classList.add('opacity-100', 'translate-y-0');
+                }
+            }
+            setTimeout(type, 400);
+        })();
+
         import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
         import { signInWithGoogle, handleGoogleOAuthCallback, enableDevBypassAuthentication } from '/js/utils/auth.js';
-        
-        /**
-         * Check if we're in dev mode
-         * ✅ UX/Security improvement: Multiple signals checked, not just localStorage
-         * Fallback: localStorage check still works for backward compatibility
-         * 
-         * Dev mode is enabled if ANY of these are true:
-         * 1. Running on localhost/127.0.0.1 (development server)
-         * 2. URL contains ?dev=true query param (explicit enable)
-         * 3. localStorage.isDev === 'true' (legacy fallback)
-         * 4. window.DEV_MODE is set (build-time flag)
-         */
+
         function isDevModeEnabled() {
-            // Check 1: Running on localhost
-            const isLocalhost = window.location.hostname === 'localhost' || 
-                               window.location.hostname === '127.0.0.1' ||
-                               window.location.hostname.endsWith('.local');
-            
-            // Check 2: URL query param (explicit enable for testing)
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.local');
             const urlParams = new URLSearchParams(window.location.search);
-            const devQueryParam = urlParams.get('dev') === 'true';
-            
-            // Check 3: Legacy localStorage check (fallback for existing users)
-            const localStorageFlag = localStorage.getItem('isDev') === 'true';
-            
-            // Check 4: Build-time flag (can be set during build)
-            const buildTimeFlag = typeof window.DEV_MODE !== 'undefined' && window.DEV_MODE === true;
-            
-            // Dev mode requires localhost AND (query param OR localStorage OR build flag)
-            // This ensures dev bypass can't be enabled on production just by setting localStorage
-            const isDevMode = isLocalhost && (devQueryParam || localStorageFlag || buildTimeFlag);
-            
-            if (isDevMode) {
-                console.log('[Auth] Dev mode enabled via:', {
-                    isLocalhost,
-                    devQueryParam,
-                    localStorageFlag,
-                    buildTimeFlag
-                });
-            }
-            
+            const isDevMode = isLocalhost && (urlParams.get('dev') === 'true' || localStorage.getItem('isDev') === 'true' || (typeof window.DEV_MODE !== 'undefined' && window.DEV_MODE === true));
+            if (isDevMode) console.log('[Auth] Dev mode enabled');
             return isDevMode;
         }
-        
+
         const isDev = isDevModeEnabled();
-        
-        // Show dev bypass section if in dev mode
         if (isDev) {
-            const devSection = document.getElementById('devBypassSection');
-            if (devSection) {
-                devSection.style.display = 'block';
-            }
+            const el = document.getElementById('devBypassSection');
+            if (el) el.classList.remove('hidden');
         }
-        
-        // Initialize Supabase
+
         let supabaseInitialized = false;
         async function initializeSupabase() {
             try {
                 await initSupabase();
                 supabaseInitialized = true;
-            } catch (error) {
-                console.error('Failed to initialize Supabase:', error);
+            } catch (e) {
+                console.error('Supabase init failed:', e);
             }
         }
-        
-        // Initialize on page load
         await initializeSupabase();
-        
-        // ✅ FIX: Prevent multiple callback handling attempts
+
         let callbackHandlingInProgress = false;
         let callbackHandled = false;
-        
-        // Handle OAuth callback (when user returns from Google)
-        // Supabase automatically processes OAuth callbacks, so we check for session
         async function checkAndHandleCallback() {
-            // ✅ FIX: Prevent multiple simultaneous callback handling attempts
-            if (callbackHandlingInProgress || callbackHandled) {
-                console.log('Callback already in progress or handled, skipping...');
-                return false;
-            }
-            
-            // ✅ CRITICAL: Ensure Supabase is initialized FIRST before checking for callback
-            if (!supabaseInitialized) {
-                console.log('Supabase not initialized yet, initializing...');
-                await initializeSupabase();
-            }
-            
+            if (callbackHandlingInProgress || callbackHandled) return false;
+            if (!supabaseInitialized) await initializeSupabase();
             const supabase = getSupabase();
-            if (!supabase) {
-                console.error('Supabase client not available after initialization');
-                return false;
-            }
-            
-            // ✅ FIX: Only handle callback if OAuth parameters are present in URL
-            // This prevents redirect loops when user already has a session
+            if (!supabase) return false;
             const urlParams = new URLSearchParams(window.location.search);
             const urlHash = window.location.hash;
-            const hasOAuthParams = urlParams.get('code') || 
-                                  urlParams.get('access_token') || 
-                                  urlHash.includes('access_token') || 
-                                  urlHash.includes('code');
-            
-            console.log('Checking for OAuth callback:', {
-                hasHash: !!urlHash,
-                hasSearch: !!urlParams.toString(),
-                hasOAuthParams,
-                hashPreview: urlHash.substring(0, 50)
-            });
-            
-            if (!hasOAuthParams) {
-                // ✅ FIX: Remove session check redirect - let auth-checker handle authenticated users
-                // This prevents redirect loops between auth page and home page
-                // If user is authenticated and wants to go home, they can navigate manually
-                // or the auth-checker will handle it when they visit protected pages
-                console.log('No OAuth parameters found, skipping callback handling');
-                return false;
-            }
-            
-            // OAuth parameters present - handle callback
-            console.log('OAuth parameters detected, handling callback...');
+            const hasOAuthParams = urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code');
+            if (!hasOAuthParams) return false;
             callbackHandlingInProgress = true;
-            
             try {
-                // Call handleGoogleOAuthCallback which will wait for Supabase to process the callback
-                // It handles all the session waiting and retry logic internally
                 await handleGoogleOAuthCallback();
                 callbackHandled = true;
-                callbackHandlingInProgress = false;
-                console.log('Callback handled successfully');
-                return true; // Callback handled (redirect happens inside handleGoogleOAuthCallback)
-            } catch (error) {
-                console.error('Error handling OAuth callback:', error);
-                callbackHandlingInProgress = false;
+                return true;
+            } catch (e) {
+                console.error('OAuth callback error:', e);
                 return false;
+            } finally {
+                callbackHandlingInProgress = false;
             }
         }
-        
-        // Check for callback on page load
-        console.log('Page loaded, checking for OAuth callback...');
-        const callbackHandledResult = await checkAndHandleCallback();
-        if (!callbackHandledResult) {
-            // No callback detected, continue with normal page setup
-            
-            // Function to populate Google button with user info if available
-        function populateGoogleButton() {
-            const googleButtonContent = document.getElementById('googleButtonContent');
-            if (!googleButtonContent) return;
-            
-            // Check if there's user info in localStorage (from previous session or dev mode)
-            const userInfoStr = localStorage.getItem('userInfo');
-            if (userInfoStr) {
-                try {
-                    const userInfo = JSON.parse(userInfoStr);
-                    // Only show if it's a real Google user (not dev bypass)
-                    if (userInfo.provider === 'google' && userInfo.email) {
-                        const avatarUrl = userInfo.avatar || userInfo.picture || userInfo.avatar_url;
-                        const userName = userInfo.name || userInfo.email.split('@')[0];
-                        const userEmail = userInfo.email;
-                        
-                        // Format name for display (e.g., "Saif Ivna" from "saif.alam@nextventures.io")
-                        const displayName = userName.split(' ').map(word => 
-                            word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                        ).join(' ');
-                        
-                        // Generate initials for avatar fallback
-                        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-                        
-                        googleButtonContent.innerHTML = `
-                            ${avatarUrl ? 
-                                `<img src="${avatarUrl}" alt="User avatar" class="google-button-avatar" onerror="this.outerHTML='<div class=\\'google-button-avatar\\'>${initials}</div>'">` : 
-                                `<div class="google-button-avatar">${initials}</div>`
-                            }
-                            <div class="google-button-user-info">
-                                <div class="google-button-user-name">Sign in as ${displayName}</div>
-                                <div class="google-button-user-email">${userEmail}</div>
-                            </div>
-                        `;
-                        return;
+
+        const handled = await checkAndHandleCallback();
+        if (!handled) {
+            function setGoogleButtonLabel(text) {
+                const el = document.getElementById('googleButtonContent');
+                if (el) el.textContent = text;
+            }
+
+            const btn = document.getElementById('googleSignInButton');
+            const errEl = document.getElementById('googleError');
+            if (btn) {
+                btn.addEventListener('click', async () => {
+                    if (!supabaseInitialized) await initializeSupabase();
+                    if (errEl) errEl.textContent = '';
+                    btn.disabled = true;
+                    setGoogleButtonLabel('Redirecting…');
+                    try {
+                        await signInWithGoogle();
+                    } catch (e) {
+                        if (errEl) errEl.textContent = e.message || 'Sign in failed. Try again.';
+                        btn.disabled = false;
+                        setGoogleButtonLabel('Sign in with Google');
                     }
-                } catch (error) {
-                    console.error('Error parsing userInfo:', error);
-                }
-            }
-            
-            // Default: show "Continue with Google" text
-            googleButtonContent.innerHTML = '<span class="primary-button__text">Continue with Google</span>';
-        }
-        
-        // Populate button on page load
-        populateGoogleButton();
-        
-        // Google Sign-In button handler
-        const googleSignInButton = document.getElementById('googleSignInButton');
-        const googleError = document.getElementById('googleError');
-        
-        if (googleSignInButton) {
-            googleSignInButton.addEventListener('click', async () => {
-                if (!supabaseInitialized) {
-                    await initializeSupabase();
-                }
-                
-                googleError.textContent = '';
-                googleSignInButton.disabled = true;
-                
-                // Update button text
-                const googleButtonContent = document.getElementById('googleButtonContent');
-                if (googleButtonContent) {
-                    googleButtonContent.innerHTML = '<span class="primary-button__text">Redirecting to Google...</span>';
-                }
-                
-                try {
-                    await signInWithGoogle();
-                    // User will be redirected to Google, so we don't need to do anything else
-                } catch (error) {
-                    googleError.textContent = error.message || 'Failed to sign in with Google. Please try again.';
-                    googleSignInButton.disabled = false;
-                    populateGoogleButton(); // Restore button content
-                }
-            });
-        }
-        
-        // Dev bypass button handler
-        if (isDev) {
-            const devBypassButton = document.getElementById('devBypassButton');
-            const devEmailInput = document.getElementById('devEmailInput');
-            
-            if (devBypassButton && devEmailInput) {
-                devBypassButton.addEventListener('click', () => {
-                    const email = devEmailInput.value.trim() || 'dev@test.com';
-                    enableDevBypassAuthentication(email);
-                    window.location.href = '/src/features/home/presentation/home-page.html';
                 });
             }
+
+            if (isDev) {
+                const bypassBtn = document.getElementById('devBypassButton');
+                const emailInput = document.getElementById('devEmailInput');
+                if (bypassBtn && emailInput) {
+                    bypassBtn.addEventListener('click', () => {
+                        enableDevBypassAuthentication(emailInput.value.trim() || 'dev@test.com');
+                        window.location.href = '/src/features/home/presentation/home-page.html';
+                    });
+                }
+            }
         }
-        } // End of callback check else block
     </script>
     <script type="module">
-        // Version check - detect updates and prompt reload
         async function checkForUpdates() {
             try {
-                const response = await fetch('/api/version');
-                const { version, hash } = await response.json();
-                const currentVersion = document.querySelector('meta[name="app-version"]')?.getAttribute('content');
-                
-                if (currentVersion && hash && hash !== currentVersion) {
-                    // New version available
-                    const shouldReload = confirm('A new version of the application is available. Would you like to reload to get the latest updates?');
-                    if (shouldReload) {
-                        window.location.reload();
-                    }
-                }
-            } catch (error) {
-                // Silent fail - don't interrupt user experience
-            }
+                const r = await fetch('/api/version');
+                const { hash } = await r.json();
+                const cur = document.querySelector('meta[name="app-version"]')?.getAttribute('content');
+                if (cur && hash && hash !== cur && confirm('A new version is available. Reload?')) window.location.reload();
+            } catch (_) {}
         }
-        
-        // Check for updates every 5 minutes
         setInterval(checkForUpdates, 5 * 60 * 1000);
-        
-        // Also check when page becomes visible (user returns to tab)
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                checkForUpdates();
-            }
-        });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdates(); });
     </script>
-    <!-- Authentication Guard - Checks if user is already authenticated and redirects to home -->
     <script type="module" src="/js/auth-checker.js"></script>
 </body>
 </html>
