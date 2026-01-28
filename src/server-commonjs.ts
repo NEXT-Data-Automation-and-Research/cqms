@@ -483,6 +483,7 @@ import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
 import permissionsRouter from './api/routes/permissions.routes.js';
+import adminRouter from './api/routes/admin.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -490,7 +491,8 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions');
+app.use('/api/admin', adminRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/admin');
 
 // Error handler (must be last)
 app.use(errorHandler);

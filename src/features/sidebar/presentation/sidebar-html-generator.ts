@@ -14,22 +14,18 @@ import { getCleanPathFromFilePath } from '../../../core/routing/route-mapper.js'
 export class SidebarHTMLGenerator {
   /**
    * Generate complete sidebar HTML
+   * 
+   * SECURITY: When user role is unknown, only shows routes available to everyone.
+   * This prevents unauthorized menu items from flashing before role is loaded.
+   * Once role is confirmed, the sidebar regenerates with full access.
    */
   generate(userInfo: UserInfo | null): string {
-    // H5 FIX: Filter routes BEFORE generating HTML to prevent menu flash
     const userRole = userInfo?.role;
-    const sidebarRoutes = router.getSidebarRoutes(userRole);
     const currentPath = router.getCurrentPath();
-
-    // Filter routes by access before rendering
-    const accessibleRoutes = sidebarRoutes.filter(route => {
-      // If route allows 'all', always show it
-      if (route.meta.roles.includes('all')) return true;
-      // If no user role provided, show all routes initially (for backwards compatibility)
-      if (!userRole) return true;
-      // Check if user has access
-      return router.canAccessRoute(route.meta.roles, userRole);
-    });
+    
+    // getSidebarRoutes already filters by role using canAccessRoute
+    // which is conservative when role is unknown (only shows 'all' routes)
+    const accessibleRoutes = router.getSidebarRoutes(userRole);
 
     const menuItems = accessibleRoutes
       .map(route => this.generateMenuItem(route, currentPath, userRole))

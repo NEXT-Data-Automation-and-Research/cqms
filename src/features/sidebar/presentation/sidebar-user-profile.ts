@@ -264,13 +264,13 @@ export class SidebarUserProfile {
       }
 
       // Check if data actually changed (for background refresh)
-      if (isBackgroundRefresh) {
-        const cachedUser = sidebarState.loadUserInfo()
-        if (!this.service.didUserDataChange(cachedUser, userInfo)) {
-          // Data hasn't changed, just update timestamp and return
-          localStorage.setItem('userProfileLastFetch', Date.now().toString())
-          return userInfo
-        }
+      const cachedUser = sidebarState.loadUserInfo()
+      const dataChanged = this.service.didUserDataChange(cachedUser, userInfo)
+      
+      if (isBackgroundRefresh && !dataChanged) {
+        // Data hasn't changed, just update timestamp and return
+        localStorage.setItem('userProfileLastFetch', Date.now().toString())
+        return userInfo
       }
       
       // Save to storage
@@ -282,6 +282,19 @@ export class SidebarUserProfile {
       
       // Update UI
       this.showUserInfo(userInfo)
+      
+      // Dispatch event to notify sidebar that user info has changed
+      // This triggers sidebar menu regeneration with correct role-based filtering
+      if (dataChanged) {
+        logInfo('[Sidebar] User data changed, dispatching userInfoUpdated event', {
+          oldRole: cachedUser?.role,
+          newRole: userInfo.role,
+          roleChanged: cachedUser?.role !== userInfo.role
+        })
+        document.dispatchEvent(new CustomEvent('userInfoUpdated', {
+          detail: { userInfo, roleChanged: cachedUser?.role !== userInfo.role }
+        }))
+      }
       
       if (!isBackgroundRefresh) {
         logInfo('[Sidebar] UI updated with user profile')

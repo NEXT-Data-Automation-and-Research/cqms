@@ -135,9 +135,52 @@ export async function initSupabase(): Promise<any> {
  */
 export function getSupabase(): any {
   if (!supabaseInstance) {
-    supabaseLogger.warn('Client not initialized. Call initSupabase() first.');
+    // Only warn if initialization is not in progress
+    // This prevents spam warnings during async initialization
+    if (!initializationPromise) {
+      supabaseLogger.warn('Client not initialized. Call initSupabase() first.');
+    }
   }
   return supabaseInstance;
+}
+
+/**
+ * Get Supabase client instance, waiting for initialization if in progress
+ * @param maxWaitMs Maximum time to wait for initialization (default: 5000ms)
+ * @returns Supabase client or null if initialization fails or times out
+ */
+export async function getSupabaseAsync(maxWaitMs: number = 5000): Promise<any> {
+  // If already initialized, return immediately
+  if (supabaseInstance) {
+    return supabaseInstance;
+  }
+
+  // If initialization is in progress, wait for it
+  if (initializationPromise) {
+    const startTime = Date.now();
+    try {
+      const result = await Promise.race([
+        initializationPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout waiting for Supabase initialization')), maxWaitMs)
+        )
+      ]);
+      return result;
+    } catch (error) {
+      if (Date.now() - startTime >= maxWaitMs) {
+        supabaseLogger.warn('Timeout waiting for Supabase initialization');
+      }
+      return null;
+    }
+  }
+
+  // Not initialized and not in progress - try to initialize
+  try {
+    return await initSupabase();
+  } catch (error) {
+    supabaseLogger.warn('Failed to initialize Supabase:', error);
+    return null;
+  }
 }
 
 /**

@@ -12,7 +12,7 @@
  *   // Now window.supabaseClient is secured
  */
 
-import { getSupabase } from './supabase-init.js';
+import { getSupabase, getSupabaseAsync, initSupabase } from './supabase-init.js';
 import { getSecureSupabase } from './secure-supabase.js';
 import { logError, logWarn, logInfo } from './logging-helper.js';
 
@@ -21,9 +21,11 @@ import { logError, logWarn, logInfo } from './logging-helper.js';
  * This wraps the client with authentication verification
  */
 export async function initSecureWindowSupabase(): Promise<void> {
+  let baseClient: any = null;
   try {
-    // Get the base Supabase client
-    const baseClient = getSupabase();
+    // Wait for Supabase to be initialized (or initialize it if not started)
+    // This prevents warnings about client not being initialized
+    baseClient = await getSupabaseAsync(5000);
     if (!baseClient) {
       // This is expected during initial load - client will be initialized later
       // Don't log as error, just return silently
@@ -42,10 +44,16 @@ export async function initSecureWindowSupabase(): Promise<void> {
   } catch (error: any) {
     logError('❌ Error initializing secure window.supabaseClient:', error);
     // Fallback to regular client if secure init fails
-    const baseClient = getSupabase();
     if (baseClient) {
       (window as any).supabaseClient = baseClient;
       logWarn('⚠️ Using unsecured client as fallback');
+    } else {
+      // Try to get client one more time as fallback
+      const fallbackClient = getSupabase();
+      if (fallbackClient) {
+        (window as any).supabaseClient = fallbackClient;
+        logWarn('⚠️ Using unsecured client as fallback');
+      }
     }
   }
 }

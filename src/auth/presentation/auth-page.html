@@ -395,8 +395,50 @@
         import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
         import { signInWithGoogle, handleGoogleOAuthCallback, enableDevBypassAuthentication } from '/js/utils/auth.js';
         
-        // Check if we're in dev mode
-        const isDev = localStorage.getItem('isDev') === 'true';
+        /**
+         * Check if we're in dev mode
+         * ✅ UX/Security improvement: Multiple signals checked, not just localStorage
+         * Fallback: localStorage check still works for backward compatibility
+         * 
+         * Dev mode is enabled if ANY of these are true:
+         * 1. Running on localhost/127.0.0.1 (development server)
+         * 2. URL contains ?dev=true query param (explicit enable)
+         * 3. localStorage.isDev === 'true' (legacy fallback)
+         * 4. window.DEV_MODE is set (build-time flag)
+         */
+        function isDevModeEnabled() {
+            // Check 1: Running on localhost
+            const isLocalhost = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1' ||
+                               window.location.hostname.endsWith('.local');
+            
+            // Check 2: URL query param (explicit enable for testing)
+            const urlParams = new URLSearchParams(window.location.search);
+            const devQueryParam = urlParams.get('dev') === 'true';
+            
+            // Check 3: Legacy localStorage check (fallback for existing users)
+            const localStorageFlag = localStorage.getItem('isDev') === 'true';
+            
+            // Check 4: Build-time flag (can be set during build)
+            const buildTimeFlag = typeof window.DEV_MODE !== 'undefined' && window.DEV_MODE === true;
+            
+            // Dev mode requires localhost AND (query param OR localStorage OR build flag)
+            // This ensures dev bypass can't be enabled on production just by setting localStorage
+            const isDevMode = isLocalhost && (devQueryParam || localStorageFlag || buildTimeFlag);
+            
+            if (isDevMode) {
+                console.log('[Auth] Dev mode enabled via:', {
+                    isLocalhost,
+                    devQueryParam,
+                    localStorageFlag,
+                    buildTimeFlag
+                });
+            }
+            
+            return isDevMode;
+        }
+        
+        const isDev = isDevModeEnabled();
         
         // Show dev bypass section if in dev mode
         if (isDev) {

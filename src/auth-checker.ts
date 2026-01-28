@@ -1,11 +1,16 @@
 /**
  * Authentication Checker
  * Checks if user is authenticated using Supabase and redirects to login if not
+ * 
+ * UX Improvements (v2.0):
+ * - Added loading overlay during auth verification to prevent content flash
+ * - Configurable behavior via AUTH_CHECKER_CONFIG
  */
 
 import { checkSupabaseAuthentication, getUserInfo, isDevBypassActive } from './utils/auth.js';
 import { initSupabase, getSupabase } from './utils/supabase-init.js';
 import { logInfo, logError } from './utils/logging-helper.js';
+import { initImpersonationBanner } from './components/impersonation-banner.js';
 
 interface UserInfo {
   id: string;
@@ -20,6 +25,157 @@ interface UserInfo {
   sub?: string;
   provider?: string;
   isDev?: boolean;
+}
+
+/**
+ * Configuration for auth checker behavior
+ * Can be overridden via window.AUTH_CHECKER_CONFIG before this script loads
+ */
+interface AuthCheckerConfig {
+  /** Show loading overlay during auth check (default: true) */
+  showLoadingOverlay: boolean;
+  /** Timeout before showing loading overlay in ms (default: 100) */
+  loadingOverlayDelay: number;
+  /** Use previous behavior without loading overlay (fallback mode) */
+  useLegacyMode: boolean;
+}
+
+const DEFAULT_CONFIG: AuthCheckerConfig = {
+  showLoadingOverlay: true,
+  loadingOverlayDelay: 100,
+  useLegacyMode: false,
+};
+
+// Allow runtime configuration override
+const config: AuthCheckerConfig = {
+  ...DEFAULT_CONFIG,
+  ...((window as any).AUTH_CHECKER_CONFIG || {}),
+};
+
+/**
+ * Check if we should show the auth loading overlay
+ * ✅ FIX: Don't show overlay for already-verified sessions (prevents double loading on navigation)
+ */
+function shouldShowAuthOverlay(): boolean {
+  // Skip if legacy mode or overlay disabled
+  if (config.useLegacyMode || !config.showLoadingOverlay) {
+    return false;
+  }
+  
+  // ✅ FIX: Don't show overlay if session was recently verified in this browser session
+  // This prevents the overlay from showing on every page navigation
+  const sessionVerified = sessionStorage.getItem('authSessionVerified');
+  if (sessionVerified) {
+    const verifiedAt = parseInt(sessionVerified, 10);
+    const now = Date.now();
+    // If verified within the last 5 minutes, skip the overlay
+    // Auth is still checked, just without the visual overlay
+    if (now - verifiedAt < 5 * 60 * 1000) {
+      logInfo('Session recently verified, skipping auth overlay');
+      return false;
+    }
+  }
+  
+  // ✅ FIX: Don't show if we have valid user info in localStorage (quick check)
+  // This is a fast heuristic - actual auth verification still happens
+  const userInfo = localStorage.getItem('userInfo');
+  if (userInfo) {
+    try {
+      const parsed = JSON.parse(userInfo);
+      if (parsed && parsed.id && parsed.email) {
+        // User info exists, likely authenticated - skip overlay
+        logInfo('User info found, skipping auth overlay (auth still verified in background)');
+        return false;
+      }
+    } catch (e) {
+      // Invalid JSON, continue to show overlay
+    }
+  }
+  
+  return true;
+}
+
+/**
+ * Mark session as verified (prevents overlay on subsequent navigations)
+ */
+function markSessionVerified(): void {
+  sessionStorage.setItem('authSessionVerified', Date.now().toString());
+}
+
+/**
+ * Create and show auth loading overlay
+ * Prevents content flash during authentication verification
+ * ✅ FIX: Only shows on initial load, not on every page navigation
+ */
+function showAuthLoadingOverlay(): HTMLElement | null {
+  // ✅ FIX: Check if we should show overlay (skip for verified sessions)
+  if (!shouldShowAuthOverlay()) {
+    return null;
+  }
+  
+  // Don't show if already exists
+  if (document.getElementById('auth-loading-overlay')) {
+    return document.getElementById('auth-loading-overlay');
+  }
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'auth-loading-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  `;
+  
+  overlay.innerHTML = `
+    <div style="text-align: center;">
+      <div style="
+        width: 40px;
+        height: 40px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #1A733E;
+        border-radius: 50%;
+        animation: auth-spinner 0.8s linear infinite;
+        margin: 0 auto 1rem;
+      "></div>
+      <p style="color: #6b7280; font-size: 0.875rem; margin: 0;">Verifying session...</p>
+    </div>
+    <style>
+      @keyframes auth-spinner {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Fade in after brief delay (prevents flash for fast auth)
+  setTimeout(() => {
+    overlay.style.opacity = '1';
+  }, config.loadingOverlayDelay);
+  
+  return overlay;
+}
+
+/**
+ * Hide and remove auth loading overlay
+ */
+function hideAuthLoadingOverlay(): void {
+  const overlay = document.getElementById('auth-loading-overlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+      overlay.remove();
+    }, 150);
+  }
 }
 
 /**
@@ -77,6 +233,9 @@ function redirectToLogin(): void {
   (window as any).__redirectingToLogin = true;
   const authPagePath = '/src/auth/presentation/auth-page.html';
   
+  // ✅ UX: Hide loading overlay before redirect
+  hideAuthLoadingOverlay();
+  
   // Clear redirect flag after a delay to allow navigation
   setTimeout(() => {
     (window as any).__redirectingToLogin = false;
@@ -107,10 +266,93 @@ function shouldProtectPage(): boolean {
 }
 
 /**
+ * Ensure userInfo in localStorage is synced with people table
+ * This handles cases like magic link login (impersonation) where
+ * the OAuth callback doesn't run to populate user info
+ */
+async function ensureUserInfoSynced(user: UserInfo): Promise<void> {
+  try {
+    const userInfoStr = localStorage.getItem('userInfo');
+    const existingUserInfo = userInfoStr ? JSON.parse(userInfoStr) : null;
+    
+    // Check if userInfo needs to be synced (email mismatch or missing role)
+    const userEmail = user.email?.toLowerCase() || '';
+    const storedEmail = existingUserInfo?.email?.toLowerCase() || '';
+    
+    // If email matches and role exists, no need to sync
+    if (storedEmail === userEmail && existingUserInfo?.role) {
+      return;
+    }
+    
+    logInfo('[Auth-Checker] Syncing user info from people table...');
+    
+    const supabase = getSupabase();
+    if (!supabase) return;
+    
+    // Fetch user profile from people table
+    const { data: peopleData, error: peopleError } = await supabase
+      .from('people')
+      .select('name, role, department, designation, team, team_supervisor, avatar_url')
+      .eq('email', userEmail)
+      .maybeSingle();
+    
+    if (peopleError) {
+      logError('[Auth-Checker] Failed to fetch people data:', peopleError);
+      return;
+    }
+    
+    if (!peopleData) {
+      logInfo('[Auth-Checker] No people record found for user:', userEmail);
+      // Still create basic userInfo from auth user
+      const basicUserInfo = {
+        id: user.id,
+        email: user.email,
+        name: user.name || user.email?.split('@')[0] || 'User',
+        role: 'Employee',
+        provider: 'magic_link',
+      };
+      localStorage.setItem('userInfo', JSON.stringify(basicUserInfo));
+      return;
+    }
+    
+    // Create full userInfo from people table
+    const fullUserInfo = {
+      id: user.id,
+      email: user.email,
+      name: peopleData.name || user.name || user.email?.split('@')[0] || 'User',
+      avatar: peopleData.avatar_url || user.avatar || null,
+      picture: peopleData.avatar_url || user.picture || null,
+      avatar_url: peopleData.avatar_url || null,
+      role: peopleData.role || 'Employee',
+      department: peopleData.department || null,
+      designation: peopleData.designation || null,
+      team: peopleData.team || null,
+      team_supervisor: peopleData.team_supervisor || null,
+      provider: 'magic_link',
+    };
+    
+    localStorage.setItem('userInfo', JSON.stringify(fullUserInfo));
+    logInfo('[Auth-Checker] User info synced from people table:', { 
+      email: fullUserInfo.email, 
+      role: fullUserInfo.role 
+    });
+    
+    // Dispatch event to update sidebar (on document, where sidebar listens)
+    document.dispatchEvent(new CustomEvent('userInfoUpdated', { 
+      detail: { userInfo: fullUserInfo } 
+    }));
+    
+  } catch (error) {
+    logError('[Auth-Checker] Error syncing user info:', error);
+  }
+}
+
+/**
  * Initialize authentication check
  * This function runs when the page loads
  * Protects all pages except auth-page.html and index.html
  * ✅ SECURITY FIX: Verifies token with server BEFORE any redirects to prevent homepage flash
+ * ✅ UX FIX: Shows loading overlay during auth check to prevent content flash
  */
 async function initAuthCheck(): Promise<void> {
   // ✅ FIX: Prevent multiple simultaneous auth checks
@@ -120,6 +362,12 @@ async function initAuthCheck(): Promise<void> {
   }
   
   (window as any).__authCheckInProgress = true;
+  
+  // ✅ UX: Show loading overlay for protected pages to prevent content flash
+  let loadingOverlay: HTMLElement | null = null;
+  if (shouldProtectPage()) {
+    loadingOverlay = showAuthLoadingOverlay();
+  }
   
   try {
     // Check if this page should be protected
@@ -271,6 +519,22 @@ async function initAuthCheck(): Promise<void> {
     }
 
     // User is authenticated - allow access to the page
+    // ✅ UX: Hide loading overlay now that auth is verified
+    hideAuthLoadingOverlay();
+    
+    // ✅ FIX: Ensure userInfo is synced from people table (handles magic link login for impersonation)
+    await ensureUserInfoSynced(user);
+    
+    // Initialize impersonation banner if in impersonation mode
+    // This shows a prominent banner when an admin is logged in as another user
+    try {
+      initImpersonationBanner();
+    } catch (bannerError) {
+      // Don't block page load if banner fails
+      logError('Failed to initialize impersonation banner:', bannerError);
+    }
+    // ✅ FIX: Mark session as verified to prevent overlay on subsequent navigations
+    markSessionVerified();
     
     // Set up auth state listener to handle token expiration in real-time
     // ✅ FIX: Only set up listener once to prevent multiple registrations causing login/logout loops
@@ -353,9 +617,19 @@ async function initAuthCheck(): Promise<void> {
     } else {
       logError('Auth Checker: Supabase client not available');
     }
+  } catch (error) {
+    logError('Error during auth check:', error);
+    // ✅ UX: Ensure overlay is hidden on error
+    hideAuthLoadingOverlay();
+    throw error;
   } finally {
     // Clear the in-progress flag
     (window as any).__authCheckInProgress = false;
+    // ✅ UX: Ensure overlay is always cleaned up (safety net)
+    // Delay slightly to allow successful auth to show content first
+    setTimeout(() => {
+      hideAuthLoadingOverlay();
+    }, 100);
   }
 }
 

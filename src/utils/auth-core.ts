@@ -284,6 +284,9 @@ export async function signOut(): Promise<void> {
   // ✅ SECURITY: Clear all device fingerprints on logout
   clearDeviceFingerprints();
   
+  // ✅ UX: Clear session verification flag so auth overlay shows on next login
+  sessionStorage.removeItem('authSessionVerified');
+  
   logInfo('User signed out successfully');
   
   // Redirect to auth page after logout

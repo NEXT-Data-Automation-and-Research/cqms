@@ -48,13 +48,17 @@ export class SidebarService {
 
   /**
    * Check if user data actually changed
+   * Includes role check to ensure sidebar updates when user role changes
    */
   didUserDataChange(oldUser: UserInfo | null, newUser: UserInfo): boolean {
     if (!oldUser) return true
     return (
       oldUser.name !== newUser.name ||
       oldUser.email !== newUser.email ||
-      oldUser.avatar_url !== newUser.avatar_url
+      oldUser.avatar_url !== newUser.avatar_url ||
+      oldUser.role !== newUser.role ||
+      oldUser.department !== newUser.department ||
+      oldUser.designation !== newUser.designation
     )
   }
 

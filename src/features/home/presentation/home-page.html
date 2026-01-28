@@ -2651,6 +2651,9 @@ function setupEventListenersForCSP() {
   }
 }
 
+// Track if dashboard has been initialized to prevent duplicate initialization
+let dashboardInitialized = false;
+
 // Initialize Dashboard
 document.addEventListener('DOMContentLoaded', async function() {
   // Setup CSP-compliant event listeners first
@@ -2658,6 +2661,79 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // Then initialize dashboard
   await initializeDashboard();
+  
+  // Check if initialization was successful (user email was found)
+  if (currentUserEmail) {
+    dashboardInitialized = true;
+  } else {
+    // If no user email found, set up retry mechanism for first-login scenario
+    console.log('⏳ No user email found on initial load, setting up retry mechanism...');
+    
+    let retryCount = 0;
+    const maxRetries = 10; // Try for up to 5 seconds (10 * 500ms)
+    const retryInterval = setInterval(async () => {
+      retryCount++;
+      
+      // Check if userInfo is now available in localStorage
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo.email) {
+        console.log('✅ userInfo found in localStorage, initializing dashboard...');
+        clearInterval(retryInterval);
+        if (!dashboardInitialized) {
+          await initializeDashboard();
+          dashboardInitialized = true;
+        }
+        return;
+      }
+      
+      // Also try to get from Supabase session
+      if (window.supabaseClient && !dashboardInitialized) {
+        try {
+          const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+          if (user && !userError && user.email) {
+            console.log('✅ User found in Supabase session, initializing dashboard...');
+            clearInterval(retryInterval);
+            if (!dashboardInitialized) {
+              await initializeDashboard();
+              dashboardInitialized = true;
+            }
+            return;
+          }
+        } catch (error) {
+          // Continue retrying
+        }
+      }
+      
+      // Stop retrying after max attempts
+      if (retryCount >= maxRetries) {
+        console.warn('⚠️ Max retries reached, dashboard initialization failed');
+        clearInterval(retryInterval);
+      }
+    }, 500); // Check every 500ms
+  }
+  
+  // Listen for storage events (fires when localStorage is updated in other tabs)
+  window.addEventListener('storage', async function(e) {
+    if (e.key === 'userInfo' && e.newValue && !dashboardInitialized) {
+      console.log('📦 userInfo updated in another tab, initializing dashboard...');
+      if (!dashboardInitialized) {
+        await initializeDashboard();
+        dashboardInitialized = true;
+      }
+    }
+  });
+  
+  // Listen for custom event that might be dispatched when userInfo is set
+  window.addEventListener('userInfoUpdated', async function() {
+    if (!dashboardInitialized) {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      if (userInfo.email) {
+        console.log('📦 userInfo updated event received, initializing dashboard...');
+        await initializeDashboard();
+        dashboardInitialized = true;
+      }
+    }
+  });
 });
 
 // Wait for Supabase with better strategy (updated to match new initialization pattern)
@@ -2746,12 +2822,6 @@ async function initializeDashboard() {
       dateDropdown.style.display = 'none';
     }
     
-    // Get current user immediately (from localStorage - instant, no waiting)
-    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-    currentUserEmail = (userInfo.email || '').toLowerCase().trim();
-    currentUserRole = userInfo.role || '';
-    isAgent = currentUserRole === 'Employee';
-    
     // OPTIMIZATION: Start module preloading in parallel with Supabase wait
     // This saves ~200-500ms on first load by loading modules while waiting for auth
     const modulePreloadPromise = Promise.all([
@@ -2771,8 +2841,79 @@ async function initializeDashboard() {
     
     console.log(`[Perf] Supabase ready in ${Math.round(performance.now() - startTime)}ms`);
 
+    // Get current user - try Supabase session first (works on first login), then fallback to localStorage
+    let userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    
+    // On first login, localStorage might not have userInfo yet, so get it from Supabase session
+    if (!userInfo.email && window.supabaseClient) {
+      try {
+        const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
+        if (user && !userError && user.email) {
+          // Got user from Supabase session - use it and optionally update localStorage
+          currentUserEmail = user.email.toLowerCase().trim();
+          console.log('✅ Got email from Supabase session (first login):', currentUserEmail);
+          
+          // Try to get role from people table or use default
+          try {
+            const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+            const supabase = await getAuthenticatedSupabase();
+            const { data: peopleData } = await supabase
+              .from('people')
+              .select('role, department, designation, team')
+              .eq('email', currentUserEmail)
+              .maybeSingle();
+            
+            currentUserRole = peopleData?.role || 'Employee';
+            
+            // Update userInfo with data from Supabase and people table
+            userInfo = {
+              ...userInfo,
+              id: user.id,
+              email: user.email,
+              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+              picture: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
+              role: currentUserRole,
+              department: peopleData?.department || null,
+              designation: peopleData?.designation || null,
+              team: peopleData?.team || null,
+            };
+            
+            // Save to localStorage for future loads
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            console.log('✅ Updated localStorage with user info from Supabase session');
+          } catch (peopleError) {
+            console.warn('Could not fetch people data, using default role:', peopleError);
+            currentUserRole = 'Employee';
+            userInfo = {
+              ...userInfo,
+              id: user.id,
+              email: user.email,
+              name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+              role: 'Employee',
+            };
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ Error getting user from Supabase session, trying localStorage:', error);
+      }
+    }
+    
+    // Fallback to localStorage if Supabase session didn't work
     if (!currentUserEmail) {
-      console.error('No user logged in');
+      currentUserEmail = (userInfo.email || '').toLowerCase().trim();
+      currentUserRole = userInfo.role || '';
+      if (currentUserEmail) {
+        console.log('✅ Got email from localStorage:', currentUserEmail);
+      }
+    }
+    
+    isAgent = currentUserRole === 'Employee';
+
+    if (!currentUserEmail) {
+      console.error('No user logged in - cannot load dashboard');
       return;
     }
 
@@ -2909,25 +3050,14 @@ async function initializeDashboard() {
       
       // Load users if not cached (non-blocking, in background)
       if (!allUsers || allUsers.length === 0) {
-        // Try to use TypeScript module first, fallback to HTML function
+        // Load users using HTML function (home-data-loader.js module removed)
         (async () => {
           try {
-            const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
-            await loadAllUsersTS();
-            // Get users from homeState
-            allUsers = homeState.allUsers || [];
-            // Cache in sessionStorage (faster for next load)
-            sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
-            sessionStorage.setItem('cachedUsersTime', Date.now().toString());
-            // Also cache in persistent storage
-            if (persistentCacheModule?.persistentCacheService) {
-              await persistentCacheModule.persistentCacheService.set('users_all', allUsers, 10 * 60 * 1000);
-            }
-          } catch (error) {
-            console.warn('Failed to load users via TypeScript module, using fallback:', error);
             if (typeof loadAllUsers === 'function') {
               await loadAllUsers();
             }
+          } catch (error) {
+            console.warn('Failed to load users:', error);
           }
         })();
       }
@@ -2944,16 +3074,11 @@ async function initializeDashboard() {
         // Load users in background (non-blocking)
         (async () => {
           try {
-            const { loadAllUsers: loadAllUsersTS } = await import('/js/features/home/infrastructure/home-data-loader.js');
-            await loadAllUsersTS();
-            allUsers = homeState.allUsers || [];
-            sessionStorage.setItem('cachedUsers', JSON.stringify(allUsers));
-            sessionStorage.setItem('cachedUsersTime', Date.now().toString());
-          } catch (error) {
-            console.warn('Failed to load users via TypeScript module, using fallback:', error);
             if (typeof loadAllUsers === 'function') {
               await loadAllUsers();
             }
+          } catch (error) {
+            console.warn('Failed to load users:', error);
           }
         })();
       }
@@ -2973,48 +3098,28 @@ async function initializeDashboard() {
     // All data sections load simultaneously for faster perceived performance
     const dataLoadStart = performance.now();
     
-    try {
-      // Import TypeScript data loader module (from old.home infrastructure)
-      // Note: Path points to compiled JS from TypeScript source
-      const dataLoaderModule = await import('/js/features/home/old.home/infrastructure/home-data-loader.js');
-      
-      // Start ALL data loading in parallel - don't await, let them run concurrently
-      const dataPromises = [
-        dataLoaderModule.updateYourStats().catch(err => console.error('Error loading stats:', err)),
-        dataLoaderModule.loadAssignedAudits().catch(err => console.error('Error loading audits:', err)),
-        dataLoaderModule.loadRecentUpdates().catch(err => console.error('Error loading updates:', err)),
-        dataLoaderModule.loadNotifications().catch(err => console.error('Error loading notifications:', err)),
-        dataLoaderModule.loadUpcomingEvents().catch(err => console.error('Error loading events:', err))
-      ];
-      
-      await Promise.all(dataPromises);
-      console.log(`[Perf] All data loaded in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
-      
-    } catch (importError) {
-      console.warn('TypeScript data loader not available, using HTML functions:', importError);
-      // Fallback to HTML functions with parallel loading
-      // Each function has its own error handling to prevent one failure from blocking others
-      const promises = [];
-      
-      if (typeof updateYourStats === 'function') {
-        promises.push(updateYourStats().catch(err => console.error('Error loading stats:', err)));
-      }
-      if (typeof loadAssignedAudits === 'function') {
-        promises.push(loadAssignedAudits().catch(err => console.error('Error loading audits:', err)));
-      }
-      if (typeof loadRecentUpdates === 'function') {
-        promises.push(loadRecentUpdates().catch(err => console.error('Error loading updates:', err)));
-      }
-      if (typeof loadNotifications === 'function') {
-        promises.push(loadNotifications().catch(err => console.error('Error loading notifications:', err)));
-      }
-      if (typeof loadUpcomingEvents === 'function') {
-        promises.push(loadUpcomingEvents().catch(err => console.error('Error loading events:', err)));
-      }
-      
-      await Promise.all(promises);
-      console.log(`[Perf] All data loaded (fallback) in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
+    // Use HTML functions with parallel loading
+    // Each function has its own error handling to prevent one failure from blocking others
+    const promises = [];
+    
+    if (typeof updateYourStats === 'function') {
+      promises.push(updateYourStats().catch(err => console.error('Error loading stats:', err)));
     }
+    if (typeof loadAssignedAudits === 'function') {
+      promises.push(loadAssignedAudits().catch(err => console.error('Error loading audits:', err)));
+    }
+    if (typeof loadRecentUpdates === 'function') {
+      promises.push(loadRecentUpdates().catch(err => console.error('Error loading updates:', err)));
+    }
+    if (typeof loadNotifications === 'function') {
+      promises.push(loadNotifications().catch(err => console.error('Error loading notifications:', err)));
+    }
+    if (typeof loadUpcomingEvents === 'function') {
+      promises.push(loadUpcomingEvents().catch(err => console.error('Error loading events:', err)));
+    }
+    
+    await Promise.all(promises);
+    console.log(`[Perf] All data loaded in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
 
     // Populate filter options after loading data (non-blocking)
     populateFilters().catch(err => console.error('Error populating filters:', err));
@@ -3416,10 +3521,21 @@ async function loadAllUsers() {
 
 async function loadRecentUpdates() {
   // Use request deduplication to prevent multiple simultaneous calls
-  const period = getCurrentPeriodDates();
+  // Define period at function scope to ensure it's accessible in catch blocks
+  let period;
+  try {
+    period = getCurrentPeriodDates();
+  } catch (error) {
+    console.error('Error getting period dates:', error);
+    period = getCurrentPeriodDates(); // Fallback attempt
+  }
+  
   const requestKey = `loadRecentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
   
   return deduplicateRequest(requestKey, async () => {
+    // Ensure period is available in this scope
+    const currentPeriod = period || getCurrentPeriodDates();
+    
     try {
       const updatesFeed = document.getElementById('updatesFeed');
       if (!updatesFeed) return;
@@ -3428,7 +3544,7 @@ async function loadRecentUpdates() {
       const { unifiedDataService } = await import('/js/features/home/infrastructure/unified-data-service.js');
       const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
       
-      const cacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters));
+      const cacheKey = buildCacheKey('recentUpdates', currentUserEmail, JSON.stringify(currentPeriod), JSON.stringify(currentFilters));
       
       // Use persistent cache (stale-while-revalidate pattern)
       const updatesData = await unifiedDataService.get(
@@ -3436,7 +3552,7 @@ async function loadRecentUpdates() {
         async () => {
           // Fetch function - show loader only if no cached data
           showLoader('updatesFeed');
-          const data = await fetchAndCacheRecentUpdates(period);
+          const data = await fetchAndCacheRecentUpdates(currentPeriod);
           return data;
         },
         3 * 60 * 1000, // 3 minutes TTL
@@ -3454,7 +3570,9 @@ async function loadRecentUpdates() {
       console.error('Error loading recent updates:', error);
       // Try fallback to sessionStorage
       try {
-        const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}`;
+        // Use currentPeriod to ensure it's available
+        const fallbackPeriod = period || getCurrentPeriodDates();
+        const cacheKey = `recentUpdates_${currentUserEmail}_${JSON.stringify(fallbackPeriod)}_${JSON.stringify(currentFilters)}`;
         const cachedData = sessionStorage.getItem(cacheKey);
         const cachedTime = sessionStorage.getItem(cacheKey + '_time');
         const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
@@ -3483,6 +3601,12 @@ async function loadRecentUpdates() {
 
 async function fetchAndCacheRecentUpdates(period) {
   try {
+    // Safety check: ensure period is defined and has required properties
+    if (!period || !period.start || !period.end) {
+      console.warn('fetchAndCacheRecentUpdates: period not properly defined, using current period');
+      period = getCurrentPeriodDates();
+    }
+    
     let allUpdates = [];
 
     // Use unified query service for better performance
@@ -3564,7 +3688,7 @@ async function fetchAndCacheRecentUpdates(period) {
               const periodEndISO = new Date(period.end.getTime() + 24 * 60 * 60 * 1000).toISOString();
               const { data: audits, error } = await supabase
                 .from(scorecard.table_name)
-                .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status')
+                .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, passing_status')
                 .eq('employee_email', currentUserEmail)
                 .gte('submitted_at', periodStartISO)
                 .lte('submitted_at', periodEndISO)
@@ -3601,11 +3725,9 @@ async function fetchAndCacheRecentUpdates(period) {
       // 2. Load reversals (both requested and responded) - using query service
       if (scorecards && scorecards.length > 0) {
         const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
-        const reversalFilterField = 'employee_email';
         
-        let reversalResults;
         if (queryService) {
-          const results = await queryService.queryReversals(window.supabaseClient, scorecards, {
+          const results = await queryService.queryReversals(supabase, scorecards, {
             limit: 30,
             emailFilter: {
               field: 'employee_email',
@@ -3614,14 +3736,110 @@ async function fetchAndCacheRecentUpdates(period) {
             reversalFilterField: 'employee_email'
           });
           
-          reversalResults = results.map(result => result.data || []).flat();
+          // Process query service results - need to preserve scorecard info and create update objects
+          const processedUpdates = [];
+          for (const result of results) {
+            if (!result.data || result.data.length === 0) continue;
+            
+            const scorecard = result.scorecard;
+            let reversals = result.data;
+            
+            // Sort reversals: prioritize those with recent responses
+            reversals.sort((a, b) => {
+              const aResponded = a.reversal_responded_at ? new Date(a.reversal_responded_at).getTime() : 0;
+              const bResponded = b.reversal_responded_at ? new Date(b.reversal_responded_at).getTime() : 0;
+              if (aResponded !== bResponded) {
+                return bResponded - aResponded;
+              }
+              const aRequested = new Date(a.reversal_requested_at).getTime();
+              const bRequested = new Date(b.reversal_requested_at).getTime();
+              return bRequested - aRequested;
+            });
+            
+            // Filter for agents: Show reversals that need acknowledgement
+            let filteredReversals = reversals.filter(reversal => {
+              const acknowledgementStatus = reversal.acknowledgement_status || reversal.acknowledgementStatus || '';
+              const isAcknowledged = acknowledgementStatus && (
+                acknowledgementStatus.toLowerCase().includes('acknowledged') || 
+                acknowledgementStatus === 'Acknowledged'
+              );
+              const isPending = reversal.reversal_approved === null;
+              const isApproved = reversal.reversal_approved === true || reversal.reversal_approved === 'true' || reversal.reversal_approved === 1 || reversal.reversal_approved === '1';
+              const isRejected = reversal.reversal_approved === false || reversal.reversal_approved === 'false' || reversal.reversal_approved === 0 || reversal.reversal_approved === '0';
+              return !isAcknowledged && (isPending || isApproved || isRejected);
+            });
+            
+            // Create update objects for each reversal
+            filteredReversals.forEach(reversal => {
+              const interactionId = reversal.interaction_id || 'N/A';
+              const acknowledgementStatus = reversal.acknowledgement_status || reversal.acknowledgementStatus;
+              const isAcknowledged = acknowledgementStatus && (
+                acknowledgementStatus.toLowerCase().includes('acknowledged') || 
+                acknowledgementStatus === 'Acknowledged'
+              );
+              
+              let status = null;
+              if (acknowledgementStatus === 'Acknowledged') {
+                status = 'Acknowledged';
+              } else if (reversal.reversal_responded_at) {
+                const approved = reversal.reversal_approved;
+                if (approved === true || approved === 'true' || approved === 1 || approved === '1') {
+                  status = 'Approved';
+                } else if (approved === false || approved === 'false' || approved === 0 || approved === '0') {
+                  status = 'Rejected';
+                } else {
+                  status = 'Pending';
+                }
+              } else if (reversal.reversal_requested_at && !reversal.reversal_responded_at) {
+                status = 'Pending';
+              }
+              
+              // Add reversal request update (for pending reversals)
+              if (status === 'Pending' && reversal.reversal_requested_at) {
+                processedUpdates.push({
+                  id: `reversal-request-${reversal.id}`,
+                  type: 'reversal_requested',
+                  displayName: null,
+                  displayEmail: null,
+                  timestamp: reversal.reversal_requested_at,
+                  status: 'reversal_requested',
+                  interactionId: interactionId,
+                  scorecardId: scorecard.id,
+                  scorecardTable: scorecard.table_name,
+                  auditId: reversal.id
+                });
+              }
+              
+              // Add status change update when reversal has been approved/rejected but NOT yet acknowledged
+              if (status && (status === 'Approved' || status === 'Rejected') && !isAcknowledged) {
+                const statusText = status === 'Approved' ? 'approved' : 'rejected';
+                const statusTimestamp = reversal.reversal_responded_at || reversal.reversal_requested_at;
+                
+                processedUpdates.push({
+                  id: `reversal-status-${reversal.id}`,
+                  type: 'reversal_status_update',
+                  displayName: null,
+                  displayEmail: null,
+                  timestamp: statusTimestamp,
+                  status: status,
+                  statusText: statusText,
+                  interactionId: interactionId,
+                  scorecardId: scorecard.id,
+                  scorecardTable: scorecard.table_name,
+                  auditId: reversal.id
+                });
+              }
+            });
+          }
+          
+          allUpdates.push(...processedUpdates);
         } else {
           // Fallback to original implementation
           const reversalPromises = scorecards.map(async (scorecard) => {
             try {
               const thirtyDaysAgo = new Date();
               thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-              const { data: reversals, error } = await window.supabaseClient
+              const { data: reversals, error } = await supabase
                 .from(scorecard.table_name)
                 .select('id, employee_email, auditor_email, reversal_requested_at, reversal_responded_at, reversal_approved, acknowledgement_status, interaction_id, submitted_at')
                 .eq('employee_email', currentUserEmail)
@@ -4332,10 +4550,13 @@ async function loadCompletedAuditsForEmployee() {
     try {
       // For agents: Filter by employee_email server-side
       // Use field whitelist - select only needed fields
+      // Use .ilike() for case-insensitive email matching to handle any case variations in the database
+      // Note: Removed 'status' from select as it doesn't exist in all scorecard tables
+      const normalizedEmail = currentUserEmail.toLowerCase().trim();
       const { data, error } = await supabase
         .from(scorecard.table_name)
-        .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status, average_score, total_errors_count, audit_duration, reversal_requested_at, reversal_approved, acknowledgement_status')
-        .eq('employee_email', currentUserEmail)
+        .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, passing_status, average_score, total_errors_count, audit_duration, reversal_requested_at, reversal_approved, acknowledgement_status')
+        .ilike('employee_email', normalizedEmail)
         .order('submitted_at', { ascending: false })
         .limit(100); // Reduced from 500 to 100 for better performance
       
@@ -4345,15 +4566,28 @@ async function loadCompletedAuditsForEmployee() {
       }
       
       if (!data || data.length === 0) {
+        console.log(`No audits found in ${scorecard.table_name} for ${currentUserEmail}`);
         return [];
       }
       
-      console.log(`Found ${data.length} audits in ${scorecard.table_name} for ${currentUserEmail}`);
+      // Additional client-side normalization filter as safety measure (case-insensitive)
+      const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+      const filteredByEmail = (data || []).filter(audit => {
+        const auditEmail = (audit.employee_email || '').toLowerCase().trim();
+        return auditEmail === normalizedCurrentEmail;
+      });
+      
+      console.log(`Found ${filteredByEmail.length} audits in ${scorecard.table_name} for ${currentUserEmail} (after client-side normalization)`);
       
       // Apply date filter (week or date range)
-      let filteredAudits = data.filter(audit => {
-        const auditDate = audit.submitted_at;
-        if (!auditDate) return false;
+      // Use submitted_at as primary date, fallback to created_at if submitted_at is missing
+      let filteredAudits = filteredByEmail.filter(audit => {
+        // Use submitted_at if available, otherwise fallback to created_at
+        const auditDate = audit.submitted_at || audit.created_at;
+        if (!auditDate) {
+          console.warn(`Audit ${audit.id} has no submitted_at or created_at date, skipping`);
+          return false;
+        }
         return isDateInRange(auditDate, period.start, period.end);
       });
       
@@ -4362,7 +4596,7 @@ async function loadCompletedAuditsForEmployee() {
         filteredAudits = filteredAudits.filter(audit => audit.channel === currentFilters.channel);
       }
       
-      console.log(`After filtering: ${filteredAudits.length} audits match for ${currentUserEmail}`);
+      console.log(`After filtering: ${filteredAudits.length} audits match for ${currentUserEmail} in ${scorecard.table_name}`);
       
       // Add scorecard info to each audit
       return filteredAudits.map(audit => ({
@@ -4383,10 +4617,10 @@ async function loadCompletedAuditsForEmployee() {
   const auditResults = await Promise.all(auditPromises);
   combinedAudits = auditResults.flat();
     
-    // Sort by submitted_at descending
+    // Sort by submitted_at descending (fallback to created_at if submitted_at is missing)
     combinedAudits.sort((a, b) => {
-      const dateA = new Date(a.submitted_at || 0);
-      const dateB = new Date(b.submitted_at || 0);
+      const dateA = new Date(a.submitted_at || a.created_at || 0);
+      const dateB = new Date(b.submitted_at || b.created_at || 0);
       return dateB - dateA;
     });
     
@@ -5738,7 +5972,7 @@ async function fetchAndCacheNotifications() {
           // Use field whitelist - select only needed fields
           let { data: audits, error } = await supabase
             .from(scorecard.table_name)
-            .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, status, passing_status')
+            .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, passing_status')
             .eq(notificationFilterField, currentUserEmail)
             .order('submitted_at', { ascending: false })
             .limit(20);

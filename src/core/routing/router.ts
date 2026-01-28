@@ -52,6 +52,10 @@ export class Router {
 
   /**
    * Check if user has access to route
+   * 
+   * SECURITY: When user role is unknown, only show routes available to everyone.
+   * This prevents employees from briefly seeing admin-only menu items before
+   * the role is loaded from the database.
    */
   canAccessRoute(routeRoles: UserRole[], userRole?: string): boolean {
     // If route allows 'all', always show it
@@ -59,11 +63,11 @@ export class Router {
       return true
     }
     
-    // If no user role provided, show all routes initially
-    // This matches the old behavior where all routes were shown initially
-    // JavaScript will hide them later based on actual role
+    // SECURITY FIX: If no user role provided, be conservative - only show 'all' routes
+    // This prevents unauthorized menu items from flashing before role is loaded
+    // Once the actual role is fetched, the sidebar will regenerate with proper access
     if (!userRole) {
-      return true
+      return false
     }
 
     // Normalize role for comparison (trim and handle case)
@@ -101,7 +105,9 @@ export class Router {
 
   /**
    * Get routes visible in sidebar for a user role
-   * If no role is provided, shows all sidebar routes (matching old behavior)
+   * 
+   * SECURITY: When role is unknown, only returns routes available to everyone.
+   * This prevents unauthorized menu items from appearing before role is loaded.
    */
   getSidebarRoutes(userRole?: string): RouteConfig[] {
     return routes
@@ -111,13 +117,8 @@ export class Router {
           return false
         }
 
-        // If no role provided, show all sidebar routes (old behavior - show all, hide with JS)
-        // This allows the sidebar to render all routes initially, then JavaScript can hide them
-        if (!userRole) {
-          return true
-        }
-
-        // Filter by role access when role is provided
+        // Filter by role access - uses canAccessRoute which is conservative
+        // when role is unknown (only shows 'all' routes)
         return this.canAccessRoute(route.meta.roles, userRole)
       })
       .sort((a, b) => {

@@ -1,17 +1,53 @@
 /**
  * Session Warning Utility
  * Warns users before session expires and handles auto-save
+ * 
+ * UX Improvements (v2.0):
+ * - Configurable redirect delay (reduced from 3s to 2s by default)
+ * - Fixed layout shift - banner now overlays instead of pushing content
+ * - Added network error banner for connectivity issues
+ * - All changes have fallback options via SESSION_WARNING_CONFIG
  */
 
 import { getSupabase } from './supabase-init.js';
 import { logInfo, logWarn } from './logging-helper.js';
 
+/**
+ * Configuration for session warning behavior
+ * Can be overridden via window.SESSION_WARNING_CONFIG
+ */
+interface SessionWarningConfig {
+  /** Redirect delay in ms after session expiry (default: 2000, previous: 3000) */
+  expiryRedirectDelay: number;
+  /** Use legacy layout (push content down) instead of overlay (default: false) */
+  useLegacyLayout: boolean;
+  /** Show "Login Now" button on expiry message (default: true) */
+  showLoginButton: boolean;
+  /** Warning threshold in seconds before expiry (default: 120) */
+  warningThresholdSeconds: number;
+}
+
+const DEFAULT_CONFIG: SessionWarningConfig = {
+  expiryRedirectDelay: 2000, // Reduced from 3000ms (previous value)
+  useLegacyLayout: false,
+  showLoginButton: true,
+  warningThresholdSeconds: 120,
+};
+
+// Allow runtime configuration override
+const config: SessionWarningConfig = {
+  ...DEFAULT_CONFIG,
+  ...((typeof window !== 'undefined' && (window as any).SESSION_WARNING_CONFIG) || {}),
+};
+
 let warningShown = false;
+let networkErrorShown = false;
 let warningInterval: number | null = null;
 let expiryCheckInterval: number | null = null;
 
 /**
  * Show session expiry warning
+ * ✅ UX FIX: Now overlays content instead of pushing it down (configurable)
  */
 function showSessionWarning(): void {
   if (warningShown) return;
@@ -20,9 +56,11 @@ function showSessionWarning(): void {
   // Create warning banner
   const banner = document.createElement('div');
   banner.id = 'session-warning-banner';
-  banner.style.cssText = `
+  
+  // ✅ UX: Use overlay positioning by default to prevent layout shift
+  // Can revert to legacy behavior via config.useLegacyLayout
+  const baseStyles = `
     position: fixed;
-    top: 0;
     left: 0;
     right: 0;
     background: #fef3c7;
@@ -35,6 +73,24 @@ function showSessionWarning(): void {
     gap: 1rem;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   `;
+  
+  if (config.useLegacyLayout) {
+    // Legacy behavior: push content down (previous implementation)
+    banner.style.cssText = baseStyles + 'top: 0;';
+  } else {
+    // New behavior: slide in from top with animation, overlay content
+    banner.style.cssText = baseStyles + `
+      top: 0;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease-out;
+    `;
+    // Trigger slide-in animation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        banner.style.transform = 'translateY(0)';
+      });
+    });
+  }
 
   const icon = document.createElement('div');
   icon.innerHTML = `
@@ -47,8 +103,9 @@ function showSessionWarning(): void {
 
   const message = document.createElement('div');
   message.style.cssText = 'flex: 1; text-align: center;';
+  const minutes = Math.ceil(config.warningThresholdSeconds / 60);
   message.innerHTML = `
-    <strong style="color: #92400e;">Your session will expire in 2 minutes.</strong>
+    <strong style="color: #92400e;">Your session will expire in ${minutes} minute${minutes > 1 ? 's' : ''}.</strong>
     <span style="color: #78350f; margin-left: 0.5rem;">Please save your work.</span>
   `;
 
@@ -64,7 +121,13 @@ function showSessionWarning(): void {
     line-height: 1;
   `;
   closeBtn.onclick = () => {
-    banner.remove();
+    if (config.useLegacyLayout) {
+      banner.remove();
+    } else {
+      // Slide out animation
+      banner.style.transform = 'translateY(-100%)';
+      setTimeout(() => banner.remove(), 300);
+    }
     warningShown = false;
   };
 
@@ -73,8 +136,85 @@ function showSessionWarning(): void {
   banner.appendChild(closeBtn);
   document.body.appendChild(banner);
 
-  // Add padding to body to account for banner
-  document.body.style.paddingTop = '60px';
+  // ✅ UX FIX: Only add body padding in legacy mode
+  if (config.useLegacyLayout) {
+    document.body.style.paddingTop = '60px';
+  }
+}
+
+/**
+ * Show network error banner
+ * ✅ NEW: Informs users about connectivity issues during auth verification
+ */
+export function showNetworkErrorBanner(message?: string): void {
+  if (networkErrorShown) return;
+  networkErrorShown = true;
+
+  const banner = document.createElement('div');
+  banner.id = 'network-error-banner';
+  banner.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #fef2f2;
+    border-bottom: 2px solid #ef4444;
+    padding: 0.75rem 1rem;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease-out;
+  `;
+
+  banner.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <span style="color: #991b1b;">${message || 'Network connectivity issue. Some features may be unavailable.'}</span>
+    <button onclick="this.parentElement.remove(); window.__networkErrorShown = false;" style="
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: #991b1b;
+      cursor: pointer;
+      padding: 0 0.25rem;
+      line-height: 1;
+    ">×</button>
+  `;
+
+  document.body.appendChild(banner);
+  
+  // Slide in
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      banner.style.transform = 'translateY(0)';
+    });
+  });
+
+  // Auto-hide after 10 seconds
+  setTimeout(() => {
+    hideNetworkErrorBanner();
+  }, 10000);
+}
+
+/**
+ * Hide network error banner
+ */
+export function hideNetworkErrorBanner(): void {
+  const banner = document.getElementById('network-error-banner');
+  if (banner) {
+    banner.style.transform = 'translateY(-100%)';
+    setTimeout(() => {
+      banner.remove();
+      networkErrorShown = false;
+    }, 300);
+  }
 }
 
 /**
@@ -124,6 +264,7 @@ function autoSaveFormData(): void {
 
 /**
  * Start monitoring session expiry
+ * ✅ UX: Warning threshold is now configurable
  */
 export function startSessionMonitoring(): void {
   if (expiryCheckInterval) return; // Already monitoring
@@ -139,8 +280,9 @@ export function startSessionMonitoring(): void {
       const expiresAt = session.expires_at || 0;
       const timeUntilExpiry = expiresAt - now;
 
-      // Warn 2 minutes before expiry (120 seconds)
-      if (timeUntilExpiry < 120 && timeUntilExpiry > 60 && !warningShown) {
+      // Warn before expiry (configurable, default 120 seconds / 2 minutes)
+      // Only show if more than 60 seconds remain (avoid showing right before expiry)
+      if (timeUntilExpiry < config.warningThresholdSeconds && timeUntilExpiry > 60 && !warningShown) {
         showSessionWarning();
       }
     });
@@ -164,18 +306,44 @@ export function stopSessionMonitoring(): void {
   // Remove banner if present
   const banner = document.getElementById('session-warning-banner');
   if (banner) {
-    banner.remove();
-    document.body.style.paddingTop = '';
+    if (config.useLegacyLayout) {
+      banner.remove();
+      document.body.style.paddingTop = '';
+    } else {
+      // Slide out animation
+      banner.style.transform = 'translateY(-100%)';
+      setTimeout(() => banner.remove(), 300);
+    }
   }
 }
 
 /**
  * Handle session expiry with auto-save
+ * ✅ UX: Reduced redirect delay (configurable), added Login Now button
  */
 export function handleSessionExpiry(): void {
   autoSaveFormData();
 
-  // Show message
+  const authPagePath = '/src/auth/presentation/auth-page.html';
+  
+  // Function to perform redirect
+  const performRedirect = () => {
+    window.location.href = authPagePath;
+  };
+
+  // Show message with backdrop
+  const backdrop = document.createElement('div');
+  backdrop.id = 'session-expiry-backdrop';
+  backdrop.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10001;
+  `;
+  
   const message = document.createElement('div');
   message.id = 'session-expiry-message';
   message.style.cssText = `
@@ -186,20 +354,59 @@ export function handleSessionExpiry(): void {
     background: white;
     padding: 2rem;
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 10px 15px rgba(0,0,0,0.1);
     z-index: 10002;
     text-align: center;
     max-width: 400px;
   `;
+  
+  // ✅ UX: Add Login Now button for immediate action
+  const loginButtonHtml = config.showLoginButton ? `
+    <button id="login-now-btn" style="
+      background: #1A733E;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: background 0.2s;
+    " onmouseover="this.style.background='#145c32'" onmouseout="this.style.background='#1A733E'">
+      Login Now
+    </button>
+    <p style="color: #9ca3af; font-size: 0.75rem; margin-top: 0.75rem;">
+      Or wait ${config.expiryRedirectDelay / 1000} second${config.expiryRedirectDelay > 1000 ? 's' : ''} for automatic redirect...
+    </p>
+  ` : `
+    <div style="width: 2rem; height: 2rem; border: 3px solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: session-spin 1s linear infinite; margin: 1rem auto 0;"></div>
+  `;
+  
   message.innerHTML = `
     <h3 style="margin-bottom: 1rem; color: #1f2937;">Session Expired</h3>
-    <p style="color: #6b7280; margin-bottom: 1.5rem;">Your session has expired. Your work has been saved. Redirecting to login...</p>
-    <div class="spinner" style="width: 2rem; height: 2rem; border: 3px solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+    <p style="color: #6b7280; margin-bottom: 0.5rem;">Your session has expired.</p>
+    <p style="color: #6b7280; font-size: 0.875rem;">Your work has been saved automatically.</p>
+    ${loginButtonHtml}
+    <style>
+      @keyframes session-spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   `;
+  
+  document.body.appendChild(backdrop);
   document.body.appendChild(message);
 
-  // Redirect after 3 seconds
-  setTimeout(() => {
-    window.location.href = '/src/auth/presentation/auth-page.html';
-  }, 3000);
+  // Add click handler for Login Now button
+  if (config.showLoginButton) {
+    const loginBtn = document.getElementById('login-now-btn');
+    if (loginBtn) {
+      loginBtn.onclick = performRedirect;
+    }
+  }
+
+  // ✅ UX: Reduced redirect delay (default 2s, was 3s)
+  // Configurable via SESSION_WARNING_CONFIG.expiryRedirectDelay
+  setTimeout(performRedirect, config.expiryRedirectDelay);
 }

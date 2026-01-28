@@ -146,3 +146,18 @@ export function hideLoadingOverlay(): void {
     overlay.remove();
   }
 }
+
+/**
+ * Update the loading overlay message
+ * ✅ NEW: Allows updating the message without recreating the overlay
+ * Useful for progressive feedback during long operations
+ */
+export function updateLoadingOverlayMessage(message: string): void {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) {
+    const textElement = overlay.querySelector('.loading-text');
+    if (textElement) {
+      textElement.textContent = message;
+    }
+  }
+}

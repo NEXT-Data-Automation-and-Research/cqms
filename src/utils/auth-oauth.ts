@@ -8,7 +8,7 @@ import { clearAuthCache } from './secure-supabase.js';
 import { saveUserProfileToDatabase } from './auth-user-profile.js';
 import { storeDeviceFingerprint } from './auth-device.js';
 import { logError, logWarn, logInfo } from './logging-helper.js';
-import { showLoadingOverlay, hideLoadingOverlay } from './loading-overlay.js';
+import { showLoadingOverlay, hideLoadingOverlay, updateLoadingOverlayMessage } from './loading-overlay.js';
 
 /**
  * Wait for Supabase to be initialized with timeout
@@ -156,6 +156,15 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
         let attempts = 0;
         const maxAttempts = 30; // 15 seconds total (30 * 500ms) - increased for reliability
         
+        // ✅ UX: Progressive feedback messages during polling
+        const progressMessages = [
+          { at: 0, message: 'Completing sign in...' },
+          { at: 4, message: 'Verifying credentials...' },
+          { at: 8, message: 'Still connecting...' },
+          { at: 14, message: 'This is taking longer than expected...' },
+          { at: 20, message: 'Almost there...' },
+        ];
+        
         while (!session && attempts < maxAttempts && !resolved) {
           await new Promise(r => setTimeout(r, 500));
           const { data: { session: polledSession }, error } = await supabase.auth.getSession();
@@ -169,6 +178,14 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
             break;
           }
           attempts++;
+          
+          // ✅ UX: Update loading message based on progress
+          const progressUpdate = progressMessages.find(p => p.at === attempts);
+          if (progressUpdate) {
+            updateLoadingOverlayMessage(progressUpdate.message);
+            logInfo(`Progress update: ${progressUpdate.message}`);
+          }
+          
           if (attempts % 5 === 0) {
             logInfo(`Still waiting for session... (attempt ${attempts}/${maxAttempts})`);
           }

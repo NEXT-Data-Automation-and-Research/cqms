@@ -19519,12 +19519,23 @@ async function loadConversationDataIntoForm(conversationData) {
   <!-- Initialize header metadata stats -->
   <script>
     // Inline updateHeaderMetadata function to avoid import issues
-    function updateHeaderMetadata(score = 0, passingStatus = '', totalErrors = 0) {
+    // This function reads from DOM fields when called without parameters
+    function updateHeaderMetadata(scoreParam, passingStatusParam, totalErrorsParam) {
       const metadataContainer = document.getElementById('headerMetadataCards');
       if (!metadataContainer) {
         console.warn('headerMetadataCards container not found');
         return;
       }
+
+      // Get values from DOM fields if parameters are not provided
+      const averageScoreField = document.getElementById('averageScore');
+      const passingStatusField = document.getElementById('passingStatus');
+      const totalErrorsField = document.getElementById('totalErrorsCount');
+      
+      // Use parameters if provided, otherwise read from DOM fields
+      const score = scoreParam !== undefined ? scoreParam : (averageScoreField ? parseFloat(averageScoreField.value) || 0 : 0);
+      const passingStatus = passingStatusParam !== undefined ? passingStatusParam : (passingStatusField ? passingStatusField.value || '' : '');
+      const totalErrors = totalErrorsParam !== undefined ? totalErrorsParam : (totalErrorsField ? parseInt(totalErrorsField.value) || 0 : 0);
 
       // Get quarter and week
       const quarterField = document.getElementById('quarter');
