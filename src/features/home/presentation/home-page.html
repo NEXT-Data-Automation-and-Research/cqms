@@ -1480,6 +1480,7 @@ let isAgent = false;
 let allUsers = [];
 let allAssignments = [];
 let assignedAudits = [];
+let assignedAuditsRealtimeChannel = null; // For realtime subscription cleanup
 let sortBy = 'date_desc'; // Default will be updated based on user role
 let notifications = [];
 let unreadNotificationCount = 0;
@@ -3154,8 +3155,148 @@ async function initializeDashboard() {
       }
     })();
 
+    // Setup realtime subscription for instant updates when audits are assigned
+    setupAssignedAuditsRealtimeSubscription();
+
   } catch (error) {
     console.error('Error initializing dashboard:', error);
+  }
+}
+
+// Setup realtime subscription to listen for new audit assignments
+async function setupAssignedAuditsRealtimeSubscription() {
+  // Only setup for auditors (not agents)
+  if (isAgent) {
+    return;
+  }
+
+  // Wait for Supabase to be ready
+  const supabaseReady = await waitForSupabase();
+  if (!supabaseReady || !window.supabaseClient) {
+    console.warn('Supabase not ready, skipping realtime subscription');
+    return;
+  }
+
+  // Clean up existing subscription if any
+  if (assignedAuditsRealtimeChannel) {
+    window.supabaseClient.removeChannel(assignedAuditsRealtimeChannel);
+    assignedAuditsRealtimeChannel = null;
+  }
+
+  try {
+    const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+    const supabase = await getAuthenticatedSupabase();
+    
+    if (!supabase) {
+      console.warn('Could not get authenticated Supabase client for realtime');
+      return;
+    }
+
+    // Get current user email for filtering
+    const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
+
+    console.log('🔔 Setting up realtime subscription for audit assignments for:', normalizedCurrentEmail);
+
+    // Create a channel for audit assignments
+    // Note: Supabase Realtime doesn't support complex filters, so we filter in the handler
+    assignedAuditsRealtimeChannel = supabase
+      .channel('audit-assignments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'audit_assignments'
+        },
+        async (payload) => {
+          console.log('🔔 Audit assignment change received via realtime:', payload);
+          
+          // Handle INSERT and UPDATE events
+          const newAssignment = payload.new;
+          const oldAssignment = payload.old;
+          
+          // Determine event type from payload structure
+          const eventType = newAssignment && !oldAssignment ? 'INSERT' : 
+                           oldAssignment && newAssignment ? 'UPDATE' : 
+                           oldAssignment && !newAssignment ? 'DELETE' : 'UNKNOWN';
+          
+          // Check if this affects the current user
+          let shouldRefresh = false;
+          
+          if (eventType === 'INSERT' && newAssignment && newAssignment.auditor_email) {
+            const assignmentAuditorEmail = (newAssignment.auditor_email || '').toLowerCase().trim();
+            if (assignmentAuditorEmail === normalizedCurrentEmail) {
+              console.log('✅ New assignment is for current user, refreshing assigned audits list');
+              shouldRefresh = true;
+            }
+          } else if (eventType === 'UPDATE' && newAssignment && newAssignment.auditor_email) {
+            const assignmentAuditorEmail = (newAssignment.auditor_email || '').toLowerCase().trim();
+            // Refresh if assignment is for current user and status changed to/from pending/in_progress
+            if (assignmentAuditorEmail === normalizedCurrentEmail) {
+              const oldStatus = oldAssignment?.status;
+              const newStatus = newAssignment.status;
+              // Refresh if status changed to/from pending or in_progress (affects what's shown)
+              if (oldStatus !== newStatus && 
+                  (newStatus === 'pending' || newStatus === 'in_progress' || 
+                   oldStatus === 'pending' || oldStatus === 'in_progress')) {
+                console.log('✅ Assignment status changed for current user, refreshing assigned audits list');
+                shouldRefresh = true;
+              }
+            }
+          }
+          
+          if (shouldRefresh) {
+            // Invalidate cache to force fresh fetch
+            try {
+              const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+              const period = getCurrentPeriodDates();
+              const cacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+              
+              // Clear cache
+              const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+              await persistentCacheService.delete(cacheKey);
+              
+              // Also clear sessionStorage cache
+              const sessionCacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+              sessionStorage.removeItem(sessionCacheKey);
+              sessionStorage.removeItem(sessionCacheKey + '_time');
+            } catch (cacheError) {
+              console.warn('Error clearing cache:', cacheError);
+            }
+            
+            // Refresh the assigned audits list
+            if (typeof loadAssignedAudits === 'function') {
+              loadAssignedAudits().catch(err => {
+                console.error('Error refreshing assigned audits after realtime update:', err);
+              });
+            }
+          } else {
+            console.log('ℹ️ Realtime update for assignment not affecting current user, ignoring');
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Subscribed to audit assignments realtime updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Error subscribing to audit assignments:', status);
+        } else if (status === 'TIMED_OUT') {
+          console.warn('⏱️ Realtime subscription timed out');
+        } else if (status === 'CLOSED') {
+          console.log('🔌 Realtime subscription closed');
+        }
+      });
+
+    // Clean up subscription when page unloads
+    window.addEventListener('beforeunload', () => {
+      if (assignedAuditsRealtimeChannel && window.supabaseClient) {
+        window.supabaseClient.removeChannel(assignedAuditsRealtimeChannel);
+        assignedAuditsRealtimeChannel = null;
+      }
+    });
+
+  } catch (error) {
+    console.error('Error setting up realtime subscription for audit assignments:', error);
   }
 }
 
