@@ -17,6 +17,8 @@ export class ReversalRepository {
     limit?: number;
   } = {}): Promise<ReversalRequest[]> {
     try {
+      console.log('[ReversalRepository] getReversalRequests called with options:', options);
+      
       let query = this.supabase
         .from('reversal_requests')
         .select('*')
@@ -31,6 +33,8 @@ export class ReversalRepository {
       }
 
       const { data, error } = await query;
+
+      console.log('[ReversalRepository] Query result - count:', data?.length || 0, 'error:', error);
 
       if (error) throw error;
 
@@ -215,10 +219,19 @@ export class ReversalRepository {
         .eq('id', auditId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 404 || (error as any).code === 'PGRST116' || (String((error as any).message || '').includes('does not exist'))) {
+          return null;
+        }
+        throw error;
+      }
 
       return data;
     } catch (error) {
+      const err = error as any;
+      if (err?.code === 404 || err?.code === 'PGRST116' || (err?.message && String(err.message).includes('does not exist'))) {
+        return null;
+      }
       console.error(`Error fetching audit data from ${tableName}:`, error);
       throw error;
     }
@@ -253,6 +266,9 @@ export class ReversalRepository {
               .in('id', auditIds);
 
             if (error) {
+              if (error.code === 404 || (error as any).code === 'PGRST116' || (String((error as any).message || '').includes('does not exist'))) {
+                return;
+              }
               console.warn(`Error loading audits from ${tableName}:`, error);
               return;
             }
@@ -274,6 +290,9 @@ export class ReversalRepository {
                   .in('id', batch)
                   .then(({ data, error }: any) => {
                     if (error) {
+                      if (error.code === 404 || error.code === 'PGRST116' || (error.message && String(error.message).includes('does not exist'))) {
+                        return;
+                      }
                       console.warn(`Error loading audit batch from ${tableName}:`, error);
                       return;
                     }

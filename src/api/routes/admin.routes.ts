@@ -1,13 +1,12 @@
 /**
  * Admin Routes
- * Provides admin-only endpoints including user impersonation
- * 
- * SECURITY: All endpoints require Admin or Super Admin role
+ * Provides endpoints including user impersonation.
+ * SECURITY: Impersonation is gated by permission (settings/impersonation), not role alone.
  */
 
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, verifyAuth } from '../middleware/auth.middleware.js';
-import { requireAdmin } from '../utils/admin-check.js';
+import { requirePermission } from '../middleware/permission.middleware.js';
 import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -16,14 +15,14 @@ const logger = createLogger('AdminRoutes');
 
 /**
  * POST /api/admin/impersonate
- * Generate a magic link to impersonate another user
- * 
- * SECURITY:
- * - Requires Admin or Super Admin role
- * - Logs all impersonation attempts
- * - Cannot impersonate users with higher role level
+ * Generate a magic link to impersonate another user.
+ * SECURITY: requirePermission('settings/impersonation') — role + individual overrides from DB.
  */
-router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post(
+  '/impersonate',
+  verifyAuth,
+  requirePermission('settings/impersonation', 'api_endpoint'),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { targetEmail, reason } = req.body;
     const adminUser = req.user;
@@ -38,11 +37,9 @@ router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedR
       return;
     }
 
-    // Normalize email
     const normalizedTargetEmail = targetEmail.toLowerCase().trim();
     const adminEmail = adminUser.email.toLowerCase().trim();
 
-    // Prevent self-impersonation
     if (normalizedTargetEmail === adminEmail) {
       res.status(400).json({ error: 'Cannot impersonate yourself' });
       return;
@@ -50,29 +47,7 @@ router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedR
 
     const supabase = getServerSupabase();
 
-    // Get admin's role
-    const { data: adminData, error: adminError } = await supabase
-      .from('people')
-      .select('role')
-      .eq('email', adminEmail)
-      .maybeSingle();
-
-    if (adminError || !adminData?.role) {
-      logger.error('Failed to get admin role:', adminError?.message);
-      res.status(403).json({ error: 'Unable to verify admin privileges' });
-      return;
-    }
-
-    const adminRole = adminData.role;
-    
-    // Only Super Admin and Admin can impersonate
-    if (!['Super Admin', 'Admin'].includes(adminRole)) {
-      logger.warn(`User ${adminEmail} attempted impersonation without admin privileges`);
-      res.status(403).json({ error: 'Admin privileges required for impersonation' });
-      return;
-    }
-
-    // Get target user's role
+    // Get target user's role for hierarchy check (who can be impersonated)
     const { data: targetPeopleData } = await supabase
       .from('people')
       .select('role')
@@ -80,8 +55,6 @@ router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedR
       .maybeSingle();
 
     const targetRole = targetPeopleData?.role || 'Employee';
-
-    // Role hierarchy check - Admins cannot impersonate Super Admins
     const ROLE_LEVELS: Record<string, number> = {
       'Super Admin': 5,
       'Admin': 4,
@@ -91,17 +64,19 @@ router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedR
       'Employee': 1,
       'General User': 0
     };
-
-    const adminLevel = ROLE_LEVELS[adminRole] || 0;
     const targetLevel = ROLE_LEVELS[targetRole] || 0;
-
-    // Super Admin can impersonate anyone
-    // Admin can only impersonate users with lower role level
+    const { data: adminData } = await supabase
+      .from('people')
+      .select('role')
+      .eq('email', adminEmail)
+      .maybeSingle();
+    const adminRole = adminData?.role || '';
+    const adminLevel = ROLE_LEVELS[adminRole] || 0;
     if (adminRole !== 'Super Admin' && targetLevel >= adminLevel) {
-      logger.warn(`Admin ${adminEmail} attempted to impersonate higher/equal role user ${normalizedTargetEmail}`);
-      res.status(403).json({ 
+      logger.warn(`User ${adminEmail} attempted to impersonate higher/equal role ${normalizedTargetEmail}`);
+      res.status(403).json({
         error: 'Cannot impersonate users with equal or higher role level',
-        details: `Your role: ${adminRole}, Target role: ${targetRole}`
+        details: `Target role: ${targetRole}`
       });
       return;
     }
@@ -187,24 +162,15 @@ router.post('/impersonate', verifyAuth, requireAdmin, async (req: AuthenticatedR
 
 /**
  * GET /api/admin/impersonation-logs
- * Get impersonation logs (Super Admin only)
+ * Get impersonation logs. SECURITY: requirePermission('settings/impersonation').
  */
-router.get('/impersonation-logs', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get(
+  '/impersonation-logs',
+  verifyAuth,
+  requirePermission('settings/impersonation', 'api_endpoint'),
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const adminUser = req.user;
     const supabase = getServerSupabase();
-
-    // Check if user is Super Admin
-    const { data: adminData } = await supabase
-      .from('people')
-      .select('role')
-      .eq('email', adminUser?.email?.toLowerCase())
-      .maybeSingle();
-
-    if (adminData?.role !== 'Super Admin') {
-      res.status(403).json({ error: 'Super Admin access required' });
-      return;
-    }
 
     // Get logs
     const limit = parseInt(req.query.limit as string) || 50;

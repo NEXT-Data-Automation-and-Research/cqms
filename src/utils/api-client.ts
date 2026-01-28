@@ -445,6 +445,34 @@ export const apiClient = {
   },
 
   /**
+   * Analytics operations (user activity and platform analytics)
+   */
+  analytics: {
+    async getMe(params?: { days?: number; limit?: number }): Promise<{ page_views: any[]; from: string; to: string; limit: number }> {
+      const q = new URLSearchParams();
+      if (params?.days) q.set('days', String(params.days));
+      if (params?.limit) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return apiClient.get(`/api/analytics/me${suffix}`);
+    },
+    async getAdminSummary(params?: { days?: number }): Promise<any> {
+      const q = params?.days ? `?days=${params.days}` : '';
+      return apiClient.get(`/api/analytics/admin/summary${q}`);
+    },
+    async getAdminByPage(params?: { days?: number }): Promise<any> {
+      const q = params?.days ? `?days=${params.days}` : '';
+      return apiClient.get(`/api/analytics/admin/by-page${q}`);
+    },
+    async getAdminByUser(userId: string, params?: { days?: number; limit?: number }): Promise<any> {
+      const q = new URLSearchParams();
+      if (params?.days) q.set('days', String(params.days));
+      if (params?.limit) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return apiClient.get(`/api/analytics/admin/by-user/${encodeURIComponent(userId)}${suffix}`);
+    },
+  },
+
+  /**
    * Generic HTTP methods for direct API calls
    * Use these when you need to call endpoints that don't have specific methods
    */

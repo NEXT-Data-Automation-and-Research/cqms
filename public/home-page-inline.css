@@ -714,17 +714,9 @@ body.home-page {
   background-color: #ef4444 !important;
 }
 
-/* Fix notification empty state icon size */
-.home-page #notificationsModal svg.w-12,
-.home-page #notificationsModal svg.h-12 {
-  width: 3rem !important;
-  height: 3rem !important;
-  max-width: 3rem !important;
-  max-height: 3rem !important;
-}
-
-/* Ensure notification modal content doesn't overflow */
+/* Notification modal: ensure it sits above other content and isn't overridden by header * */
 .home-page #notificationsModal {
+  z-index: 9999 !important;
   overflow: hidden !important;
 }
 
@@ -733,8 +725,8 @@ body.home-page {
   overflow-x: hidden !important;
 }
 
-/* Fix notification empty state container */
-.home-page #notificationsList > div {
+/* Only center the single empty/loading state (one direct child), not section groups */
+.home-page #notificationsList > div:only-child.notification-panel-empty {
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
@@ -742,11 +734,24 @@ body.home-page {
   padding: 2rem 1rem !important;
 }
 
-.home-page #notificationsList svg {
+.home-page #notificationsModal .notification-panel-empty svg {
   flex-shrink: 0 !important;
   width: 3rem !important;
   height: 3rem !important;
   margin-bottom: 0.5rem !important;
+}
+
+/* Restore correct text colors inside modal (header * forces black otherwise) */
+.home-page #notificationsModal .notification-panel-section-title {
+  color: #6b7280 !important;
+}
+
+.home-page #notificationsModal .notification-panel-item-message {
+  color: #4b5563 !important;
+}
+
+.home-page #notificationsModal .notification-panel-item-time {
+  color: #6b7280 !important;
 }
 
 /* Calendar and Grid Modals Dark Mode */

@@ -14,7 +14,9 @@ export class SidebarService {
    * Check if we should show sidebar on this page
    */
   shouldShowSidebarOnThisPage(): boolean {
-    const currentPage = window.location.pathname.split('/').pop() || ''
+    // Normalize path: strip trailing slash so "/my-activity/" -> "my-activity" not ""
+    const pathname = window.location.pathname.replace(/\/$/, '') || '/'
+    const currentPage = pathname.split('/').pop() || ''
     const pagesWithoutSidebar: PageWithoutSidebar[] = ['login.html', 'index.html']
     return !pagesWithoutSidebar.includes(currentPage as PageWithoutSidebar)
   }

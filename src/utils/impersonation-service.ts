@@ -195,18 +195,28 @@ interface ImpersonationState {
 const STORAGE_KEY = 'impersonation_state';
 
 /**
- * Check if the current user can impersonate others
- * @returns true if user has Admin or Super Admin role
+ * Check if the current user can impersonate others (sync fallback from role).
+ * For permission-based check (role + individual overrides), use hasPermission('settings/impersonation', 'page') or canImpersonateAsync().
  */
 export function canImpersonate(): boolean {
   try {
     const userInfoStr = localStorage.getItem('userInfo');
     if (!userInfoStr) return false;
-    
     const userInfo = JSON.parse(userInfoStr);
     const role = userInfo.role || '';
-    
     return ['Super Admin', 'Admin'].includes(role);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if the current user can impersonate (permission API: role + individual overrides).
+ */
+export async function canImpersonateAsync(): Promise<boolean> {
+  try {
+    const { hasPermission } = await import('./permissions.js');
+    return await hasPermission('settings/impersonation', 'page');
   } catch {
     return false;
   }
@@ -291,12 +301,13 @@ export async function startImpersonation(targetEmail: string, reason?: string): 
   if (userInfo.email?.toLowerCase().trim() === targetEmail.toLowerCase().trim()) {
     throw new Error('Cannot impersonate yourself');
   }
-  
-  // Verify admin privileges
-  if (!['Super Admin', 'Admin'].includes(userInfo.role)) {
-    throw new Error('Admin privileges required for impersonation');
+
+  const { hasPermission } = await import('./permissions.js');
+  const allowed = await hasPermission('settings/impersonation', 'page');
+  if (!allowed) {
+    throw new Error('You do not have permission to impersonate. Access is controlled by role and individual permissions.');
   }
-  
+
   // Store original session in sessionStorage (cleared when tab closes)
   const state: ImpersonationState = {
     isImpersonating: true,

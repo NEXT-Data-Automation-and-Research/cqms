@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/js/console-stub.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>User Impersonation | CQMS</title>
-<meta name="description" content="Quality Management System - Admin User Impersonation">
+<title>View as User | CQMS</title>
+<meta name="description" content="Quality Management System - View the app as another user for support and audit">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -40,70 +41,86 @@
 <!-- Sidebar will be loaded dynamically -->
 <main class="main-content" role="main">
     <div class="page-header">
-        <h1 class="page-heading-global">User Impersonation</h1>
-        <p class="page-description">Log in as another user to view and manage the platform from their perspective. All actions are logged for audit purposes.</p>
+        <h1 class="page-heading-global">View as User</h1>
+        <p class="page-description">Open the app as another user to see their view. All sessions are logged for audit.</p>
     </div>
 
-    <!-- Warning Banner -->
-    <div class="warning-banner">
-        <div class="warning-icon">⚠️</div>
-        <div class="warning-content">
-            <h3>Security Notice</h3>
-            <p>User impersonation is a privileged feature. All impersonation sessions are logged with your identity, timestamp, and reason. Use this feature responsibly for legitimate maintenance purposes only.</p>
-        </div>
+    <!-- Compact notice bar -->
+    <div class="notice-bar" role="status">
+        <span class="notice-icon" aria-hidden="true">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </span>
+        <span class="notice-text">All view-as-user sessions are logged with your identity and reason. Use only for support or approved purposes.</span>
     </div>
 
     <!-- Access Check Container -->
     <div id="accessCheck" class="access-check">
         <div class="loading-spinner"></div>
-        <p>Verifying access permissions...</p>
+        <p>Verifying access...</p>
     </div>
 
     <!-- Main Content (hidden until access verified) -->
     <div id="mainContent" class="main-container" style="display: none;">
-        <!-- Search and Filter Section -->
-        <div class="search-section">
-            <div class="search-box">
-                <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input type="text" id="userSearch" placeholder="Search users by name or email..." class="search-input">
+        <!-- Statistics strip -->
+        <div class="stats-strip">
+            <div class="stat-item">
+                <span class="stat-value" id="statUserCount">—</span>
+                <span class="stat-label">Active users</span>
             </div>
-            <div class="filter-section">
-                <select id="roleFilter" class="filter-select">
-                    <option value="">All Roles</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Manager">Manager</option>
-                    <option value="Quality Supervisor">Quality Supervisor</option>
-                    <option value="Quality Analyst">Quality Analyst</option>
-                    <option value="Employee">Employee</option>
-                    <option value="General User">General User</option>
-                </select>
-                <select id="departmentFilter" class="filter-select">
-                    <option value="">All Departments</option>
-                </select>
+            <div class="stat-item">
+                <span class="stat-value" id="statSessionCount">—</span>
+                <span class="stat-label">Recent sessions</span>
             </div>
         </div>
 
-        <!-- Users List -->
-        <div class="users-container">
-            <div id="usersList" class="users-list">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading users...</p>
+        <div class="content-grid">
+            <!-- People section -->
+            <section class="section-card section-people" aria-labelledby="people-heading">
+                <h2 id="people-heading" class="section-card-title">People</h2>
+                <p class="section-card-desc">Find a user and open a view-as-user session.</p>
+                <div class="search-section">
+                    <div class="search-box">
+                        <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                        <input type="text" id="userSearch" placeholder="Search by name or email..." class="search-input">
+                    </div>
+                    <div class="filter-section">
+                        <select id="roleFilter" class="filter-select">
+                            <option value="">All Roles</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="Quality Supervisor">Quality Supervisor</option>
+                            <option value="Quality Analyst">Quality Analyst</option>
+                            <option value="Employee">Employee</option>
+                            <option value="General User">General User</option>
+                        </select>
+                        <select id="departmentFilter" class="filter-select">
+                            <option value="">All Departments</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
-        </div>
+                <div class="users-container">
+                    <div id="usersList" class="users-list">
+                        <div class="loading-state">
+                            <div class="loading-spinner"></div>
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Impersonation Logs Section -->
-        <div class="logs-section">
-            <h2 class="section-title">Recent Impersonation Sessions</h2>
-            <div id="impersonationLogs" class="logs-container">
-                <div class="loading-state">
-                    <div class="loading-spinner"></div>
-                    <p>Loading logs...</p>
+            <!-- Activity section -->
+            <section class="section-card section-activity" aria-labelledby="activity-heading">
+                <h2 id="activity-heading" class="section-card-title">Recent sessions</h2>
+                <p class="section-card-desc">View-as-user sessions started from this page.</p>
+                <div id="impersonationLogs" class="logs-container">
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading sessions...</p>
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
@@ -111,34 +128,40 @@
     <div id="accessDenied" class="access-denied" style="display: none;">
         <div class="denied-icon">🚫</div>
         <h2>Access Denied</h2>
-        <p>You don't have permission to access this feature. Only Super Admins can impersonate other users.</p>
-        <a href="/home" class="btn-home">Return to Home</a>
+        <p>You don't have permission to access View as User. Access is controlled by role-based and individual permissions.</p>
+        <p id="accessDeniedReason" class="access-denied-reason" style="display: none;"></p>
+        <div class="access-denied-actions">
+            <a href="/home" class="btn-home">Return to Home</a>
+            <button type="button" class="btn-retry" onclick="location.reload()">Retry</button>
+            <button type="button" class="btn-debug" id="debugAccessBtn">Debug</button>
+        </div>
+        <pre id="debugOutput" class="debug-output" style="display: none;"></pre>
     </div>
 </main>
 
-<!-- Impersonation Confirmation Modal -->
+<!-- View-as-User Confirmation Modal -->
 <div id="impersonationModal" class="modal-overlay" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
-            <h2>Confirm Impersonation</h2>
-            <button class="modal-close" id="closeModal">&times;</button>
+            <h2>Confirm View as User</h2>
+            <button class="modal-close" id="closeModal" aria-label="Close">&times;</button>
         </div>
         <div class="modal-body">
             <div class="user-preview" id="modalUserPreview">
                 <!-- User info will be populated here -->
             </div>
             <div class="form-group">
-                <label for="impersonationReason">Reason for Impersonation (Required)</label>
-                <textarea id="impersonationReason" placeholder="Enter the reason for this impersonation session..." rows="3" required></textarea>
-                <p class="help-text">This will be logged for audit purposes.</p>
+                <label for="impersonationReason">Reason (required)</label>
+                <textarea id="impersonationReason" placeholder="e.g. Support ticket #123, reproducing reported issue..." rows="3" required></textarea>
+                <p class="help-text">Logged for audit.</p>
             </div>
-            <div class="warning-box">
-                <p><strong>You will be logged in as this user.</strong></p>
+            <div class="modal-notice">
+                <p><strong>You will see the app as this user.</strong></p>
                 <ul>
-                    <li>You will see the platform exactly as they see it</li>
-                    <li>Any changes you make will be attributed to their account</li>
-                    <li>A banner will show that you're in impersonation mode</li>
-                    <li>You can exit impersonation at any time</li>
+                    <li>You see exactly what they see</li>
+                    <li>Changes are attributed to their account</li>
+                    <li>A banner shows you're in view-as-user mode</li>
+                    <li>You can exit at any time</li>
                 </ul>
             </div>
         </div>
@@ -148,7 +171,7 @@
                 <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                 </svg>
-                Login as User
+                View as User
             </button>
         </div>
     </div>

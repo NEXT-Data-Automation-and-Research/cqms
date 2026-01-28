@@ -41,7 +41,22 @@ export class ScorecardQueryService {
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
   /**
-   * Get all active scorecards (cached)
+   * Get set of existing audit table names (from get_audit_tables RPC).
+   * Returns empty set if RPC fails so callers can fall back to using all scorecards.
+   */
+  private async getExistingAuditTableNames(supabase: any): Promise<Set<string>> {
+    try {
+      const { data, error } = await supabase.rpc('get_audit_tables');
+      if (error || !data || !Array.isArray(data)) return new Set();
+      return new Set((data as { table_name: string }[]).map((r) => r.table_name));
+    } catch {
+      return new Set();
+    }
+  }
+
+  /**
+   * Get all active scorecards whose audit table exists (cached).
+   * Filters out scorecards whose table_name does not exist in the DB to avoid 404s.
    */
   async getScorecards(supabase: any, forceRefresh = false): Promise<Scorecard[]> {
     const now = Date.now();
@@ -60,7 +75,13 @@ export class ScorecardQueryService {
       return this.scorecardsCache || [];
     }
 
-    this.scorecardsCache = data || [];
+    let scorecards = (data || []).filter((s: Scorecard) => s.table_name);
+    const existingTables = await this.getExistingAuditTableNames(supabase);
+    if (existingTables.size > 0) {
+      scorecards = scorecards.filter((s: Scorecard) => existingTables.has(s.table_name));
+    }
+
+    this.scorecardsCache = scorecards;
     this.cacheTime = now;
     return this.scorecardsCache || [];
   }
@@ -106,6 +127,11 @@ export class ScorecardQueryService {
         }
 
         const { data, error } = await query;
+
+        // Treat missing table (404) as empty result so UI doesn't break
+        if (error && (error.code === 404 || error.code === 'PGRST116' || (error.message && String(error.message).includes('does not exist')))) {
+          return { data: [], error: null, scorecard };
+        }
 
         return {
           data: data || [],
@@ -174,8 +200,11 @@ export class ScorecardQueryService {
 
         const { data, error } = await query;
 
-        // If error, table might not have reversal columns - skip silently
+        // Missing table (404) or missing reversal columns - skip silently
         if (error) {
+          if (error.code === 404 || error.code === 'PGRST116' || (error.message && String(error.message).includes('does not exist'))) {
+            return { data: [], error: null, scorecard };
+          }
           return {
             data: [],
             error: null, // Don't treat as error - some tables don't have reversals

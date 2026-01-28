@@ -23,10 +23,15 @@ export class ReversalService {
     limit?: number;
   } = {}): Promise<ReversalWithAuditData[]> {
     try {
+      console.log('[ReversalService] getReversalsWithAuditData called with options:', options);
+      
       // Get reversal requests
       const reversalRequests = await this.repository.getReversalRequests(options);
 
+      console.log('[ReversalService] Got', reversalRequests.length, 'reversal requests');
+
       if (reversalRequests.length === 0) {
+        console.log('[ReversalService] No reversal requests found, returning empty array');
         return [];
       }
 

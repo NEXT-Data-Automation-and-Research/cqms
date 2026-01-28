@@ -1,6 +1,6 @@
 /**
  * Admin Check for Permission Management Page
- * Ensures only Admin and Super Admin can access this page
+ * Access is determined by permission (settings/permissions): role-based + individual overrides.
  */
 
 import { apiClient } from '../../../../utils/api-client.js';
@@ -8,32 +8,20 @@ import { createLogger } from '../../../../utils/logger.js';
 
 const logger = createLogger('PermissionManagementAdminCheck');
 
+const PERMISSION_PAGE_RESOURCE = 'settings/permissions';
+
 /**
- * Check if current user is admin
+ * Check if current user can access permission management (permission API: role + individual overrides)
  */
 async function checkAdminAccess(): Promise<boolean> {
   try {
-    // Check if user has permission to access permission management
     const response = await apiClient.post('/api/permissions/check', {
-      resourceName: 'permission-management',
+      resourceName: PERMISSION_PAGE_RESOURCE,
       ruleType: 'page',
     });
-
-    if (response.hasAccess) {
-      return true;
-    }
-
-    // Fallback: Check if user is admin via role
-    const permissions = await apiClient.get('/api/permissions/user');
-    const userRole = permissions.role;
-
-    if (userRole === 'Super Admin' || userRole === 'Admin') {
-      return true;
-    }
-
-    return false;
+    return response?.hasAccess === true;
   } catch (error: any) {
-    logger.error('Error checking admin access:', error);
+    logger.error('Error checking permission access:', error);
     return false;
   }
 }
@@ -43,7 +31,7 @@ async function checkAdminAccess(): Promise<boolean> {
  */
 function redirectUnauthorized(): void {
   logger.warn('Unauthorized access attempt to permission management');
-  alert('Access Denied: Only Administrators can access this page.');
+  alert('Access Denied: You do not have permission to access this page.');
   window.location.href = '/';
 }
 

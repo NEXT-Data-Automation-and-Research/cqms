@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/js/console-stub.js"></script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2896,6 +2897,10 @@ window.createManualAudit = async function() {
     currentEditingTableName = null;
     window._editModeLoading = false;
     window._editModeValuesPopulated = false;
+    
+    // Clear preserved employee selection since this is a fresh manual audit
+    window.preservedEmployeeSelection = null;
+    window.isLoadingAssignmentEmployee = false;
     
     // Reset the form
     const auditForm = document.getElementById('auditForm');
@@ -8219,6 +8224,11 @@ window.startAuditFromConversation = async function(conversation) {
         console.log('â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•');
         console.log('Conversation:', conversation);
         
+        // Clear any preserved employee selection since this is a fresh audit from conversation
+        // (not from an assignment)
+        window.preservedEmployeeSelection = null;
+        window.isLoadingAssignmentEmployee = false;
+        
         // Extract admin information from conversation
         const adminInfo = extractAdminFromConversation(conversation);
         
@@ -10325,6 +10335,11 @@ function clearErrorParameters() {
 // Employee List and Auto-Population Functionality
 let allEmployees = []; // Store all employees loaded from Supabase
 
+// Flag to prevent redundant employee dropdown reloading during assignment loading
+window.isLoadingAssignmentEmployee = false;
+// Store the currently selected employee to restore after dropdown rebuild
+window.preservedEmployeeSelection = null;
+
 // Load employees from Supabase
 async function loadEmployees() {
     try {
@@ -10334,6 +10349,26 @@ async function loadEmployees() {
         if (!employeeSelect) {
             console.warn('Employee select element not found');
             return;
+        }
+        
+        // IMPORTANT: Preserve current selection before rebuilding dropdown
+        // This prevents losing the employee selection when the dropdown is reloaded
+        let previouslySelectedEmail = null;
+        let previouslySelectedName = null;
+        
+        // Check if an employee is currently selected
+        if (employeeSelect.selectedIndex > 0 && employeeSelect.value) {
+            previouslySelectedEmail = employeeSelect.value;
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            previouslySelectedName = selectedOption?.dataset?.name || selectedOption?.textContent || '';
+            console.log('📌 [loadEmployees] Preserving current selection:', previouslySelectedEmail, previouslySelectedName);
+        }
+        
+        // Also check window.preservedEmployeeSelection as a fallback
+        if (!previouslySelectedEmail && window.preservedEmployeeSelection) {
+            previouslySelectedEmail = window.preservedEmployeeSelection.email;
+            previouslySelectedName = window.preservedEmployeeSelection.name;
+            console.log('📌 [loadEmployees] Using preserved selection from window:', previouslySelectedEmail, previouslySelectedName);
         }
         
         // Wait for Supabase to be ready
@@ -10389,7 +10424,9 @@ async function loadEmployees() {
         employeeSelect.innerHTML = '<option value="">Select Employee</option>';
         
         let addedCount = 0;
-        allEmployees.forEach(user => {
+        let restoredIndex = -1;
+        
+        allEmployees.forEach((user, index) => {
             if (!user || !user.email) {
                 console.warn('Skipping invalid user:', user);
                 return;
@@ -10406,6 +10443,11 @@ async function loadEmployees() {
             option.dataset.country = user.country || '';
             option.dataset.channel = user.channel || '';
             
+            // Check if this is the previously selected employee
+            if (previouslySelectedEmail && user.email.toLowerCase() === previouslySelectedEmail.toLowerCase()) {
+                restoredIndex = addedCount + 1; // +1 because of the default "Select Employee" option
+            }
+            
             // Debug logging for specific employee
             if (user.email === 'abidur.rahman@nextventures.io') {
                 console.log('🔍 [loadEmployees] Abidur Rahman data:', {
@@ -10421,6 +10463,35 @@ async function loadEmployees() {
         });
         
         console.log(`Successfully added ${addedCount} employees to dropdown`);
+        
+        // RESTORE previous selection if it existed
+        if (restoredIndex > 0) {
+            employeeSelect.selectedIndex = restoredIndex;
+            employeeSelect.value = previouslySelectedEmail;
+            console.log('✅ [loadEmployees] Restored employee selection:', previouslySelectedEmail, 'at index:', restoredIndex);
+            
+            // Clear the preserved selection since we've restored it
+            window.preservedEmployeeSelection = null;
+        } else if (previouslySelectedEmail) {
+            // Employee was selected but not found in refreshed list - try to match by name
+            if (previouslySelectedName) {
+                const normalizedName = previouslySelectedName.toLowerCase().trim();
+                for (let i = 1; i < employeeSelect.options.length; i++) {
+                    const optionName = (employeeSelect.options[i].dataset.name || employeeSelect.options[i].textContent || '').toLowerCase().trim();
+                    if (optionName === normalizedName) {
+                        employeeSelect.selectedIndex = i;
+                        employeeSelect.value = employeeSelect.options[i].value;
+                        console.log('✅ [loadEmployees] Restored employee selection by name:', previouslySelectedName);
+                        window.preservedEmployeeSelection = null;
+                        break;
+                    }
+                }
+            }
+            
+            if (employeeSelect.selectedIndex <= 0) {
+                console.warn('⚠️ [loadEmployees] Could not restore previous selection:', previouslySelectedEmail);
+            }
+        }
         
     } catch (error) {
         console.error('Error loading employees:', error);
@@ -14383,13 +14454,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const assignmentId = urlParams.get('assignment');
         const conversationId = urlParams.get('conversation_id');
         const employeeEmail = urlParams.get('employee_email');
+        const employeeNameFromUrl = urlParams.get('employee_name');
         const scorecardId = urlParams.get('scorecard_id');
         const channel = urlParams.get('channel');
         
         if (assignmentId) {
             // Load the assignment and start the audit
             // conversation_id will be read inside loadAssignmentFromURL if not already in URL
-            loadAssignmentFromURL(assignmentId);
+            // Pass employee_name from URL for reliable employee selection
+            loadAssignmentFromURL(assignmentId, employeeNameFromUrl);
         } else {
             // If no assignment, check for direct parameters to auto-fill form
             if (employeeEmail || scorecardId || conversationId) {
@@ -14493,9 +14566,10 @@ document.addEventListener('DOMContentLoaded', function() {
 }); // End of DOMContentLoaded
 
 // Load assignment from URL parameter and start audit
-async function loadAssignmentFromURL(assignmentId) {
+// employeeNameFromUrl is optional - passed from Create Audit page to ensure reliable employee name display
+async function loadAssignmentFromURL(assignmentId, employeeNameFromUrl = null) {
     try {
-        console.log('Loading assignment from URL:', assignmentId);
+        console.log('Loading assignment from URL:', assignmentId, 'Employee name from URL:', employeeNameFromUrl);
         
         // Wait for Supabase to be ready using event listener
         if (!window.supabaseClient || !window.supabaseClientReady) {
@@ -14881,6 +14955,9 @@ async function loadAssignmentFromURL(assignmentId) {
         const employeeSelect = document.getElementById('employeeName');
         let employeeFound = false;
         
+        // Set flag to indicate we're loading from assignment (prevents other code from interfering)
+        window.isLoadingAssignmentEmployee = true;
+        
         // Find and select the employee in dropdown
         if (employeeSelect && mappedAssignment.employee_email) {
             const normalizedEmail = mappedAssignment.employee_email.toLowerCase().trim();
@@ -14888,7 +14965,15 @@ async function loadAssignmentFromURL(assignmentId) {
                 const optionEmail = (employeeSelect.options[i].dataset.email || '').toLowerCase().trim();
                 if (optionEmail === normalizedEmail) {
                     employeeSelect.selectedIndex = i;
+                    employeeSelect.value = employeeSelect.options[i].value; // Also set value directly for robust selection
                     const selectedOption = employeeSelect.options[i];
+                    
+                    // IMPORTANT: Store the selection for preservation in case loadEmployees() is called later
+                    window.preservedEmployeeSelection = {
+                        email: selectedOption.dataset.email || selectedOption.value,
+                        name: selectedOption.dataset.name || selectedOption.textContent || employeeNameFromUrl || ''
+                    };
+                    console.log('📌 [Assignment Load] Stored employee selection for preservation:', window.preservedEmployeeSelection);
                     const employeeChannel = selectedOption.dataset.channel || '';
                     const employeeEmail = selectedOption.dataset.email || '';
                     const employeeDesignation = selectedOption.dataset.designation || '';
@@ -14949,7 +15034,69 @@ async function loadAssignmentFromURL(assignmentId) {
         
         if (!employeeFound && mappedAssignment.employee_email) {
             console.warn('⚠️ Employee not found in dropdown for email:', mappedAssignment.employee_email);
+            
+            // Try to find employee by name from URL parameter as fallback
+            if (employeeNameFromUrl && employeeSelect) {
+                console.log('🔄 Attempting to find employee by name from URL:', employeeNameFromUrl);
+                const normalizedName = employeeNameFromUrl.toLowerCase().trim();
+                
+                for (let i = 0; i < employeeSelect.options.length; i++) {
+                    const optionName = (employeeSelect.options[i].dataset.name || employeeSelect.options[i].textContent || '').toLowerCase().trim();
+                    if (optionName === normalizedName) {
+                        employeeSelect.selectedIndex = i;
+                        employeeSelect.value = employeeSelect.options[i].value;
+                        const selectedOption = employeeSelect.options[i];
+                        
+                        // Store selection for preservation
+                        window.preservedEmployeeSelection = {
+                            email: selectedOption.dataset.email || selectedOption.value,
+                            name: selectedOption.dataset.name || selectedOption.textContent || employeeNameFromUrl
+                        };
+                        console.log('📌 [Assignment Load] Stored employee selection (by name) for preservation:', window.preservedEmployeeSelection);
+                        
+                        // Populate employee fields from the matched option
+                        const emailField = document.getElementById('employeeEmail');
+                        const typeField = document.getElementById('employeeType');
+                        const departmentField = document.getElementById('employeeDepartment');
+                        const countryField = document.getElementById('countryOfEmployee');
+                        const channelField = document.getElementById('employeeChannel');
+                        
+                        if (emailField) emailField.value = selectedOption.dataset.email || '';
+                        if (typeField) typeField.value = selectedOption.dataset.designation || '';
+                        if (departmentField) departmentField.value = selectedOption.dataset.department || '';
+                        if (countryField) countryField.value = selectedOption.dataset.country || '';
+                        if (channelField) channelField.value = selectedOption.dataset.channel || '';
+                        
+                        employeeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                        employeeFound = true;
+                        console.log('✅ Employee found and selected by name:', employeeNameFromUrl);
+                        break;
+                    }
+                }
+            }
         }
+        
+        // Final verification: ensure the employee dropdown selection is correct
+        if (employeeFound && employeeSelect) {
+            // Double-check the selection is visible and correct
+            const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                console.log('✅ Employee dropdown verified - showing:', selectedOption.textContent, 'value:', selectedOption.value);
+                
+                // Ensure preserved selection is set for any future loadEmployees() calls
+                if (!window.preservedEmployeeSelection) {
+                    window.preservedEmployeeSelection = {
+                        email: selectedOption.dataset.email || selectedOption.value,
+                        name: selectedOption.dataset.name || selectedOption.textContent || employeeNameFromUrl || ''
+                    };
+                }
+            } else {
+                console.warn('⚠️ Employee dropdown selection may not be visible');
+            }
+        }
+        
+        // Clear the loading flag after employee selection is complete
+        window.isLoadingAssignmentEmployee = false;
         
         // Channel is already set above before loading scorecards
         
@@ -16607,8 +16754,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const intercomAliasField = document.getElementById('intercomAlias');
         const intercomAliasContainer = document.getElementById('intercomAliasContainer');
         
-        // Only auto-fill employee if not already selected
-        if (employeeSelect && (!employeeSelect.value || employeeSelect.value === '')) {
+        // Only auto-fill employee if not already selected AND not loading from assignment
+        // Check multiple conditions to prevent overriding assignment-based employee selection
+        const hasExistingSelection = employeeSelect && employeeSelect.value && employeeSelect.value !== '';
+        const hasPreservedSelection = window.preservedEmployeeSelection && window.preservedEmployeeSelection.email;
+        const isLoadingFromAssignment = window.isLoadingAssignmentEmployee;
+        
+        if (hasExistingSelection || hasPreservedSelection || isLoadingFromAssignment) {
+            console.log('[autofillConversationFields] Skipping employee auto-fill - selection exists or loading from assignment', {
+                hasExistingSelection,
+                hasPreservedSelection,
+                isLoadingFromAssignment,
+                currentValue: employeeSelect?.value,
+                preservedEmail: window.preservedEmployeeSelection?.email
+            });
+        }
+        
+        if (employeeSelect && !hasExistingSelection && !hasPreservedSelection && !isLoadingFromAssignment) {
             // Extract admin info using the existing function
             const adminInfo = extractAdminFromConversation(conversation);
             console.log('[autofillConversationFields] Extracted admin info:', adminInfo);
@@ -16659,8 +16821,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.warn('[autofillConversationFields] ⚠️ Could not find matching employee for admin:', adminInfo);
                 }
             }
-        } else if (employeeSelect && employeeSelect.value) {
-            console.log('[autofillConversationFields] Employee already selected, skipping auto-fill');
         }
     }
 

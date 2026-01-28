@@ -312,6 +312,9 @@ async function ensureUserInfoSynced(user: UserInfo): Promise<void> {
         provider: 'magic_link',
       };
       localStorage.setItem('userInfo', JSON.stringify(basicUserInfo));
+      document.dispatchEvent(new CustomEvent('userInfoUpdated', {
+        detail: { userInfo: basicUserInfo }
+      }));
       return;
     }
     

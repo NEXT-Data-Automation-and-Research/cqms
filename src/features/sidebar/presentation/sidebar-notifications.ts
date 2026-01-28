@@ -228,14 +228,9 @@ export class SidebarNotifications {
 
   /**
    * Update employee reversal count from database
-   * ✅ DISABLED: Scorecard functionality temporarily removed
+   * Uses the new reversal_requests table structure
    */
   async updateEmployeeReversalCount(): Promise<void> {
-    // Scorecard functionality disabled - return 0
-    this.showEmployeeReversalCount(0)
-    return
-    
-    /* DISABLED - Scorecard functionality
     try {
       // Only show for employees
       const userInfo = sidebarState.loadUserInfo()
@@ -243,60 +238,31 @@ export class SidebarNotifications {
         return
       }
 
-      if (!window.supabaseClient) {
-        // Supabase not initialized yet, try again after a delay
-        setTimeout(() => this.updateEmployeeReversalCount(), 1000)
-        return
-      }
-
-      const employeeName = userInfo.name || ''
       const employeeEmail = userInfo.email || ''
 
-      if (!employeeName && !employeeEmail) {
-        return
-      }
-
-      // Get all scorecard table names
-      const tableNames = await (await this.getRepository()).getAllScorecardTableNames()
-
-      if (tableNames.length === 0) {
+      if (!employeeEmail) {
         this.showEmployeeReversalCount(0)
         return
       }
 
-      // Count reversals that belong to this employee and have been responded to
-      const counts: number[] = []
-      for (const tableName of tableNames) {
-        try {
-          const count = await (await this.getRepository()).countEmployeeReversals(tableName, employeeEmail, employeeName)
-          counts.push(count)
-        } catch (err: any) {
-          // Silently skip tables that don't exist or have errors
-          if (err?.code !== 'PGRST205' && err?.code !== 'PGRST116' && err?.code !== '42P01' && err?.code !== '42703') {
-            // Only skip, don't log expected errors
-            continue
-          }
-          continue
-        }
-      }
-
-      // Calculate total
-      const totalResponded = this.service.calculateTotalReversals(counts)
+      // Count pending reversals from reversal_requests table
+      const repository = await this.getRepository()
+      const count = await repository.countEmployeeReversalsFromRequests(employeeEmail)
 
       // Save to cache and show
       const userEmail = this.service.getUserEmailForCache(userInfo)
-      sidebarState.saveNotificationCountToCache('employeeReversals', totalResponded, userEmail)
-      this.showEmployeeReversalCount(totalResponded)
+      sidebarState.saveNotificationCountToCache('employeeReversals', count, userEmail)
+      this.showEmployeeReversalCount(count)
     } catch (error: any) {
       // Handle errors gracefully - check if it's a "table not found" error
       const isTableNotFound = error?.code === 'PGRST205' || error?.code === 'PGRST116' || 
                              error?.code === '42P01' || error?.code === '42703' ||
-                             error?.message?.includes('scorecards') || 
+                             error?.message?.includes('reversal_requests') || 
                              error?.message?.includes('schema cache')
       
       if (!isTableNotFound) {
         // Only log unexpected errors (not table missing errors)
-        // Silently handle missing tables
+        console.warn('[SidebarNotifications] Error updating employee reversal count:', error)
       }
       
       // Keep cached value if available
@@ -309,7 +275,6 @@ export class SidebarNotifications {
         this.showEmployeeReversalCount(0)
       }
     }
-    */
   }
 
   /**

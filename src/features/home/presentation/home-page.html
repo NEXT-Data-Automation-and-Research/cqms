@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/js/console-stub.js"></script>
 <meta charset="UTF-8">
 <title>Home | QMS</title>
 <meta name="description" content="Quality Management System Dashboard">
@@ -736,6 +737,392 @@
     background-color: #ef4444 !important;
   }
 
+  /* Notification Panel - self-contained so external CSS cannot break it */
+  #notificationsModal.notification-panel {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    margin-top: 0.5rem !important;
+    width: 420px !important;
+    max-width: calc(100vw - 2rem) !important;
+    max-height: min(520px, 85vh) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 9999 !important;
+    overflow: hidden !important;
+    isolation: isolate;
+  }
+  #notificationBtn.group:hover #notificationsModal.notification-panel,
+  #notificationsModal.notification-panel.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+  #notificationsModal .notification-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--gray-200);
+    background: var(--gray-50);
+  }
+  #notificationsModal .notification-panel-header h3 {
+    margin: 0;
+    font-size: var(--font-base, 0.875rem);
+    font-weight: 600;
+    color: var(--text-color);
+    letter-spacing: -0.01em;
+  }
+  #notificationsModal .notification-panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--gray-500);
+    cursor: pointer;
+  }
+  #notificationsModal .notification-panel-close:hover {
+    color: var(--gray-700);
+    background: var(--gray-200);
+  }
+  #notificationsModal .notification-panel-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  #notificationsModal .notification-panel-list::-webkit-scrollbar {
+    width: 6px;
+  }
+  #notificationsModal .notification-panel-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  #notificationsModal .notification-panel-list::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+  #notificationsModal .notification-panel-section {
+    padding: 0.75rem 0 0.25rem;
+  }
+  #notificationsModal .notification-panel-header h3,
+  #notificationsModal .notification-panel-item-title,
+  #notificationsModal .notification-panel-item-message,
+  #notificationsModal .notification-panel-item-time,
+  #notificationsModal .notification-panel-section-title,
+  #notificationsModal .notification-panel-item-category {
+    font-family: var(--font-family, "Poppins", sans-serif);
+  }
+  #notificationsModal .notification-panel-section-title {
+    font-size: var(--font-xs, 0.625rem);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted) !important;
+    padding: 0 0 0.5rem 0;
+    margin: 0 0 0.25rem 0;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  /* Tiles: minimal with color accents */
+  #notificationsModal .notification-panel-item {
+    display: block;
+    margin-bottom: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--gray-200);
+    border-left: 3px solid var(--gray-400);
+    background: var(--background-white);
+    padding: 0;
+    transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+  }
+  #notificationsModal .notification-panel-item:last-child { margin-bottom: 0; }
+  /* Assignment / Audit: green accent */
+  #notificationsModal .notification-panel-item.notification-type-assignment {
+    border-left-color: #10b981;
+    background: rgba(16, 185, 129, 0.04);
+  }
+  #notificationsModal .notification-panel-item.notification-type-assignment:hover {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  /* Reversal: amber accent */
+  #notificationsModal .notification-panel-item.notification-type-reversal {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.04);
+  }
+  #notificationsModal .notification-panel-item.notification-type-reversal:hover {
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.2);
+  }
+  /* Reversal status: indigo accent */
+  #notificationsModal .notification-panel-item.notification-type-reversal_status {
+    border-left-color: #6366f1;
+    background: rgba(99, 102, 241, 0.04);
+  }
+  #notificationsModal .notification-panel-item.notification-type-reversal_status:hover {
+    background: rgba(99, 102, 241, 0.08);
+    border-color: rgba(99, 102, 241, 0.2);
+  }
+  /* Highlight newest notifications */
+  #notificationsModal .notification-panel-item.notification-new {
+    background: rgba(59, 130, 246, 0.06);
+    border-left-color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.15);
+    box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+  }
+  #notificationsModal .notification-panel-item.notification-new:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.15);
+  }
+  #notificationsModal .notification-panel-item:hover {
+    border-color: var(--gray-300);
+  }
+  #notificationsModal .notification-panel-item-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+  #notificationsModal .notification-panel-item-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--gray-100);
+    color: var(--gray-600);
+  }
+  /* Colored icon backgrounds by category */
+  #notificationsModal .notification-panel-item.notification-type-assignment .notification-panel-item-icon {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+  }
+  #notificationsModal .notification-panel-item.notification-type-reversal .notification-panel-item-icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+  }
+  #notificationsModal .notification-panel-item.notification-type-reversal_status .notification-panel-item-icon {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+  }
+  #notificationsModal .notification-panel-item.notification-new .notification-panel-item-icon {
+    background: rgba(59, 130, 246, 0.15);
+    color: #2563eb;
+  }
+  #notificationsModal .notification-panel-item-body { flex: 1; min-width: 0; }
+  #notificationsModal .notification-panel-item-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.375rem;
+    flex-wrap: wrap;
+  }
+  #notificationsModal .notification-panel-item-chips {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+  /* Chips: colored by category */
+  #notificationsModal .notification-panel-item-category,
+  #notificationsModal .notification-panel-item-status-chip {
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--font-xs, 0.625rem);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  /* Category chips: colored */
+  #notificationsModal .notification-panel-item-category.category-audit {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+  }
+  #notificationsModal .notification-panel-item-category.category-reversal {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.25);
+  }
+  #notificationsModal .notification-panel-item-category.category-status {
+    background: rgba(99, 102, 241, 0.15);
+    color: #4f46e5;
+    border: 1px solid rgba(99, 102, 241, 0.25);
+  }
+  /* Status chips: neutral with subtle tint */
+  #notificationsModal .notification-panel-item-status-chip {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border: 1px solid var(--gray-200);
+  }
+  /* Status chip colors for specific statuses */
+  #notificationsModal .notification-panel-item-status-chip[data-status="Approved"],
+  #notificationsModal .notification-panel-item[data-status="Approved"] .notification-panel-item-status-chip {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  #notificationsModal .notification-panel-item-status-chip[data-status="Rejected"],
+  #notificationsModal .notification-panel-item[data-status="Rejected"] .notification-panel-item-status-chip {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  #notificationsModal .notification-panel-item-status-chip[data-status="completed"],
+  #notificationsModal .notification-panel-item[data-status="completed"] .notification-panel-item-status-chip {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+    border-color: rgba(16, 185, 129, 0.2);
+  }
+  #notificationsModal .notification-panel-item-status-chip[data-status="Acknowledged"] {
+    background: rgba(99, 102, 241, 0.12);
+    color: #4f46e5;
+    border-color: rgba(99, 102, 241, 0.2);
+  }
+  #notificationsModal .notification-panel-item-time {
+    font-size: var(--font-xs, 0.625rem);
+    color: var(--text-muted) !important;
+    margin: 0;
+    flex-shrink: 0;
+    font-weight: 400;
+  }
+  #notificationsModal .notification-panel-item-title {
+    font-size: var(--font-base, 0.875rem);
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 0.25rem;
+    line-height: 1.4;
+  }
+  #notificationsModal .notification-panel-item-message {
+    font-size: var(--font-sm, 0.75rem);
+    color: var(--text-secondary) !important;
+    margin: 0;
+    line-height: 1.5;
+    word-break: break-word;
+    font-weight: 400;
+  }
+  #notificationsModal .notification-panel-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+    text-align: center;
+  }
+  #notificationsModal .notification-panel-empty svg {
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 0.75rem;
+    color: var(--gray-300);
+  }
+  #notificationsModal .notification-panel-empty .notification-panel-empty-title {
+    font-size: var(--font-base, 0.875rem);
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin: 0 0 0.25rem;
+  }
+  #notificationsModal .notification-panel-empty .notification-panel-empty-text {
+    font-size: var(--font-sm, 0.75rem);
+    color: var(--text-muted);
+    margin: 0;
+  }
+  @keyframes notification-panel-spin {
+    to { transform: rotate(360deg); }
+  }
+  #notificationsModal .notification-panel-empty .animate-spin {
+    animation: notification-panel-spin 1s linear infinite;
+  }
+  [data-theme="dark"] #notificationsModal.notification-panel,
+  [data-theme="dark"] #notificationsModal .notification-panel-header {
+    background-color: var(--background-white) !important;
+    border-color: var(--border-light) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-header {
+    background-color: rgba(55, 65, 81, 0.4) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-section-title {
+    color: var(--text-muted) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item:hover {
+    background: var(--gray-100) !important;
+    border-color: var(--gray-300) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-title { color: var(--text-color) !important; }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-message { color: var(--text-secondary) !important; }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-time { color: var(--text-muted) !important; }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-category.category-audit {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #6ee7b7 !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-category.category-reversal {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fcd34d !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-category.category-status {
+    background: rgba(99, 102, 241, 0.2) !important;
+    color: #a5b4fc !important;
+    border-color: rgba(99, 102, 241, 0.3) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-status-chip {
+    background: var(--gray-100) !important;
+    color: var(--gray-600) !important;
+    border-color: var(--gray-200) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-new {
+    background: rgba(59, 130, 246, 0.12) !important;
+    border-left-color: #60a5fa !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-new:hover {
+    background: rgba(59, 130, 246, 0.18) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-section-title {
+    border-bottom-color: var(--border-light) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item-icon {
+    background: var(--gray-100) !important;
+    color: var(--gray-500) !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-type-assignment .notification-panel-item-icon {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #34d399 !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-type-reversal .notification-panel-item-icon {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fbbf24 !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-type-reversal_status .notification-panel-item-icon {
+    background: rgba(99, 102, 241, 0.2) !important;
+    color: #818cf8 !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-item.notification-new .notification-panel-item-icon {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: #60a5fa !important;
+  }
+  [data-theme="dark"] #notificationsModal .notification-panel-header {
+    background: var(--gray-100) !important;
+    border-bottom-color: var(--border-light) !important;
+  }
+
   /* Calendar and Grid Modals Dark Mode */
   [data-theme="dark"] #calendarModal,
   [data-theme="dark"] #gridModal {
@@ -838,22 +1225,22 @@
             <span id="notificationBadge" class="hidden absolute -top-1 -right-1 bg-error rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-sm"></span>
           </button>
           
-          <!-- Notifications Modal - Appears on hover -->
-          <div id="notificationsModal" class="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl w-80 max-h-[calc(100vh-5rem)] flex flex-col opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-            <!-- Modal Header -->
-            <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-gray-900">Notifications</h3>
-              <button class="text-gray-400 hover:text-gray-600 transition-colors">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <!-- Notifications Modal - Appears on hover (styles in page style block) -->
+          <div id="notificationsModal" class="notification-panel">
+            <div class="notification-panel-header">
+              <h3>Notifications</h3>
+              <button type="button" class="notification-panel-close" aria-label="Close notifications">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
               </button>
             </div>
-            
-            <!-- Notifications List -->
-            <div id="notificationsList" class="flex-1 overflow-y-auto divide-y divide-gray-200">
-              <div class="px-4 py-8 text-center text-gray-500 text-xs">
-                <div class="animate-pulse">Loading notifications...</div>
+            <div id="notificationsList" class="notification-panel-list">
+              <div class="notification-panel-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+                <p class="notification-panel-empty-title">Loading notifications...</p>
               </div>
             </div>
           </div>
@@ -1432,7 +1819,6 @@ let isAgent = false;
 let allUsers = [];
 let allAssignments = [];
 let assignedAudits = [];
-let assignedAuditsRealtimeChannel = null; // For realtime subscription cleanup
 let sortBy = 'date_desc'; // Default will be updated based on user role
 let notifications = [];
 let unreadNotificationCount = 0;
@@ -1442,7 +1828,18 @@ let cachedScorecards = null;
 let cachedScorecardsTime = null;
 const SCORECARDS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Helper function to get cached scorecards
+// Helper: get set of existing audit table names (avoids 404s for scorecards whose table is missing)
+async function getExistingAuditTableNames(supabase) {
+  try {
+    const { data, error } = await supabase.rpc('get_audit_tables');
+    if (error || !data || !Array.isArray(data)) return new Set();
+    return new Set(data.map(function (r) { return r.table_name; }));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+// Helper function to get cached scorecards (only scorecards whose audit table exists)
 async function getCachedScorecards(supabase, fields = 'id, name, table_name, scoring_type') {
   const now = Date.now();
   if (cachedScorecards && cachedScorecardsTime && (now - cachedScorecardsTime) < SCORECARDS_CACHE_DURATION) {
@@ -1459,7 +1856,13 @@ async function getCachedScorecards(supabase, fields = 'id, name, table_name, sco
     return cachedScorecards || []; // Return cached if available, otherwise empty
   }
   
-  cachedScorecards = scorecards || [];
+  let list = (scorecards || []).filter(function (s) { return s.table_name; });
+  const existingTables = await getExistingAuditTableNames(supabase);
+  if (existingTables.size > 0) {
+    list = list.filter(function (s) { return existingTables.has(s.table_name); });
+  }
+  
+  cachedScorecards = list;
   cachedScorecardsTime = now;
   return cachedScorecards;
 }
@@ -2170,7 +2573,6 @@ async function populateFilters() {
     const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
     
     if (cachedData && cacheAge < 120000) { // 2 minutes cache (filters change less frequently)
-      console.log('Loading filters from cache');
       const filtersData = JSON.parse(cachedData);
       renderFiltersFromData(filtersData);
       return;
@@ -2284,7 +2686,6 @@ async function fetchAndCacheFilters() {
     sessionStorage.setItem(cacheKey + '_time', Date.now().toString());
     
     // Update UI with fresh data
-    console.log('Updating UI with fresh filters');
     renderFiltersFromData(filtersData);
   } catch (error) {
     console.error('Error populating filters:', error);
@@ -2488,7 +2889,7 @@ function setupEventListenersForCSP() {
   // Notifications modal close buttons (first button in modal header)
   const notificationsModal = document.getElementById('notificationsModal');
   if (notificationsModal) {
-    const notificationCloseBtn = notificationsModal.querySelector('.px-4.py-3 button');
+    const notificationCloseBtn = notificationsModal.querySelector('.notification-panel-close');
     if (notificationCloseBtn) {
       notificationCloseBtn.addEventListener('click', hideNotifications);
     }
@@ -2611,7 +3012,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     dashboardInitialized = true;
   } else {
     // If no user email found, set up retry mechanism for first-login scenario
-    console.log('⏳ No user email found on initial load, setting up retry mechanism...');
     
     let retryCount = 0;
     const maxRetries = 10; // Try for up to 5 seconds (10 * 500ms)
@@ -2621,7 +3021,6 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Check if userInfo is now available in localStorage
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
       if (userInfo.email) {
-        console.log('✅ userInfo found in localStorage, initializing dashboard...');
         clearInterval(retryInterval);
         if (!dashboardInitialized) {
           await initializeDashboard();
@@ -2635,7 +3034,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         try {
           const { data: { user }, error: userError } = await window.supabaseClient.auth.getUser();
           if (user && !userError && user.email) {
-            console.log('✅ User found in Supabase session, initializing dashboard...');
             clearInterval(retryInterval);
             if (!dashboardInitialized) {
               await initializeDashboard();
@@ -2659,7 +3057,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Listen for storage events (fires when localStorage is updated in other tabs)
   window.addEventListener('storage', async function(e) {
     if (e.key === 'userInfo' && e.newValue && !dashboardInitialized) {
-      console.log('📦 userInfo updated in another tab, initializing dashboard...');
       if (!dashboardInitialized) {
         await initializeDashboard();
         dashboardInitialized = true;
@@ -2672,7 +3069,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!dashboardInitialized) {
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
       if (userInfo.email) {
-        console.log('📦 userInfo updated event received, initializing dashboard...');
         await initializeDashboard();
         dashboardInitialized = true;
       }
@@ -2782,8 +3178,6 @@ async function initializeDashboard() {
       console.error('Supabase client not ready after timeout');
       return;
     }
-    
-    console.log(`[Perf] Supabase ready in ${Math.round(performance.now() - startTime)}ms`);
 
     // Get current user - try Supabase session first (works on first login), then fallback to localStorage
     let userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
@@ -2795,7 +3189,6 @@ async function initializeDashboard() {
         if (user && !userError && user.email) {
           // Got user from Supabase session - use it and optionally update localStorage
           currentUserEmail = user.email.toLowerCase().trim();
-          console.log('✅ Got email from Supabase session (first login):', currentUserEmail);
           
           // Try to get role from people table or use default
           try {
@@ -2826,7 +3219,6 @@ async function initializeDashboard() {
             
             // Save to localStorage for future loads
             localStorage.setItem('userInfo', JSON.stringify(userInfo));
-            console.log('✅ Updated localStorage with user info from Supabase session');
           } catch (peopleError) {
             console.warn('Could not fetch people data, using default role:', peopleError);
             currentUserRole = 'Employee';
@@ -2849,9 +3241,6 @@ async function initializeDashboard() {
     if (!currentUserEmail) {
       currentUserEmail = (userInfo.email || '').toLowerCase().trim();
       currentUserRole = userInfo.role || '';
-      if (currentUserEmail) {
-        console.log('✅ Got email from localStorage:', currentUserEmail);
-      }
     }
     
     isAgent = currentUserRole === 'Employee';
@@ -2992,13 +3381,11 @@ async function initializeDashboard() {
       
       if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
         allUsers = JSON.parse(cachedUsers);
-        console.log('[Cache] Loaded users from sessionStorage');
       } else if (getCachedSync) {
         // Fallback to persistent cache
         const cachedUsersData = await getCachedSync('users_all');
         if (cachedUsersData) {
           allUsers = cachedUsersData;
-          console.log('[Cache] Loaded users from persistent cache');
         }
       }
       
@@ -3019,18 +3406,15 @@ async function initializeDashboard() {
         // Render cached data immediately if available
         if (cachedStats && typeof renderStatsFromData === 'function') {
           renderStatsFromData(cachedStats);
-          console.log('[Cache] Rendered stats from cache');
         }
         if (cachedAudits) {
           assignedAudits = cachedAudits;
           if (typeof renderAssignedAudits === 'function') {
             renderAssignedAudits();
-            console.log('[Cache] Rendered audits from cache');
           }
         }
         if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function') {
           renderRecentUpdatesFromData(cachedUpdates);
-          console.log('[Cache] Rendered updates from cache');
         }
       }
       
@@ -3069,8 +3453,6 @@ async function initializeDashboard() {
         })();
       }
     }
-    
-    console.log(`[Perf] Cache loaded in ${Math.round(performance.now() - startTime)}ms`);
 
     // OPTIMIZATION: Show loading indicators immediately for better perceived performance
     // These appear while data is being fetched from the server
@@ -3102,7 +3484,6 @@ async function initializeDashboard() {
     }
     
     await Promise.all(promises);
-    console.log(`[Perf] All data loaded in ${Math.round(performance.now() - dataLoadStart)}ms (total: ${Math.round(performance.now() - startTime)}ms)`);
 
     // Populate filter options after loading data (non-blocking)
     populateFilters().catch(err => console.error('Error populating filters:', err));
@@ -3136,149 +3517,43 @@ async function initializeDashboard() {
       }
     })();
 
-    // Setup realtime subscription for instant updates when audits are assigned
-    setupAssignedAuditsRealtimeSubscription();
+    // Listen for real-time audit assignments (subscription is set up globally by sidebar)
+    setupAuditAssignmentReceivedListener();
 
   } catch (error) {
     console.error('Error initializing dashboard:', error);
   }
 }
 
-// Setup realtime subscription to listen for new audit assignments
-async function setupAssignedAuditsRealtimeSubscription() {
-  // Only setup for auditors (not agents)
-  if (isAgent) {
-    return;
-  }
+// Listen for auditAssignmentReceived (dispatched by shared realtime module when assignments change)
+function setupAuditAssignmentReceivedListener() {
+  if (isAgent) return;
 
-  // Wait for Supabase to be ready
-  const supabaseReady = await waitForSupabase();
-  if (!supabaseReady || !window.supabaseClient) {
-    console.warn('Supabase not ready, skipping realtime subscription');
-    return;
-  }
-
-  // Clean up existing subscription if any
-  if (assignedAuditsRealtimeChannel) {
-    window.supabaseClient.removeChannel(assignedAuditsRealtimeChannel);
-    assignedAuditsRealtimeChannel = null;
-  }
-
-  try {
-    const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
-    const supabase = await getAuthenticatedSupabase();
-    
-    if (!supabase) {
-      console.warn('Could not get authenticated Supabase client for realtime');
-      return;
+  document.addEventListener('auditAssignmentReceived', async () => {
+    try {
+      const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
+      const period = getCurrentPeriodDates();
+      const cacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
+      const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
+      await persistentCacheService.delete(cacheKey);
+      const sessionCacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
+      sessionStorage.removeItem(sessionCacheKey);
+      sessionStorage.removeItem(sessionCacheKey + '_time');
+    } catch (cacheError) {
+      console.warn('Error clearing cache:', cacheError);
     }
-
-    // Get current user email for filtering
-    const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
-
-    console.log('🔔 Setting up realtime subscription for audit assignments for:', normalizedCurrentEmail);
-
-    // Create a channel for audit assignments
-    // Note: Supabase Realtime doesn't support complex filters, so we filter in the handler
-    assignedAuditsRealtimeChannel = supabase
-      .channel('audit-assignments-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'audit_assignments'
-        },
-        async (payload) => {
-          console.log('🔔 Audit assignment change received via realtime:', payload);
-          
-          // Handle INSERT and UPDATE events
-          const newAssignment = payload.new;
-          const oldAssignment = payload.old;
-          
-          // Determine event type from payload structure
-          const eventType = newAssignment && !oldAssignment ? 'INSERT' : 
-                           oldAssignment && newAssignment ? 'UPDATE' : 
-                           oldAssignment && !newAssignment ? 'DELETE' : 'UNKNOWN';
-          
-          // Check if this affects the current user
-          let shouldRefresh = false;
-          
-          if (eventType === 'INSERT' && newAssignment && newAssignment.auditor_email) {
-            const assignmentAuditorEmail = (newAssignment.auditor_email || '').toLowerCase().trim();
-            if (assignmentAuditorEmail === normalizedCurrentEmail) {
-              console.log('✅ New assignment is for current user, refreshing assigned audits list');
-              shouldRefresh = true;
-            }
-          } else if (eventType === 'UPDATE' && newAssignment && newAssignment.auditor_email) {
-            const assignmentAuditorEmail = (newAssignment.auditor_email || '').toLowerCase().trim();
-            // Refresh if assignment is for current user and status changed to/from pending/in_progress
-            if (assignmentAuditorEmail === normalizedCurrentEmail) {
-              const oldStatus = oldAssignment?.status;
-              const newStatus = newAssignment.status;
-              // Refresh if status changed to/from pending or in_progress (affects what's shown)
-              if (oldStatus !== newStatus && 
-                  (newStatus === 'pending' || newStatus === 'in_progress' || 
-                   oldStatus === 'pending' || oldStatus === 'in_progress')) {
-                console.log('✅ Assignment status changed for current user, refreshing assigned audits list');
-                shouldRefresh = true;
-              }
-            }
-          }
-          
-          if (shouldRefresh) {
-            // Invalidate cache to force fresh fetch
-            try {
-              const { buildCacheKey } = await import('/js/features/home/infrastructure/cache-aware-loader.js');
-              const period = getCurrentPeriodDates();
-              const cacheKey = buildCacheKey('assignedAudits', currentUserEmail, JSON.stringify(period), JSON.stringify(currentFilters), sortBy);
-              
-              // Clear cache
-              const { persistentCacheService } = await import('/js/features/home/infrastructure/persistent-cache-service.js');
-              await persistentCacheService.delete(cacheKey);
-              
-              // Also clear sessionStorage cache
-              const sessionCacheKey = `assignedAudits_${currentUserEmail}_${JSON.stringify(period)}_${JSON.stringify(currentFilters)}_${sortBy}`;
-              sessionStorage.removeItem(sessionCacheKey);
-              sessionStorage.removeItem(sessionCacheKey + '_time');
-            } catch (cacheError) {
-              console.warn('Error clearing cache:', cacheError);
-            }
-            
-            // Refresh the assigned audits list
-            if (typeof loadAssignedAudits === 'function') {
-              loadAssignedAudits().catch(err => {
-                console.error('Error refreshing assigned audits after realtime update:', err);
-              });
-            }
-          } else {
-            console.log('ℹ️ Realtime update for assignment not affecting current user, ignoring');
-          }
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Subscribed to audit assignments realtime updates');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Error subscribing to audit assignments:', status);
-        } else if (status === 'TIMED_OUT') {
-          console.warn('⏱️ Realtime subscription timed out');
-        } else if (status === 'CLOSED') {
-          console.log('🔌 Realtime subscription closed');
-        }
-      });
-
-    // Clean up subscription when page unloads
-    window.addEventListener('beforeunload', () => {
-      if (assignedAuditsRealtimeChannel && window.supabaseClient) {
-        window.supabaseClient.removeChannel(assignedAuditsRealtimeChannel);
-        assignedAuditsRealtimeChannel = null;
-      }
-    });
-
-  } catch (error) {
-    console.error('Error setting up realtime subscription for audit assignments:', error);
-  }
+    if (typeof loadAssignedAudits === 'function') {
+      loadAssignedAudits().catch(err => console.error('Error refreshing assigned audits:', err));
+    }
+    // Refresh notification bell so "Audit assigned" appears in the dropdown
+    const notificationsCacheKey = `notifications_${currentUserEmail}`;
+    sessionStorage.removeItem(notificationsCacheKey);
+    sessionStorage.removeItem(notificationsCacheKey + '_time');
+    sessionStorage.removeItem(notificationsCacheKey + '_unread');
+    if (typeof loadNotifications === 'function') {
+      loadNotifications().catch(err => console.warn('Error refreshing notifications:', err));
+    }
+  });
 }
 
 function setupEventListeners() {
@@ -3463,16 +3738,6 @@ async function populatePremiumDashboard() {
     }
     
     if (!error && userData) {
-      console.log('User data fetched from people table:', {
-        email: userData.email,
-        role: userData.role,
-        employee_id: userData.employee_id,
-        channel: userData.channel,
-        team: userData.team,
-        team_supervisor: userData.team_supervisor,
-        intercom_admin_id: userData.intercom_admin_id,
-        intercom_admin_alias: userData.intercom_admin_alias
-      });
       const isEmployee = userData.role === 'Employee';
       const isAdmin = userData.role === 'Admin' || userData.role === 'Super Admin' || userData.role === 'Quality Analyst';
       
@@ -3728,8 +3993,6 @@ async function loadUnifiedAuditData() {
   
   return deduplicateRequest(requestKey, async () => {
     try {
-      console.log('Loading unified audit data for user:', currentUserEmail, 'Role:', currentUserRole, 'IsAgent:', isAgent);
-      
       showLoader('updatesFeed');
       
       // Load both updates and audits in parallel
@@ -4097,15 +4360,6 @@ async function fetchAndCacheRecentUpdates(period) {
                 });
               }
               
-              // Debug logging
-              console.log(`Found ${filteredReversals.length} reversals for ${normalizedCurrentEmail} (isAgent: ${isAgent})`, filteredReversals.map(r => ({
-                  id: r.id,
-                  reversal_approved: r.reversal_approved,
-                acknowledgement_status: r.acknowledgement_status,
-                  reversal_responded_at: r.reversal_responded_at,
-                  reversal_requested_at: r.reversal_requested_at
-                })));
-              
               const updates = [];
               filteredReversals.forEach(reversal => {
                 // Don't fetch auditor info for agents - they shouldn't see it
@@ -4168,17 +4422,6 @@ async function fetchAndCacheRecentUpdates(period) {
                   
                   // Use reversal_responded_at if available, otherwise use reversal_requested_at
                   const statusTimestamp = reversal.reversal_responded_at || reversal.reversal_requested_at;
-                  
-                  // Debug logging
-                      console.log(`Adding reversal status update for ${reversal.id}:`, {
-                        status,
-                        statusText,
-                    timestamp: statusTimestamp,
-                    isAcknowledged,
-                    acknowledgementStatus,
-                    reversal_approved: reversal.reversal_approved,
-                    reversal_responded_at: reversal.reversal_responded_at
-                  });
                     
                     updates.push({
                       id: `reversal-status-${reversal.id}`,
@@ -4403,8 +4646,6 @@ async function fetchAndCacheRecentUpdates(period) {
                 return emailToCheck.toLowerCase().trim() === normalizedCurrentEmail;
               });
               
-              console.log(`Found ${filteredReversals.length} unprocessed reversals for auditor ${normalizedCurrentEmail}`);
-              
               const updates = [];
               // For auditors: These are all unprocessed reversals (same as what appears in reversal.html)
               filteredReversals.forEach(reversal => {
@@ -4484,9 +4725,6 @@ async function fetchAndCacheRecentUpdates(period) {
     }
     
     // Don't render here - unified loader will handle rendering
-    console.log('Fetched recent updates:', allUpdates.length);
-    
-    // Return data for caching
     return allUpdates;
   } catch (error) {
     console.error('Error fetching recent updates:', error);
@@ -5111,9 +5349,6 @@ async function fetchAndCacheAssignedAudits(period) {
     }
     
     // Don't render here - unified loader will handle rendering
-    console.log('Fetched assigned audits:', assignedAudits.length);
-    
-    // Return data for caching
     return assignedAudits;
   } catch (error) {
     console.error('Error fetching assigned audits:', error);
@@ -5137,8 +5372,6 @@ async function loadCompletedAuditsForEmployee() {
   let combinedAudits = [];
   const auditFilterField = 'employee_email';
   
-  console.log('Loading completed audits for employee, filtering by:', auditFilterField, 'for email:', currentUserEmail);
-  
   // Load audits from all scorecard tables in parallel (performance optimization)
   const period = getCurrentPeriodDates();
   const auditPromises = (scorecards || []).map(async (scorecard) => {
@@ -5161,7 +5394,6 @@ async function loadCompletedAuditsForEmployee() {
       }
       
       if (!data || data.length === 0) {
-        console.log(`No audits found in ${scorecard.table_name} for ${currentUserEmail}`);
         return [];
       }
       
@@ -5171,8 +5403,6 @@ async function loadCompletedAuditsForEmployee() {
         const auditEmail = (audit.employee_email || '').toLowerCase().trim();
         return auditEmail === normalizedCurrentEmail;
       });
-      
-      console.log(`Found ${filteredByEmail.length} audits in ${scorecard.table_name} for ${currentUserEmail} (after client-side normalization)`);
       
       // Apply date filter (week or date range)
       // Use submitted_at as primary date, fallback to created_at if submitted_at is missing
@@ -5190,8 +5420,6 @@ async function loadCompletedAuditsForEmployee() {
       if (currentFilters.channel) {
         filteredAudits = filteredAudits.filter(audit => audit.channel === currentFilters.channel);
       }
-      
-      console.log(`After filtering: ${filteredAudits.length} audits match for ${currentUserEmail} in ${scorecard.table_name}`);
       
       // Add scorecard info to each audit
       return filteredAudits.map(audit => ({
@@ -5223,8 +5451,6 @@ async function loadCompletedAuditsForEmployee() {
     
     // Limit total results
     combinedAudits = combinedAudits.slice(0, 50);
-    
-    console.log(`Final completed audits count: ${combinedAudits.length} for employee ${currentUserEmail}`);
     
     assignedAudits = combinedAudits;
     allAssignments = combinedAudits;
@@ -5285,8 +5511,6 @@ async function loadPendingAssignmentsForAuditor() {
   if (currentFilters.agent) {
     filteredAssignments = filteredAssignments.filter(assignment => assignment.employee_email === currentFilters.agent);
   }
-  
-  console.log(`Found ${filteredAssignments.length} pending/in-progress assignments for auditor ${currentUserEmail}`);
   
   // Map assignments to a format similar to audits for rendering
   assignedAudits = filteredAssignments.map(assignment => ({
@@ -5442,18 +5666,6 @@ function renderAssignedAudits() {
       const totalErrors = audit.total_errors_count || audit.totalErrorsCount || '0';
       const interactionId = audit.interaction_id || 'N/A';
       const channel = audit.channel || 'No Channel';
-      
-      // Debug logging for reversal status
-      if (audit.reversal_requested_at) {
-        console.log('Audit with reversal:', {
-          id: audit.id,
-          employee_email: audit.employee_email,
-          reversal_requested_at: audit.reversal_requested_at,
-          reversal_responded_at: audit.reversal_responded_at,
-          reversal_approved: audit.reversal_approved,
-          acknowledgement_status: audit.acknowledgement_status
-        });
-      }
       
       const reversalStatusChip = getReversalStatusChip(audit);
       const acknowledgmentStatusChip = getAcknowledgmentStatusChip(audit);
@@ -5655,7 +5867,6 @@ function deduplicateRequest(key, requestFn) {
 async function updateYourStats() {
   // Use request deduplication to prevent multiple simultaneous calls
   if (!currentUserEmail) {
-    console.log('No user email found for stats');
     return;
   }
   
@@ -5719,7 +5930,6 @@ async function updateYourStats() {
 async function fetchAndCacheStats(period) {
   try {
     if (!currentUserEmail) {
-      console.log('No user email found for stats');
       return;
     }
     
@@ -5904,7 +6114,6 @@ async function fetchAndCacheStats(period) {
         } else {
           avgDurationText = `${Math.round(avgDuration)}m`;
         }
-        console.log(`Calculated avgDuration: ${avgDurationText} from ${allDurations.length} audits`);
       }
       
       // Calculate average quality score
@@ -5912,8 +6121,6 @@ async function fetchAndCacheStats(period) {
         avgQualityScore = totalScoreSum / totalAuditsWithScore;
         avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
       }
-      
-      console.log(`Stats: ${totalAuditsConducted} audits, ${avgQualityScoreText} avg score, ${passingCount} passed, ${notPassingCount} not passed`);
     } else {
       // Fallback to assignment-based count if no scorecards
       completed = allAssignments.filter(a => a.status === 'completed').length;
@@ -5936,8 +6143,6 @@ async function fetchAndCacheStats(period) {
     // For agents who need acknowledgment count beyond what we already calculated
     if (isAgent && scorecards.length > 0) {
       // Acknowledgment already calculated above in the unified query
-      // Just log it
-      console.log(`Requires acknowledgment: ${requiresAcknowledgment}`);
     }
     
     // Skip the old sequential acknowledgment query since it's now handled above
@@ -5982,8 +6187,6 @@ async function fetchAndCacheStats(period) {
                   return isDateInRange(auditDate, period.start, period.end);
                 });
                 
-                console.log(`Found ${pendingAudits.length} pending audits in ${scorecard.table_name} for ${currentUserEmail}`);
-                
                 return pendingAudits.length;
               }
               return 0;
@@ -5996,7 +6199,6 @@ async function fetchAndCacheStats(period) {
           const auditCounts = await Promise.all(auditPromises);
           requiresAcknowledgment = auditCounts.reduce((sum, count) => sum + count, 0);
           
-          console.log(`Total audits requiring acknowledgment for agent ${currentUserEmail}:`, requiresAcknowledgment);
         }
       } catch (error) {
         console.error('Error calculating acknowledgment count:', error);
@@ -6108,7 +6310,6 @@ async function fetchAndCacheStats(period) {
     }
     
     // Update UI with fresh data
-    console.log('Updating UI with fresh stats');
     renderStatsFromData(statsData);
     
     // Return data for caching
@@ -6260,7 +6461,6 @@ function renderStatsFromData(stats) {
     statsAvgDuration.textContent = displayValue;
     // Ensure element is visible (in case it was hidden)
     statsAvgDuration.style.display = '';
-    console.log('Rendering avgDuration:', displayValue);
   } else {
     console.warn('statsAvgDuration element not found');
   }
@@ -6474,8 +6674,8 @@ async function loadNotifications() {
       const notificationsList = document.getElementById('notificationsList');
       if (notificationsList) {
         notificationsList.innerHTML = `
-          <div class="px-4 py-8 text-center text-gray-500 text-xs">
-            <p>No user logged in</p>
+          <div class="notification-panel-empty">
+            <p class="notification-panel-empty-title">No user logged in</p>
           </div>
         `;
       }
@@ -6489,9 +6689,9 @@ async function loadNotifications() {
         const notificationsList = document.getElementById('notificationsList');
         if (notificationsList) {
           notificationsList.innerHTML = `
-            <div class="px-4 py-8 text-center text-red-500 text-xs">
-              <p class="font-medium mb-1">Unable to load notifications</p>
-              <p class="text-gray-500">Please refresh the page</p>
+            <div class="notification-panel-empty">
+              <p class="notification-panel-empty-title" style="color:#b91c1c;">Unable to load notifications</p>
+              <p class="notification-panel-empty-text">Please refresh the page</p>
             </div>
           `;
         }
@@ -6506,7 +6706,6 @@ async function loadNotifications() {
     const cacheAge = cachedTime ? Date.now() - parseInt(cachedTime) : Infinity;
     
     if (cachedData && cacheAge < 60000) { // 1 minute cache (extended from 30 seconds for better performance)
-      console.log('Loading notifications from cache');
       notifications = JSON.parse(cachedData);
       const cachedUnread = sessionStorage.getItem(cacheKey + '_unread');
       if (cachedUnread) {
@@ -6520,7 +6719,15 @@ async function loadNotifications() {
     // Show loader
     const notificationsList = document.getElementById('notificationsList');
     if (notificationsList) {
-      showLoader('notificationsList');
+      const loadingHtml = `
+        <div class="notification-panel-empty">
+          <svg class="animate-spin" width="40" height="40" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color:#9ca3af;">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="32" stroke-dashoffset="12"></circle>
+          </svg>
+          <p class="notification-panel-empty-title">Loading notifications...</p>
+        </div>
+      `;
+      showLoader('notificationsList', loadingHtml);
     }
 
     await fetchAndCacheNotifications();
@@ -6591,6 +6798,24 @@ async function fetchAndCacheNotifications() {
       
       const assignmentResults = await Promise.all(assignmentPromises);
       assignments = assignmentResults.flat();
+    }
+
+    // For auditors: add pending/in_progress assignments from audit_assignments (so "Audit assigned" appears in the bell)
+    if (!isAgent && currentUserEmail) {
+      try {
+        const { data: pendingAssignments, error: paError } = await supabase
+          .from('audit_assignments')
+          .select('id, employee_email, employee_name, auditor_email, status, scheduled_date, created_at')
+          .eq('auditor_email', currentUserEmail)
+          .in('status', ['pending', 'in_progress'])
+          .order('created_at', { ascending: false })
+          .limit(30);
+        if (!paError && pendingAssignments && pendingAssignments.length > 0) {
+          assignments = (pendingAssignments || []).concat(assignments);
+        }
+      } catch (err) {
+        console.warn('Error loading pending audit assignments for notifications:', err);
+      }
     }
 
     // Get reversals (audits with reversal requests)
@@ -6744,11 +6969,15 @@ async function fetchAndCacheNotifications() {
       const employee = allUsers.find(u => u.email === assignment.employee_email);
       const employeeName = employee?.name || assignment.employee_name || assignment.employee_email?.split('@')[0] || 'Unknown';
       
+      const displayName = assignment.employee_name || employeeName;
+      const message = (employeeName === displayName || !assignment.employee_name)
+        ? employeeName
+        : `${employeeName} · ${displayName}`;
       notifications.push({
         id: `assignment-${assignment.id}`,
         type: 'assignment',
         title: `Audit ${assignment.status === 'completed' ? 'completed' : assignment.status === 'in_progress' ? 'started' : 'assigned'}`,
-        message: `${employeeName} - ${assignment.employee_name || 'Audit'}`,
+        message,
         timestamp: assignment.scheduled_date ? new Date(assignment.scheduled_date + 'T00:00:00').toISOString() : assignment.created_at,
         status: assignment.status,
         assignmentId: assignment.id
@@ -6814,19 +7043,46 @@ async function fetchAndCacheNotifications() {
     sessionStorage.setItem(cacheKey + '_unread', unreadNotificationCount.toString());
     
     // Update UI with fresh data
-    console.log('Updating UI with fresh notifications');
     renderNotifications();
     updateNotificationBadge();
 
   } catch (error) {
     console.error('Error loading notifications:', error);
     document.getElementById('notificationsList').innerHTML = `
-      <div class="px-4 py-8 text-center text-red-500 text-xs">
-        <p>Error loading notifications</p>
+      <div class="notification-panel-empty">
+        <p class="notification-panel-empty-title" style="color:#b91c1c;">Error loading notifications</p>
+        <p class="notification-panel-empty-text">Please try again</p>
       </div>
     `;
   }
 }
+
+function getNotificationTimeGroup(timestamp) {
+  if (!timestamp) return 'older';
+  const date = new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return 'this_week';
+  return 'older';
+}
+
+function formatNotificationExactTime(timestamp) {
+  if (!timestamp) return 'N/A';
+  const date = new Date(timestamp);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+const NOTIFICATION_GROUP_LABELS = { today: 'Today', yesterday: 'Yesterday', this_week: 'This week', older: 'Older' };
 
 function renderNotifications() {
   const list = document.getElementById('notificationsList');
@@ -6834,42 +7090,58 @@ function renderNotifications() {
 
   if (notifications.length === 0) {
     list.innerHTML = `
-      <div class="px-4 py-8 text-center text-gray-500 text-xs">
-        <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="notification-panel-empty">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
         </svg>
-        <p class="font-medium text-gray-700 mb-1">No notifications</p>
-        <p class="text-gray-500">You're all caught up!</p>
-    </div>
+        <p class="notification-panel-empty-title">No notifications</p>
+        <p class="notification-panel-empty-text">You're all caught up.</p>
+      </div>
     `;
     return;
   }
 
-  list.innerHTML = notifications.map(notification => {
-    const timestamp = formatTimestamp(notification.timestamp);
-    let iconColor, bgColor;
-    
+  const grouped = { today: [], yesterday: [], this_week: [], older: [] };
+  notifications.forEach(n => {
+    const group = getNotificationTimeGroup(n.timestamp);
+    grouped[group].push(n);
+  });
+
+  // Track newest notifications (first 3 in "today" section)
+  const newestNotificationIds = new Set();
+  if (grouped.today.length > 0) {
+    grouped.today.slice(0, 3).forEach(n => newestNotificationIds.add(n.id));
+  }
+
+  function renderItem(notification, isNew = false) {
+    const exactTime = formatNotificationExactTime(notification.timestamp);
+    let typeClass, categoryLabel, categoryClass, statusChipLabel = '', statusValue = '';
     if (notification.type === 'reversal_status_update') {
-      // Color based on status
-      if (notification.status === 'Approved') {
-        iconColor = 'text-success';
-        bgColor = 'bg-success/10';
-      } else if (notification.status === 'Rejected') {
-        iconColor = 'text-error';
-        bgColor = 'bg-error/10';
-      } else if (notification.status === 'Acknowledged') {
-        iconColor = 'text-primary';
-        bgColor = 'bg-primary/10';
-      } else {
-        iconColor = 'text-warning';
-        bgColor = 'bg-warning/10';
+      typeClass = 'notification-type-reversal_status';
+      categoryLabel = 'Status';
+      categoryClass = 'category-status';
+      if (notification.status) {
+        statusChipLabel = notification.status;
+        statusValue = notification.status;
       }
     } else if (notification.type === 'reversal') {
-      iconColor = 'text-warning';
-      bgColor = 'bg-warning/10';
+      typeClass = 'notification-type-reversal';
+      categoryLabel = 'Reversal';
+      categoryClass = 'category-reversal';
     } else {
-      iconColor = 'text-primary';
-      bgColor = 'bg-primary/10';
+      typeClass = 'notification-type-assignment';
+      categoryLabel = 'Audit';
+      categoryClass = 'category-audit';
+      if (notification.status === 'completed') {
+        statusChipLabel = 'Completed';
+        statusValue = 'completed';
+      } else if (notification.status === 'in_progress') {
+        statusChipLabel = 'In progress';
+        statusValue = 'in_progress';
+      } else if (notification.status === 'pending') {
+        statusChipLabel = 'Assigned';
+        statusValue = 'pending';
+      }
     }
 
     let iconPath = '';
@@ -6891,23 +7163,50 @@ function renderNotifications() {
       iconPath = 'M12 6v6m0 0v6m0-6h6m-6 0H6';
     }
 
+    const chipsHtml = statusChipLabel
+      ? `<span class="notification-panel-item-category ${categoryClass}">${escapeHtml(categoryLabel)}</span><span class="notification-panel-item-status-chip" data-status="${escapeHtml(statusValue)}">${escapeHtml(statusChipLabel)}</span>`
+      : `<span class="notification-panel-item-category ${categoryClass}">${escapeHtml(categoryLabel)}</span>`;
+
+    const newClass = isNew ? ' notification-new' : '';
+    const statusAttr = statusValue ? ` data-status="${escapeHtml(statusValue)}"` : '';
+
     return `
-      <div class="px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer" data-notification-id="${notification.id}">
-        <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div class="notification-panel-item ${typeClass}${newClass}" data-notification-id="${notification.id}"${statusAttr}>
+        <div class="notification-panel-item-inner">
+          <div class="notification-panel-item-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}"/>
             </svg>
           </div>
-          <div class="flex-1 min-w-0">
-            <p class="text-xs font-semibold text-gray-900 mb-0.5">${escapeHtml(notification.title)}</p>
-            <p class="text-xs text-gray-600 mb-1">${escapeHtml(notification.message)}</p>
-            <p class="text-[10px] text-gray-500">${timestamp}</p>
+          <div class="notification-panel-item-body">
+            <div class="notification-panel-item-meta">
+              <div class="notification-panel-item-chips">${chipsHtml}</div>
+              <span class="notification-panel-item-time">${escapeHtml(exactTime)}</span>
+            </div>
+            <p class="notification-panel-item-title">${escapeHtml(notification.title)}</p>
+            <p class="notification-panel-item-message">${escapeHtml(notification.message)}</p>
           </div>
         </div>
-    </div>
+      </div>
     `;
-  }).join('');
+  }
+
+  const sections = ['today', 'yesterday', 'this_week', 'older'];
+  list.innerHTML = sections.map(groupKey => {
+    const items = grouped[groupKey];
+    if (!items.length) return '';
+    const label = NOTIFICATION_GROUP_LABELS[groupKey];
+    const itemsHtml = items.map((item, index) => {
+      const isNew = groupKey === 'today' && newestNotificationIds.has(item.id);
+      return renderItem(item, isNew);
+    }).join('');
+    return `
+      <div class="notification-panel-section">
+        <div class="notification-panel-section-title">${label}</div>
+        ${itemsHtml}
+      </div>
+    `;
+  }).filter(Boolean).join('');
 }
 
 function updateNotificationBadge() {
@@ -6953,25 +7252,23 @@ function showNotifications() {
         const notificationsList = document.getElementById('notificationsList');
         if (notificationsList) {
           notificationsList.innerHTML = `
-            <div class="px-4 py-8 text-center text-red-500 text-xs">
-              <p class="font-medium mb-1">Error loading notifications</p>
-              <p class="text-gray-500">Please try again</p>
+            <div class="notification-panel-empty">
+              <p class="notification-panel-empty-title" style="color:#b91c1c;">Error loading notifications</p>
+              <p class="notification-panel-empty-text">Please try again</p>
             </div>
           `;
         }
       });
   }
   
-  modal.classList.remove('opacity-0', 'invisible');
-  modal.classList.add('opacity-100', 'visible');
+  modal.classList.add('visible');
 }
 
 function hideNotifications() {
   const modal = document.getElementById('notificationsModal');
   if (!modal) return;
   
-  modal.classList.remove('opacity-100', 'visible');
-  modal.classList.add('opacity-0', 'invisible');
+  modal.classList.remove('visible');
 }
 
 // Show notifications on hover
@@ -7463,7 +7760,6 @@ async function testNotification(type = 'info', title = 'Test Notification', body
     }
 
     const result = await response.json();
-    console.log('Test notification created:', result);
     alert(`✅ Test notification created successfully!\n\nTitle: ${result.data.title}\nType: ${result.data.type}`);
     
     // Reload notifications to show the new one
@@ -7505,7 +7801,6 @@ window.testNotification = testNotification;
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        console.log('No authenticated user, skipping notification consent');
         return;
       }
 

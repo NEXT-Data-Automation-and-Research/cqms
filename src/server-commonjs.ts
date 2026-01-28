@@ -220,9 +220,9 @@ logWithTimestamp('debug', 'Rate limiting configured: API (100/15min), Auth (5/15
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  
-  // HTML files - never cache (always fresh)
-  if (url.endsWith('.html') || url === '/') {
+  const isHtml = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+
+  if (isHtml) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -248,39 +248,40 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 // Runs after routes but before static file serving
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  
-  // Only intercept HTML file requests
-  if (!url.endsWith('.html') && url !== '/') {
+  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+
+  if (!isHtmlPage) {
     return next();
   }
-  
-  // Skip auth-page.html and index.html (they're handled by specific routes)
+
   if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
     return next();
   }
   
-  // Intercept the response to inject auth-checker if not already present
+  // Intercept the response to inject auth-checker and analytics if not already present
   const originalSend = res.send;
   res.send = function(body: any) {
-    // Only process if it's HTML content
     if (typeof body === 'string' && body.trim().startsWith('<!')) {
-      // Check if auth-checker is already present
+      let scriptsToInject = '';
       if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
-        // Inject auth-checker before closing body tag
-        const authCheckerScript = '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
-        
+        scriptsToInject += '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
+      }
+      if (!body.includes('analytics-client.js') && !body.includes('/js/utils/analytics-client.js')) {
+        scriptsToInject += '  <!-- Analytics - automatic, invisible page view tracking -->\n  <script type="module" src="/js/utils/analytics-client.js"></script>\n';
+      }
+      if (scriptsToInject) {
         if (body.includes('</body>')) {
-          body = body.replace('</body>', `${authCheckerScript}</body>`);
+          body = body.replace('</body>', `${scriptsToInject}</body>`);
         } else if (body.includes('</html>')) {
-          body = body.replace('</html>', `${authCheckerScript}</html>`);
+          body = body.replace('</html>', `${scriptsToInject}</html>`);
         } else {
-          body = body + '\n' + authCheckerScript;
+          body = body + '\n' + scriptsToInject;
         }
       }
     }
     return originalSend.call(this, body);
   };
-  
+
   next();
 });
 
@@ -366,6 +367,37 @@ app.get('/src/features/home/presentation/home-page.html', (req: express.Request,
   } catch (error) {
     logWithTimestamp('error', 'Error processing home-page.html:', error);
     res.sendFile(path.join(__dirname, '../src/features/home/presentation/home-page.html'));
+  }
+});
+
+// Explicit clean URL routes for analytics pages (ensure they work regardless of route-mapper cache)
+app.get('/my-activity', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/analytics/presentation/my-activity.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing my-activity.html:', error);
+    const filePath = path.join(__dirname, '../src/features/analytics/presentation/my-activity.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
+app.get('/analytics', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/analytics/presentation/analytics.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing analytics.html:', error);
+    const filePath = path.join(__dirname, '../src/features/analytics/presentation/analytics.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
   }
 });
 

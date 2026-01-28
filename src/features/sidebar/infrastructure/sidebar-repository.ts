@@ -225,6 +225,111 @@ export class SidebarRepository {
   }
 
   /**
+   * Count employee reversals from reversal_requests table
+   * Uses the new reversal_requests table structure
+   * Counts pending reversals (those awaiting response - not yet approved or rejected)
+   */
+  async countEmployeeReversalsFromRequests(employeeEmail: string): Promise<number> {
+    try {
+      // Use underlying Supabase client for count queries (Supabase-specific feature)
+      const supabaseClient = (this.db as any).client;
+      if (!supabaseClient) {
+        throw new Error('Database connection not available')
+      }
+
+      // Normalize email for comparison
+      const normalizedEmail = employeeEmail.toLowerCase().trim()
+
+      // Get all reversal requests for this employee
+      const { data: reversalRequests, error: requestsError } = await supabaseClient
+        .from('reversal_requests')
+        .select('id')
+        .eq('requested_by_email', normalizedEmail)
+
+      if (requestsError) {
+        // Handle table not found gracefully
+        if (requestsError.code === 'PGRST205' || requestsError.code === 'PGRST116' || 
+            requestsError.code === '42P01' || requestsError.code === '42703') {
+          return 0
+        }
+        throw requestsError
+      }
+
+      if (!reversalRequests || reversalRequests.length === 0) {
+        return 0
+      }
+
+      // Get workflow states for these reversals
+      const reversalIds = reversalRequests.map((rr: any) => rr.id)
+      const { data: workflowStates, error: statesError } = await supabaseClient
+        .from('reversal_workflow_states')
+        .select('reversal_request_id, state')
+        .in('reversal_request_id', reversalIds)
+        .eq('is_current', true)
+
+      if (statesError) {
+        // If workflow_states table doesn't exist, fall back to final_decision check
+        if (statesError.code === 'PGRST205' || statesError.code === 'PGRST116' || 
+            statesError.code === '42P01' || statesError.code === '42703') {
+          // Fallback: count by final_decision
+          const { count, error: countError } = await supabaseClient
+            .from('reversal_requests')
+            .select('*', { count: 'exact', head: true })
+            .eq('requested_by_email', normalizedEmail)
+            .is('final_decision', null)
+          
+          if (countError) {
+            return 0
+          }
+          return count || 0
+        }
+        throw statesError
+      }
+
+      // Define pending states (reversals awaiting response)
+      const pendingStates = [
+        'submitted',
+        'team_lead_review',
+        'team_lead_approved',
+        'qa_review',
+        'cqc_review',
+        'cqc_sent_back',
+        'agent_re_review'
+      ]
+
+      // Count reversals in pending states
+      if (!workflowStates || workflowStates.length === 0) {
+        // No workflow states found - fallback to final_decision check
+        const { count, error: countError } = await supabaseClient
+          .from('reversal_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('requested_by_email', normalizedEmail)
+          .is('final_decision', null)
+        
+        if (countError) {
+          return 0
+        }
+        return count || 0
+      }
+
+      // Count reversals with pending workflow states
+      const pendingCount = workflowStates.filter((ws: any) => 
+        pendingStates.includes(ws.state)
+      ).length
+
+      return pendingCount
+    } catch (err: any) {
+      // Handle table not found or schema issues gracefully
+      if (err?.code === 'PGRST205' || err?.code === 'PGRST116' || err?.code === '42P01' || err?.code === '42703' ||
+          err?.message?.includes('reversal_requests') || err?.message?.includes('reversal_workflow_states') || 
+          err?.message?.includes('schema cache')) {
+        return 0
+      }
+      throw err
+    }
+  }
+
+  /**
    * Count pending acknowledgments in a table
    */
   async countPendingAcknowledgments(tableName: string, userEmail?: string): Promise<number> {

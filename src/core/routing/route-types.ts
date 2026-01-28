@@ -25,6 +25,15 @@ export type UserRole =
   | 'Super Admin'
 
 /**
+ * Permission resource for consistent access control (role + individual overrides).
+ * When set, sidebar and page guard use permission API; otherwise fall back to roles.
+ */
+export interface PermissionResource {
+  name: string
+  type: 'page' | 'feature' | 'api_endpoint' | 'action'
+}
+
+/**
  * Route metadata for navigation and permissions
  */
 export interface RouteMeta {
@@ -44,6 +53,8 @@ export interface RouteMeta {
   additionalNotificationBadgeId?: string
   /** Order in sidebar (lower = higher) */
   order?: number
+  /** Permission resource for access control; when set, sidebar uses permission API */
+  permissionResource?: PermissionResource
 }
 
 /**
@@ -54,10 +65,12 @@ export interface SubmenuRoute {
   path: string
   /** Display label */
   label: string
-  /** Roles that can access */
+  /** Roles that can access (fallback when permissionResource not used) */
   roles: UserRole[]
   /** Clean URL slug (e.g., 'scorecards' for /settings/scorecards) */
   slug?: string
+  /** Permission resource name for this page; when set, access is checked via permission API */
+  permissionResource?: PermissionResource
 }
 
 /**

@@ -72,6 +72,7 @@ const SAFE_ENV_VARS: string[] = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
   'VAPID_PUBLIC_KEY',
+  'ANALYTICS_ENABLED',
 ];
 
 /**
@@ -147,8 +148,11 @@ app.use(helmet({
         "'self'", 
         "https://*.supabase.co", 
         "https://*.supabase.in",
+        "wss://*.supabase.co",
+        "wss://*.supabase.in",
         "https://cdn.jsdelivr.net",
-        "http://127.0.0.1:7242"
+        "http://127.0.0.1:7242",
+        "ws://127.0.0.1:7242"
       ],
       fontSrc: [
         "'self'", 
@@ -188,8 +192,9 @@ app.use('/api/users', authLimiter);
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  
-  if (url.endsWith('.html') || url === '/') {
+  const isHtml = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+
+  if (isHtml) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -211,11 +216,12 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 // Middleware to automatically inject auth-checker into HTML responses
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  
-  if (!url.endsWith('.html') && url !== '/') {
+  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+
+  if (!isHtmlPage) {
     return next();
   }
-  
+
   if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
     return next();
   }
@@ -223,15 +229,22 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   const originalSend = res.send;
   res.send = function(body: any) {
     if (typeof body === 'string' && body.trim().startsWith('<!')) {
-      if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
-        const authCheckerScript = '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
-        
+      const hasAuthChecker = body.includes('auth-checker.js') || body.includes('/js/auth-checker.js');
+      const hasAnalytics = body.includes('analytics-client.js') || body.includes('/js/utils/analytics-client.js');
+      let scriptsToInject = '';
+      if (!hasAuthChecker) {
+        scriptsToInject += '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
+      }
+      if (!hasAnalytics) {
+        scriptsToInject += '  <!-- Analytics - automatic, invisible page view tracking -->\n  <script type="module" src="/js/utils/analytics-client.js"></script>\n';
+      }
+      if (scriptsToInject) {
         if (body.includes('</body>')) {
-          body = body.replace('</body>', `${authCheckerScript}</body>`);
+          body = body.replace('</body>', `${scriptsToInject}</body>`);
         } else if (body.includes('</html>')) {
-          body = body.replace('</html>', `${authCheckerScript}</html>`);
+          body = body.replace('</html>', `${scriptsToInject}</html>`);
         } else {
-          body = body + '\n' + authCheckerScript;
+          body = body + '\n' + scriptsToInject;
         }
       }
     }
@@ -319,6 +332,37 @@ app.get('/src/features/home/presentation/home-page.html', (req: express.Request,
   }
 });
 
+// Explicit clean URL routes for analytics pages (ensure they work regardless of route-mapper cache)
+app.get('/my-activity', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/analytics/presentation/my-activity.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing my-activity.html:', error);
+    const filePath = path.join(__dirname, '../src/features/analytics/presentation/my-activity.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
+app.get('/analytics', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/analytics/presentation/analytics.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing analytics.html:', error);
+    const filePath = path.join(__dirname, '../src/features/analytics/presentation/analytics.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
 // Clean URL Routes
 const routeMappings = getRouteMappings();
 routeMappings.forEach((mapping) => {
@@ -399,6 +443,7 @@ import notificationsRouter from '../src/api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from '../src/api/routes/notification-subscriptions.routes.js';
 import peopleRouter from '../src/api/routes/people.routes.js';
 import permissionsRouter from '../src/api/routes/permissions.routes.js';
+import analyticsRouter from '../src/api/routes/analytics.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -406,6 +451,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
+app.use('/api/analytics', analyticsRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/console-stub.js"></script>
+  <meta charset="UTF-8">
+  <title>Analytics | QMS</title>
+  <meta name="description" content="User and platform analytics">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+</head>
+<body class="home-page">
+  <main class="main-content" role="main">
+    <div id="header-container"></div>
+    <div class="px-4 py-4 max-w-7xl mx-auto w-full">
+      <h1 class="page-heading-global">Analytics</h1>
+
+      <!-- My activity (all users) -->
+      <section class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">My activity</h2>
+        <p class="text-sm text-gray-600 mb-3">Recent page views and time on page (last 7 days).</p>
+        <div id="my-activity-loading" class="text-gray-500 py-4">Loading…</div>
+        <div id="my-activity-error" class="hidden text-red-600 py-2"></div>
+        <div id="my-activity-table-wrap" class="hidden overflow-x-auto rounded-lg border border-gray-200">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Page</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Path</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Time (s)</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Started</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Ended</th>
+              </tr>
+            </thead>
+            <tbody id="my-activity-tbody" class="bg-white divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+        <div id="my-activity-empty" class="hidden text-gray-500 py-4">No page views in this period.</div>
+      </section>
+
+      <!-- Platform summary (Admin / Super Admin) -->
+      <section id="admin-section" class="mb-8 hidden">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Platform summary</h2>
+        <div id="admin-summary-loading" class="text-gray-500 py-2">Loading…</div>
+        <div id="admin-summary-error" class="hidden text-red-600 py-2"></div>
+        <div id="admin-summary-cards" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"></div>
+        <h3 class="text-lg font-medium text-gray-800 mt-6 mb-3">By page</h3>
+        <div id="admin-by-page-loading" class="text-gray-500 py-2">Loading…</div>
+        <div id="admin-by-page-error" class="hidden text-red-600 py-2"></div>
+        <div id="admin-by-page-table-wrap" class="hidden overflow-x-auto rounded-lg border border-gray-200">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Page</th>
+                <th class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Path</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Views</th>
+                <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Avg time (s)</th>
+              </tr>
+            </thead>
+            <tbody id="admin-by-page-tbody" class="bg-white divide-y divide-gray-200"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="/js/auth-checker.js"></script>
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+  <script type="module">
+    import { apiClient } from '/js/utils/api-client.js';
+
+    const days = 7;
+    const limit = 100;
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      return d.toLocaleString();
+    }
+
+    async function loadMyActivity() {
+      const loading = document.getElementById('my-activity-loading');
+      const errEl = document.getElementById('my-activity-error');
+      const wrap = document.getElementById('my-activity-table-wrap');
+      const tbody = document.getElementById('my-activity-tbody');
+      const empty = document.getElementById('my-activity-empty');
+      errEl.classList.add('hidden');
+      wrap.classList.add('hidden');
+      empty.classList.add('hidden');
+      try {
+        const data = await apiClient.analytics.getMe({ days, limit });
+        loading.classList.add('hidden');
+        const list = data.page_views || [];
+        if (list.length === 0) {
+          empty.classList.remove('hidden');
+          return;
+        }
+        tbody.innerHTML = list.map((row) => `
+          <tr>
+            <td class="px-4 py-2 text-sm text-gray-900">${escapeHtml(row.page_slug || '—')}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${escapeHtml(row.page_path || '—')}</td>
+            <td class="px-4 py-2 text-sm text-right">${row.time_on_page_seconds ?? '—'}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${formatDate(row.view_started_at)}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${formatDate(row.view_ended_at)}</td>
+          </tr>
+        `).join('');
+        wrap.classList.remove('hidden');
+      } catch (e) {
+        loading.classList.add('hidden');
+        errEl.textContent = e?.message || 'Failed to load activity';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return '';
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    async function loadAdminSummary() {
+      const section = document.getElementById('admin-section');
+      const loading = document.getElementById('admin-summary-loading');
+      const errEl = document.getElementById('admin-summary-error');
+      const cards = document.getElementById('admin-summary-cards');
+      try {
+        const data = await apiClient.analytics.getAdminSummary({ days });
+        loading.classList.add('hidden');
+        errEl.classList.add('hidden');
+        cards.innerHTML = `
+          <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="text-sm text-gray-600">Total page views</div>
+            <div class="text-2xl font-semibold text-gray-900">${data.total_page_views ?? 0}</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="text-sm text-gray-600">Unique users</div>
+            <div class="text-2xl font-semibold text-gray-900">${data.unique_users ?? 0}</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="text-sm text-gray-600">Average DAU</div>
+            <div class="text-2xl font-semibold text-gray-900">${data.average_dau ?? 0}</div>
+          </div>
+          <div class="bg-white rounded-lg border border-gray-200 p-4">
+            <div class="text-sm text-gray-600">Date range</div>
+            <div class="text-sm text-gray-900">${data.from ? new Date(data.from).toLocaleDateString() : '—'} – ${data.to ? new Date(data.to).toLocaleDateString() : '—'}</div>
+          </div>
+        `;
+        cards.classList.remove('hidden');
+        section.classList.remove('hidden');
+      } catch (e) {
+        loading.classList.add('hidden');
+        if (e?.status === 403) {
+          section.classList.add('hidden');
+          return;
+        }
+        errEl.textContent = e?.message || 'Failed to load summary';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    async function loadAdminByPage() {
+      const loading = document.getElementById('admin-by-page-loading');
+      const errEl = document.getElementById('admin-by-page-error');
+      const wrap = document.getElementById('admin-by-page-table-wrap');
+      const tbody = document.getElementById('admin-by-page-tbody');
+      try {
+        const data = await apiClient.analytics.getAdminByPage({ days });
+        loading.classList.add('hidden');
+        errEl.classList.add('hidden');
+        const list = data.by_page || [];
+        tbody.innerHTML = list.map((row) => `
+          <tr>
+            <td class="px-4 py-2 text-sm text-gray-900">${escapeHtml(row.page_slug || '—')}</td>
+            <td class="px-4 py-2 text-sm text-gray-600">${escapeHtml(row.page_path || '—')}</td>
+            <td class="px-4 py-2 text-sm text-right">${row.view_count ?? 0}</td>
+            <td class="px-4 py-2 text-sm text-right">${row.avg_time_on_page_seconds ?? '—'}</td>
+          </tr>
+        `).join('');
+        wrap.classList.remove('hidden');
+      } catch (e) {
+        loading.classList.add('hidden');
+        if (e?.status === 403) return;
+        errEl.textContent = e?.message || 'Failed to load by-page';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    async function init() {
+      await loadMyActivity();
+      await loadAdminSummary();
+      await loadAdminByPage();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>

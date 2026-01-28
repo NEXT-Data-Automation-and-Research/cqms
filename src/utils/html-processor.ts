@@ -114,6 +114,13 @@ export function injectVersionIntoHTML(htmlPath: string, version: string): string
   // If htmlPath already includes a full path (starts with 'src/' or '../'), use it directly
   if (htmlPath.startsWith('src/') || htmlPath.startsWith('../')) {
     fullPath = path.join(baseDir, htmlPath);
+    // When running from dist/ or public/js/, baseDir may not contain src/ — fallback to cwd
+    if (!fs.existsSync(fullPath) && htmlPath.startsWith('src/')) {
+      const cwdPath = path.join(process.cwd(), htmlPath);
+      if (fs.existsSync(cwdPath)) {
+        fullPath = cwdPath;
+      }
+    }
   } else {
     // Try public directory first
     fullPath = path.join(baseDir, 'public', htmlPath);

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/js/console-stub.js"></script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -2530,7 +2531,7 @@ let currentParameters = [];
 // Store all available scorecards for filtering
 let allAvailableScorecards = [];
 
-// Load available scorecards
+// Load available scorecards (only scorecards whose audit table exists to avoid 404s)
 async function loadScorecards(channelFilter = null) {
     const scorecardSelect = document.getElementById('scorecardSelect');
     
@@ -2545,8 +2546,17 @@ async function loadScorecards(channelFilter = null) {
         
         if (error) throw error;
         
+        let scorecards = data || [];
+        try {
+            const { data: existing } = await window.supabaseClient.rpc('get_audit_tables');
+            if (existing && existing.length > 0) {
+                const set = new Set(existing.map(function (x) { return x.table_name; }));
+                scorecards = scorecards.filter(function (s) { return s.table_name && set.has(s.table_name); });
+            }
+        } catch (_) { /* use all scorecards if RPC fails */ }
+        
         // Store all scorecards for filtering
-        allAvailableScorecards = data || [];
+        allAvailableScorecards = scorecards;
         
         // Filter by channel if provided
         let filteredScorecards = allAvailableScorecards;
@@ -6188,12 +6198,13 @@ let isLoadingEmployeeConversations = false;
  */
 async function cacheAdminAsync(supabaseClient, admin) {
     try {
-        const adminId = admin.id;
+        const rawId = admin.id;
+        const adminId = rawId != null ? Number(rawId) : NaN;
         const adminEmail = admin.email || '';
         const adminName = admin.name || '';
         
-        if (!adminId) {
-            return; // Skip if no ID
+        if (adminId === undefined || adminId === null || isNaN(adminId)) {
+            return; // Skip if no valid ID
         }
         
         const cacheData = {
@@ -7331,7 +7342,7 @@ async function showAdminSearchModal(employeeEmail, employeeName = null) {
 }
 
 /**
- * Close admin search modal
+ * Close admin search modal (Cancel or X)
  */
 function closeAdminSearchModal() {
     const modal = document.getElementById('adminSearchModal');
@@ -7352,16 +7363,23 @@ function closeAdminSearchModal() {
 /**
  * Skip admin search and continue without admin
  */
-async function skipAdminSearch() {
+function skipAdminSearch() {
     console.log('⚠️ User skipped admin search');
-    closeAdminSearchModal();
-    
-    // Resolve with null to indicate skip
     if (adminSearchModalResolve) {
         adminSearchModalResolve(null);
         adminSearchModalResolve = null;
     }
+    const modal = document.getElementById('adminSearchModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    adminSearchCurrentEmployeeEmail = null;
+    adminSearchCurrentEmployeeName = null;
 }
+
+// Expose modal handlers on window so inline onclick handlers in the modal HTML work
+window.closeAdminSearchModal = closeAdminSearchModal;
+window.skipAdminSearch = skipAdminSearch;
 
 /**
  * Search Intercom admins by name/alias
@@ -7417,39 +7435,70 @@ window.searchIntercomAdmins = async function() {
     
     try {
         console.log('🔍 Searching Intercom admins for:', searchTerm);
-        
-        // Fetch all admins from Intercom API
-        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
-        
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${supabaseAnonKey}`,
-                'apikey': supabaseAnonKey,
-                'Accept': 'application/json'
-            }
-        });
+        const searchLower = searchTerm.toLowerCase();
+        let matchingAdmins = [];
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        // 1. Try database (intercom_admin_cache) first – fast and works offline from cache
+        const supabaseClient = window.SupabaseConfig?.getClient?.();
+        if (supabaseClient) {
+            try {
+                const { data: dbAdmins, error: dbError } = await supabaseClient
+                    .from('intercom_admin_cache')
+                    .select('id, email, name')
+                    .order('name', { ascending: true });
+
+                if (!dbError && dbAdmins && dbAdmins.length > 0) {
+                    const fromDb = dbAdmins
+                        .filter(row => {
+                            const name = (row.name || '').toLowerCase();
+                            const email = (row.email || '').toLowerCase();
+                            return name.includes(searchLower) || email.includes(searchLower);
+                        })
+                        .map(row => ({
+                            id: row.id,
+                            name: row.name || '',
+                            email: row.email || ''
+                        }));
+                    if (fromDb.length > 0) {
+                        matchingAdmins = fromDb;
+                        console.log('✅ Found admins from database:', matchingAdmins.length);
+                    }
+                }
+            } catch (dbErr) {
+                console.warn('⚠️ Database admin search failed, falling back to API:', dbErr);
+            }
         }
 
-        const data = await response.json();
-        const allAdmins = data.admins || data || [];
-        
-        // Filter admins by search term (case-insensitive, matches name or email)
-        const searchLower = searchTerm.toLowerCase();
-        const matchingAdmins = allAdmins.filter(admin => {
-            if (!admin) return false;
-            const name = (admin.name || '').toLowerCase();
-            const email = (admin.email || '').toLowerCase();
-            return name.includes(searchLower) || email.includes(searchLower);
-        });
-        
+        // 2. Fallback: fetch from Intercom API via edge function
+        if (matchingAdmins.length === 0 && supabaseUrl && supabaseAnonKey) {
+            const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
+            const response = await fetch(edgeFunctionUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${supabaseAnonKey}`,
+                    'apikey': supabaseAnonKey,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const allAdmins = data.admins || data || [];
+                matchingAdmins = allAdmins.filter(admin => {
+                    if (!admin) return false;
+                    const name = (admin.name || '').toLowerCase();
+                    const email = (admin.email || '').toLowerCase();
+                    return name.includes(searchLower) || email.includes(searchLower);
+                });
+                if (matchingAdmins.length > 0) {
+                    console.log('✅ Found admins from Intercom API:', matchingAdmins.length);
+                }
+            }
+        }
+
         // Hide loading
         loadingDiv.style.display = 'none';
-        
+
         // Show results
         if (matchingAdmins.length === 0) {
             noResultsMsg.style.display = 'block';
@@ -7457,29 +7506,28 @@ window.searchIntercomAdmins = async function() {
         } else {
             noResultsMsg.style.display = 'none';
             resultsDiv.style.display = 'block';
-            
-            // Display results
+
             resultsList.innerHTML = '';
             matchingAdmins.forEach((admin, index) => {
                 const adminItem = document.createElement('div');
                 adminItem.style.cssText = 'padding: 0.8086rem; border-bottom: 0.0304rem solid #e5e7eb; cursor: pointer; transition: background 0.2s;';
                 adminItem.style.borderBottom = index === matchingAdmins.length - 1 ? 'none' : '0.0304rem solid #e5e7eb';
-                
+
                 adminItem.onmouseover = function() {
                     this.style.backgroundColor = '#f9fafb';
                 };
                 adminItem.onmouseout = function() {
                     this.style.backgroundColor = 'white';
                 };
-                
+
                 adminItem.onclick = function() {
                     selectAdminFromSearch(admin);
                 };
-                
+
                 const adminName = admin.name || 'Unknown';
                 const adminEmail = admin.email || 'No email';
-                const adminId = admin.id || 'N/A';
-                
+                const adminId = admin.id != null ? String(admin.id) : 'N/A';
+
                 adminItem.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="flex: 1;">
@@ -7490,18 +7538,16 @@ window.searchIntercomAdmins = async function() {
                         <div style="color: #1A733E; font-size: 0.4043rem; font-weight: 500;">Select →</div>
                     </div>
                 `;
-                
+
                 resultsList.appendChild(adminItem);
             });
         }
-        
     } catch (error) {
         console.error('❌ Error searching Intercom admins:', error);
         loadingDiv.style.display = 'none';
         errorDiv.style.display = 'block';
         document.getElementById('adminSearchErrorMessage').textContent = `Failed to search admins: ${error.message}`;
     } finally {
-        // Re-enable search button
         if (searchButton) {
             searchButton.disabled = false;
             searchButton.style.opacity = '1';

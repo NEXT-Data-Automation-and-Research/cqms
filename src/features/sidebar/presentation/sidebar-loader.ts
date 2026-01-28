@@ -11,6 +11,8 @@ import { sidebarState } from '../application/sidebar-state.js'
 import { SidebarHTMLGenerator } from './sidebar-html-generator.js'
 import { safeSetHTML, sanitizeHTML } from '../../../utils/html-sanitizer.js'
 import { logError } from '../../../utils/logging-helper.js'
+import { getPagePermissionsForSidebar } from '../../../utils/permissions.js'
+import { routes } from '../../../core/routing/route-config.js'
 
 /**
  * This class loads the sidebar and makes it work
@@ -45,6 +47,10 @@ export class SidebarLoader {
       return
     }
 
+    // Register userInfoUpdated watcher before any async work so we never miss the event
+    // (e.g. when auth-checker or OAuth sets userInfo + role right after first login)
+    this.setupUserInfoWatcher()
+
     // Load the sidebar HTML immediately (don't wait for Supabase)
     await this.loadSidebarHTML()
 
@@ -72,36 +78,41 @@ export class SidebarLoader {
       // Silently handle errors - UI is already shown with cached data
       // Background initialization error - non-critical
     })
-
-    // Update sidebar when user info changes (for role-based menu updates)
-    this.setupUserInfoWatcher()
   }
 
   /**
    * Watch for user info changes and update sidebar if needed
    */
   private setupUserInfoWatcher(): void {
-    // Listen for user info updates
-    document.addEventListener('userInfoUpdated', () => {
-      // Reload sidebar with updated user info
-      if (sidebarState.isSidebarLoaded) {
-        const userInfo = sidebarState.loadUserInfo()
-        const newHTML = this.htmlGenerator.generate(userInfo)
-        const sidebarNav = document.querySelector('nav.sidebar')
-        if (sidebarNav) {
-          const tempDiv = document.createElement('div')
-          tempDiv.innerHTML = newHTML
-          const newNav = tempDiv.querySelector('nav.sidebar')
-          if (newNav) {
-            // Preserve collapsed state
-            const isCollapsed = sidebarNav.classList.contains('collapsed')
-            if (isCollapsed) {
-              newNav.classList.add('collapsed')
-            }
-            sidebarNav.replaceWith(newNav)
-            // Re-setup handlers
-            this.menu.setupMenuHandlers()
+    document.addEventListener('userInfoUpdated', async () => {
+      if (!sidebarState.isSidebarLoaded) return
+      const userInfo = sidebarState.loadUserInfo()
+      let pagePermissions: Record<string, boolean> | null = null
+      try {
+        pagePermissions = await getPagePermissionsForSidebar(this.getSidebarPermissionResourceNames())
+      } catch {
+        // Fall back to role-based
+      }
+      const newHTML = this.htmlGenerator.generate(userInfo, pagePermissions ?? undefined)
+      const sidebarNav = document.querySelector('nav.sidebar')
+      if (sidebarNav) {
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = newHTML
+        const newNav = tempDiv.querySelector('nav.sidebar')
+        if (newNav) {
+          const isCollapsed = sidebarNav.classList.contains('collapsed')
+          if (isCollapsed) newNav.classList.add('collapsed')
+          sidebarNav.replaceWith(newNav)
+          this.menu.setupMenuHandlers()
+          
+          // Re-display user info after sidebar replacement (fixes "Loading..." issue)
+          if (userInfo) {
+            this.userProfile.showUserInfo(userInfo)
           }
+          
+          // Re-setup click handlers for profile and logout
+          this.userProfile.setupUserProfileClickHandler()
+          this.userProfile.setupLogoutHandler()
         }
       }
     })
@@ -141,20 +152,46 @@ export class SidebarLoader {
   }
 
   /**
+   * Collect page permission resource names from route config (top-level and submenu items with permissionResource)
+   */
+  private getSidebarPermissionResourceNames(): string[] {
+    const names: string[] = []
+    for (const route of routes) {
+      // Check top-level route
+      if (route.meta?.permissionResource?.name) {
+        names.push(route.meta.permissionResource.name)
+      }
+      // Check submenu items
+      if (route.submenu) {
+        for (const item of route.submenu) {
+          if (item.permissionResource?.name) {
+            names.push(item.permissionResource.name)
+          }
+        }
+      }
+    }
+    return [...new Set(names)]
+  }
+
+  /**
    * Load the sidebar HTML into the page
    */
   private async loadSidebarHTML(): Promise<void> {
     try {
-      // Check if sidebar is already loaded
       if (sidebarState.isSidebarLoaded) {
         return
       }
 
-      // Get user info for route-based menu generation
       const userInfo = sidebarState.loadUserInfo()
-      
-      // Generate sidebar HTML from route configuration
-      const sidebarHTML = this.htmlGenerator.generate(userInfo)
+      let pagePermissions: Record<string, boolean> | null = null
+      try {
+        const resourceNames = this.getSidebarPermissionResourceNames()
+        pagePermissions = await getPagePermissionsForSidebar(resourceNames)
+      } catch {
+        // Fall back to role-based only
+      }
+
+      const sidebarHTML = this.htmlGenerator.generate(userInfo, pagePermissions)
 
       // Create a temporary container to parse the HTML
       const tempDiv = document.createElement('div')
@@ -252,11 +289,32 @@ export class SidebarLoader {
       // Initialize user profile from database (background refresh)
       await this.userProfile.initializeUserProfile()
 
+      // Ensure sidebar menu reflects role/permissions after profile is loaded
+      // (handles first-time login: initial HTML was generic, now we have role from DB)
+      const userInfo = sidebarState.loadUserInfo()
+      if (userInfo && sidebarState.isSidebarLoaded) {
+        document.dispatchEvent(new CustomEvent('userInfoUpdated', {
+          detail: { userInfo, roleLoaded: true }
+        }))
+      }
+
       // Update notification counts from database (background refresh)
       await this.notifications.updateAllNotificationCounts()
 
       // Set up intervals to update counts periodically
       this.notifications.setupNotificationUpdateIntervals()
+
+      // Real-time audit assignment notifications (toast when someone assigns an audit to this user)
+      if (userInfo?.email && userInfo.role !== 'Employee') {
+        try {
+          const { setupAuditAssignmentRealtime } = await import(
+            '../../notifications/application/audit-assignment-realtime.js'
+          )
+          await setupAuditAssignmentRealtime(userInfo.email)
+        } catch (err) {
+          console.warn('Could not set up audit assignment realtime:', err)
+        }
+      }
     } else {
       // Supabase not ready yet - set up retry mechanism
       // User profile and notifications already shown from cache

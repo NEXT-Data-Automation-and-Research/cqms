@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script src="/js/console-stub.js"></script>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
@@ -455,7 +456,7 @@
             
             <!-- Action Buttons -->
             <div style="display: flex; gap: 0.5625rem; justify-content: flex-end; padding-top: 0.375rem;">
-                <button type="button" onclick="toggleReversalForm()" style="padding: 0.4688rem 0.9375rem; background-color: #f3f4f6; color: #374151; border: 0.0352rem solid #d1d5db; border-radius: 0.2812rem; font-size: 0.6562rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
+                <button type="button" data-action="toggleReversalForm" style="padding: 0.4688rem 0.9375rem; background-color: #f3f4f6; color: #374151; border: 0.0352rem solid #d1d5db; border-radius: 0.2812rem; font-size: 0.6562rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">
                     Cancel
                 </button>
                 <button type="submit" style="padding: 0.4688rem 0.9375rem; background-color: #ef4444; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.375rem;">
@@ -483,7 +484,7 @@
         <div id="errorMessage" style="display: none; text-align: center; padding: 1.5rem; color: #ef4444; font-family: 'Poppins', sans-serif; width: 100%;">
             <p style="font-size: 0.8438rem; font-weight: 600; margin-bottom: 0.375rem;">Error Loading Audit</p>
             <p id="errorText" style="font-size: 0.6562rem;"></p>
-            <button onclick="window.history.back()" style="margin-top: 0.75rem; padding: 0.375rem 1.125rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1875rem; font-size: 0.6562rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">Go Back</button>
+            <button data-action="goBack" style="margin-top: 0.75rem; padding: 0.375rem 1.125rem; background-color: #1A733E; color: white; border: none; border-radius: 0.1875rem; font-size: 0.6562rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;">Go Back</button>
         </div>
 
         <!-- Audit content will be dynamically loaded here -->
@@ -1264,18 +1265,19 @@ function isCurrentUserCQC() {
 
 // Check if current user is Admin or Super Admin
 function isCurrentUserAdmin() {
-    if (!window.accessControl) {
-        // Fallback: check userInfo directly
-        const userInfo = getCurrentUserInfo();
-        if (!userInfo) {
-            return false;
-        }
-        
-        const role = (userInfo.role || '').toLowerCase();
-        return role === 'admin' || role === 'super admin';
+    // Try accessControl method first if available
+    if (window.accessControl && typeof window.accessControl.isAdminOrAbove === 'function') {
+        return window.accessControl.isAdminOrAbove();
     }
     
-    return window.accessControl.isAdminOrAbove();
+    // Fallback: check userInfo directly
+    const userInfo = getCurrentUserInfo();
+    if (!userInfo) {
+        return false;
+    }
+    
+    const role = (userInfo.role || '').toLowerCase();
+    return role === 'admin' || role === 'super admin';
 }
 
 // Helper function to check if acknowledgement status is considered "acknowledged" (locked, no edits/comments)
@@ -1462,17 +1464,10 @@ function hasPendingReversalRequest() {
 // Editing permissions are handled separately in displayReversalApprovalInterface
 function shouldShowReversalApprovalInterface() {
     if (!currentAudit) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:1343',message:'shouldShowReversalApprovalInterface: No currentAudit',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         return false;
     }
     
     const reversalRequestedAt = currentAudit.reversal_requested_at || currentAudit.reversalRequestedAt;
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:1348',message:'shouldShowReversalApprovalInterface: Checking reversal',data:{reversalRequestedAt:!!reversalRequestedAt,hasPendingReversalRequest:hasPendingReversalRequest(),auditId:currentAudit?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     
     // Show interface to EVERYONE if there's a reversal request (regardless of state)
     // This ensures all auditors can see the reversal section, just like agents can
@@ -1481,18 +1476,9 @@ function shouldShowReversalApprovalInterface() {
     if (reversalRequestedAt) {
         const workflowState = getReversalWorkflowState(currentAudit);
         const userInfo = getCurrentUserInfo();
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:1358',message:'shouldShowReversalApprovalInterface: Returning true',data:{workflowState,userRole:userInfo?.role,reversalRequestedAt},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
-        
         console.log('shouldShowReversalApprovalInterface: Reversal request exists - showing interface to everyone for visibility');
         return true;
     }
-    
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:1365',message:'shouldShowReversalApprovalInterface: No reversal request - returning false',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     
     return false;
 }
@@ -1815,7 +1801,7 @@ async function getUserByName(userName) {
     
     try {
         const { data, error } = await window.supabaseClient
-            .from('users')
+            .from('people')
             .select('*')
             .ilike('name', userName)
             .limit(1)
@@ -1824,7 +1810,7 @@ async function getUserByName(userName) {
         if (error) {
             // Try case-insensitive search if exact match fails
             const { data: allUsers } = await window.supabaseClient
-                .from('users')
+                .from('people')
                 .select('*')
                 .limit(1000);
             
@@ -2192,73 +2178,82 @@ async function loadAuditFromURL() {
         
         currentScorecardId = finalScorecardId;
 
-        // Fetch reversal_requests data if reversal exists (for new structure)
+        // Fetch reversal_requests data (check reversal_requests table regardless of audit table state)
+        // This ensures we capture reversals even if the audit table wasn't properly updated
         let reversalRequestData = null;
-        if (data.reversal_requested_at) {
-            try {
-                const { data: reversalRequest, error: rrError } = await supabaseClient
-                    .from('reversal_requests')
-                    .select('id, final_decision_by_name, final_decision_by_email, final_decision_at, final_decision, current_state_id, team_lead_response')
-                    .eq('audit_id', auditId)
-                    .eq('scorecard_table_name', tableName)
-                    .order('requested_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
+        console.log('[audit-view] Checking for reversal request:', { auditId, tableName, auditReversalRequestedAt: data.reversal_requested_at });
+        
+        try {
+            const { data: reversalRequest, error: rrError } = await supabaseClient
+                .from('reversal_requests')
+                .select('id, requested_at, final_decision_by_name, final_decision_by_email, final_decision_at, final_decision, current_state_id, team_lead_response, justification, reversal_type')
+                .eq('audit_id', auditId)
+                .eq('scorecard_table_name', tableName)
+                .order('requested_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            
+            console.log('[audit-view] Reversal request query result:', { reversalRequest, rrError });
+            
+            if (!rrError && reversalRequest) {
+                reversalRequestData = reversalRequest;
                 
-                if (!rrError && reversalRequest) {
-                    reversalRequestData = reversalRequest;
+                // If audit table doesn't have reversal_requested_at, populate it from reversal_requests
+                if (!data.reversal_requested_at && reversalRequest.requested_at) {
+                    data.reversal_requested_at = reversalRequest.requested_at;
+                    console.log('[audit-view] Populated reversal_requested_at from reversal_requests:', reversalRequest.requested_at);
+                }
+                
+                // Get team lead review data from workflow states and cache workflow state
+                if (reversalRequest.current_state_id) {
+                    const { data: currentState, error: wsError } = await supabaseClient
+                        .from('reversal_workflow_states')
+                        .select('entered_by_name, entered_by_email, entered_at, state, rejection_reason')
+                        .eq('id', reversalRequest.current_state_id)
+                        .eq('is_current', true)
+                        .maybeSingle();
                     
-                    // Get team lead review data from workflow states and cache workflow state
-                    if (reversalRequest.current_state_id) {
-                        const { data: currentState, error: wsError } = await supabaseClient
-                            .from('reversal_workflow_states')
-                            .select('entered_by_name, entered_by_email, entered_at, state, rejection_reason')
-                            .eq('id', reversalRequest.current_state_id)
-                            .eq('is_current', true)
-                            .maybeSingle();
+                    if (!wsError && currentState) {
+                        // Cache the workflow state on reversalRequestData for getReversalWorkflowState to use
+                        reversalRequestData.workflow_state = currentState.state;
                         
-                        if (!wsError && currentState) {
-                            // Cache the workflow state on reversalRequestData for getReversalWorkflowState to use
-                            reversalRequestData.workflow_state = currentState.state;
-                            
-                            // Get team lead review data if applicable
-                            if (currentState.state === 'team_lead_approved' || currentState.state === 'team_lead_rejected' || currentState.state === 'team_lead_review') {
-                                reversalRequestData.teamLeadReviewData = {
-                                    reviewed_by: currentState.entered_by_name,
-                                    reviewed_at: currentState.entered_at,
-                                    approved: currentState.state === 'team_lead_approved',
-                                    rejected: currentState.state === 'team_lead_rejected',
-                                    rejection_reason: currentState.rejection_reason || null
-                                };
-                            }
-                        }
-                    }
-                    
-                    // Also check for team_lead_approved or team_lead_rejected states (might not be current if workflow progressed)
-                    if (reversalRequest.id && !reversalRequestData.teamLeadReviewData) {
-                        const { data: teamLeadState, error: tlError } = await supabaseClient
-                            .from('reversal_workflow_states')
-                            .select('entered_by_name, entered_by_email, entered_at, state, rejection_reason')
-                            .eq('reversal_request_id', reversalRequest.id)
-                            .in('state', ['team_lead_approved', 'team_lead_rejected'])
-                            .order('entered_at', { ascending: false })
-                            .limit(1)
-                            .maybeSingle();
-                        
-                        if (!tlError && teamLeadState) {
+                        // Get team lead review data if applicable
+                        if (currentState.state === 'team_lead_approved' || currentState.state === 'team_lead_rejected' || currentState.state === 'team_lead_review') {
                             reversalRequestData.teamLeadReviewData = {
-                                reviewed_by: teamLeadState.entered_by_name,
-                                reviewed_at: teamLeadState.entered_at,
-                                approved: teamLeadState.state === 'team_lead_approved',
-                                rejected: teamLeadState.state === 'team_lead_rejected',
-                                rejection_reason: teamLeadState.rejection_reason || null
+                                reviewed_by: currentState.entered_by_name,
+                                reviewed_at: currentState.entered_at,
+                                approved: currentState.state === 'team_lead_approved',
+                                rejected: currentState.state === 'team_lead_rejected',
+                                rejection_reason: currentState.rejection_reason || null
                             };
                         }
                     }
                 }
-            } catch (err) {
-                console.warn('Error fetching reversal_requests data:', err);
+                
+                // Also check for team_lead_approved or team_lead_rejected states (might not be current if workflow progressed)
+                if (reversalRequest.id && !reversalRequestData.teamLeadReviewData) {
+                    const { data: teamLeadState, error: tlError } = await supabaseClient
+                        .from('reversal_workflow_states')
+                        .select('entered_by_name, entered_by_email, entered_at, state, rejection_reason')
+                        .eq('reversal_request_id', reversalRequest.id)
+                        .in('state', ['team_lead_approved', 'team_lead_rejected'])
+                        .order('entered_at', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+                    
+                    if (!tlError && teamLeadState) {
+                        reversalRequestData.teamLeadReviewData = {
+                            reviewed_by: teamLeadState.entered_by_name,
+                            reviewed_at: teamLeadState.entered_at,
+                            approved: teamLeadState.state === 'team_lead_approved',
+                            rejected: teamLeadState.state === 'team_lead_rejected',
+                            rejection_reason: teamLeadState.rejection_reason || null
+                        };
+                    }
+                }
             }
+        } catch (err) {
+            console.warn('Error fetching reversal_requests data:', err);
         }
 
         // Map snake_case to camelCase
@@ -3195,12 +3190,18 @@ async function renderAudit(audit, auditScorecard, errorFields) {
     // Check if current user is the audited employee (for showing acknowledge button)
     const showAcknowledgeButton = isCurrentUserAuditedEmployee();
     
+    console.log('[renderAuditFooter] showAcknowledgeButton:', showAcknowledgeButton);
+    console.log('[renderAuditFooter] currentUserEmail:', currentUserEmail);
+    console.log('[renderAuditFooter] audit.employee_email:', audit?.employee_email || audit?.employeeEmail);
+    
     // Check if edit button should be shown (only for Quality Analysts when reversal is pending)
     const showEditButton = shouldShowEditButton();
     
     // Check if reversal button should be shown (hide after REVERSAL_WINDOW_HOURS hours from audit submission if window is enabled)
     const auditSubmissionTime = audit.submittedAt || audit.auditTimestamp || audit.submitted_at || audit.audit_timestamp;
     const timeWindowAllowsReversal = checkIfReversalButtonShouldShow(auditSubmissionTime);
+    
+    console.log('[renderAuditFooter] timeWindowAllowsReversal:', timeWindowAllowsReversal);
     
     // Get reversal and acknowledgement status for footer styling
     // Check workflow state first, then fall back to old logic
@@ -3243,11 +3244,18 @@ async function renderAudit(audit, auditScorecard, errorFields) {
     // Check if there are errors or feedback from auditors
     const hasErrorsOrFeedbackFromAuditor = hasErrorsOrFeedback(audit, errorFields);
     
+    console.log('[renderAuditFooter] hasErrorsOrFeedbackFromAuditor:', hasErrorsOrFeedbackFromAuditor);
+    console.log('[renderAuditFooter] isAcknowledged:', isAcknowledged);
+    console.log('[renderAuditFooter] acknowledgementStatus:', acknowledgementStatus);
+    
     // Reversal button should only show if:
     // 1. Time window allows it (if enabled)
     // 2. There are errors or feedback from auditors
     // 3. Audit is NOT acknowledged
     const showReversalButton = timeWindowAllowsReversal && hasErrorsOrFeedbackFromAuditor && !isAcknowledged;
+    
+    console.log('[renderAuditFooter] showReversalButton:', showReversalButton);
+    console.log('[renderAuditFooter] Button will be rendered:', showAcknowledgeButton && showReversalButton);
 
     // Generate action buttons HTML
     // Only show acknowledge/reversal buttons if current user is the audited employee
@@ -3262,7 +3270,7 @@ async function renderAudit(audit, auditScorecard, errorFields) {
         if (showReversalButton) {
             const reversalDisabled = isReversalPending;
             reversalButtonHtml = `
-                <button id="reversalBtn" onclick="toggleReversalForm()" ${reversalDisabled ? 'disabled' : ''} style="padding: 0.4852rem 1.2937rem; background-color: #dc2626; color: white; border: none; border-radius: ${acknowledgementStatus === 'Acknowledged' ? '0.2425rem' : '0 0.2425rem 0.2425rem 0'}; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: ${reversalDisabled ? 'not-allowed' : 'pointer'}; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem; opacity: ${reversalDisabled ? '0.5' : '1'}; ${acknowledgementStatus !== 'Acknowledged' ? 'border-left: 0.0304rem solid rgba(255,255,255,0.3);' : ''}">
+                <button id="reversalBtn" data-action="toggleReversalForm" ${reversalDisabled ? 'disabled' : ''} style="padding: 0.4852rem 1.2937rem; background-color: #dc2626; color: white; border: none; border-radius: ${acknowledgementStatus === 'Acknowledged' ? '0.2425rem' : '0 0.2425rem 0.2425rem 0'}; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: ${reversalDisabled ? 'not-allowed' : 'pointer'}; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem; opacity: ${reversalDisabled ? '0.5' : '1'}; ${acknowledgementStatus !== 'Acknowledged' ? 'border-left: 0.0304rem solid rgba(255,255,255,0.3);' : ''}">
                         <svg style="width: 0.7278rem; height: 0.7278rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                             <line x1="12" y1="9" x2="12" y2="13"/>
@@ -3280,7 +3288,7 @@ async function renderAudit(audit, auditScorecard, errorFields) {
             employeeButtonsHtml = `
                 <!-- Split button for Acknowledge/Reversal -->
                 <div style="position: relative; display: inline-flex;">
-                    <button id="acknowledgeBtn" onclick="acknowledgeAudit()" ${acknowledgeDisabled ? 'disabled' : ''} style="padding: 0.4852rem 1.2937rem; background-color: #1A733E; color: white; border: none; border-radius: ${reversalButtonHtml ? '0.2425rem 0 0 0.2425rem' : '0.2425rem'}; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: ${acknowledgeDisabled ? 'not-allowed' : 'pointer'}; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem; opacity: ${acknowledgeDisabled ? '0.5' : '1'};">
+                    <button id="acknowledgeBtn" data-action="acknowledgeAudit" ${acknowledgeDisabled ? 'disabled' : ''} style="padding: 0.4852rem 1.2937rem; background-color: #1A733E; color: white; border: none; border-radius: ${reversalButtonHtml ? '0.2425rem 0 0 0.2425rem' : '0.2425rem'}; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: ${acknowledgeDisabled ? 'not-allowed' : 'pointer'}; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem; opacity: ${acknowledgeDisabled ? '0.5' : '1'};">
                         <svg style="width: 0.7278rem; height: 0.7278rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
@@ -3300,7 +3308,7 @@ async function renderAudit(audit, auditScorecard, errorFields) {
     let editButtonHtml = '';
     if (showEditButton) {
         editButtonHtml = `
-                <button id="editAuditBtn" onclick="editCurrentAudit()" style="padding: 0.4852rem 1.2937rem; background-color: #f59e0b; color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem;">
+                <button id="editAuditBtn" data-action="editCurrentAudit" style="padding: 0.4852rem 1.2937rem; background-color: #f59e0b; color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 0.3234rem;">
                     <svg style="width: 0.7278rem; height: 0.7278rem;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -3434,7 +3442,7 @@ async function renderAudit(audit, auditScorecard, errorFields) {
 
     // Generate header actions HTML
     const headerActionsHtml = `
-        <button onclick="handleCloseButtonClick()" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Close (Esc)">×</button>
+        <button data-action="handleCloseButtonClick" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Close (Esc)">×</button>
     `;
 
     // Check if user is quality analyst or above (should see auditor name)
@@ -3574,40 +3582,32 @@ async function renderAudit(audit, auditScorecard, errorFields) {
     // Show it to everyone (agents see read-only, team leads/auditors/admins see editable)
     // Note: workflowState is already declared above (line 2483)
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3261',message:'Checking reversal display conditions',data:{reversalStatus,workflowState,reversalRequestedAt:!!reversalRequestedAt,auditId:audit?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    console.log('[renderAudit] Checking reversal display conditions:', {
+        reversalStatus,
+        workflowState,
+        reversalRequestedAt,
+        auditId: audit?.id,
+        reversal_workflow_state: audit?.reversal_workflow_state,
+        teamLeadApproved: audit?.teamLeadApproved,
+        team_lead_approved: audit?.team_lead_approved
+    });
     
     // Show reversal section if there's ANY reversal request, regardless of state
     // Everyone should be able to see reversal information
     if (reversalRequestedAt) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3263',message:'Reversal request found - will display',data:{reversalRequestedAt,workflowState,reversalStatus},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
+        console.log('[renderAudit] Reversal request found - will display interface');
         
         // Load workflow state from reversal_requests table before displaying
         await loadReversalWorkflowState(audit);
         const updatedWorkflowState = getReversalWorkflowState(audit);
-        
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3268',message:'After loadReversalWorkflowState',data:{updatedWorkflowState,originalWorkflowState:workflowState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         
         // Show interface for everyone if there's a reversal request:
         // - Agents: read-only view of their submitted reversal
         // - Everyone else: show approval interface (read-only for unauthorized users, editable for authorized)
         const isAgent = isCurrentUserAuditedEmployee();
         
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3273',message:'About to display reversal interface',data:{isAgent,updatedWorkflowState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        
         // Always show if there's a reversal request - no restrictions
         setTimeout(async () => {
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3276',message:'Inside setTimeout - calling display function',data:{isAgent},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-            // #endregion
-            
             // For agents, show read-only reversal form with journey map
             if (isAgent) {
                 await displaySubmittedReversalForm(audit);
@@ -3617,10 +3617,6 @@ async function renderAudit(audit, auditScorecard, errorFields) {
                 await displayReversalApprovalInterface(audit);
             }
         }, 200);
-    } else {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3288',message:'No reversal request found',data:{reversalRequestedAt,reversalStatus,workflowState},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
     }
     
     // Start timer countdown if reversal button is visible and reversal is not pending
@@ -3716,16 +3712,27 @@ function handleReversalStatusUI(audit) {
     
     const acknowledgeBtn = document.getElementById('acknowledgeBtn');
     const reversalFormContainer = document.getElementById('reversalFormContainer');
+    const reversalBtn = document.getElementById('reversalBtn');
+    
+    console.log('[handleReversalStatusUI] Called with audit:', audit?.id);
+    console.log('[handleReversalStatusUI] acknowledgeBtn found:', !!acknowledgeBtn);
+    console.log('[handleReversalStatusUI] reversalBtn found:', !!reversalBtn);
+    console.log('[handleReversalStatusUI] isCurrentUserAuditedEmployee:', isCurrentUserAuditedEmployee());
+    console.log('[handleReversalStatusUI] currentUserEmail:', currentUserEmail);
+    console.log('[handleReversalStatusUI] audit employee_email:', audit?.employee_email || audit?.employeeEmail);
     
     // Check if acknowledge button should be visible (only for audited employee)
     if (acknowledgeBtn && !isCurrentUserAuditedEmployee()) {
         // Hide acknowledge button if user is not the audited employee
+        console.log('[handleReversalStatusUI] Hiding acknowledge and reversal buttons (not audited employee)');
         acknowledgeBtn.style.display = 'none';
         // Also hide the reversal button if both buttons are in a split button container
-        const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[onclick="toggleReversalForm()"]');
-        if (reversalBtn) {
-            reversalBtn.style.display = 'none';
+        const reversalBtnInContainer = acknowledgeBtn?.parentElement?.querySelector('button[data-action="toggleReversalForm"]');
+        if (reversalBtnInContainer) {
+            reversalBtnInContainer.style.display = 'none';
         }
+    } else {
+        console.log('[handleReversalStatusUI] User IS the audited employee, buttons should be visible');
     }
     
     // Get the reversal status from audit data
@@ -3823,7 +3830,7 @@ function handleReversalStatusUI(audit) {
         if (reversalStatus === 'Pending') {
             // Don't show banner for pending reversals - the "Review & Process Reversal" section has more specific information
             // Just disable the reversal button (user can't submit another reversal while one is pending)
-            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[onclick="toggleReversalForm()"]');
+            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[data-action="toggleReversalForm"]');
             if (reversalBtn) {
                 reversalBtn.disabled = true;
                 reversalBtn.style.opacity = '0.5';
@@ -3861,7 +3868,7 @@ function handleReversalStatusUI(audit) {
                 acknowledgeBtn.style.opacity = '1';
                 acknowledgeBtn.style.cursor = 'pointer';
             }
-            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[onclick="toggleReversalForm()"]');
+            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[data-action="toggleReversalForm"]');
             if (reversalBtn) {
                 reversalBtn.disabled = false;
                 reversalBtn.style.opacity = '1';
@@ -3915,7 +3922,7 @@ function handleReversalStatusUI(audit) {
                 acknowledgeBtn.style.opacity = '1';
                 acknowledgeBtn.style.cursor = 'pointer';
             }
-            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[onclick="toggleReversalForm()"]');
+            const reversalBtn = acknowledgeBtn?.parentElement?.querySelector('button[data-action="toggleReversalForm"]');
             if (reversalBtn) {
                 reversalBtn.disabled = false;
                 reversalBtn.style.opacity = '1';
@@ -3975,9 +3982,9 @@ async function isCurrentUserTeamSupervisor() {
             return false;
         }
         
-        // Get employee's team supervisor from users table
+        // Get employee's team supervisor from people table
         const { data: employeeData, error } = await window.supabaseClient
-            .from('users')
+            .from('people')
             .select('team_supervisor')
             .eq('email', employeeEmail)
             .maybeSingle();
@@ -4012,7 +4019,7 @@ async function isCurrentUserAuthorizedForQAReview() {
     // Fetch team from database (team might not be in localStorage)
     try {
         const { data: userData, error } = await window.supabaseClient
-            .from('users')
+            .from('people')
             .select('team')
             .eq('email', userInfo.email)
             .maybeSingle();
@@ -4025,9 +4032,6 @@ async function isCurrentUserAuthorizedForQAReview() {
         // Check if team is "QC" (case-insensitive)
         const team = (userData.team || '').trim();
         const isQC = team.toLowerCase() === 'qc';
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:3677',message:'QA authorization check result',data:{userEmail:userInfo.email,role,team,isQC},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         return isQC;
     } catch (error) {
         console.error('Error checking QA review authorization:', error);
@@ -4352,15 +4356,8 @@ function hasParameterChanges() {
 }
 
 async function displayReversalApprovalInterface(audit) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:4053',message:'displayReversalApprovalInterface: Entry',data:{auditId:audit?.id,hasAuditContent:!!document.getElementById('auditContent')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    
     const auditContentDiv = document.getElementById('auditContent');
     if (!auditContentDiv) {
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:4057',message:'displayReversalApprovalInterface: No auditContentDiv - returning early',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         return;
     }
     
@@ -4617,10 +4614,10 @@ async function displayReversalApprovalInterface(audit) {
                 
                 <!-- Action Buttons (shown first) -->
                 <div style="display: flex; gap: 0.5625rem; justify-content: flex-end; margin-bottom: 0.75rem;">
-                    <button onclick="teamLeadRejectReversal()" id="teamLeadRejectBtn" style="padding: 0.375rem 0.75rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                    <button data-action="teamLeadRejectReversal" id="teamLeadRejectBtn" style="padding: 0.375rem 0.75rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                         Reject Reversal Request
                     </button>
-                    <button onclick="teamLeadApproveReversal()" id="teamLeadApproveBtn" style="padding: 0.375rem 0.75rem; background: #16a34a; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                    <button data-action="teamLeadApproveReversal" id="teamLeadApproveBtn" style="padding: 0.375rem 0.75rem; background: #16a34a; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                         Approve Reversal Request
                     </button>
                 </div>
@@ -4638,10 +4635,10 @@ async function displayReversalApprovalInterface(audit) {
                     </div>
                     
                     <div style="display: flex; gap: 0.5625rem; justify-content: flex-end;">
-                        <button onclick="teamLeadCancelRejection()" style="padding: 0.375rem 0.75rem; background: #f3f4f6; color: #374151; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                        <button data-action="teamLeadCancelRejection" style="padding: 0.375rem 0.75rem; background: #f3f4f6; color: #374151; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                             Cancel
                         </button>
-                        <button onclick="teamLeadConfirmRejectReversal()" style="padding: 0.375rem 0.75rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                        <button data-action="teamLeadConfirmRejectReversal" style="padding: 0.375rem 0.75rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                             Confirm Rejection
                         </button>
                     </div>
@@ -5158,10 +5155,10 @@ async function displayReversalApprovalInterface(audit) {
                 </div>
                 
                 <div style="display: flex; gap: 0.5625rem; justify-content: flex-end; padding-top: 0.5625rem; border-top: 0.0625rem solid #e5e7eb;">
-                    <button onclick="rejectReversal()" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                    <button data-action="rejectReversal" style="padding: 0.5rem 1rem; background: #dc2626; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                         Reject Reversal
                     </button>
-                    <button onclick="approveReversal()" style="padding: 0.5rem 1rem; background: #16a34a; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
+                    <button data-action="approveReversal" style="padding: 0.5rem 1rem; background: #16a34a; color: white; border: none; border-radius: 0.2812rem; font-size: 0.6562rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: background 0.2s;">
                         Approve Reversal
                     </button>
                 </div>
@@ -5264,26 +5261,44 @@ async function displayReversalApprovalInterface(audit) {
     const existingApprovalInterface = document.getElementById('reversalApprovalInterface');
     if (existingApprovalInterface) {
         existingApprovalInterface.remove();
+        console.log('[displayReversalApprovalInterface] Removed existing interface');
     }
     
     // Find the header section and insert right after it
     const auditFormHeader = document.getElementById('auditFormHeader');
+    const auditMainContent = document.getElementById('auditMainContent');
+    
+    console.log('[displayReversalApprovalInterface] DOM elements found:', {
+        auditFormHeader: !!auditFormHeader,
+        auditMainContent: !!auditMainContent,
+        auditContentDiv: !!auditContentDiv,
+        journeyMapLength: journeyMapHtml?.length || 0,
+        decisionSectionLength: decisionSectionHtml?.length || 0
+    });
+    
     if (auditFormHeader && auditFormHeader.nextSibling) {
         // Insert after header, before the main content
+        console.log('[displayReversalApprovalInterface] Inserting after auditFormHeader');
         auditFormHeader.insertAdjacentHTML('afterend', approvalInterfaceHtml);
     } else if (auditFormHeader) {
         // If header exists but no next sibling, append after it
+        console.log('[displayReversalApprovalInterface] Inserting after auditFormHeader (no next sibling)');
         auditFormHeader.insertAdjacentHTML('afterend', approvalInterfaceHtml);
-    } else {
+    } else if (auditMainContent) {
         // Fallback: try to find auditMainContent and insert before it
-        const auditMainContent = document.getElementById('auditMainContent');
-        if (auditMainContent) {
-            auditMainContent.insertAdjacentHTML('beforebegin', approvalInterfaceHtml);
-        } else {
-            // Last fallback: append to end of audit content
-            auditContentDiv.insertAdjacentHTML('beforeend', approvalInterfaceHtml);
-        }
+        console.log('[displayReversalApprovalInterface] Inserting before auditMainContent (fallback)');
+        auditMainContent.insertAdjacentHTML('beforebegin', approvalInterfaceHtml);
+    } else if (auditContentDiv) {
+        // Last fallback: append to end of audit content
+        console.log('[displayReversalApprovalInterface] Appending to auditContentDiv (last fallback)');
+        auditContentDiv.insertAdjacentHTML('beforeend', approvalInterfaceHtml);
+    } else {
+        console.error('[displayReversalApprovalInterface] No valid container found to insert reversal interface');
     }
+    
+    // Verify the interface was inserted
+    const insertedInterface = document.getElementById('reversalApprovalInterface');
+    console.log('[displayReversalApprovalInterface] Interface inserted:', !!insertedInterface);
     
     // Capture original state (only for auditors/CQC who can edit)
     if (!isTeamLeadReview) {
@@ -5317,7 +5332,7 @@ async function getUserByName(userName) {
     
     try {
         const { data, error } = await window.supabaseClient
-            .from('users')
+            .from('people')
             .select('*')
             .ilike('name', userName)
             .limit(1)
@@ -5326,7 +5341,7 @@ async function getUserByName(userName) {
         if (error) {
             // Try case-insensitive search if exact match fails
             const { data: allUsers } = await window.supabaseClient
-                .from('users')
+                .from('people')
                 .select('*')
                 .limit(1000);
             
@@ -5707,10 +5722,6 @@ async function processReversalDecision(decision) {
     // Check if user is authorized for QA review (team "QC" AND role "Super Admin")
     const isAuthorizedForQA = await isCurrentUserAuthorizedForQAReview();
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:5269',message:'User authorization check',data:{userEmail:currentUserEmailFromInfo,userRole:userInfo?.role,workflowState,isAuthorizedForQA,isAdmin,canReviewAsTeamLead,isTeamSupervisor},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     // Check permissions based on workflow state
     if (workflowState === 'team_lead_review' || workflowState === 'pending' || workflowState === 'team_lead_rejected') {
         // Team lead review stage - only team leads can process
@@ -5746,9 +5757,6 @@ async function processReversalDecision(decision) {
             } else {
                 nextWorkflowState = 'pending - team_lead_rejected'; // Final rejection, stops here
             }
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:5300',message:'Action type: team_lead_review',data:{actionType,decision,nextWorkflowState,isAuthorizedForQA},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
         } else {
             // This should not happen if UI is properly disabled, but show a helpful message
             alert('This reversal is currently under Team Lead review. Only Team Leads or Team Supervisors can review reversals at this stage. You will be able to review and process this reversal once the Team Lead has approved it.');
@@ -6152,9 +6160,6 @@ async function processReversalDecision(decision) {
                 } else {
                     newWorkflowState = decision === 'approved' ? 'approved' : 'rejected';
                 }
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/11273579-9ce1-4c55-884d-8555e5f01175',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'audit-view.html:5743',message:'Final workflow state determined',data:{actionType,decision,newWorkflowState,isAuthorizedForQA,userEmail:currentUserEmailFromInfo},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-                // #endregion
                 
                 // Prepare rejection reason for team lead rejection
                 let rejectionReason = null;
@@ -9140,42 +9145,40 @@ function initializeSplitter() {
     }
 }
 
-// Toggle reversal form visibility
-function toggleReversalForm() {
-    // Verify that current user is the audited employee
-    if (!isCurrentUserAuditedEmployee()) {
-        alert('Error: You can only submit reversal requests for audits assigned to you.');
-        return;
-    }
-    
-    const formContainer = document.getElementById('reversalFormContainer');
-    const auditContentDiv = document.getElementById('auditContent');
-    
-    if (!formContainer) {
-        console.error('Reversal form container not found');
-        return;
-    }
-    
-    if (!auditContentDiv) {
-        console.error('Audit content div not found');
-        return;
-    }
-    
-    // Ensure form container is in the DOM (might have been removed during re-render)
-    if (!formContainer.parentElement) {
-        const buttonsSection = auditContentDiv.querySelector('.no-print[style*="border-top"]');
-        if (buttonsSection) {
-            buttonsSection.parentElement.insertBefore(formContainer, buttonsSection);
-        } else {
-            auditContentDiv.appendChild(formContainer);
-        }
-    }
-    
-    if (formContainer.style.display === 'none' || !formContainer.style.display) {
-        formContainer.style.display = 'block';
+// Toggle reversal form visibility - exposed directly on window to avoid recursion
+window.toggleReversalForm = function toggleReversalForm() {
+    try {
+        console.log('[toggleReversalForm] Function called');
         
-        // Move form container to be before the action buttons if not already in auditContent
-        if (auditContentDiv && formContainer.parentElement !== auditContentDiv) {
+        // Verify that current user is the audited employee
+        const isEmployee = isCurrentUserAuditedEmployee();
+        console.log('[toggleReversalForm] isCurrentUserAuditedEmployee:', isEmployee);
+        
+        if (!isEmployee) {
+            const auditEmployeeEmail = currentAudit?.employee_email || currentAudit?.employeeEmail || '';
+            console.warn('[toggleReversalForm] User email mismatch:', {
+                currentUserEmail: currentUserEmail,
+                auditEmployeeEmail: auditEmployeeEmail
+            });
+            alert('Error: You can only submit reversal requests for audits assigned to you.\n\nYour email: ' + currentUserEmail + '\nAudit employee email: ' + auditEmployeeEmail);
+            return;
+        }
+        
+        const formContainer = document.getElementById('reversalFormContainer');
+        const auditContentDiv = document.getElementById('auditContent');
+        
+        if (!formContainer) {
+            console.error('Reversal form container not found');
+            return;
+        }
+        
+        if (!auditContentDiv) {
+            console.error('Audit content div not found');
+            return;
+        }
+        
+        // Ensure form container is in the DOM (might have been removed during re-render)
+        if (!formContainer.parentElement) {
             const buttonsSection = auditContentDiv.querySelector('.no-print[style*="border-top"]');
             if (buttonsSection) {
                 buttonsSection.parentElement.insertBefore(formContainer, buttonsSection);
@@ -9184,16 +9187,28 @@ function toggleReversalForm() {
             }
         }
         
-        // Comments are automatically collected during form submission
-        
-        formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else {
-        formContainer.style.display = 'none';
+        if (formContainer.style.display === 'none' || !formContainer.style.display) {
+            formContainer.style.display = 'block';
+            
+            // Move form container to be before the action buttons if not already in auditContent
+            if (auditContentDiv && formContainer.parentElement !== auditContentDiv) {
+                const buttonsSection = auditContentDiv.querySelector('.no-print[style*="border-top"]');
+                if (buttonsSection) {
+                    buttonsSection.parentElement.insertBefore(formContainer, buttonsSection);
+                } else {
+                    auditContentDiv.appendChild(formContainer);
+                }
+            }
+            
+            formContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        } else {
+            formContainer.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('[toggleReversalForm] Error:', error);
+        alert('Error in toggleReversalForm: ' + error.message);
     }
-}
-
-// Make toggleReversalForm globally accessible
-window.toggleReversalForm = toggleReversalForm;
+};
 
 // Refresh audit data from database to get latest comments
 async function refreshAuditData() {
@@ -11047,19 +11062,19 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
     <!-- Image Viewer Modal -->
-    <div id="imageViewerModal" tabindex="0" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 10000; align-items: center; justify-content: center; cursor: pointer;" onclick="if(event.target.id === 'imageViewerModal') closeImageViewer();" onkeydown="if(event.key === 'Escape') closeImageViewer(); if(event.key === 'ArrowLeft') navigateImage('prev'); if(event.key === 'ArrowRight') navigateImage('next');">
+    <div id="imageViewerModal" tabindex="0" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 10000; align-items: center; justify-content: center; cursor: pointer;">
         <!-- Close Button -->
-        <button id="imageViewerClose" onclick="closeImageViewer(); event.stopPropagation();" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 2.5rem; height: 2.5rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Close (Esc)">
+        <button id="imageViewerClose" data-action="closeImageViewer" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 2.5rem; height: 2.5rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" title="Close (Esc)">
             ×
         </button>
         
         <!-- Previous Button -->
-        <button id="imageViewerPrev" onclick="navigateImage('prev'); event.stopPropagation();" style="position: absolute; left: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Previous (←)">
+        <button id="imageViewerPrev" data-action="navigateImagePrev" style="position: absolute; left: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" title="Previous (←)">
             ‹
         </button>
         
         <!-- Next Button -->
-        <button id="imageViewerNext" onclick="navigateImage('next'); event.stopPropagation();" style="position: absolute; right: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'" title="Next (→)">
+        <button id="imageViewerNext" data-action="navigateImageNext" style="position: absolute; right: 1rem; background: rgba(255, 255, 255, 0.2); border: none; color: white; width: 3rem; height: 3rem; border-radius: 50%; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s ease; z-index: 10001;" title="Next (→)">
             ›
         </button>
         
@@ -11073,6 +11088,91 @@ document.addEventListener('DOMContentLoaded', function() {
             <img id="imageViewerImg" src="" alt="Conversation image" style="max-width: 100%; max-height: 90vh; object-fit: contain; border-radius: 0.5rem; box-shadow: 0 0.5rem 2rem rgba(0,0,0,0.5);">
         </div>
     </div>
+
+<!-- Event listener for all buttons (CSP-compliant - no inline handlers) -->
+<script>
+// Attach click handlers for all buttons (replaces inline onclick which is blocked by CSP)
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[ButtonHandler] DOMContentLoaded fired');
+    
+    // Map of data-action values to their corresponding functions
+    const actionHandlers = {
+        // Reversal actions
+        'toggleReversalForm': 'toggleReversalForm',
+        'teamLeadApproveReversal': 'teamLeadApproveReversal',
+        'teamLeadRejectReversal': 'teamLeadRejectReversal',
+        'teamLeadCancelRejection': 'teamLeadCancelRejection',
+        'teamLeadConfirmRejectReversal': 'teamLeadConfirmRejectReversal',
+        'approveReversal': 'approveReversal',
+        'rejectReversal': 'rejectReversal',
+        'acknowledgeAudit': 'acknowledgeAudit',
+        // Navigation actions
+        'goBack': function() { window.history.back(); },
+        'handleCloseButtonClick': 'handleCloseButtonClick',
+        'editCurrentAudit': 'editCurrentAudit',
+        // Image viewer actions
+        'closeImageViewer': 'closeImageViewer',
+        'navigateImagePrev': function() { window.navigateImage && window.navigateImage('prev'); },
+        'navigateImageNext': function() { window.navigateImage && window.navigateImage('next'); },
+        // Parameter comment modal
+        'closeParameterCommentModal': 'closeParameterCommentModal',
+        'toggleCommentsColumn': 'toggleCommentsColumn'
+    };
+    
+    // Use event delegation to handle clicks on all action buttons
+    document.body.addEventListener('click', function(e) {
+        // Find element with data-action attribute
+        const element = e.target.closest('[data-action]');
+        if (!element) return;
+        
+        const action = element.getAttribute('data-action');
+        const handler = actionHandlers[action];
+        
+        if (handler) {
+            console.log('[ButtonHandler] Element clicked with action:', action);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Call the handler (either function name string or direct function)
+            if (typeof handler === 'function') {
+                handler();
+            } else if (typeof window[handler] === 'function') {
+                window[handler]();
+            } else {
+                console.error('[ButtonHandler] Function not defined:', handler);
+            }
+        }
+    });
+    
+    // Image viewer modal - click to close and keyboard navigation
+    const imageViewerModal = document.getElementById('imageViewerModal');
+    if (imageViewerModal) {
+        // Click on backdrop to close
+        imageViewerModal.addEventListener('click', function(e) {
+            if (e.target.id === 'imageViewerModal') {
+                if (typeof window.closeImageViewer === 'function') {
+                    window.closeImageViewer();
+                }
+            }
+        });
+        
+        // Keyboard navigation
+        imageViewerModal.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && typeof window.closeImageViewer === 'function') {
+                window.closeImageViewer();
+            }
+            if (e.key === 'ArrowLeft' && typeof window.navigateImage === 'function') {
+                window.navigateImage('prev');
+            }
+            if (e.key === 'ArrowRight' && typeof window.navigateImage === 'function') {
+                window.navigateImage('next');
+            }
+        });
+    }
+    
+    console.log('[ButtonHandler] Event delegation set up for all actions');
+});
+</script>
 
 </body>
 </html>

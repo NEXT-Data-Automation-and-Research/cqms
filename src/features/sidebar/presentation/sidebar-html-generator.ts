@@ -4,51 +4,107 @@
  */
 
 import { router } from '../../../core/routing/router.js'
-import type { RouteConfig } from '../../../core/routing/route-types.js'
+import type { RouteConfig, UserRole } from '../../../core/routing/route-types.js'
 import type { UserInfo } from '../domain/entities.js'
 import { getCleanPathFromFilePath } from '../../../core/routing/route-mapper.js'
 
 /**
- * Generate sidebar HTML from route configuration
+ * Generate sidebar HTML from route configuration.
+ * When pagePermissions is provided, submenu items with permissionResource use it; otherwise role-based.
  */
 export class SidebarHTMLGenerator {
   /**
-   * Generate complete sidebar HTML
+   * Check if user can access a route based on permissions and roles.
    * 
-   * SECURITY: When user role is unknown, only shows routes available to everyone.
-   * This prevents unauthorized menu items from flashing before role is loaded.
-   * Once role is confirmed, the sidebar regenerates with full access.
+   * Permission hierarchy:
+   * 1. If permission check returns TRUE → allow (permission system grants access)
+   * 2. If permission check returns FALSE → check route config roles as fallback
+   * 3. If no permissionResource or no pagePermissions → use route config roles only
+   * 
+   * This ensures:
+   * - Individual ALLOW permissions grant access even if role wouldn't
+   * - Role-based access from route config is always respected as fallback
+   * - Users see all pages their role allows, plus any individually granted
    */
-  generate(userInfo: UserInfo | null): string {
+  private checkRouteAccess(
+    permissionResourceName: string | undefined,
+    allowedRoles: UserRole[],
+    userRole: string | undefined,
+    pagePermissions?: Record<string, boolean>
+  ): boolean {
+    // If we have permission data and a resource name to check
+    if (permissionResourceName && pagePermissions) {
+      const permissionResult = pagePermissions[permissionResourceName];
+      
+      // If permission system explicitly grants access → allow
+      if (permissionResult === true) {
+        return true;
+      }
+      
+      // If permission system returns false, it could mean:
+      // 1. Explicit DENY rule exists
+      // 2. No rule exists and permission check defaulted to false
+      // In either case, fall back to role-based check from route config
+      // This ensures role-based access is always respected
+    }
+    
+    // Fall back to route config role check
+    return router.canAccessRoute(allowedRoles, userRole);
+  }
+  /**
+   * Generate complete sidebar HTML.
+   * @param userInfo - Current user (for role fallback).
+   * @param pagePermissions - Optional map resourceName -> hasAccess for permission-based menu items.
+   */
+  generate(userInfo: UserInfo | null, pagePermissions?: Record<string, boolean> | null): string {
     const userRole = userInfo?.role;
     const currentPath = router.getCurrentPath();
-    
-    // getSidebarRoutes already filters by role using canAccessRoute
-    // which is conservative when role is unknown (only shows 'all' routes)
     const accessibleRoutes = router.getSidebarRoutes(userRole);
 
     const menuItems = accessibleRoutes
-      .map(route => this.generateMenuItem(route, currentPath, userRole))
-      .filter(item => item !== '') // Filter out empty items (e.g., submenus with no accessible items)
-      .join('')
+      .map(route => this.generateMenuItem(route, currentPath, userRole, pagePermissions ?? undefined))
+      .filter(item => item !== '')
+      .join('');
 
-    return this.generateSidebarTemplate(menuItems)
+    return this.generateSidebarTemplate(menuItems);
   }
 
   /**
    * Generate a single menu item HTML
+   * 
+   * Permission hierarchy:
+   * 1. If permission check returns true → show (explicit allow or role allows via permission system)
+   * 2. If permission check returns false → fall back to route config roles (allow if role matches)
+   * 3. If no permissionResource defined → use route config roles only
+   * 
+   * This ensures role-based access from route config is always respected,
+   * while individual permissions can grant additional access.
    */
   private generateMenuItem(
-    route: RouteConfig, 
+    route: RouteConfig,
     currentPath: string,
-    userRole?: string
+    userRole?: string,
+    pagePermissions?: Record<string, boolean>
   ): string {
-    const isActive = router.isRouteActive(route.path)
-    const hasSubmenu = route.submenu && route.submenu.length > 0
+    const hasSubmenu = route.submenu && route.submenu.length > 0;
 
     if (hasSubmenu) {
-      return this.generateSubmenuItem(route, currentPath, userRole)
+      return this.generateSubmenuItem(route, currentPath, userRole, pagePermissions);
     }
+
+    // Determine if user can access this route
+    const canAccess = this.checkRouteAccess(
+      route.meta.permissionResource?.name,
+      route.meta.roles,
+      userRole,
+      pagePermissions
+    );
+
+    if (!canAccess) {
+      return '';
+    }
+
+    const isActive = router.isRouteActive(route.path);
 
     // Use clean URL if available, fallback to original path (backward compatible)
     const href = getCleanPathFromFilePath(route.path) || route.path
@@ -81,26 +137,34 @@ export class SidebarHTMLGenerator {
   }
 
   /**
-   * Generate submenu item HTML
+   * Generate submenu item HTML.
+   * Uses the same permission hierarchy as top-level items:
+   * 1. Permission TRUE → allow
+   * 2. Permission FALSE → fall back to route config roles
+   * 3. No permission data → use route config roles
    */
   private generateSubmenuItem(
     route: RouteConfig,
     currentPath: string,
-    userRole?: string
+    userRole?: string,
+    pagePermissions?: Record<string, boolean>
   ): string {
     if (!route.submenu || route.submenu.length === 0) {
-      return ''
+      return '';
     }
 
-    const isActive = route.submenu.some(item => 
-      router.isRouteActive(item.path)
-    )
-    const isExpanded = isActive
+    const isActive = route.submenu.some(item => router.isRouteActive(item.path));
+    const isExpanded = isActive;
 
-    // Filter submenu items by access
-    const accessibleSubmenuItems = route.submenu.filter(item => 
-      router.canAccessRoute(item.roles, userRole)
-    )
+    // Filter submenu items using the same access check logic
+    const accessibleSubmenuItems = route.submenu.filter(item => {
+      return this.checkRouteAccess(
+        item.permissionResource?.name,
+        item.roles,
+        userRole,
+        pagePermissions
+      );
+    });
 
     // If no submenu items are accessible, don't show the parent menu item
     if (accessibleSubmenuItems.length === 0) {

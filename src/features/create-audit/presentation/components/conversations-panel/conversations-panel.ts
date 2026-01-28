@@ -1402,8 +1402,16 @@ export class ConversationsPanel {
         
         if (conversationId && assignmentId) {
           // Navigate to audit form with assignment and conversation IDs
-          const auditFormUrl = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${encodeURIComponent(conversationId)}`;
-          logInfo('🎬 Opening audit form', { assignmentId, conversationId, url: auditFormUrl });
+          // Include employee_name from selectedAudit to ensure it carries over to the audit form
+          const employeeName = this.selectedAudit?.employee_name || '';
+          let auditFormUrl = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${encodeURIComponent(conversationId)}`;
+          
+          // Add employee_name parameter if available (helps with form pre-population)
+          if (employeeName) {
+            auditFormUrl += `&employee_name=${encodeURIComponent(employeeName)}`;
+          }
+          
+          logInfo('🎬 Opening audit form', { assignmentId, conversationId, employeeName, url: auditFormUrl });
           window.location.href = auditFormUrl;
         } else {
           logWarn('Cannot open audit form: missing assignment or conversation ID', { conversationId, assignmentId });

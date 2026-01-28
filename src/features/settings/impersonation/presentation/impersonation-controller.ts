@@ -34,7 +34,11 @@ class ImpersonationController {
   async init(): Promise<void> {
     logInfo('[Impersonation] Initializing controller');
     
-    // Check access first
+    // IMPORTANT: Wait for Supabase to be initialized FIRST
+    // This ensures auth tokens are available for permission checks
+    await this.waitForSupabase();
+    
+    // Now check access (requires Supabase to be ready)
     const hasAccess = await this.checkAccess();
     
     if (!hasAccess) {
@@ -44,9 +48,6 @@ class ImpersonationController {
 
     // Show main content
     this.showMainContent();
-    
-    // Wait for Supabase to be initialized before loading data
-    await this.waitForSupabase();
     
     // Load data
     await Promise.all([
@@ -96,22 +97,66 @@ class ImpersonationController {
   }
 
   /**
-   * Check if current user is Super Admin
+   * Check if current user can access impersonation (permission API: role + individual overrides).
+   * Accepts either 'page' or 'api_endpoint' so a grant of "User Impersonation" or "User Impersonation (API)" both allow access.
    */
   private async checkAccess(): Promise<boolean> {
     try {
       const userInfoStr = localStorage.getItem('userInfo');
-      if (!userInfoStr) return false;
-      
+      if (!userInfoStr) {
+        logWarn('[Impersonation] No user info found in localStorage');
+        this.showAccessDeniedReason('No user info found. Please log in again.');
+        return false;
+      }
       const userInfo = JSON.parse(userInfoStr);
       this.currentUserEmail = userInfo.email?.toLowerCase() || '';
+
+      logInfo(`[Impersonation] Checking access for: ${this.currentUserEmail}`);
+
+      // Import permission utilities
+      const { hasPermissionWithDetails, clearPermissionCache } = await import('../../../../utils/permissions.js');
       
-      // Only Super Admin can access
-      return userInfo.role === 'Super Admin';
+      // Clear frontend cache to ensure fresh check
+      clearPermissionCache();
+
+      // Check for page access (primary) with full details
+      const pageResult = await hasPermissionWithDetails('settings/impersonation', 'page');
+      logInfo(`[Impersonation] Page permission check:`, pageResult);
+      
+      if (pageResult.hasAccess) {
+        return true;
+      }
+
+      // Fallback: check for api_endpoint access
+      const apiResult = await hasPermissionWithDetails('settings/impersonation', 'api_endpoint');
+      logInfo(`[Impersonation] API endpoint permission check:`, apiResult);
+      
+      if (apiResult.hasAccess) {
+        return true;
+      }
+
+      // Show detailed reason for denial
+      const reason = pageResult.error 
+        ? `Error: ${pageResult.error}`
+        : `Page: ${pageResult.reason} (Role: ${pageResult.userRole || 'Unknown'})`;
+      this.showAccessDeniedReason(reason);
+      
+      return false;
     } catch (error) {
       logError('[Impersonation] Access check failed:', error);
+      this.showAccessDeniedReason(`Access check error: ${error}`);
       return false;
     }
+  }
+
+  private showAccessDeniedReason(reason: string): void {
+    // Try to show reason in the UI for debugging
+    const reasonEl = document.getElementById('accessDeniedReason');
+    if (reasonEl) {
+      reasonEl.textContent = reason;
+      reasonEl.style.display = 'block';
+    }
+    logWarn(`[Impersonation] Access denied reason: ${reason}`);
   }
 
   private showAccessDenied(): void {
@@ -120,6 +165,46 @@ class ImpersonationController {
     
     if (accessCheck) accessCheck.style.display = 'none';
     if (accessDenied) accessDenied.style.display = 'flex';
+
+    // Setup debug button
+    const debugBtn = document.getElementById('debugAccessBtn');
+    if (debugBtn) {
+      debugBtn.addEventListener('click', () => this.showDebugInfo());
+    }
+  }
+
+  private async showDebugInfo(): Promise<void> {
+    const output = document.getElementById('debugOutput');
+    if (!output) return;
+
+    output.style.display = 'block';
+    output.textContent = 'Loading debug info...';
+
+    try {
+      const supabase = getSupabase();
+      if (!supabase) {
+        output.textContent = 'Error: Supabase not initialized';
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        output.textContent = 'Error: No session found. Please log in again.';
+        return;
+      }
+
+      const response = await fetch('/api/permissions/debug', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      output.textContent = JSON.stringify(data, null, 2);
+    } catch (error: any) {
+      output.textContent = `Error: ${error.message}`;
+    }
   }
 
   private showMainContent(): void {
@@ -168,6 +253,7 @@ class ImpersonationController {
       this.filteredUsers = [...this.users];
       this.renderUsers();
       this.populateDepartmentFilter();
+      this.updateStatCounts(this.users.length, undefined);
       
       logInfo('[Impersonation] Loaded users:', this.users.length);
       
@@ -199,7 +285,9 @@ class ImpersonationController {
       }
 
       const { logs } = await response.json();
-      this.renderLogs(logs || []);
+      const logList = logs || [];
+      this.renderLogs(logList);
+      this.updateStatCounts(undefined, logList.length);
       
     } catch (error) {
       logError('[Impersonation] Failed to load logs:', error);
@@ -207,7 +295,7 @@ class ImpersonationController {
       if (logsContainer) {
         logsContainer.innerHTML = `
           <div class="empty-state">
-            <p>Unable to load impersonation logs</p>
+            <p>Unable to load sessions</p>
           </div>
         `;
       }
@@ -282,7 +370,7 @@ class ImpersonationController {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
           </svg>
-          ${isSelf ? 'You' : 'Login As'}
+          ${isSelf ? 'You' : 'View as User'}
         </button>
       </div>
     `;
@@ -298,7 +386,7 @@ class ImpersonationController {
     if (logs.length === 0) {
       container.innerHTML = `
         <div class="empty-state">
-          <p>No impersonation sessions recorded yet</p>
+          <p>No sessions recorded yet</p>
         </div>
       `;
       return;
@@ -320,6 +408,20 @@ class ImpersonationController {
     }).join('');
 
     container.innerHTML = logsHTML;
+  }
+
+  /**
+   * Update statistics strip (DOM only)
+   */
+  private updateStatCounts(userCount?: number, sessionCount?: number): void {
+    if (userCount !== undefined) {
+      const el = document.getElementById('statUserCount');
+      if (el) el.textContent = String(userCount);
+    }
+    if (sessionCount !== undefined) {
+      const el = document.getElementById('statSessionCount');
+      if (el) el.textContent = String(sessionCount);
+    }
   }
 
   /**
@@ -500,7 +602,7 @@ class ImpersonationController {
       confirmBtn.disabled = true;
       confirmBtn.innerHTML = `
         <div class="loading-spinner" style="width: 18px; height: 18px; border-width: 2px;"></div>
-        Logging in...
+        Opening session...
       `;
     }
 
@@ -518,7 +620,7 @@ class ImpersonationController {
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                   d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
           </svg>
-          Login as User
+          View as User
         `;
       }
     }
