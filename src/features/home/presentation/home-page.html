@@ -169,9 +169,12 @@
   /* Additional page-specific styles */
   /* Note: Main layout styles are in home-page-inline.css */
   
-  /* Override sidebar.css centering for home page */
+  /* Override sidebar.css centering for home page - constrain to 80vw */
   .main-content > * {
     width: 100%;
+    max-width: var(--home-max-width, 80vw);
+    margin-left: auto;
+    margin-right: auto;
   }
 
   /* Screenshot Color Matching - Green Primary Color */
@@ -1599,9 +1602,9 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="flex flex-wrap gap-3 mb-4 justify-center">
+    <div id="stats-cards-container" class="flex flex-wrap gap-3 mb-4 justify-center">
       <!-- Audits Conducted Card -->
-      <div id="auditsConductedCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="auditsConductedCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1625,7 +1628,7 @@
       </div>
 
       <!-- Average Quality Score Card -->
-      <div id="avgQualityScoreCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="avgQualityScoreCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
             <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1643,7 +1646,7 @@
       </div>
 
       <!-- Pass Rate Card (Employees Only) -->
-      <div id="passRateCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stats-card-hidden" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="passRateCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stats-card-hidden stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center group-hover:bg-success/20 transition-colors">
             <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1679,7 +1682,7 @@
       </div>
 
       <!-- Remaining Card -->
-      <div id="remainingCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="remainingCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center group-hover:bg-warning/20 transition-colors">
             <svg class="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1694,7 +1697,7 @@
       </div>
 
       <!-- Requires Acknowledgment Card (Agents Only) -->
-      <div id="requiresAcknowledgmentCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stats-card-hidden" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="requiresAcknowledgmentCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stats-card-hidden stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1710,7 +1713,7 @@
       </div>
 
       <!-- Reversal Card -->
-      <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-error/10 flex items-center justify-center group-hover:bg-error/20 transition-colors">
             <svg class="w-5 h-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1739,7 +1742,7 @@
       </div>
 
       <!-- In Progress Card -->
-      <div id="inProgressCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="inProgressCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: var(--primary-green);">
@@ -1757,7 +1760,7 @@
       </div>
 
       <!-- Avg Duration Card -->
-      <div id="avgDurationCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
+      <div id="avgDurationCard" class="bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow group stat-card" style="min-width: 200px; max-width: 300px; flex: 1 1 250px;">
         <div class="flex items-center justify-between mb-2">
           <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
             <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1773,11 +1776,12 @@
       </div>
     </div>
 
-    <!-- Unified Audits & Updates Section -->
+    <!-- Recents Section -->
     <div class="bg-white rounded border border-gray-200">
       <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <h2 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
-          <span id="unifiedSectionTitle">My Audits & Updates</span>
+          <span id="unifiedSectionTitle">Recents</span>
+          <span id="reversalUpdatesCount" class="badge hidden">0</span>
         </h2>
         <div class="flex items-center gap-2">
           <button id="viewAllBtn" class="view-all-btn btn-primary-action">
@@ -1786,14 +1790,7 @@
         </div>
       </div>
       
-      <!-- Single unified feed for everyone (agents: completed + reversals; auditors: pending + completed + reversals) -->
       <div id="recentUpdatesSection">
-        <div class="px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <h3 id="updatesSectionTitle" class="text-xs font-semibold text-gray-700 uppercase tracking-wide">Recent Audit Activity</h3>
-            <span id="reversalUpdatesCount" class="badge hidden">0</span>
-          </div>
-        </div>
         <div id="updatesFeed" class="divide-y divide-gray-200 max-h-[800px] overflow-y-auto">
           <div class="px-4 py-3 space-y-3">
             <div class="flex items-start gap-3">
@@ -3257,13 +3254,8 @@ async function initializeDashboard() {
     updateWeekDisplay();
     updateUserAvatar(userInfo);
 
-    // Update section titles based on role
-    const unifiedTitle = document.getElementById('unifiedSectionTitle');
-    const updatesTitle = document.getElementById('updatesSectionTitle');
-    
+    // Section title is "Recents" for all roles (set in HTML)
     if (isAgent) {
-      if (unifiedTitle) unifiedTitle.textContent = 'My Audits & Updates';
-      if (updatesTitle) updatesTitle.textContent = 'Recent Audit Activity';
       const createAuditBtn = document.getElementById('createAuditBtn');
       if (createAuditBtn) createAuditBtn.style.display = 'none';
       // Hide Create Audit and Settings from Quick Actions for employees
@@ -3289,8 +3281,6 @@ async function initializeDashboard() {
       const requiresAcknowledgmentCard = document.getElementById('requiresAcknowledgmentCard');
       if (requiresAcknowledgmentCard) requiresAcknowledgmentCard.style.display = 'block';
     } else if (currentUserRole === 'Admin' || currentUserRole === 'Super Admin') {
-      if (unifiedTitle) unifiedTitle.textContent = 'All Audits & Updates';
-      if (updatesTitle) updatesTitle.textContent = 'Recent Audit Activity';
       // Hide pass rate card for admins
       const passRateCard = document.getElementById('passRateCard');
       if (passRateCard) passRateCard.style.display = 'none';
@@ -3308,8 +3298,6 @@ async function initializeDashboard() {
       const remainingCard = document.getElementById('remainingCard');
       if (remainingCard) remainingCard.style.display = 'block';
     } else if (currentUserRole === 'Quality Analyst') {
-      if (unifiedTitle) unifiedTitle.textContent = 'Team Audits & Updates';
-      if (updatesTitle) updatesTitle.textContent = 'Recent Audit Activity';
       // Hide pass rate card for quality analysts
       const passRateCard = document.getElementById('passRateCard');
       if (passRateCard) passRateCard.style.display = 'none';
@@ -3328,8 +3316,6 @@ async function initializeDashboard() {
       if (remainingCard) remainingCard.style.display = 'block';
     } else {
       // Auditors
-      if (unifiedTitle) unifiedTitle.textContent = 'My Assigned Audits & Updates';
-      if (updatesTitle) updatesTitle.textContent = 'Recent Audit Activity';
       // Hide pass rate card for auditors
       const passRateCard = document.getElementById('passRateCard');
       if (passRateCard) passRateCard.style.display = 'none';
@@ -5243,15 +5229,16 @@ function renderCompletedAuditItem(update) {
   const channel = update.channel || 'No Channel';
   const averageScore = update.averageScore || '0';
   const totalErrors = update.totalErrors || '0';
-  
+  const auditedByLabel = isAgent ? 'you' : (escapeHtml(displayName) || 'Unknown');
+
   // Use the full audit object for status chips (they expect the audit format)
   const fullAudit = update._audit || audit;
   const reversalStatusChip = (update.reversalStatus || fullAudit.reversal_status) ? getReversalStatusChip(fullAudit) : '';
   // Always show acknowledgment status chip (function handles empty status by showing "Pending")
   const acknowledgmentStatusChip = getAcknowledgmentStatusChip(fullAudit);
-  
+
   const dataAttributes = `data-action="view-details" data-audit-id="${update.auditId}" data-scorecard-id="${update.scorecardId || ''}" data-scorecard-table="${update.scorecardTable || ''}"`;
-  
+
   return `
     <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" ${dataAttributes}>
       <div class="flex items-center justify-between gap-3">
@@ -5271,7 +5258,7 @@ function renderCompletedAuditItem(update) {
             ${isAgent ? `
               <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
                 <h4 class="text-xs font-semibold text-gray-900">
-                  Audit complete: Conversation ${escapeHtml(interactionId)}
+                  #${escapeHtml(interactionId)} audited by ${auditedByLabel}
                 </h4>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">
                   ${statusIcon} ${passingStatus}
@@ -5289,7 +5276,7 @@ function renderCompletedAuditItem(update) {
             ` : `
               <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
                 <h4 class="text-xs font-semibold text-gray-900">
-                  Audit complete: <span class="font-medium">${escapeHtml(displayName)}</span>, Conversation ${escapeHtml(interactionId)}
+                  #${escapeHtml(interactionId)} audited by ${auditedByLabel}
                 </h4>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">
                   ${statusIcon} ${passingStatus}

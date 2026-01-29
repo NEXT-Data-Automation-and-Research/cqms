@@ -62,25 +62,26 @@
 /* Override sidebar.css centering for home page */
 .home-page .main-content > * {
   width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  max-width: var(--home-max-width, 80vw) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
-/* Ensure main content container doesn't center content */
+/* Ensure main content container centers content within 80vw */
 .home-page .main-content > div {
   align-items: stretch !important;
   justify-content: flex-start !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: var(--home-max-width, 80vw) !important;
 }
 
-/* Fix the inner content wrapper */
+/* Fix the inner content wrapper - constrain to 80vw and center */
 .home-page .main-content > div.px-4 {
   width: 100% !important;
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  max-width: var(--home-max-width, 80vw) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
   padding-left: var(--main-content-padding) !important;
   padding-right: var(--main-content-padding) !important;
   padding-top: 1.5rem !important;
@@ -96,18 +97,18 @@
   margin-bottom: 0 !important;
 }
 
-/* Remove any centering from max-w-7xl mx-auto */
+/* Constrain max-w-7xl mx-auto to 80vw and center */
 .home-page .main-content .max-w-7xl,
 .home-page .main-content .mx-auto {
-  max-width: 100% !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  max-width: var(--home-max-width, 80vw) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
-/* Ensure all containers inside main-content stretch full width */
+/* Ensure all containers inside main-content respect max width */
 .home-page .main-content > * {
   width: 100% !important;
-  max-width: 100% !important;
+  max-width: var(--home-max-width, 80vw) !important;
 }
 
 /* Ensure grid layouts work properly */
@@ -116,11 +117,33 @@
   max-width: 100% !important;
 }
 
-/* Fix stats cards grid */
-.home-page #stats-cards-container .grid {
-  display: grid !important;
+/* Stats cards - flex layout, centered, expand up to 80vw and distribute width equally */
+.home-page #stats-cards-container {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  align-items: stretch !important;
   width: 100% !important;
-  gap: 1rem !important; /* 16px gap between cards */
+  max-width: 100% !important;
+  gap: 1rem !important;
+}
+
+.home-page #stats-cards-container.grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 1rem !important;
+}
+
+/* Stat cards - share width equally, centered (override inline styles) */
+.home-page #stats-cards-container .stat-card,
+.home-page #stats-cards-container .bg-white.rounded-xl {
+  min-width: 200px !important;
+  max-width: none !important;
+  flex: 1 1 200px !important;
+  width: auto !important;
+  padding: var(--home-card-padding, 1rem) !important;
+  transition: all 0.2s ease !important;
 }
 
 /* Stats cards styling */
@@ -129,7 +152,7 @@
   border: 1px solid var(--gray-200, #e5e7eb) !important;
   border-radius: var(--home-card-border-radius) !important;
   box-shadow: var(--home-card-shadow) !important;
-  padding: var(--home-card-padding) !important;
+  padding: var(--home-card-padding, 1rem) !important;
   transition: all 0.2s ease !important;
 }
 
@@ -1052,6 +1075,29 @@ body.home-page {
   --home-section-gap: 1.5rem; /* 24px - consistent spacing between sections */
   --home-card-padding: 1rem; /* 16px - consistent card padding */
   --home-card-border-radius: 0.75rem; /* 12px - consistent border radius */
+  --home-max-width: 80vw; /* Maximum width for home page content */
+}
+
+/* Constrain all homepage content to 80vw max width */
+.home-page .main-content > div.px-4 {
+  max-width: var(--home-max-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Override any previous 100% width rules for inner content */
+.home-page .main-content .max-w-7xl,
+.home-page .main-content .mx-auto {
+  max-width: var(--home-max-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* Ensure header also respects max width */
+.home-page #header-container > header {
+  max-width: var(--home-max-width) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 /* Ensure body has home-page class styling */
@@ -1071,6 +1117,8 @@ body.home-page {
   background-color: transparent !important;
   width: 100% !important;
   margin-bottom: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
 }
 
 .home-page #header-container > header {
@@ -1079,6 +1127,8 @@ body.home-page {
   box-shadow: var(--home-card-shadow) !important;
   padding-left: var(--main-content-padding) !important;
   padding-right: var(--main-content-padding) !important;
+  max-width: var(--home-max-width, 80vw) !important;
+  width: 100% !important;
 }
 
 /* Header title styling */
@@ -1098,7 +1148,13 @@ body.home-page {
 /* This rule is now above */
 
 /* Ensure header doesn't have dark background */
-.home-page header,
+.home-page header {
+  background-color: var(--background-white, #FFFFFF) !important;
+  background: var(--background-white, #FFFFFF) !important;
+  width: 100% !important;
+  max-width: var(--home-max-width, 80vw) !important;
+}
+
 .home-page header > div {
   background-color: var(--background-white, #FFFFFF) !important;
   background: var(--background-white, #FFFFFF) !important;
