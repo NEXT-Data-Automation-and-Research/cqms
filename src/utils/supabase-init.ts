@@ -134,11 +134,14 @@ export async function initSupabase(): Promise<any> {
     supabaseLogger.debug(`URL: ${env.SUPABASE_URL.substring(0, 30)}...`);
     supabaseLogger.debug(`Anon Key: ${env.SUPABASE_ANON_KEY.substring(0, 20)}...`);
     
-    // Store URL globally so other components (like modals) can access it
+    // Store URL and public app URL globally so other components (auth OAuth, modals) can access them
     if (typeof window !== 'undefined') {
       (window as any).SUPABASE_URL = env.SUPABASE_URL;
       (window as any).envConfig = (window as any).envConfig || {};
       (window as any).envConfig.SUPABASE_URL = env.SUPABASE_URL;
+      if (env.PUBLIC_APP_URL) {
+        (window as any).envConfig.PUBLIC_APP_URL = env.PUBLIC_APP_URL;
+      }
       // Also cache in localStorage for reliability
       try {
         localStorage.setItem('supabase_url', env.SUPABASE_URL);

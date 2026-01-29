@@ -113,10 +113,16 @@ export async function signInWithGoogle(): Promise<void> {
     throw new Error('Supabase not initialized. Please wait a moment and try again.');
   }
 
+  // Use PUBLIC_APP_URL when set (e.g. on Vercel) so OAuth redirect goes to production URL, not localhost
+  const baseUrl = (typeof window !== 'undefined' && (window as any).envConfig?.PUBLIC_APP_URL)
+    ? (window as any).envConfig.PUBLIC_APP_URL
+    : window.location.origin;
+  const redirectToUrl = `${baseUrl}/src/auth/presentation/auth-page.html`;
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/src/auth/presentation/auth-page.html`,
+      redirectTo: redirectToUrl,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',

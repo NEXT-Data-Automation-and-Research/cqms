@@ -70,6 +70,7 @@ const SAFE_ENV_VARS: string[] = [
   'NODE_ENV',
   'APP_NAME',
   'API_URL',
+  'PUBLIC_APP_URL',   // Safe - public app URL for OAuth redirects (e.g. Vercel URL)
   'SUPABASE_URL',      // Safe - public URL
   'SUPABASE_ANON_KEY', // Safe - public anon key (designed to be exposed)
   'VAPID_PUBLIC_KEY',  // Safe - VAPID public key (designed to be exposed to client)
@@ -631,7 +632,14 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   if (hasSupabaseKey && supabaseKey) {
     safeEnv.SUPABASE_ANON_KEY = supabaseKey;
   }
-  
+
+  // Public app URL for OAuth redirects (required when hosting on Vercel etc.)
+  const publicAppUrl = process.env.PUBLIC_APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  if (publicAppUrl) {
+    safeEnv.PUBLIC_APP_URL = publicAppUrl;
+  }
+
   // Log Supabase configuration status to terminal
   if (hasSupabaseUrl && hasSupabaseKey) {
     logWithTimestamp('info', 'Supabase: Configuration available - Client can initialize');
