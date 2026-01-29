@@ -1,34 +1,38 @@
-# Vercel + Supabase Auth (fix redirect to localhost)
+# Vercel + Supabase Auth (redirects)
 
-When you host the app on Vercel, Google sign-in can redirect back to **localhost** instead of your Vercel URL. Fix it in two places.
+How OAuth redirects work for **local dev** vs **production (Vercel)**.
 
-## 1. Supabase Dashboard (required)
+## Local development (localhost)
 
-Your Supabase project decides where to send users after OAuth. If the production URL isn’t allowed, it falls back to the **Site URL** (often localhost).
+- The app **always uses the current origin** for OAuth `redirectTo` when you're on `localhost` or `127.0.0.1`, so login stays on localhost.
+- **Do not** set `PUBLIC_APP_URL` in your local `.env` if you want to stay on localhost after sign-in (setting it used to redirect you to the hosted site).
+- In Supabase: **Authentication** → **URL Configuration** → **Redirect URLs**, add your local URL so Supabase allows the callback, e.g.:
+  - `http://localhost:3000/**`
+  - `http://localhost:3000/src/auth/presentation/auth-page.html`
+  (Use your actual port if different.)
+
+## Production (Vercel)
+
+When you host on Vercel, Google sign-in should redirect back to your Vercel URL, not localhost.
+
+### 1. Supabase Dashboard (do this first)
 
 1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project.
 2. Go to **Authentication** → **URL Configuration**.
-3. Set **Site URL** to your Vercel URL, e.g.:
-   - `https://your-app.vercel.app`
-   - or your custom domain.
+3. Set **Site URL** to your live app URL, e.g. **`https://cqms-kohl.vercel.app`** (no trailing slash).
 4. Under **Redirect URLs**, add:
-   - `https://your-app.vercel.app/**`
-   - and optionally: `https://your-app.vercel.app/src/auth/presentation/auth-page.html`
-5. Save.
+   - `https://cqms-kohl.vercel.app/**`
+   - `https://cqms-kohl.vercel.app/src/auth/presentation/auth-page.html`
+5. **Save.**
 
-After this, Supabase will redirect OAuth callbacks to your Vercel URL instead of localhost.
+### 2. App (automatic on Vercel)
 
-## 2. App (automatic on Vercel)
-
-The app uses **PUBLIC_APP_URL** for the OAuth `redirectTo` when present, so the client tells Supabase to redirect to your production URL.
-
-- **On Vercel**: `PUBLIC_APP_URL` is set automatically from `VERCEL_URL` (e.g. `https://your-app.vercel.app`). No env var needed.
-- **Elsewhere**: Set `PUBLIC_APP_URL` in your environment to your public app URL (e.g. `https://cqms.example.com`) so sign-in redirects to that URL.
+- **On Vercel**: `PUBLIC_APP_URL` is set from `VERCEL_URL`; no env var needed. OAuth `redirectTo` uses that URL.
+- **Other production hosts**: Set `APP_URL` or `PUBLIC_APP_URL` in env to your public app URL (e.g. `APP_URL=https://cqms-kohl.vercel.app`). Both are used; `APP_URL` also drives impersonation redirects.
 
 ## Summary
 
-| Step | Action |
-|------|--------|
-| Supabase | **Authentication → URL Configuration**: set **Site URL** and **Redirect URLs** to your Vercel (or production) URL. |
-| Vercel | Nothing; `PUBLIC_APP_URL` is derived from `VERCEL_URL`. |
-| Other hosts | Set `PUBLIC_APP_URL` in env to your public app URL. |
+| Context | OAuth redirect behavior |
+|--------|--------------------------|
+| **Localhost** | Uses current origin (e.g. `http://localhost:3000`). Add localhost to Supabase Redirect URLs. Do not set `PUBLIC_APP_URL` locally if you want to stay on localhost. |
+| **Vercel** | Uses `PUBLIC_APP_URL` (from `VERCEL_URL`). Set Supabase Site URL and Redirect URLs to your Vercel URL. |

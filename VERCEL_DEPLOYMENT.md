@@ -50,6 +50,11 @@ You need to configure the following environment variables in Vercel:
 - `SUPABASE_ANON_KEY` - Your Supabase anonymous key
 - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key (for server-side operations)
 
+### Recommended for production (Vercel)
+
+- `PUBLIC_APP_URL` - Your live app URL (e.g. `https://cqms-kohl.vercel.app`). If unset, the serverless app derives it from `VERCEL_URL` for OAuth redirects.
+- `APP_URL` - Same as `PUBLIC_APP_URL`; used for impersonation magic-link redirects. Set to your Vercel URL so redirects go to the hosted app, not localhost.
+
 ### Optional Variables
 
 - `NODE_ENV` - Set to `production` for production deployments
@@ -141,6 +146,12 @@ Vercel will automatically run `npm run build` during deployment.
 - All file paths in `api/index.ts` are relative to the function location
 - Use `path.join(__dirname, '..')` to navigate to project root
 - Static files should be accessible from the function
+
+### "Works locally but not on Vercel"
+
+- Ensure **Environment Variables** in Vercel match your local `.env` (especially `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and optionally `SUPABASE_SERVICE_ROLE_KEY`).
+- Set **`APP_URL`** (and optionally **`PUBLIC_APP_URL`**) to your Vercel URL (e.g. `https://your-app.vercel.app`) so OAuth and impersonation redirects go to the hosted app.
+- The Vercel entry is **`api/index.ts`**; it must register the same API routes and `/api/env` behavior as the main server. If a feature works locally but not on Vercel, check that the route or env handling exists in `api/index.ts`.
 
 ## Custom Domain
 

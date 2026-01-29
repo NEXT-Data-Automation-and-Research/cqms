@@ -634,7 +634,9 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   }
 
   // Public app URL for OAuth redirects (required when hosting on Vercel etc.)
+  // APP_URL is used for impersonation redirects; also used as fallback for PUBLIC_APP_URL
   const publicAppUrl = process.env.PUBLIC_APP_URL ||
+    process.env.APP_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
   if (publicAppUrl) {
     safeEnv.PUBLIC_APP_URL = publicAppUrl;

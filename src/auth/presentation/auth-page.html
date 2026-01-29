@@ -213,6 +213,8 @@
         }
         await initializeSupabase();
 
+        // Do not redirect localhost OAuth callbacks to production — keep local dev on localhost after login
+
         let callbackHandlingInProgress = false;
         let callbackHandled = false;
         async function checkAndHandleCallback() {

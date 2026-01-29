@@ -115,7 +115,21 @@ export async function initSupabase(): Promise<any> {
     const env = await fetchEnvWithRetry();
     supabaseLogger.debug('Environment variables fetched from server');
 
-    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+    // Support legacy/alternative key names in the server response.
+    // (We still prefer SUPABASE_URL / SUPABASE_ANON_KEY as canonical keys.)
+    const supabaseUrl =
+      env.SUPABASE_URL ||
+      env.NEXT_PUBLIC_SUPABASE_URL ||
+      env.VITE_SUPABASE_URL ||
+      env.PUBLIC_SUPABASE_URL ||
+      (typeof window !== 'undefined' ? localStorage.getItem('supabase_url') : null);
+    const supabaseAnonKey =
+      env.SUPABASE_ANON_KEY ||
+      env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      env.VITE_SUPABASE_ANON_KEY ||
+      env.PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
       const error = 'Supabase configuration not found. Please configure SUPABASE_URL and SUPABASE_ANON_KEY in your .env file';
       supabaseLogger.error('Initialization failed:', error);
       supabaseLogger.debug('Available env keys:', Object.keys(env));
@@ -124,27 +138,27 @@ export async function initSupabase(): Promise<any> {
 
     // Validate URL format
     try {
-      new URL(env.SUPABASE_URL);
+      new URL(supabaseUrl);
     } catch (urlError) {
-      const error = `Invalid Supabase URL format: ${env.SUPABASE_URL}`;
+      const error = `Invalid Supabase URL format: ${supabaseUrl}`;
       supabaseLogger.error('Initialization failed:', error);
       return null;
     }
 
-    supabaseLogger.debug(`URL: ${env.SUPABASE_URL.substring(0, 30)}...`);
-    supabaseLogger.debug(`Anon Key: ${env.SUPABASE_ANON_KEY.substring(0, 20)}...`);
+    supabaseLogger.debug(`URL: ${supabaseUrl.substring(0, 30)}...`);
+    supabaseLogger.debug(`Anon Key: ${supabaseAnonKey.substring(0, 20)}...`);
     
     // Store URL and public app URL globally so other components (auth OAuth, modals) can access them
     if (typeof window !== 'undefined') {
-      (window as any).SUPABASE_URL = env.SUPABASE_URL;
+      (window as any).SUPABASE_URL = supabaseUrl;
       (window as any).envConfig = (window as any).envConfig || {};
-      (window as any).envConfig.SUPABASE_URL = env.SUPABASE_URL;
+      (window as any).envConfig.SUPABASE_URL = supabaseUrl;
       if (env.PUBLIC_APP_URL) {
         (window as any).envConfig.PUBLIC_APP_URL = env.PUBLIC_APP_URL;
       }
       // Also cache in localStorage for reliability
       try {
-        localStorage.setItem('supabase_url', env.SUPABASE_URL);
+        localStorage.setItem('supabase_url', supabaseUrl);
       } catch (e) {
         // localStorage might not be available
       }
@@ -154,7 +168,7 @@ export async function initSupabase(): Promise<any> {
     const { createClient } = await import('@supabase/supabase-js');
     supabaseLogger.debug('Supabase client library loaded');
 
-    supabaseInstance = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,

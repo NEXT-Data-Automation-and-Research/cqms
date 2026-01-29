@@ -113,8 +113,10 @@ export async function signInWithGoogle(): Promise<void> {
     throw new Error('Supabase not initialized. Please wait a moment and try again.');
   }
 
-  // Use PUBLIC_APP_URL when set (e.g. on Vercel) so OAuth redirect goes to production URL, not localhost
-  const baseUrl = (typeof window !== 'undefined' && (window as any).envConfig?.PUBLIC_APP_URL)
+  // On localhost always use current origin so login stays on localhost; on production use PUBLIC_APP_URL when set
+  const isLocalhost = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const baseUrl = (typeof window !== 'undefined' && !isLocalhost && (window as any).envConfig?.PUBLIC_APP_URL)
     ? (window as any).envConfig.PUBLIC_APP_URL
     : window.location.origin;
   const redirectToUrl = `${baseUrl}/src/auth/presentation/auth-page.html`;

@@ -64,11 +64,12 @@ try {
   logWithTimestamp('warn', 'Version file not found, using default version');
 }
 
-// Define which env vars are safe to expose to client
+// Define which env vars are safe to expose to client (keep in sync with server-commonjs.ts)
 const SAFE_ENV_VARS: string[] = [
   'NODE_ENV',
   'APP_NAME',
   'API_URL',
+  'PUBLIC_APP_URL',
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
   'VAPID_PUBLIC_KEY',
@@ -363,6 +364,22 @@ app.get('/analytics', (req: express.Request, res: express.Response): void => {
   }
 });
 
+// Help page (match server-commonjs)
+app.get('/help', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/help/help/presentation/help.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing help.html:', error);
+    const filePath = path.join(__dirname, '../src/features/help/help/presentation/help.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
 // Clean URL Routes
 const routeMappings = getRouteMappings();
 routeMappings.forEach((mapping) => {
@@ -486,8 +503,18 @@ app.get('/', (req: express.Request, res: express.Response): void => {
 app.get('/api/env', (req: express.Request, res: express.Response): void => {
   const safeEnv = getSafeEnvVars();
   
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_ANON_KEY;
+  // Support multiple common env var names (local dev vs Vercel dashboards)
+  // Canonical keys exposed to client remain SUPABASE_URL / SUPABASE_ANON_KEY.
+  const supabaseUrl =
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    process.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.PUBLIC_SUPABASE_ANON_KEY;
   const hasSupabaseUrl = !!supabaseUrl;
   const hasSupabaseKey = !!supabaseKey;
   
@@ -497,13 +524,21 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   if (hasSupabaseKey && supabaseKey) {
     safeEnv.SUPABASE_ANON_KEY = supabaseKey;
   }
-  
+
+  // Public app URL for OAuth redirects and client (required on Vercel)
+  const publicAppUrl = process.env.PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null);
+  if (publicAppUrl) {
+    safeEnv.PUBLIC_APP_URL = publicAppUrl;
+  }
+
   if (hasSupabaseUrl && hasSupabaseKey) {
     logWithTimestamp('info', 'Supabase: Configuration available - Client can initialize');
   } else {
     logWithTimestamp('warn', 'Supabase: Configuration incomplete - Missing URL or Anon Key');
   }
-  
+
   res.json(safeEnv);
 });
 
