@@ -437,6 +437,13 @@ import { csrfProtection, csrfToken } from '../src/api/middleware/csrf.middleware
 app.use('/api', csrfToken);
 app.use('/api', csrfProtection);
 
+// Lightweight CSRF bootstrap endpoint.
+// Clients can call this with Authorization header to obtain X-CSRF-Token
+// without depending on any auth-protected business route.
+app.get('/api/csrf', (_req: express.Request, res: express.Response): void => {
+  res.status(204).end();
+});
+
 // API Routes
 import usersRouter from '../src/api/routes/users.routes.js';
 import notificationsRouter from '../src/api/routes/notifications.routes.js';
@@ -444,6 +451,10 @@ import notificationSubscriptionsRouter from '../src/api/routes/notification-subs
 import peopleRouter from '../src/api/routes/people.routes.js';
 import permissionsRouter from '../src/api/routes/permissions.routes.js';
 import analyticsRouter from '../src/api/routes/analytics.routes.js';
+import adminRouter from '../src/api/routes/admin.routes.js';
+import platformNotificationsRouter from '../src/api/routes/platform-notifications.routes.js';
+import cacheManagementRouter from '../src/api/routes/cache-management.routes.js';
+import activeUsersRouter from '../src/api/routes/active-users.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -452,6 +463,10 @@ app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/platform-notifications', platformNotificationsRouter);
+app.use('/api/cache', cacheManagementRouter);
+app.use('/api/active-users', activeUsersRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
