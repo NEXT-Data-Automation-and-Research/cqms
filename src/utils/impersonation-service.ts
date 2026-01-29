@@ -350,8 +350,38 @@ export async function startImpersonation(targetEmail: string, reason?: string): 
       // Clean up stored state
       sessionStorage.removeItem(STORAGE_KEY);
       
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `Impersonation failed: ${response.status}`);
+      // Try to get detailed error from response
+      let errorMessage = `Impersonation failed with status ${response.status}`;
+      try {
+        const errorText = await response.text();
+        logError('[Impersonation] API Error Response:', errorText);
+        
+        // Try to parse as JSON
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // Not JSON, use text if it's not too long
+          if (errorText && errorText.length < 200) {
+            errorMessage = errorText;
+          }
+        }
+      } catch (parseError) {
+        logError('[Impersonation] Could not read error response:', parseError);
+      }
+      
+      // Add helpful context for common errors
+      if (response.status === 404) {
+        errorMessage = `${errorMessage}. The target user may not exist in the authentication system (they might need to log in at least once).`;
+      } else if (response.status === 403) {
+        errorMessage = `${errorMessage}. You may not have permission to impersonate this user.`;
+      }
+      
+      throw new Error(errorMessage);
     }
     
     const { tokenHash, targetRole } = await response.json();

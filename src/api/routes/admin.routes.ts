@@ -82,20 +82,47 @@ router.post(
     }
 
     // Find target user in auth.users
-    const { data: { users }, error: listError } = await supabase.auth.admin.listUsers();
+    // Note: listUsers() can be paginated, so we need to search through all pages
+    // or use a more direct approach. Let's try generating the link directly
+    // and handle the error if the user doesn't exist.
     
-    if (listError) {
-      logger.error('Failed to list users:', listError.message);
-      res.status(500).json({ error: 'Failed to find target user' });
-      return;
+    // First, try to find the user using listUsers with email filter (if supported)
+    // or iterate through pages
+    let targetUser: any = null;
+    let page = 1;
+    const perPage = 1000;
+    
+    while (!targetUser) {
+      const { data: { users }, error: listError } = await supabase.auth.admin.listUsers({
+        page,
+        perPage
+      });
+      
+      if (listError) {
+        logger.error('Failed to list users:', listError.message);
+        res.status(500).json({ error: 'Failed to find target user', details: listError.message });
+        return;
+      }
+      
+      targetUser = users.find(u => u.email?.toLowerCase() === normalizedTargetEmail);
+      
+      // If we've checked all users or this page is empty, stop
+      if (users.length < perPage || page > 10) { // Safety limit of 10 pages (10,000 users)
+        break;
+      }
+      page++;
     }
-
-    const targetUser = users.find(u => u.email?.toLowerCase() === normalizedTargetEmail);
     
     if (!targetUser) {
-      res.status(404).json({ error: 'Target user not found in authentication system' });
+      logger.warn(`Target user ${normalizedTargetEmail} not found in auth.users (checked ${page} page(s))`);
+      res.status(404).json({ 
+        error: 'Target user not found in authentication system',
+        details: 'The user may not have logged in yet or their account was deleted. Users must log in at least once before they can be impersonated.'
+      });
       return;
     }
+    
+    logger.info(`Found target user ${normalizedTargetEmail} in auth.users (page ${page})`)
 
     // Generate magic link for target user
     const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 4000}`;
