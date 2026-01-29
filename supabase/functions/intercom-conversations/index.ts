@@ -10,6 +10,51 @@ const MAX_CONVERSATIONS = 150
 const EDGE_FUNCTION_TIMEOUT = 60000 // 60 seconds
 const BATCH_SIZE = 10 // Process 10 conversations at a time
 
+/**
+ * CORS configuration
+ *
+ * SECURITY: Do NOT use `Access-Control-Allow-Origin: *` for authenticated endpoints.
+ *
+ * Configure allowed origins via `ALLOWED_ORIGINS` (comma-separated), e.g.:
+ * - https://app.yourdomain.com,https://staging.yourdomain.com,http://localhost:5173
+ *
+ * Non-breaking fallback:
+ * - If `ALLOWED_ORIGINS` is not set, we reflect the request Origin (still permissive,
+ *   but avoids wildcard and supports current clients).
+ */
+function parseAllowedOrigins(): Set<string> {
+  const raw = Deno.env.get('ALLOWED_ORIGINS') || ''
+  const origins = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
+  return new Set(origins)
+}
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin')
+  // Requests from non-browsers (no Origin header) don't need CORS.
+  if (!origin) return {}
+
+  const allowed = parseAllowedOrigins()
+
+  // Non-breaking default: reflect origin when allowlist isn't configured yet.
+  // To harden further, set ALLOWED_ORIGINS in Supabase dashboard.
+  const allowOrigin = allowed.size === 0 ? origin : (allowed.has(origin) ? origin : '')
+
+  // If origin isn't allowed, return no CORS headers (browser will block).
+  if (!allowOrigin) return { 'Vary': 'Origin' }
+
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  }
+}
+
 // Get Intercom access token from environment (set in Supabase dashboard)
 const INTERCOM_ACCESS_TOKEN = Deno.env.get('INTERCOM_ACCESS_TOKEN')
 if (!INTERCOM_ACCESS_TOKEN) {
@@ -265,15 +310,13 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, OPTIONS',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
+      headers: corsHeaders(req),
     })
   }
 
   try {
+    const baseHeaders = corsHeaders(req)
+
     // SECURITY: Validate authentication
     const authHeader = req.headers.get('authorization')
     const user = await validateAuth(authHeader)
@@ -285,7 +328,7 @@ serve(async (req) => {
           status: 401,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...baseHeaders,
           },
         }
       )
@@ -305,7 +348,7 @@ serve(async (req) => {
           status: 400,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...baseHeaders,
           },
         }
       )
@@ -322,7 +365,7 @@ serve(async (req) => {
           status: 403,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...baseHeaders,
           },
         }
       )
@@ -339,7 +382,7 @@ serve(async (req) => {
           status: 404,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...baseHeaders,
           },
         }
       )
@@ -482,7 +525,7 @@ serve(async (req) => {
           status: 200,
           headers: {
             'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
+            ...baseHeaders,
           },
         }
       )
@@ -558,7 +601,7 @@ serve(async (req) => {
         status: 200,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...baseHeaders,
         },
       }
     )
@@ -571,7 +614,7 @@ serve(async (req) => {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders(req),
         },
       }
     )

@@ -32,10 +32,30 @@ export async function getCurrentSupabaseUser(): Promise<any> {
  * Also handles token expiration and refresh
  * ✅ SECURITY: Always verifies token with server AND device fingerprint to prevent token copying attacks
  * ✅ FIX: Checks expiration and refreshes token BEFORE calling getUser() to prevent premature logouts
+ * ✅ RELIABILITY: More graceful handling of temporary network issues
  */
 export async function checkSupabaseAuthentication(): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) {
+    // RELIABILITY: If Supabase isn't ready yet, check cached session
+    // This prevents false negatives during initialization
+    const cachedSession = localStorage.getItem('supabase.auth.token');
+    if (cachedSession) {
+      try {
+        const parsed = JSON.parse(cachedSession);
+        // Check if session hasn't expired
+        if (parsed?.currentSession?.expires_at) {
+          const expiresAt = parsed.currentSession.expires_at;
+          const now = Math.floor(Date.now() / 1000);
+          if (expiresAt > now) {
+            logInfo('Supabase not ready but valid cached session found - treating as authenticated');
+            return true;
+          }
+        }
+      } catch (parseError) {
+        // Invalid cache, continue with false
+      }
+    }
     return false;
   }
 

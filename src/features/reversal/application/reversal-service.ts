@@ -16,17 +16,41 @@ export class ReversalService {
 
   /**
    * Get all reversals with audit data merged
+   * 
+   * @param options.requestedByEmail - Filter by requester email (legacy, use employeeEmail for employees)
+   * @param options.employeeEmail - For employees: show reversals where they are either the requester OR the subject of the audit
+   * @param options.onlyPending - Filter to only pending reversals
+   * @param options.limit - Limit number of results
    */
   async getReversalsWithAuditData(options: {
     requestedByEmail?: string;
+    employeeEmail?: string;
     onlyPending?: boolean;
     limit?: number;
   } = {}): Promise<ReversalWithAuditData[]> {
     try {
       console.log('[ReversalService] getReversalsWithAuditData called with options:', options);
       
+      // Determine query options for repository
+      // If employeeEmail is provided, we need to fetch without requestedByEmail filter
+      // so we can also include reversals where the employee is the subject of the audit
+      const repoOptions: {
+        requestedByEmail?: string;
+        onlyPending?: boolean;
+        limit?: number;
+      } = {
+        onlyPending: options.onlyPending,
+        limit: options.limit
+      };
+
+      // Only use requestedByEmail filter if employeeEmail is NOT provided
+      // When employeeEmail is provided, we'll filter after merging with audit data
+      if (options.requestedByEmail && !options.employeeEmail) {
+        repoOptions.requestedByEmail = options.requestedByEmail;
+      }
+
       // Get reversal requests
-      const reversalRequests = await this.repository.getReversalRequests(options);
+      const reversalRequests = await this.repository.getReversalRequests(repoOptions);
 
       console.log('[ReversalService] Got', reversalRequests.length, 'reversal requests');
 
@@ -51,12 +75,35 @@ export class ReversalService {
       // Merge reversal requests with audit data
       const mergedReversals: ReversalWithAuditData[] = [];
 
+      // Normalize employee email for comparison if provided
+      const normalizedEmployeeEmail = options.employeeEmail?.toLowerCase().trim();
+
       for (const reversalReq of reversalRequests) {
         const auditData = auditDataMap.get(reversalReq.audit_id);
 
         if (!auditData) {
           console.warn(`Audit not found for reversal ${reversalReq.id}: audit_id=${reversalReq.audit_id}`);
           continue;
+        }
+
+        // If employeeEmail filter is provided, check if this reversal belongs to the employee
+        // Employee should see reversals where:
+        // 1. They requested the reversal (requested_by_email matches), OR
+        // 2. The reversal record lists them as the employee (employee_email in reversal_requests matches), OR
+        // 3. The audit is for them (employee_email in audit data matches)
+        if (normalizedEmployeeEmail) {
+          const requestedByEmail = (reversalReq.requested_by_email || '').toLowerCase().trim();
+          const reversalEmployeeEmail = (reversalReq.employee_email || '').toLowerCase().trim();
+          const auditEmployeeEmail = (auditData.employee_email || '').toLowerCase().trim();
+          
+          const isRequester = requestedByEmail === normalizedEmployeeEmail;
+          const isReversalSubject = reversalEmployeeEmail === normalizedEmployeeEmail;
+          const isAuditSubject = auditEmployeeEmail === normalizedEmployeeEmail;
+          
+          if (!isRequester && !isReversalSubject && !isAuditSubject) {
+            // This reversal doesn't belong to the employee, skip it
+            continue;
+          }
         }
 
         const workflowState = wsMap.get(reversalReq.id) || 'submitted';
@@ -90,6 +137,7 @@ export class ReversalService {
         mergedReversals.push(merged);
       }
 
+      console.log('[ReversalService] Returning', mergedReversals.length, 'merged reversals after filtering');
       return mergedReversals;
     } catch (error) {
       console.error('Error getting reversals with audit data:', error);

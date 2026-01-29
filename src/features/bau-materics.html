@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BAU Metrics | CQMS</title>
+<meta name="description" content="Business-As-Usual Metrics Dashboard">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+
+    <!-- Import map for npm packages in browser -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#1a733e',
+          'primary-dark': '#0d5e3a',
+          'dark-forest': '#032816',
+          'success': '#10b981',
+          'warning': '#f59e0b',
+          'error': '#ef4444',
+        },
+        fontFamily: {
+          sans: ['Poppins', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script type="module" src="/js/auth-checker.js"></script>
+    <script type="module" src="/js/load-sidebar.js" defer></script>
+    <script type="module" src="/js/utils/timezone-utils.js"></script>
+    <script type="module">
+      import { initSecureWindowSupabase } from '/js/utils/secure-window-supabase.js';
+      // Ensure legacy pages that rely on window.supabaseClient work.
+      initSecureWindowSupabase();
+    </script>
+<style>
+  .main-content {
+    background-color: #f8f7f2;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  .bau-table {
+    width: auto;
+    min-width: 100%;
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    font-family: 'Poppins', sans-serif;
+    margin-right: auto;
+  }
+
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .bau-table th,
+  .bau-table td {
+    border: 1px solid #e5e7eb;
+    padding: 0.75rem;
+    text-align: left;
+    font-size: 0.875rem;
+  }
+
+  .bau-table th {
+    background-color: #374151;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .bau-table .header-title {
+    background-color: #4b5563;
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    text-align: left;
+  }
+
+  .bau-table .metric-name {
+    font-weight: 500;
+    background-color: #f9fafb;
+  }
+
+  .bau-table .day-header {
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .bau-table .day-cell {
+    text-align: center;
+    min-width: 80px;
+  }
+
+  .loading {
+    text-align: center;
+    padding: 2rem;
+    color: #6b7280;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .loading-spinner {
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #1a733e;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    color: #6b7280;
+    cursor: help;
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .info-icon:hover {
+    color: #1a733e;
+  }
+
+  .info-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-0.5rem);
+    background: #1f2937;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: normal;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
+    min-width: 15rem;
+    max-width: 20rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    margin-bottom: 0.5rem;
+  }
+
+  .info-icon:hover .info-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-0.75rem);
+  }
+
+  .info-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #1f2937;
+  }
+
+  .metric-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .explanation-section {
+    margin-top: 2rem;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .explanation-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #1f2937;
+  }
+
+  .explanation-item {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .explanation-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .explanation-item h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #374151;
+  }
+
+  .explanation-item p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    line-height: 1.6;
+  }
+
+  .explanation-item code {
+    background-color: #f3f4f6;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.8125rem;
+    color: #1f2937;
+  }
+
+  /* Multi-Select Dropdown Styles */
+  .multi-select-container {
+    position: relative;
+    width: 100%;
+  }
+
+  .multi-select-trigger {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    background-color: #ffffff;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    transition: all 0.2s ease;
+  }
+
+  .multi-select-trigger:hover {
+    border-color: #1a733e;
+  }
+
+  .multi-select-trigger.active {
+    border-color: #1a733e;
+    box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1);
+  }
+
+  .multi-select-placeholder {
+    color: #9ca3af;
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .multi-select-count {
+    background-color: #1a733e;
+    color: white;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .multi-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 20rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 100%;
+    width: max-content;
+    max-width: 20rem;
+  }
+
+  .multi-select-search {
+    padding: 0.5rem 0.75rem;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    border-radius: 0.375rem 0.375rem 0 0;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    background-color: #f9fafb;
+    color: #374151;
+    outline: none;
+  }
+
+  .multi-select-search:focus {
+    background-color: #ffffff;
+    border-bottom-color: #1a733e;
+  }
+
+  .multi-select-options {
+    max-height: 14rem;
+    overflow-y: auto;
+    padding: 0.25rem 0;
+  }
+
+  .multi-select-option {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    transition: background-color 0.15s ease;
+  }
+
+  .multi-select-option:hover {
+    background-color: #f3f4f6;
+  }
+
+  .multi-select-option.hidden {
+    display: none;
+  }
+
+  .multi-select-option input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    accent-color: #1a733e;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+  }
+
+  .multi-select-option label {
+    cursor: pointer;
+    flex: 1;
+    user-select: none;
+    word-break: break-word;
+    white-space: normal;
+    line-height: 1.4;
+  }
+
+  .multi-select-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-top: 1px solid #e5e7eb;
+    background-color: #f9fafb;
+  }
+
+  .multi-select-action-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .multi-select-action-btn:hover {
+    background-color: #1a733e;
+    color: white;
+    border-color: #1a733e;
+  }
+
+  .filters-container {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 200px;
+  }
+
+  .filter-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  /* Date Picker Styles */
+  .date-picker-dropdown {
+    position: relative;
+  }
+
+  .date-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 0.25rem;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1rem;
+    z-index: 1000;
+    min-width: 250px;
+    display: none;
+  }
+
+  .date-dropdown-menu.active {
+    display: block;
+  }
+
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: white;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Poppins', sans-serif;
+  }
+
+  .action-btn:hover {
+    background-color: #f9fafb;
+    border-color: #1a733e;
+  }
+
+  .filter-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .filter-input:focus {
+    outline: none;
+    border-color: #1a733e;
+    box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1);
+  }
+</style>
+</head>
+<body>
+    <div class="main-content">
+        <div style="margin-bottom: 1.5rem;">
+            <h1 style="font-size: 1.5rem; font-weight: 600; color: #1f2937; margin-bottom: 0.5rem;">BAU Metrics Dashboard</h1>
+            <p style="color: #6b7280; font-size: 0.875rem;">Last 7 days performance metrics</p>
+        </div>
+
+        <!-- Filters -->
+        <div id="filtersContainer" class="filters-container" style="display: none;">
+            <!-- Date Range Picker -->
+            <div class="filter-group">
+                <label class="filter-label">Date Range</label>
+                <div class="date-picker-dropdown">
+                    <button class="action-btn" id="dateBtn" type="button">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span id="dateBtnText">Last 7 Days</span>
+                        <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <div class="date-dropdown-menu" id="dateDropdown">
+                        <div class="filter-group" style="margin-bottom: 0.75rem;">
+                            <label class="filter-label">Start Date</label>
+                            <input type="date" class="filter-input" id="startDate">
+                        </div>
+                        <div class="filter-group" style="margin-bottom: 0.75rem;">
+                            <label class="filter-label">End Date</label>
+                            <input type="date" class="filter-input" id="endDate">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="action-btn" style="flex: 1;" id="applyDateBtn" type="button">Apply</button>
+                            <button class="action-btn" style="flex: 1;" id="clearDateBtn" type="button">Clear</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Channel Filter -->
+            <div class="filter-group">
+                <label for="channelFilter" class="filter-label">Channel</label>
+                <div class="multi-select-container">
+                    <div class="multi-select-trigger" id="channelFilterTrigger" role="button" tabindex="0">
+                        <span class="multi-select-placeholder" id="channelFilterPlaceholder">Select channels...</span>
+                        <span class="multi-select-count" id="channelFilterCount" style="display: none;"></span>
+                        <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div class="multi-select-dropdown" id="channelFilterDropdown" style="display: none;">
+                        <input type="text" class="multi-select-search" id="channelFilterSearch" placeholder="Search channels...">
+                        <div class="multi-select-options" id="channelFilterOptions">
+                            <!-- Options will be populated dynamically -->
+                        </div>
+                        <div class="multi-select-actions">
+                            <button type="button" class="multi-select-action-btn" id="channelFilterSelectAllBtn">Select All</button>
+                            <button type="button" class="multi-select-action-btn" id="channelFilterClearBtn">Clear</button>
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="channelFilter" value="">
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="loading">
+            <div class="loading-spinner"></div>
+            <p>Loading metrics data...</p>
+        </div>
+
+        <div id="metricsTable" style="display: none;">
+            <div style="background-color: #4b5563; color: white; padding: 0.75rem 1rem; font-weight: 700; font-size: 1.125rem; border-radius: 0.375rem 0.375rem 0 0;">
+                Business-As-Usual Metrics
+            </div>
+            <div style="background-color: #000000; color: white; padding: 0.5rem 1rem; font-weight: 600; font-size: 0.875rem;">
+                <span id="monthHeader">Last 7 Days</span>
+            </div>
+            <div class="table-container">
+            <table class="bau-table" style="border-radius: 0 0 0.375rem 0.375rem; overflow: hidden;">
+                <thead>
+                    <tr>
+                        <th rowspan="3" class="header-title" style="background-color: #4b5563;">BAU KPIs</th>
+                        <th rowspan="3" style="background-color: #374151;">Target</th>
+                        <th rowspan="3" style="background-color: #374151;" id="averageHeader">Average</th>
+                        <th rowspan="3" style="background-color: #374151;">Tracking Method</th>
+                        <th id="dailyTrackingHeader" colspan="7" class="day-header" style="background-color: #374151;">Daily Tracking</th>
+                    </tr>
+                    <tr id="dayHeadersRow">
+                        <!-- Day headers will be inserted here -->
+                    </tr>
+                    <tr id="dateHeadersRow">
+                        <!-- Date headers will be inserted here -->
+                    </tr>
+                </thead>
+                <tbody id="metricsBody">
+                    <!-- Metrics rows will be inserted here -->
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <!-- Audit Rating Breakdown Table -->
+        <div id="ratingBreakdownTable" style="display: none; margin-top: 2rem;">
+            <div style="background-color: #4b5563; color: white; padding: 0.75rem 1rem; font-weight: 700; font-size: 1.125rem; border-radius: 0.375rem 0.375rem 0 0;">
+                Audit Rating Breakdown - Detailed View
+            </div>
+            <div class="table-container">
+                <table class="bau-table" style="border-radius: 0 0 0.375rem 0.375rem; overflow: hidden;">
+                    <thead>
+                        <tr>
+                            <th style="background-color: #374151;">Audited Date</th>
+                            <th style="background-color: #374151;">Who Was Audited</th>
+                            <th style="background-color: #374151;">Channel</th>
+                            <th style="background-color: #374151;">Avg Quality Score</th>
+                            <th style="background-color: #374151;">Count of Error</th>
+                            <th style="background-color: #374151;">Auditor</th>
+                            <th style="background-color: #374151;">Rating</th>
+                            <th style="background-color: #374151;">Rating Feedback</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ratingBreakdownBody">
+                        <!-- Detailed audit records will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="explanationSection" class="explanation-section" style="display: none;">
+            <h3>Calculation Logic Explanation</h3>
+            <div id="explanationsContent">
+                <!-- Explanations will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+<script>
+// Normalize passing status (consistent with other pages)
+// Handles: "Passing", "Passed", "Pass" as passed
+// Handles: "Not Passing", "Not Passed" as not passed
+function normalizePassingStatus(status) {
+    if (!status) return 'Not Passed';
+    const normalized = String(status).trim().toLowerCase();
+    // Check for passed variations
+    if (normalized === 'passed' || normalized === 'pass' || normalized === 'passing') {
+        return 'Passed';
+    }
+    // Everything else is not passed
+    return 'Not Passed';
+}
+
+// Convert duration to minutes
+// NEW FORMAT: All numeric values are in SECONDS (as of timer update)
+// LEGACY FORMAT: String time formats (MM:SS or HH:MM:SS) or very old numeric values in minutes
+function convertDurationToMinutes(duration) {
+    if (!duration) return 0;
+    
+    let durationInMinutes = 0;
+    if (typeof duration === 'number') {
+        // All numeric audit_duration values are now in seconds, convert to minutes
+        durationInMinutes = duration / 60;
+    } else if (typeof duration === 'string') {
+        // Try parsing as integer first
+        const asInt = parseInt(duration);
+        if (!isNaN(asInt)) {
+            // If it's a numeric string, treat as seconds (new format)
+            durationInMinutes = asInt / 60; // Convert seconds to minutes
+        } else {
+            // Legacy format: time string (MM:SS or HH:MM:SS)
+            const timeParts = duration.split(':');
+            if (timeParts.length === 2) {
+                // MM:SS format
+                const minutes = parseInt(timeParts[0]) || 0;
+                const seconds = parseInt(timeParts[1]) || 0;
+                durationInMinutes = minutes + (seconds / 60);
+            } else if (timeParts.length === 3) {
+                // HH:MM:SS format
+                const hours = parseInt(timeParts[0]) || 0;
+                const minutes = parseInt(timeParts[1]) || 0;
+                const seconds = parseInt(timeParts[2]) || 0;
+                durationInMinutes = (hours * 60) + minutes + (seconds / 60);
+            } else {
+                // Try legacy formats like "1h 30m" or "90m"
+                const hourMinMatch = duration.match(/(\d+)h\s*(\d+)m/);
+                if (hourMinMatch) {
+                    durationInMinutes = parseInt(hourMinMatch[1]) * 60 + parseInt(hourMinMatch[2]);
+                } else {
+                    const minMatch = duration.match(/(\d+)m/);
+                    if (minMatch) {
+                        durationInMinutes = parseInt(minMatch[1]);
+                    }
+                }
+            }
+        }
+    }
+    return durationInMinutes;
+}
+
+// Format duration for display
+function formatDuration(minutes) {
+    if (minutes < 60) {
+        return `${Math.round(minutes)}m`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hours}h ${mins}m`;
+}
+
+// Calculate time difference in hours
+function calculateTimeDifference(startTime, endTime) {
+    if (!startTime || !endTime) return null;
+    
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+    
+    const diffMs = end - start;
+    return diffMs / (1000 * 60 * 60); // Convert to hours
+}
+
+// Format a UTC timestamp into a Dhaka-local datetime string
+// (Used in rating breakdown table; fixes "formatDhakaDateTime is not defined")
+function formatDhakaDateTime(utcString) {
+    if (!utcString) return '-';
+    try {
+        // Convert server UTC timestamp -> Dhaka time (timezone-utils.js exports to window)
+        const dhakaDate = toDhakaTime(utcString);
+        if (!dhakaDate || isNaN(dhakaDate.getTime())) return '-';
+        return dhakaDate.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        // Fallback: default browser formatting
+        const d = new Date(utcString);
+        return isNaN(d.getTime()) ? '-' : d.toLocaleString();
+    }
+}
+
+// Check if date is weekend
+function isWeekend(date) {
+    const day = date.getDay();
+    return day === 0 || day === 6; // Sunday or Saturday
+}
+
+// Get date range from inputs or default to last 7 days
+function getDateRange() {
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    
+    let startDate, endDate;
+    
+    if (startDateEl && startDateEl.value && endDateEl && endDateEl.value) {
+        // Use selected date range
+        startDate = parseDhakaDate(startDateEl.value);
+        endDate = parseDhakaDate(endDateEl.value);
+    } else {
+        // Default to last 7 days
+        const today = getDhakaStartOfDay();
+        endDate = new Date(today);
+        endDate.setDate(endDate.getDate() - 1); // Yesterday
+        startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - 6); // 7 days ago
+    }
+    
+    return { start: startDate, end: endDate };
+}
+
+// Get all days in the selected date range
+function getDaysInRange() {
+    const { start, end } = getDateRange();
+    const days = [];
+    
+    const currentDate = new Date(start);
+    let dayIndex = 1;
+    
+    while (currentDate <= end) {
+        days.push({
+            date: new Date(currentDate),
+            dateStr: formatDhakaDateForInput(currentDate),
+            dayName: currentDate.toLocaleDateString('en-US', { weekday: 'long' }),
+            dayNum: currentDate.getDate(),
+            month: currentDate.getMonth() + 1,
+            year: currentDate.getFullYear(),
+            dayIndex: dayIndex
+        });
+        
+        currentDate.setDate(currentDate.getDate() + 1);
+        dayIndex++;
+    }
+    
+    return days;
+}
+
+// Load metrics data
+async function loadMetricsData() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const metricsTable = document.getElementById('metricsTable');
+    const metricsBody = document.getElementById('metricsBody');
+    
+    // Show loading indicator
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'flex';
+        loadingIndicator.innerHTML = `
+            <div class="loading-spinner"></div>
+            <p>Loading metrics data...</p>
+        `;
+    }
+    if (metricsTable) {
+        metricsTable.style.display = 'none';
+    }
+    
+    try {
+        // Get days in selected date range
+        const days = getDaysInRange();
+        
+        // Get all audit tables
+        let tablesToQuery = [];
+        try {
+            const { data: allTables, error: tablesError } = await window.supabaseClient.rpc('get_audit_tables');
+            
+            if (!tablesError && allTables && allTables.length > 0) {
+                tablesToQuery = allTables
+                    .filter(t => t.table_name !== 'ai_analysis_results' && t.table_name !== 'calibration_results')
+                    .map(t => t.table_name);
+            } else {
+                // Fallback: use scorecard tables
+                const { data: scorecards } = await window.supabaseClient
+                    .from('scorecards')
+                    .select('table_name')
+                    .eq('is_active', true);
+                tablesToQuery = scorecards?.map(s => s.table_name) || [];
+            }
+        } catch (error) {
+            console.error('Error getting audit tables:', error);
+            tablesToQuery = [];
+        }
+        
+        if (tablesToQuery.length === 0) {
+            loadingIndicator.innerHTML = '<p style="color: #ef4444;">No audit tables found</p>';
+            return;
+        }
+        
+        // Initialize metrics structure
+        const metrics = {
+            'Chat Coverage Count': { target: '-', tracking: 'Daily', values: [], average: 0, isCount: true },
+            'Chat Coverage %': { target: '100%', tracking: 'Daily', values: [], average: 0 },
+            'Average Score': { target: '85', tracking: 'Daily', values: [], average: 0 },
+            'Passing Rate': { target: '80%', tracking: 'Daily', values: [], average: 0 },
+            'Audit Rating': { target: '4.5', tracking: 'Daily', values: [], average: 0 },
+            'Acknowledgement Count (24-hours)': { target: '-', tracking: 'Daily', values: [], average: 0, isCount: true },
+            'Overall Acknowledgement Count': { target: '-', tracking: 'Daily', values: [], average: 0, isCount: true },
+            'Average Audit Time': { target: '15', tracking: 'Daily', values: [], average: 0 },
+            'Reversals Filed Count': { target: '-', tracking: 'Daily', values: [], average: 0, isCount: true },
+            'In-Scope Reversals Count': { target: '-', tracking: 'Daily', values: [], average: 0, isCount: true },
+            'In-Scope Reversals Rate': { target: '2.50%', tracking: 'Daily', values: [], average: 0 },
+            'Reversal SLA - Weekdays': { target: '30', tracking: 'Daily', values: [], average: 0 },
+            'Reversal SLA - Weekends': { target: '96', tracking: 'Weekends', values: [], average: 0 }
+        };
+        
+        // Initialize rating breakdown (aggregated across all days)
+        const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        
+        // Store detailed audit records with ratings
+        const detailedAuditRecords = [];
+        
+        // Query data for each day
+        for (const day of days) {
+            const dayStart = getDhakaStartOfDay(day.date);
+            const dayEnd = getDhakaEndOfDay(day.date);
+            const dayStartUTC = dhakaDateToUTCISO(dayStart);
+            const dayEndUTC = dhakaDateToUTCISO(dayEnd);
+            
+            // Initialize day metrics
+            const dayMetrics = {
+                totalAudits: 0,
+                passedAudits: 0,
+                reversals: 0,
+                inScopeReversals: 0,
+                totalStarRating: 0,
+                starRatingCount: 0,
+                acknowledgedAudits: 0,
+                acknowledgedWithin24Hours: 0,
+                totalDuration: 0,
+                durationCount: 0,
+                chatCompletedAudits: 0,
+                chatAssignedAudits: 0,
+                totalQualityScore: 0,
+                qualityScoreCount: 0,
+                reversalSLAs: [],
+                ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } // Track count per rating
+            };
+            
+            // Query audit assignments for selected channels for this day
+            try {
+                const assignmentDayStart = dhakaDateToUTCISO(dayStart);
+                const assignmentDayEnd = dhakaDateToUTCISO(dayEnd);
+                
+                // Get selected channels from filter
+                const selectedChannels = getSelectedChannels();
+                
+                // Get all assignments created on this day
+                const { data: assignments, error: assignmentError } = await window.supabaseClient
+                    .from('audit_assignments')
+                    // `audit_assignments` has `channel` in staging; use it directly.
+                    .select('created_at, channel')
+                    .gte('created_at', assignmentDayStart)
+                    .lte('created_at', assignmentDayEnd);
+                
+                if (!assignmentError && assignments) {
+                    // Count assignments for selected channels (or all if none selected)
+                    assignments.forEach(assignment => {
+                        const assignmentDate = toDhakaTime(assignment.created_at);
+                        if (assignmentDate >= dayStart && assignmentDate <= dayEnd) {
+                            const channel = (assignment.channel || '').trim();
+                            if (selectedChannels.length === 0 || (channel && selectedChannels.includes(channel))) {
+                                dayMetrics.chatAssignedAudits++;
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.warn('Error querying audit assignments:', err);
+            }
+            
+            // Query all tables in parallel
+            const tablePromises = tablesToQuery.map(async (tableName) => {
+                try {
+                    // Get all audits for this day
+                    const { data: audits, error } = await window.supabaseClient
+                        .from(tableName)
+                        .select('*')
+                        .gte('submitted_at', dayStartUTC)
+                        .lte('submitted_at', dayEndUTC)
+                        .not('submitted_at', 'is', null);
+                    
+                    if (error) {
+                        console.warn(`Error querying ${tableName}:`, error);
+                        return [];
+                    }
+                    
+                    // Filter client-side to ensure correct timezone
+                    const filteredAudits = (audits || []).filter(audit => {
+                        if (!audit.submitted_at) return false;
+                        const auditDate = toDhakaTime(audit.submitted_at);
+                        return auditDate >= dayStart && auditDate <= dayEnd;
+                    });
+                    
+                    return filteredAudits.map(audit => ({
+                        ...audit,
+                        _table_name: tableName
+                    }));
+                } catch (err) {
+                    console.warn(`Error in query for ${tableName}:`, err);
+                    return [];
+                }
+            });
+            
+            const tableResults = await Promise.all(tablePromises);
+            const allAudits = tableResults.flat();
+            
+            // Calculate metrics for this day
+            allAudits.forEach(audit => {
+                dayMetrics.totalAudits++;
+                
+                // Average Score (quality score)
+                const qualityScore = parseFloat(audit.averageScore || audit.average_score || audit.score || 0);
+                if (qualityScore > 0) {
+                    dayMetrics.totalQualityScore += qualityScore;
+                    dayMetrics.qualityScoreCount++;
+                }
+                
+                // Passing Rate
+                const passingStatus = normalizePassingStatus(audit.passing_status);
+                if (passingStatus === 'Passed') {
+                    dayMetrics.passedAudits++;
+                }
+                
+                // Reversals Filed Count
+                if (audit.reversal_requested_at) {
+                    dayMetrics.reversals++;
+                    
+                    // In-Scope Reversals Count
+                    const withinScope = audit.within_auditor_scope || audit.withinAuditorScope;
+                    if (withinScope === true || withinScope === 'true' || withinScope === 'True') {
+                        dayMetrics.inScopeReversals++;
+                    }
+                    
+                    // Reversal SLA (time between request and response)
+                    if (audit.reversal_responded_at) {
+                        const slaHours = calculateTimeDifference(
+                            audit.reversal_requested_at,
+                            audit.reversal_responded_at
+                        );
+                        if (slaHours !== null) {
+                            const auditDate = toDhakaTime(audit.submitted_at);
+                            const isWeekendDay = isWeekend(auditDate);
+                            dayMetrics.reversalSLAs.push({
+                                hours: slaHours,
+                                isWeekend: isWeekendDay
+                            });
+                        }
+                    }
+                }
+                
+                // Audit Rating (Star Rating 1-5)
+                const starRating = parseFloat(audit.audit_rating || 0);
+                if (starRating > 0 && starRating <= 5) {
+                    dayMetrics.totalStarRating += starRating;
+                    dayMetrics.starRatingCount++;
+                    // Track breakdown by rating
+                    const ratingKey = Math.floor(starRating); // Round down to get integer rating (1-5)
+                    if (ratingKey >= 1 && ratingKey <= 5) {
+                        dayMetrics.ratingBreakdown[ratingKey]++;
+                    }
+                    
+                    // Store detailed audit record for breakdown table
+                    // Calculate error count - prefer totalErrorsCount field if available
+                    let errorCount = 0;
+                    if (audit.totalErrorsCount !== undefined && audit.totalErrorsCount !== null) {
+                        errorCount = parseInt(audit.totalErrorsCount) || 0;
+                    } else if (audit.error_count !== undefined && audit.error_count !== null) {
+                        errorCount = parseInt(audit.error_count) || 0;
+                    } else if (audit.parameter_comments) {
+                        // Count comments (errors) in parameter_comments as fallback
+                        const comments = audit.parameter_comments;
+                        if (typeof comments === 'object') {
+                            errorCount = Object.keys(comments).length;
+                        }
+                    } else if (audit.errors) {
+                        errorCount = Array.isArray(audit.errors) ? audit.errors.length : 0;
+                    }
+                    
+                    // Extract rating feedback
+                    const ratingFeedback = audit.audit_rating_feedback || audit.auditRatingFeedback || '';
+                    
+                    detailedAuditRecords.push({
+                        id: audit.id,
+                        submitted_at: audit.submitted_at,
+                        employee_email: audit.employee_email || audit.employeeEmail || '',
+                        employee_name: audit.employee_name || audit.employeeName || '',
+                        channel: audit.channel || '',
+                        quality_score: qualityScore,
+                        error_count: errorCount,
+                        auditor_email: audit.auditor_email || audit.auditorEmail || '',
+                        auditor_name: audit.auditor_name || audit.auditorName || '',
+                        rating: starRating,
+                        rating_feedback: ratingFeedback,
+                        table_name: audit._table_name,
+                        scorecard_id: audit.scorecard_id || audit._scorecard_id || null
+                    });
+                }
+                
+                // Acknowledgement tracking
+                const ackStatus = audit.acknowledgement_status || audit.acknowledgementStatus || '';
+                const isAcknowledged = ackStatus && (
+                    ackStatus.toLowerCase().includes('acknowledged') ||
+                    ackStatus === 'Acknowledged'
+                );
+                
+                if (isAcknowledged) {
+                    dayMetrics.acknowledgedAudits++;
+                    
+                    // Check if acknowledged within 24 hours
+                    const submittedAt = audit.submitted_at;
+                    const ackUpdatedAt = audit.acknowledgement_status_updated_at || audit.acknowledgementStatusUpdatedAt;
+                    
+                    if (submittedAt && ackUpdatedAt) {
+                        const submittedTime = new Date(submittedAt).getTime();
+                        const ackTime = new Date(ackUpdatedAt).getTime();
+                        const hoursDiff = (ackTime - submittedTime) / (1000 * 60 * 60);
+                        
+                        if (hoursDiff >= 0 && hoursDiff <= 24) {
+                            dayMetrics.acknowledgedWithin24Hours++;
+                        }
+                    }
+                }
+                
+                // Avg Audit Time
+                if (audit.audit_duration) {
+                    const durationMinutes = convertDurationToMinutes(audit.audit_duration);
+                    if (durationMinutes > 0) {
+                        dayMetrics.totalDuration += durationMinutes;
+                        dayMetrics.durationCount++;
+                    }
+                }
+                
+                // Chat Coverage (count completed audits for selected channels)
+                const auditChannel = (audit.channel || '').trim();
+                const selectedChannels = getSelectedChannels();
+                if (selectedChannels.length === 0 || (auditChannel && selectedChannels.includes(auditChannel))) {
+                    dayMetrics.chatCompletedAudits++;
+                }
+            });
+            
+            // Calculate percentages and averages for the day
+            const chatCoverageCount = dayMetrics.chatCompletedAudits;
+            const chatCoverage = dayMetrics.chatAssignedAudits > 0
+                ? (dayMetrics.chatCompletedAudits / dayMetrics.chatAssignedAudits) * 100
+                : 0;
+            
+            const avgScore = dayMetrics.qualityScoreCount > 0
+                ? dayMetrics.totalQualityScore / dayMetrics.qualityScoreCount
+                : 0;
+            
+            const passingRate = dayMetrics.totalAudits > 0
+                ? (dayMetrics.passedAudits / dayMetrics.totalAudits) * 100
+                : 0;
+            
+            const inScopeReversalRate = dayMetrics.totalAudits > 0
+                ? (dayMetrics.inScopeReversals / dayMetrics.totalAudits) * 100
+                : 0;
+            
+            const avgStarRating = dayMetrics.starRatingCount > 0
+                ? dayMetrics.totalStarRating / dayMetrics.starRatingCount
+                : 0;
+            
+            const avgAuditTime = dayMetrics.durationCount > 0
+                ? dayMetrics.totalDuration / dayMetrics.durationCount
+                : 0;
+            
+            // Reversal SLA - separate weekdays and weekends
+            const weekdaySLAs = dayMetrics.reversalSLAs
+                .filter(sla => !sla.isWeekend)
+                .map(sla => sla.hours);
+            const weekendSLAs = dayMetrics.reversalSLAs
+                .filter(sla => sla.isWeekend)
+                .map(sla => sla.hours);
+            
+            const avgWeekdaySLA = weekdaySLAs.length > 0
+                ? weekdaySLAs.reduce((a, b) => a + b, 0) / weekdaySLAs.length
+                : 0;
+            
+            const avgWeekendSLA = weekendSLAs.length > 0
+                ? weekendSLAs.reduce((a, b) => a + b, 0) / weekendSLAs.length
+                : 0;
+            
+            // Store day values
+            metrics['Chat Coverage Count'].values.push(chatCoverageCount);
+            metrics['Chat Coverage %'].values.push(chatCoverage);
+            metrics['Average Score'].values.push(avgScore);
+            metrics['Passing Rate'].values.push(passingRate);
+            metrics['Audit Rating'].values.push(avgStarRating);
+            metrics['Acknowledgement Count (24-hours)'].values.push(dayMetrics.acknowledgedWithin24Hours);
+            metrics['Overall Acknowledgement Count'].values.push(dayMetrics.acknowledgedAudits);
+            metrics['Average Audit Time'].values.push(avgAuditTime);
+            metrics['Reversals Filed Count'].values.push(dayMetrics.reversals);
+            metrics['In-Scope Reversals Count'].values.push(dayMetrics.inScopeReversals);
+            metrics['In-Scope Reversals Rate'].values.push(inScopeReversalRate);
+            metrics['Reversal SLA - Weekdays'].values.push(avgWeekdaySLA);
+            metrics['Reversal SLA - Weekends'].values.push(avgWeekendSLA);
+            
+            // Aggregate rating breakdown across all days
+            for (let rating = 1; rating <= 5; rating++) {
+                ratingBreakdown[rating] += dayMetrics.ratingBreakdown[rating];
+            }
+        }
+        
+        // Calculate averages for the selected period
+        const dayCount = days.length;
+        Object.keys(metrics).forEach(key => {
+            const metric = metrics[key];
+            // Exclude zeros from average calculation for all metrics
+            // Zero means all members were absent/on leave, not actual data
+            const values = metric.values.filter(v => v > 0);
+            if (values.length > 0) {
+                metric.average = values.reduce((a, b) => a + b, 0) / values.length;
+            }
+        });
+        
+        // Update header text
+        const averageHeader = document.getElementById('averageHeader');
+        if (averageHeader) {
+            averageHeader.textContent = `${dayCount}-Day Average`;
+        }
+        
+        const dailyTrackingHeader = document.getElementById('dailyTrackingHeader');
+        if (dailyTrackingHeader) {
+            dailyTrackingHeader.setAttribute('colspan', dayCount.toString());
+            dailyTrackingHeader.textContent = 'Daily Tracking';
+        }
+        
+        // Update month header
+        const monthHeader = document.getElementById('monthHeader');
+        if (monthHeader && days.length > 0) {
+            const firstDay = days[0];
+            const lastDay = days[days.length - 1];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+            const firstMonth = monthNames[firstDay.date.getMonth()];
+            const lastMonth = monthNames[lastDay.date.getMonth()];
+            
+            if (firstMonth === lastMonth && firstDay.year === lastDay.year) {
+                monthHeader.textContent = `${firstMonth} ${firstDay.year}`;
+            } else if (firstDay.year === lastDay.year) {
+                monthHeader.textContent = `${firstMonth} - ${lastMonth} ${firstDay.year}`;
+            } else {
+                monthHeader.textContent = `${firstMonth} ${firstDay.year} - ${lastMonth} ${lastDay.year}`;
+            }
+        }
+        
+        // Render table
+        renderMetricsTable(days, metrics);
+        
+        // Load user information for detailed breakdown
+        // STAGING NOTE: `users` does not have `name` or `channel` columns.
+        // Prefer `people` for (email, name, channel). Fall back to `users` for (email, full_name).
+        let directoryRows = [];
+        try {
+            const { data: peopleRows, error: peopleErr } = await window.supabaseClient
+                .from('people')
+                .select('email, name, channel');
+            if (!peopleErr && peopleRows) {
+                directoryRows = peopleRows;
+            }
+        } catch (e) {
+            // Ignore and fall back
+        }
+        if (!Array.isArray(directoryRows) || directoryRows.length === 0) {
+            // Fallback: users table (no channel in staging, but keep name if available)
+            try {
+                const { data: usersRows, error: usersErr } = await window.supabaseClient
+                    .from('users')
+                    .select('email, full_name');
+                if (!usersErr && usersRows) {
+                    directoryRows = usersRows.map(u => ({
+                        email: u.email,
+                        name: u.full_name || '',
+                        channel: ''
+                    }));
+                }
+            } catch (e) {
+                directoryRows = [];
+            }
+        }
+
+        const userMap = {};
+        (directoryRows || []).forEach(user => {
+            if (user?.email) userMap[user.email] = user;
+        });
+        
+        // Enrich detailed audit records with user information
+        if (Array.isArray(detailedAuditRecords)) {
+            detailedAuditRecords.forEach(record => {
+                const employee = userMap[record.employee_email];
+                if (employee) {
+                    if (!record.employee_name) record.employee_name = employee.name || '';
+                    if (!record.channel) record.channel = employee.channel || '';
+                }
+                const auditor = userMap[record.auditor_email];
+                if (auditor && !record.auditor_name) {
+                    record.auditor_name = auditor.name || '';
+                }
+            });
+        } else {
+            // Initialize as empty array if not already an array
+            detailedAuditRecords = [];
+        }
+        
+        // Render rating breakdown table
+        renderRatingBreakdown(ratingBreakdown, days, detailedAuditRecords || []);
+        
+        // Show explanations
+        renderExplanations();
+        
+        loadingIndicator.style.display = 'none';
+        metricsTable.style.display = 'block';
+        
+    } catch (error) {
+        console.error('Error loading metrics:', error);
+        loadingIndicator.innerHTML = `<p style="color: #ef4444;">Error loading metrics: ${error.message}</p>`;
+    }
+}
+
+// Render metrics table
+function renderMetricsTable(days, metrics) {
+    const dayHeadersRow = document.getElementById('dayHeadersRow');
+    const dateHeadersRow = document.getElementById('dateHeadersRow');
+    const metricsBody = document.getElementById('metricsBody');
+    
+    // Clear existing content
+    dayHeadersRow.innerHTML = '';
+    dateHeadersRow.innerHTML = '';
+    metricsBody.innerHTML = '';
+    
+        // Render day headers
+        days.forEach((day) => {
+            const dayHeader = document.createElement('th');
+            dayHeader.className = 'day-header';
+            dayHeader.style.background = '#374151';
+            dayHeader.innerHTML = `<div style="font-weight: 600;">Day ${day.dayIndex}</div>`;
+            dayHeadersRow.appendChild(dayHeader);
+            
+            const dateHeader = document.createElement('th');
+            dateHeader.className = 'day-header';
+            dateHeader.style.background = '#374151';
+            dateHeader.innerHTML = `<div style="font-weight: 600;">${day.dayName}</div><div style="font-size: 0.75rem; font-weight: 400; margin-top: 0.25rem;">${day.month}/${day.dayNum}/${day.year}</div>`;
+            dateHeadersRow.appendChild(dateHeader);
+        });
+    
+    // Render metrics rows
+    Object.keys(metrics).forEach(metricName => {
+        const metric = metrics[metricName];
+        const row = document.createElement('tr');
+        
+        // Metric name with info icon
+        const nameCell = document.createElement('td');
+        nameCell.className = 'metric-name';
+        const nameContainer = document.createElement('div');
+        nameContainer.className = 'metric-name-cell';
+        
+        const nameText = document.createElement('span');
+        nameText.textContent = metricName;
+        nameContainer.appendChild(nameText);
+        
+        // Get explanation for this metric
+        const explanation = getMetricExplanation(metricName);
+        if (explanation) {
+            const infoIcon = document.createElement('div');
+            infoIcon.className = 'info-icon';
+            infoIcon.innerHTML = `
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 100%; height: 100%;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="info-tooltip">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; color: #10b981;">${metricName}</div>
+                    <div>${explanation}</div>
+                </div>
+            `;
+            nameContainer.appendChild(infoIcon);
+        }
+        
+        nameCell.appendChild(nameContainer);
+        row.appendChild(nameCell);
+        
+        // Target
+        const targetCell = document.createElement('td');
+        targetCell.textContent = metric.target;
+        row.appendChild(targetCell);
+        
+        // Period Average
+        const avgCell = document.createElement('td');
+        if (metric.isCount) {
+            // For count metrics, show the average count per day with 2 decimal places
+            // Show "-" instead of "0" since 0 means all members were absent/on leave
+            avgCell.textContent = metric.average > 0 ? metric.average.toFixed(2) : '-';
+        } else if (metricName === 'Avg Audit Time' || metricName === 'Average Audit Time') {
+            avgCell.textContent = metric.average > 0 ? formatDuration(metric.average) : '-';
+        } else if (metricName.includes('SLA')) {
+            avgCell.textContent = metric.average > 0 ? `${Math.round(metric.average)}h` : '-';
+        } else if (metricName === 'Audit Rating') {
+            avgCell.textContent = metric.average > 0 ? `${metric.average.toFixed(2)}` : '-';
+        } else if (metricName === 'Average Score') {
+            avgCell.textContent = metric.average > 0 ? `${metric.average.toFixed(2)}` : '-';
+        } else {
+            avgCell.textContent = metric.average > 0 ? `${metric.average.toFixed(2)}%` : '-';
+        }
+        row.appendChild(avgCell);
+        
+        // Tracking Method
+        const trackingCell = document.createElement('td');
+        trackingCell.textContent = metric.tracking;
+        row.appendChild(trackingCell);
+        
+        // Daily values
+        days.forEach((day, index) => {
+            const valueCell = document.createElement('td');
+            valueCell.className = 'day-cell';
+            
+            const value = metric.values[index] || 0;
+            
+            if (metric.isCount) {
+                // For count metrics, show the count directly
+                // Show "-" instead of "0" since 0 means all members were absent/on leave
+                valueCell.textContent = value > 0 ? value.toString() : '-';
+            } else if (metricName === 'Avg Audit Time' || metricName === 'Average Audit Time') {
+                valueCell.textContent = value > 0 ? formatDuration(value) : '-';
+            } else if (metricName.includes('SLA')) {
+                valueCell.textContent = value > 0 ? `${Math.round(value)}h` : '-';
+            } else if (metricName === 'Audit Rating') {
+                valueCell.textContent = value > 0 ? `${value.toFixed(2)}` : '-';
+            } else if (metricName === 'Average Score') {
+                valueCell.textContent = value > 0 ? `${value.toFixed(2)}` : '-';
+            } else {
+                valueCell.textContent = value > 0 ? `${value.toFixed(2)}%` : '-';
+            }
+            
+            row.appendChild(valueCell);
+        });
+        
+        metricsBody.appendChild(row);
+    });
+}
+
+// Render rating breakdown table with detailed audit records
+function renderRatingBreakdown(ratingBreakdown, days, detailedAuditRecords) {
+    const breakdownTable = document.getElementById('ratingBreakdownTable');
+    const breakdownBody = document.getElementById('ratingBreakdownBody');
+    
+    if (!breakdownTable || !breakdownBody) return;
+    
+    // Ensure detailedAuditRecords is an array
+    if (!Array.isArray(detailedAuditRecords)) {
+        console.warn('detailedAuditRecords is not an array, initializing as empty array');
+        detailedAuditRecords = [];
+    }
+    
+    // Sort detailed records by rating (highest first), then by date (newest first)
+    const sortedRecords = [...detailedAuditRecords].sort((a, b) => {
+        if (b.rating !== a.rating) {
+            return b.rating - a.rating; // Higher rating first
+        }
+        // If same rating, sort by date (newest first)
+        return new Date(b.submitted_at) - new Date(a.submitted_at);
+    });
+    
+    if (sortedRecords.length === 0) {
+        breakdownTable.style.display = 'none';
+        return;
+    }
+    
+    // Clear existing content
+    breakdownBody.innerHTML = '';
+    
+    // Render each audit record as a row
+    sortedRecords.forEach(record => {
+        const row = document.createElement('tr');
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            viewAuditDetails(record);
+        });
+        row.addEventListener('mouseenter', () => {
+            row.style.backgroundColor = '#f3f4f6';
+        });
+        row.addEventListener('mouseleave', () => {
+            row.style.backgroundColor = '';
+        });
+        
+        // Audited Date
+        const dateCell = document.createElement('td');
+        if (record.submitted_at) {
+            dateCell.textContent = formatDhakaDateTime(record.submitted_at);
+        } else {
+            dateCell.textContent = '-';
+        }
+        row.appendChild(dateCell);
+        
+        // Who Was Audited
+        const employeeCell = document.createElement('td');
+        employeeCell.textContent = record.employee_name || record.employee_email || '-';
+        row.appendChild(employeeCell);
+        
+        // Channel
+        const channelCell = document.createElement('td');
+        channelCell.textContent = record.channel || '-';
+        row.appendChild(channelCell);
+        
+        // Avg Quality Score
+        const scoreCell = document.createElement('td');
+        scoreCell.style.textAlign = 'center';
+        if (record.quality_score > 0) {
+            scoreCell.textContent = record.quality_score.toFixed(2);
+        } else {
+            scoreCell.textContent = '-';
+        }
+        row.appendChild(scoreCell);
+        
+        // Count of Error
+        const errorCell = document.createElement('td');
+        errorCell.style.textAlign = 'center';
+        errorCell.textContent = record.error_count || 0;
+        row.appendChild(errorCell);
+        
+        // Auditor
+        const auditorCell = document.createElement('td');
+        auditorCell.textContent = record.auditor_name || record.auditor_email || '-';
+        row.appendChild(auditorCell);
+        
+        // Rating (as stars)
+        const ratingCell = document.createElement('td');
+        ratingCell.style.textAlign = 'center';
+        const rating = Math.floor(record.rating);
+        ratingCell.innerHTML = `<span style="font-size: 1.125rem; color: #fbbf24;">${'★'.repeat(rating)}${'☆'.repeat(5 - rating)}</span>`;
+        row.appendChild(ratingCell);
+        
+        // Rating Feedback
+        const feedbackCell = document.createElement('td');
+        feedbackCell.style.maxWidth = '300px';
+        feedbackCell.style.wordWrap = 'break-word';
+        feedbackCell.style.fontSize = '0.875rem';
+        if (record.rating_feedback && record.rating_feedback.trim()) {
+            feedbackCell.textContent = record.rating_feedback.length > 150 
+                ? record.rating_feedback.substring(0, 150) + '...' 
+                : record.rating_feedback;
+            feedbackCell.title = record.rating_feedback; // Show full text on hover
+        } else {
+            feedbackCell.textContent = '-';
+            feedbackCell.style.color = '#9ca3af';
+        }
+        row.appendChild(feedbackCell);
+        
+        breakdownBody.appendChild(row);
+    });
+    
+    // Show the breakdown table
+    breakdownTable.style.display = 'block';
+}
+
+// View audit details - navigate to audit view page
+function viewAuditDetails(record) {
+    if (!record.id || !record.table_name) {
+        console.error('Cannot view audit: missing id or table_name', record);
+        return;
+    }
+    
+    // Build URL to view the audit
+    const params = new URLSearchParams();
+    params.append('id', record.id);
+    params.append('table', record.table_name);
+    if (record.scorecard_id) {
+        params.append('scorecard', record.scorecard_id);
+    }
+    
+    window.location.href = `audit-view.html?${params.toString()}`;
+}
+
+
+// Get explanation for a specific metric
+function getMetricExplanation(metricName) {
+    const explanations = {
+        'Chat Coverage Count': `Total count of completed audits for selected channels. This is the raw count of audits that were completed, regardless of assignments. If no channels are selected, it includes all channels.`,
+        'Chat Coverage %': `Percentage of completed audits for selected channels. Calculated as: (Number of completed audits for selected channels) / (Number of audit assignments for selected channels) × 100%. This tracks how many assigned audits have been completed. If no channels are selected, it includes all channels.`,
+        'Average Score': `Average quality score across all audits. Calculated as: Sum of all average_score values / (Number of audits with scores). Only includes audits where a quality score is available.`,
+        'Passing Rate': `Percentage of audits that passed. Calculated as: (Number of audits with passing_status = 'Passed') / (Total audits) × 100%. Uses normalized passing status to handle variations in status values.`,
+        'Audit Rating': `Average star rating (1-5) given by employees when acknowledging audits. Calculated as: Sum of all audit_rating values / (Number of audits with ratings). Only includes audits where employees have provided a star rating (1-5 stars).`,
+        'Acknowledgement Count (24-hours)': `Count of audits that were acknowledged within 24 hours of submission. Calculated by comparing acknowledgement_status_updated_at with submitted_at. This count cannot increase past the 24-hour mark - once an audit passes 24 hours, it will not be counted even if acknowledged later.`,
+        'Overall Acknowledgement Count': `Total count of all audits that have been acknowledged, regardless of when they were acknowledged. This count can increase past the 24-hour mark. Calculated as: Number of audits with acknowledgement_status containing 'acknowledged' (case-insensitive).`,
+        'Average Audit Time': `Average time taken to complete an audit. Calculated as: Sum of all audit_duration values (converted to minutes) / (Number of audits with duration). Numeric values are in seconds (converted to minutes by dividing by 60). Legacy string formats like "MM:SS", "HH:MM:SS", "1h 30m", or "90m" are also supported.`,
+        'Reversals Filed Count': `Total count of audits that have a reversal requested. Calculated as: Number of audits with reversal_requested_at not null. This includes all reversals regardless of scope.`,
+        'In-Scope Reversals Count': `Count of reversals that are within auditor scope. Calculated as: Number of audits where reversal_requested_at is not null AND within_auditor_scope is true.`,
+        'In-Scope Reversals Rate': `Percentage of audits that have an in-scope reversal requested. Calculated as: (Number of in-scope reversals) / (Total audits) × 100%. Only counts reversals where within_auditor_scope is true.`,
+        'Reversal SLA - Weekdays': `Average time (in hours) between reversal_requested_at and reversal_responded_at for reversals submitted on weekdays (Monday-Friday). Calculated as: Sum of time differences / (Number of weekday reversals with responses). Only includes reversals that have both request and response timestamps.`,
+        'Reversal SLA - Weekends': `Average time (in hours) between reversal_requested_at and reversal_responded_at for reversals submitted on weekends (Saturday-Sunday). Calculated as: Sum of time differences / (Number of weekend reversals with responses). Only includes reversals that have both request and response timestamps.`
+    };
+    
+    return explanations[metricName] || null;
+}
+
+// Render explanations (kept for backward compatibility, but now used for tooltips)
+function renderExplanations() {
+    // This function is kept but explanations are now shown in tooltips
+    // The explanation section can be hidden or kept for reference
+    const explanationSection = document.getElementById('explanationSection');
+    if (explanationSection) {
+        explanationSection.style.display = 'none'; // Hide the separate section since we have tooltips
+    }
+}
+
+// Get selected channels from filter
+function getSelectedChannels() {
+    const hiddenInput = document.getElementById('channelFilter');
+    if (!hiddenInput || !hiddenInput.value) return [];
+    try {
+        return JSON.parse(hiddenInput.value);
+    } catch (e) {
+        return [];
+    }
+}
+
+// Multi-select functions
+window.toggleMultiSelect = function(filterId) {
+    const dropdown = document.getElementById(`${filterId}Dropdown`);
+    const trigger = document.getElementById(`${filterId}Trigger`);
+    
+    if (!dropdown || !trigger) return;
+    
+    // Close all other multi-selects
+    document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+        if (dd !== dropdown) {
+            dd.style.display = 'none';
+            const otherTrigger = dd.previousElementSibling;
+            if (otherTrigger) otherTrigger.classList.remove('active');
+        }
+    });
+    
+    // Toggle current dropdown
+    const isOpen = dropdown.style.display !== 'none';
+    dropdown.style.display = isOpen ? 'none' : 'flex';
+    trigger.classList.toggle('active', !isOpen);
+};
+
+window.updateMultiSelect = function(filterId) {
+    const options = document.querySelectorAll(`#${filterId}Options input[type="checkbox"]`);
+    const selected = Array.from(options)
+        .filter(checkbox => checkbox.checked)
+        .map(checkbox => checkbox.value);
+    
+    const hiddenInput = document.getElementById(filterId);
+    if (hiddenInput) {
+        hiddenInput.value = JSON.stringify(selected);
+    }
+    
+    // Update UI
+    const placeholder = document.getElementById(`${filterId}Placeholder`);
+    const count = document.getElementById(`${filterId}Count`);
+    
+    if (selected.length === 0) {
+        if (placeholder) {
+            placeholder.style.display = 'inline';
+            placeholder.textContent = 'Select channels...';
+        }
+        if (count) count.style.display = 'none';
+    } else {
+        if (placeholder) placeholder.style.display = 'none';
+        if (count) {
+            count.style.display = 'inline';
+            count.textContent = selected.length;
+        }
+    }
+    
+    // Reload metrics data when filter changes
+    loadMetricsData();
+};
+
+window.filterMultiSelectOptions = function(filterId) {
+    const searchInput = document.getElementById(`${filterId}Search`);
+    const options = document.querySelectorAll(`#${filterId}Options .multi-select-option`);
+    const searchTerm = (searchInput?.value || '').toLowerCase();
+    
+    options.forEach(option => {
+        const label = option.querySelector('label');
+        const text = label ? label.textContent.toLowerCase() : '';
+        if (text.includes(searchTerm)) {
+            option.classList.remove('hidden');
+        } else {
+            option.classList.add('hidden');
+        }
+    });
+};
+
+window.selectAllMultiSelect = function(filterId) {
+    const options = document.querySelectorAll(`#${filterId}Options .multi-select-option:not(.hidden) input[type="checkbox"]`);
+    options.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateMultiSelect(filterId);
+};
+
+window.clearMultiSelect = function(filterId) {
+    const options = document.querySelectorAll(`#${filterId}Options input[type="checkbox"]`);
+    options.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateMultiSelect(filterId);
+};
+
+// Load channels for filter dropdown
+async function loadChannels() {
+    try {
+        // STAGING NOTE:
+        // - In staging, `users` does NOT have a `channel` column.
+        // - Channels live in `channels` table (authoritative), and `people.channel` for user profile enrichment.
+        // Prefer `channels`, fall back to `people`.
+
+        let channels = [];
+
+        // 1) Preferred: `channels` table
+        try {
+            const { data: channelRows, error: channelErr } = await window.supabaseClient
+                .from('channels')
+                .select('name')
+                .eq('is_active', true)
+                .not('name', 'is', null);
+
+            if (!channelErr && channelRows && channelRows.length > 0) {
+                channels = [...new Set(channelRows.map(r => (r?.name || '').trim()).filter(Boolean))].sort();
+            }
+        } catch (e) {
+            // Ignore and fall back
+        }
+
+        // 2) Fallback: distinct-ish channels from `people`
+        if (channels.length === 0) {
+            const { data: peopleRows, error: peopleErr } = await window.supabaseClient
+                .from('people')
+                .select('channel')
+                .not('channel', 'is', null);
+
+            if (peopleErr) {
+                console.warn('Error loading channels (people fallback):', peopleErr);
+                return [];
+            }
+
+            channels = [...new Set((peopleRows || []).map(u => (u?.channel || '').trim()).filter(Boolean))].sort();
+        }
+        
+        // Populate channel filter dropdown
+        const channelOptions = document.getElementById('channelFilterOptions');
+        if (channelOptions) {
+            channelOptions.innerHTML = channels.map(channel => `
+                <div class="multi-select-option" data-value="${escapeHtml(channel)}">
+                    <input type="checkbox" id="channel_${escapeHtml(channel)}" value="${escapeHtml(channel)}">
+                    <label for="channel_${escapeHtml(channel)}">${escapeHtml(channel)}</label>
+                </div>
+            `).join('');
+        }
+        
+        return channels;
+    } catch (err) {
+        console.error('Error loading channels:', err);
+        return [];
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Date range functions
+window.toggleDateDropdown = function() {
+    const dropdown = document.getElementById('dateDropdown');
+    if (dropdown) {
+        dropdown.classList.toggle('active');
+    }
+};
+
+window.applyDateFilter = function() {
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    const dateBtnTextEl = document.getElementById('dateBtnText');
+    
+    const startDate = startDateEl?.value || '';
+    const endDate = endDateEl?.value || '';
+    
+    if (startDate && endDate) {
+        const start = formatDhakaDate(parseDhakaDate(startDate), { month: 'short', day: 'numeric' });
+        const end = formatDhakaDate(parseDhakaDate(endDate), { month: 'short', day: 'numeric' });
+        if (dateBtnTextEl) {
+            dateBtnTextEl.textContent = `${start} - ${end}`;
+        }
+        
+        // Close dropdown
+        const dropdown = document.getElementById('dateDropdown');
+        if (dropdown) dropdown.classList.remove('active');
+        
+        // Reload metrics with new date range
+        loadMetricsData();
+    } else {
+        alert('Please select both start and end dates');
+    }
+};
+
+window.clearDateFilter = function() {
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    const dateBtnTextEl = document.getElementById('dateBtnText');
+    
+    if (startDateEl) startDateEl.value = '';
+    if (endDateEl) endDateEl.value = '';
+    if (dateBtnTextEl) dateBtnTextEl.textContent = 'Last 7 Days';
+    
+    // Close dropdown
+    const dropdown = document.getElementById('dateDropdown');
+    if (dropdown) dropdown.classList.remove('active');
+    
+    // Reload metrics with default range
+    loadMetricsData();
+};
+
+// Initialize date range to last 7 days
+function initializeDateRange() {
+    const today = getDhakaStartOfDay();
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() - 1); // Yesterday
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6); // 7 days ago
+    
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    const dateBtnTextEl = document.getElementById('dateBtnText');
+    
+    if (startDateEl) startDateEl.value = formatDhakaDateForInput(startDate);
+    if (endDateEl) endDateEl.value = formatDhakaDateForInput(endDate);
+    
+    if (dateBtnTextEl) {
+        const start = formatDhakaDate(startDate, { month: 'short', day: 'numeric' });
+        const end = formatDhakaDate(endDate, { month: 'short', day: 'numeric' });
+        dateBtnTextEl.textContent = `${start} - ${end}`;
+    }
+}
+
+// Close multi-select dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.multi-select-container')) {
+        document.querySelectorAll('.multi-select-dropdown').forEach(dd => {
+            dd.style.display = 'none';
+        });
+        document.querySelectorAll('.multi-select-trigger').forEach(trigger => {
+            trigger.classList.remove('active');
+        });
+    }
+    
+    // Close date dropdown when clicking outside
+    if (!e.target.closest('.date-picker-dropdown')) {
+        const dropdown = document.getElementById('dateDropdown');
+        if (dropdown) dropdown.classList.remove('active');
+    }
+});
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    // CSP: inline event handlers (onclick/oninput/...) are blocked by policy.
+    // Bind listeners programmatically instead.
+    const dateBtn = document.getElementById('dateBtn');
+    if (dateBtn) {
+        dateBtn.addEventListener('click', () => window.toggleDateDropdown());
+    }
+    const applyDateBtn = document.getElementById('applyDateBtn');
+    if (applyDateBtn) {
+        applyDateBtn.addEventListener('click', () => window.applyDateFilter());
+    }
+    const clearDateBtn = document.getElementById('clearDateBtn');
+    if (clearDateBtn) {
+        clearDateBtn.addEventListener('click', () => window.clearDateFilter());
+    }
+
+    const channelTrigger = document.getElementById('channelFilterTrigger');
+    if (channelTrigger) {
+        channelTrigger.addEventListener('click', () => window.toggleMultiSelect('channelFilter'));
+        channelTrigger.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                window.toggleMultiSelect('channelFilter');
+            }
+        });
+    }
+
+    const channelSearch = document.getElementById('channelFilterSearch');
+    if (channelSearch) {
+        channelSearch.addEventListener('click', (e) => e.stopPropagation());
+        channelSearch.addEventListener('input', () => window.filterMultiSelectOptions('channelFilter'));
+    }
+
+    const channelOptions = document.getElementById('channelFilterOptions');
+    if (channelOptions) {
+        // Delegate checkbox changes (options are rendered dynamically)
+        channelOptions.addEventListener('change', (e) => {
+            const target = e.target;
+            if (target && target.matches && target.matches('input[type=\"checkbox\"]')) {
+                window.updateMultiSelect('channelFilter');
+            }
+        });
+    }
+
+    const channelSelectAllBtn = document.getElementById('channelFilterSelectAllBtn');
+    if (channelSelectAllBtn) {
+        channelSelectAllBtn.addEventListener('click', () => window.selectAllMultiSelect('channelFilter'));
+    }
+    const channelClearBtn = document.getElementById('channelFilterClearBtn');
+    if (channelClearBtn) {
+        channelClearBtn.addEventListener('click', () => window.clearMultiSelect('channelFilter'));
+    }
+
+    // Wait for Supabase to be ready
+    let retries = 0;
+    const maxRetries = 50;
+    
+    const checkSupabase = setInterval(async () => {
+        if (window.supabaseClient) {
+            clearInterval(checkSupabase);
+            // Initialize date range to last 7 days
+            initializeDateRange();
+            // Load channels first
+            await loadChannels();
+            // Show filters
+            document.getElementById('filtersContainer').style.display = 'flex';
+            // Load metrics data
+            loadMetricsData();
+        } else if (retries >= maxRetries) {
+            clearInterval(checkSupabase);
+            document.getElementById('loadingIndicator').innerHTML = '<p style="color: #ef4444;">Error: Supabase client not initialized</p>';
+        }
+        retries++;
+    }, 100);
+});
+</script>
+</body>
+</html>

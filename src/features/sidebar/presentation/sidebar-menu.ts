@@ -3,8 +3,10 @@
  * This file handles menu clicks and submenu toggles
  */
 
-import { sidebarState } from '../application/sidebar-state.js'
 import { router } from '../../../core/routing/router.js'
+
+let sidebarMenuDelegatedHandlersAttached = false
+let accessControlVisibilityPollStarted = false
 
 /**
  * This class handles menu interactions
@@ -14,90 +16,85 @@ export class SidebarMenu {
    * Set up all menu click handlers
    */
   setupMenuHandlers(): void {
-    this.setupSubmenuToggles()
-    this.setupSearchMenuHandler()
+    this.attachDelegatedHandlersOnce()
     this.setupAccessControlMenuItem()
     this.setupActiveMenuItem()
-    this.setupNavigationHandlers()
   }
 
   /**
-   * Make submenus open and close when clicked
+   * Attach delegated handlers only once.
+   *
+   * Important: The sidebar DOM can be replaced at runtime (e.g. when user role/permissions load),
+   * so element-bound listeners would be lost and/or duplicated. Delegation keeps behavior stable.
    */
-  private setupSubmenuToggles(): void {
-    const submenuButtons = document.querySelectorAll('.menu-item.has-submenu')
-    
-    submenuButtons.forEach(button => {
-      button.addEventListener('click', (e) => {
+  private attachDelegatedHandlersOnce(): void {
+    if (sidebarMenuDelegatedHandlersAttached) return
+    sidebarMenuDelegatedHandlersAttached = true
+
+    const closeAllSubmenus = () => {
+      const buttons = document.querySelectorAll<HTMLButtonElement>('.menu-item.has-submenu')
+      buttons.forEach(btn => {
+        btn.setAttribute('aria-expanded', 'false')
+        const menuItem = btn.closest('.menu-item-with-submenu')
+        const submenu = menuItem?.querySelector('.submenu')
+        submenu?.classList.remove('open')
+        menuItem?.classList.remove('expanded')
+      })
+    }
+
+    document.addEventListener('click', (e) => {
+      const target = e.target as Element | null
+      if (!target) return
+
+      // Search button
+      const searchBtn = target.closest('#search-menu-btn')
+      if (searchBtn) {
+        const searchEvent = new CustomEvent('openSearchModal')
+        window.dispatchEvent(searchEvent)
+        return
+      }
+
+      // Submenu toggle button
+      const submenuToggle = target.closest('button.menu-item.has-submenu') as HTMLButtonElement | null
+      if (submenuToggle) {
         e.preventDefault()
         e.stopPropagation()
-        
-        const menuItem = button.closest('.menu-item-with-submenu')
-        if (!menuItem) return
 
-        const submenu = menuItem.querySelector('.submenu')
-        if (!submenu) return
+        const menuItem = submenuToggle.closest('.menu-item-with-submenu')
+        const submenu = menuItem?.querySelector('.submenu')
+        if (!menuItem || !submenu) return
 
-        const isExpanded = button.getAttribute('aria-expanded') === 'true'
-        
-        // Close all other submenus
-        submenuButtons.forEach(otherButton => {
-          if (otherButton !== button) {
-            otherButton.setAttribute('aria-expanded', 'false')
-            const otherMenuItem = otherButton.closest('.menu-item-with-submenu')
-            const otherSubmenu = otherMenuItem?.querySelector('.submenu')
-            if (otherSubmenu) {
-              otherSubmenu.classList.remove('open')
-            }
-            if (otherMenuItem) {
-              otherMenuItem.classList.remove('expanded')
-            }
-          }
+        const isExpanded = submenuToggle.getAttribute('aria-expanded') === 'true'
+
+        // Close others first
+        const allButtons = document.querySelectorAll<HTMLButtonElement>('.menu-item.has-submenu')
+        allButtons.forEach(otherButton => {
+          if (otherButton === submenuToggle) return
+          otherButton.setAttribute('aria-expanded', 'false')
+          const otherMenuItem = otherButton.closest('.menu-item-with-submenu')
+          const otherSubmenu = otherMenuItem?.querySelector('.submenu')
+          otherSubmenu?.classList.remove('open')
+          otherMenuItem?.classList.remove('expanded')
         })
 
-        // Toggle current submenu
+        // Toggle current
         if (isExpanded) {
-          button.setAttribute('aria-expanded', 'false')
+          submenuToggle.setAttribute('aria-expanded', 'false')
           submenu.classList.remove('open')
           menuItem.classList.remove('expanded')
         } else {
-          button.setAttribute('aria-expanded', 'true')
+          submenuToggle.setAttribute('aria-expanded', 'true')
           submenu.classList.add('open')
           menuItem.classList.add('expanded')
         }
-      })
-    })
 
-    // Close submenus when clicking outside
-    document.addEventListener('click', (e) => {
-      const target = e.target as Element
-      if (!target.closest('.menu-item-with-submenu')) {
-        submenuButtons.forEach(button => {
-          button.setAttribute('aria-expanded', 'false')
-          const menuItem = button.closest('.menu-item-with-submenu')
-          const submenu = menuItem?.querySelector('.submenu')
-          if (submenu) {
-            submenu.classList.remove('open')
-          }
-          if (menuItem) {
-            menuItem.classList.remove('expanded')
-          }
-        })
+        return
       }
-    })
-  }
 
-  /**
-   * Handle search menu button click
-   */
-  private setupSearchMenuHandler(): void {
-    const searchBtn = document.getElementById('search-menu-btn')
-    if (!searchBtn) return
-
-    searchBtn.addEventListener('click', () => {
-      // Trigger search modal or search functionality
-      const searchEvent = new CustomEvent('openSearchModal')
-      window.dispatchEvent(searchEvent)
+      // Clicked outside: close all submenus
+      if (!target.closest('.menu-item-with-submenu')) {
+        closeAllSubmenus()
+      }
     })
   }
 
@@ -108,11 +105,34 @@ export class SidebarMenu {
     const accessControlMenuItem = document.getElementById('accessControlMenuItem')
     if (!accessControlMenuItem) return
 
-    // Check if user has access control permission
-    if ((window as any).accessControl && (window as any).accessControl.hasAccessControlPermission) {
-      accessControlMenuItem.style.display = 'block'
-    } else {
-      accessControlMenuItem.style.display = 'none'
+    const applyVisibility = (): boolean => {
+      const hasPermission =
+        Boolean((window as any).accessControl) &&
+        Boolean((window as any).accessControl.hasAccessControlPermission)
+
+      accessControlMenuItem.style.display = hasPermission ? 'block' : 'none'
+      return Boolean((window as any).accessControl)
+    }
+
+    // Apply once immediately.
+    const accessControlExists = applyVisibility()
+
+    // Edge case: accessControl may load after sidebar renders (lazy-loaded scripts).
+    // Start a short-lived poll once per page to avoid permanent "hidden" state.
+    if (!accessControlExists && !accessControlVisibilityPollStarted) {
+      accessControlVisibilityPollStarted = true
+
+      let attempts = 0
+      const maxAttempts = 15 // ~3s at 200ms
+      const intervalMs = 200
+
+      const interval = window.setInterval(() => {
+        attempts++
+        const nowExists = applyVisibility()
+        if (nowExists || attempts >= maxAttempts) {
+          window.clearInterval(interval)
+        }
+      }, intervalMs)
     }
   }
 
@@ -146,28 +166,6 @@ export class SidebarMenu {
           }
         } else {
           item.classList.remove('active')
-        }
-      }
-    })
-  }
-
-  /**
-   * Set up navigation handlers using router
-   */
-  private setupNavigationHandlers(): void {
-    // Handle menu item clicks
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement
-      const link = target.closest('a.menu-item, a.submenu-item') as HTMLAnchorElement
-      
-      if (link && link.href && !link.classList.contains('logout-link')) {
-        const url = new URL(link.href)
-        const currentUrl = new URL(window.location.href)
-        
-        // Only handle internal navigation
-        if (url.origin === currentUrl.origin && url.pathname !== currentUrl.pathname) {
-          e.preventDefault()
-          router.navigate(url.pathname)
         }
       }
     })

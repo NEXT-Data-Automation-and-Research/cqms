@@ -100,6 +100,24 @@ export class PermissionService {
     resourceName: string,
     ruleType: 'page' | 'feature' | 'api_endpoint' | 'action' = 'feature'
   ): Promise<PermissionCheckResult> {
+    // =========================
+    // Hard gates (non-overridable)
+    // =========================
+    // BAU Metrics must be Super Admin only (even if someone creates an individual allow rule).
+    // This keeps the feature "Super Admin only" across:
+    // - Sidebar visibility (batch checks)
+    // - API permission checks
+    // - Any future UI permission toggles
+    const normalizedResource = String(resourceName || '').trim().toLowerCase();
+    const normalizedType = String(ruleType || '').trim().toLowerCase();
+    if (normalizedResource === 'bau-metrics' && normalizedType === 'page') {
+      const isSuperAdmin = (userRole || '').trim().toLowerCase() === 'super admin';
+      return {
+        hasAccess: isSuperAdmin,
+        reason: isSuperAdmin ? 'Super Admin only page' : 'BAU Metrics is restricted to Super Admin',
+      };
+    }
+
     // Check cache first
     const cacheKey = `${userEmail}:${resourceName}:${ruleType}`;
     const cached = this.cache.get(cacheKey);

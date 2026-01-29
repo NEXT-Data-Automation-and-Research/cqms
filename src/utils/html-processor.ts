@@ -102,6 +102,59 @@ function injectPageTransition(html: string, htmlPath: string): string {
 }
 
 /**
+ * Determine whether we should silence console output.
+ * Goal: no breaking changes; only affect production unless explicitly forced.
+ */
+function shouldInjectConsoleStub(): boolean {
+  const env = (process.env.NODE_ENV || 'development').toLowerCase();
+  if (env === 'production') return true;
+
+  const raw =
+    process.env.CQMS_SILENCE_CONSOLE ??
+    process.env.SILENCE_CONSOLE ??
+    '';
+  const normalized = String(raw).toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes';
+}
+
+/**
+ * Inject console-stub script into HTML if needed.
+ * This must run as early as possible (first thing in <head>) to catch inline logs.
+ */
+function injectConsoleStub(html: string): string {
+  if (!shouldInjectConsoleStub()) {
+    return html;
+  }
+
+  // Already present? Don't inject again.
+  if (html.includes('console-stub.js') || html.includes('/js/console-stub.js')) {
+    return html;
+  }
+
+  const consoleStubScript =
+    '  <!-- Console Stub - Auto-injected to silence console in production -->\n' +
+    '  <script src="/js/console-stub.js"></script>\n';
+
+  // Prefer injecting immediately after <head> so it runs before any other scripts.
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (match) => `${match}\n${consoleStubScript}`);
+  }
+
+  // Fallback: inject before </head> if present
+  if (html.includes('</head>')) {
+    return html.replace('</head>', `${consoleStubScript}</head>`);
+  }
+
+  // Fallback: inject right after opening body tag
+  if (/<body[^>]*>/i.test(html)) {
+    return html.replace(/<body[^>]*>/i, (match) => `${match}\n${consoleStubScript}`);
+  }
+
+  // Last resort: prepend (keeps document valid enough for most pages)
+  return `${consoleStubScript}${html}`;
+}
+
+/**
  * Inject version into HTML file
  * @param htmlPath - Relative path from public directory
  * @param version - Version hash to inject
@@ -189,6 +242,9 @@ export function injectVersionIntoHTML(htmlPath: string, version: string): string
       `<meta name="app-version" content="${version}">`
     );
   }
+
+  // ✅ PRODUCTION: Silence console output globally without touching feature files
+  html = injectConsoleStub(html);
   
   // ✅ SECURITY: Automatically inject auth-checker into all pages except auth-page
   html = injectAuthChecker(html, htmlPath);

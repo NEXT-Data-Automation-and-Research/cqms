@@ -4523,12 +4523,15 @@ async function fetchAndCacheRecentUpdates(period) {
         
         // Parallelize all reversal queries
         // First, try loading from new reversal_requests table
+        // Include reversals where the employee is either:
+        // 1. The requester (requested_by_email matches), OR
+        // 2. The subject of the audit (employee_email matches)
         let newStructureReversals = [];
         try {
           const { data: reversalRequests, error: rrError } = await window.supabaseClient
             .from('reversal_requests')
             .select('*')
-            .eq('requested_by_email', normalizedCurrentEmail)
+            .or(`requested_by_email.eq.${normalizedCurrentEmail},employee_email.eq.${normalizedCurrentEmail}`)
             .order('requested_at', { ascending: false })
             .limit(50);
           

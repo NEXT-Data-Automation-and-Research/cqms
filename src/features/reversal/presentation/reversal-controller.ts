@@ -192,12 +192,15 @@ export class ReversalController {
       const isReviewer = this.isReviewerRole();
       
       // Get reversals based on user role
-      const options: { requestedByEmail?: string; onlyPending?: boolean } = {};
+      const options: { requestedByEmail?: string; employeeEmail?: string; onlyPending?: boolean } = {};
       
       if (!isReviewer) {
-        // Regular employees only see their own reversals
-        options.requestedByEmail = this.currentUserEmail;
-        console.log('[ReversalController] Employee mode - filtering by email:', this.currentUserEmail);
+        // Regular employees see reversals where they are either:
+        // 1. The requester (requested_by_email matches), OR
+        // 2. The subject of the audit (employee_email in audit data matches)
+        // Using employeeEmail option handles both cases after merging with audit data
+        options.employeeEmail = this.currentUserEmail;
+        console.log('[ReversalController] Employee mode - filtering by employee email:', this.currentUserEmail);
       } else {
         // Reviewers see ALL reversals (RLS will handle access control)
         // No filter means get all

@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/console-stub.js"></script>
+<meta charset="UTF-8">
+<title>Platform Notifications | QMS</title>
+<meta name="description" content="View platform-wide notifications and announcements">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Loading Order -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    
+    <!-- Import map for npm packages -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    
+    <!-- Authentication Guard -->
+    <script type="module" src="/js/auth-checker.js"></script>
+    
+    <!-- Initialize Supabase using secure-window-supabase (same as other pages) -->
+    <script type="module">
+      // Initialize Supabase client on window (same pattern as other pages)
+      (async function initSupabaseFirst() {
+        try {
+          console.log('[PlatformNotifications] Starting Supabase initialization...');
+          const secureWindowModule = await import('/js/utils/secure-window-supabase.js');
+          if (secureWindowModule?.initSecureWindowSupabase) {
+            await secureWindowModule.initSecureWindowSupabase();
+            if (window.supabaseClient) {
+              console.log('[PlatformNotifications] Supabase client ready via secure-window-supabase');
+              window.dispatchEvent(new CustomEvent('supabaseReady'));
+            } else {
+              console.error('[PlatformNotifications] supabaseClient not set after init');
+            }
+          }
+        } catch (error) {
+          console.error('[PlatformNotifications] Supabase init error:', error);
+        }
+      })();
+    </script>
+    
+    <style>
+      :root {
+        --primary-green: #1a733e;
+        --primary-green-light: #ecfdf5;
+        --primary-green-dark: #0d5e3a;
+      }
+      
+      /* Page-specific styles */
+      .notifications-container {
+        max-width: 720px;
+        margin: 0 auto;
+      }
+      
+      .notification-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 0.75rem;
+        border: 1px solid #e5e7eb;
+        transition: all 0.15s ease;
+        position: relative;
+      }
+      
+      .notification-card:hover {
+        border-color: var(--primary-green);
+        box-shadow: 0 2px 8px rgba(26, 115, 62, 0.08);
+      }
+      
+      .notification-card.pinned {
+        background: linear-gradient(to right, #f0fdf4, #ffffff);
+        border-color: #86efac;
+      }
+      
+      .notification-card.pinned::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--primary-green);
+        border-radius: 8px 0 0 8px;
+      }
+      
+      .notification-card.dismissed {
+        opacity: 0.5;
+        background: #fafafa;
+      }
+      
+      .notification-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .notification-type-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      .notification-type-badge.info { background: #e0f2fe; color: #0369a1; }
+      .notification-type-badge.success { background: #dcfce7; color: #15803d; }
+      .notification-type-badge.warning { background: #fef3c7; color: #b45309; }
+      .notification-type-badge.alert { background: #fee2e2; color: #b91c1c; }
+      .notification-type-badge.maintenance { background: #f3e8ff; color: #7c3aed; }
+      
+      .notification-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+        line-height: 1.4;
+      }
+      
+      .notification-message {
+        font-size: 0.8125rem;
+        color: #6b7280;
+        line-height: 1.6;
+        margin: 0;
+      }
+      
+      .notification-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 0.875rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid #f3f4f6;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      
+      .notification-date {
+        font-size: 0.6875rem;
+        color: #9ca3af;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+      }
+      
+      .notification-date svg {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .notification-actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      
+      .btn-acknowledge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: var(--primary-green);
+        background: var(--primary-green-light);
+        border: 1px solid #a7f3d0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-acknowledge:hover {
+        background: #d1fae5;
+        border-color: var(--primary-green);
+      }
+      
+      .btn-acknowledge svg {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: white;
+        background: var(--primary-green);
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-decoration: none;
+      }
+      
+      .btn-action:hover {
+        background: var(--primary-green-dark);
+      }
+      
+      .btn-action svg {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .acknowledged-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.625rem;
+        font-weight: 500;
+        color: #059669;
+        background: #ecfdf5;
+        border-radius: 4px;
+      }
+      
+      .acknowledged-badge svg {
+        width: 10px;
+        height: 10px;
+      }
+      
+      .pinned-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.625rem;
+        font-weight: 500;
+        color: var(--primary-green);
+      }
+      
+      .pinned-indicator svg {
+        width: 10px;
+        height: 10px;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      .empty-state-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 0.75rem;
+        color: #d1d5db;
+      }
+      
+      .empty-state-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.25rem;
+      }
+      
+      .empty-state-text {
+        font-size: 0.8125rem;
+        color: #9ca3af;
+      }
+      
+      .filter-tabs {
+        display: flex;
+        gap: 0.375rem;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+        background: #f9fafb;
+        padding: 0.25rem;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      .filter-tab {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #6b7280;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .filter-tab:hover {
+        color: var(--primary-green);
+        background: white;
+      }
+      
+      .filter-tab.active {
+        background: var(--primary-green);
+        color: white;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+      
+      .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      
+      .page-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .page-title h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+      }
+      
+      .page-title-icon {
+        width: 24px;
+        height: 24px;
+        color: var(--primary-green);
+      }
+      
+      .notification-count-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 0.375rem;
+        background: var(--primary-green);
+        color: white;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        border-radius: 10px;
+      }
+      
+      .btn-refresh {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #6b7280;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-refresh:hover {
+        border-color: var(--primary-green);
+        color: var(--primary-green);
+      }
+      
+      .btn-refresh svg {
+        width: 14px;
+        height: 14px;
+      }
+      
+      .loading-spinner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+      }
+      
+      .loading-spinner svg {
+        width: 32px;
+        height: 32px;
+        animation: spin 0.8s linear infinite;
+        color: var(--primary-green);
+      }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Responsive adjustments */
+      @media (max-width: 640px) {
+        .notifications-container {
+          padding-left: 1rem;
+          padding-right: 1rem;
+        }
+        
+        .notification-footer {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+        
+        .notification-actions {
+          width: 100%;
+          justify-content: flex-end;
+        }
+      }
+    </style>
+</head>
+<body>
+<!-- Sidebar will be loaded dynamically -->
+<main class="main-content" role="main">
+  <div class="px-4 py-4 notifications-container">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-title">
+        <svg class="page-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+        </svg>
+        <h1>Announcements</h1>
+        <span id="unreadCount" class="notification-count-badge" style="display: none;">0</span>
+      </div>
+      <button id="refreshBtn" class="btn-refresh" title="Refresh">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+    
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" data-filter="all">All</button>
+      <button class="filter-tab" data-filter="unread">New</button>
+      <button class="filter-tab" data-filter="info">Info</button>
+      <button class="filter-tab" data-filter="warning">Warning</button>
+      <button class="filter-tab" data-filter="alert">Alert</button>
+      <button class="filter-tab" data-filter="maintenance">Maintenance</button>
+    </div>
+    
+    <!-- Notifications List -->
+    <div id="notificationsList">
+      <!-- Loading State -->
+      <div class="loading-spinner" id="loadingState">
+        <svg fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="fixed bottom-4 right-4 z-50"></div>
+
+<!-- Load Sidebar -->
+<script type="module" src="/js/features/sidebar/presentation/sidebar-loader.js"></script>
+
+<!-- Page Controller -->
+<script type="module">
+  import { showToast } from '/js/utils/toast.js';
+  
+  class PlatformNotificationsController {
+    constructor() {
+      this.notifications = [];
+      this.currentFilter = 'all';
+      this.userId = null;
+      this.userRole = null;
+      this.isLoading = false;
+    }
+    
+    async init() {
+      console.log('[PlatformNotifications] Initializing...');
+      
+      // Wait for Supabase to be ready
+      await this.waitForSupabase();
+      
+      // Get user info
+      await this.loadUserInfo();
+      
+      // Setup event listeners
+      this.setupEventListeners();
+      
+      // Load notifications
+      await this.loadNotifications();
+    }
+    
+    async waitForSupabase(maxWait = 10000) {
+      console.log('[PlatformNotifications] Waiting for Supabase client...');
+      const startTime = Date.now();
+      
+      // First check if already available
+      if (window.supabaseClient) {
+        console.log('[PlatformNotifications] Supabase client already available');
+        return;
+      }
+      
+      // Try to initialize it ourselves if not available
+      try {
+        const secureWindowModule = await import('/js/utils/secure-window-supabase.js');
+        if (secureWindowModule?.initSecureWindowSupabase) {
+          await secureWindowModule.initSecureWindowSupabase();
+          if (window.supabaseClient) {
+            console.log('[PlatformNotifications] Supabase client initialized in waitForSupabase');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('[PlatformNotifications] Could not init via secure-window-supabase:', err);
+      }
+      
+      // Poll for client as fallback
+      while (!window.supabaseClient && (Date.now() - startTime) < maxWait) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      if (!window.supabaseClient) {
+        throw new Error('Supabase client not available after timeout');
+      }
+      
+      console.log('[PlatformNotifications] Supabase client found via polling');
+    }
+    
+    async loadUserInfo() {
+      try {
+        const { data: { user } } = await window.supabaseClient.auth.getUser();
+        if (!user) {
+          window.location.href = '/src/auth/presentation/auth-page.html';
+          return;
+        }
+        this.userId = user.id;
+        
+        // Get role from people table
+        const { data: person } = await window.supabaseClient
+          .from('people')
+          .select('role')
+          .eq('email', user.email)
+          .single();
+        
+        this.userRole = person?.role || 'Employee';
+        console.log('[PlatformNotifications] User loaded:', user.email, this.userRole);
+      } catch (error) {
+        console.error('[PlatformNotifications] Error loading user:', error);
+      }
+    }
+    
+    setupEventListeners() {
+      // Filter tabs
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+          e.target.classList.add('active');
+          this.currentFilter = e.target.dataset.filter;
+          this.renderNotifications();
+        });
+      });
+      
+      // Refresh button
+      document.getElementById('refreshBtn')?.addEventListener('click', () => {
+        this.loadNotifications(true);
+      });
+      
+      // Real-time listener for new notifications
+      document.addEventListener('platformNotificationReceived', (event) => {
+        console.log('[PlatformNotifications] Real-time event received:', event.detail);
+        // Reload notifications to get the latest data
+        this.loadNotifications(true);
+      });
+    }
+    
+    async loadNotifications(forceRefresh = false) {
+      if (this.isLoading) return;
+      this.isLoading = true;
+      
+      const loadingEl = document.getElementById('loadingState');
+      if (loadingEl) loadingEl.style.display = 'flex';
+      
+      try {
+        console.log('[PlatformNotifications] Loading notifications...');
+        console.log('[PlatformNotifications] User ID:', this.userId, 'Role:', this.userRole);
+        
+        // Get active notifications - simplified query for better compatibility
+        const { data: notifications, error } = await window.supabaseClient
+          .from('platform_notifications')
+          .select('*')
+          .eq('is_active', true)
+          .order('is_pinned', { ascending: false })
+          .order('priority', { ascending: false })
+          .order('created_at', { ascending: false });
+        
+        console.log('[PlatformNotifications] Query result:', { notifications, error });
+        
+        if (error) {
+          console.error('[PlatformNotifications] Query error:', error);
+          throw error;
+        }
+        
+        if (!notifications || notifications.length === 0) {
+          console.log('[PlatformNotifications] No notifications found');
+          this.notifications = [];
+          this.renderNotifications();
+          return;
+        }
+        
+        console.log('[PlatformNotifications] Raw notifications:', notifications.length);
+        
+        // Filter by timing (starts_at and expires_at)
+        const now = new Date();
+        let filteredNotifications = notifications.filter(n => {
+          const startsAt = n.starts_at ? new Date(n.starts_at) : null;
+          const expiresAt = n.expires_at ? new Date(n.expires_at) : null;
+          
+          // Check if notification has started
+          if (startsAt && startsAt > now) return false;
+          
+          // Check if notification has expired
+          if (expiresAt && expiresAt < now) return false;
+          
+          return true;
+        });
+        
+        console.log('[PlatformNotifications] After timing filter:', filteredNotifications.length);
+        
+        // Filter by target roles
+        filteredNotifications = filteredNotifications.filter(n => {
+          if (!n.target_roles || n.target_roles.length === 0) return true;
+          return n.target_roles.includes(this.userRole);
+        });
+        
+        console.log('[PlatformNotifications] After role filter:', filteredNotifications.length);
+        
+        if (filteredNotifications.length === 0) {
+          this.notifications = [];
+          this.renderNotifications();
+          return;
+        }
+        
+        // Get dismissals
+        const notificationIds = filteredNotifications.map(n => n.id);
+        const { data: dismissals, error: dismissalError } = await window.supabaseClient
+          .from('platform_notification_dismissals')
+          .select('notification_id, dismissed_at')
+          .eq('user_id', this.userId)
+          .in('notification_id', notificationIds);
+        
+        if (dismissalError) {
+          console.warn('[PlatformNotifications] Dismissal query error:', dismissalError);
+        }
+        
+        // Create dismissal map
+        const dismissalMap = new Map();
+        if (dismissals) {
+          dismissals.forEach(d => dismissalMap.set(d.notification_id, d.dismissed_at));
+        }
+        
+        // Combine with dismissal status
+        this.notifications = filteredNotifications.map(n => ({
+          ...n,
+          is_dismissed: dismissalMap.has(n.id),
+          dismissed_at: dismissalMap.get(n.id) || null
+        }));
+        
+        console.log('[PlatformNotifications] Final notifications:', this.notifications.length);
+        
+        this.renderNotifications();
+        this.updateUnreadCount();
+        
+      } catch (error) {
+        console.error('[PlatformNotifications] Error loading:', error);
+        showToast('Failed to load notifications', 'error');
+        // Show error state in UI
+        const container = document.getElementById('notificationsList');
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="empty-state-title">Error loading notifications</h3>
+            <p class="empty-state-text">${error.message || 'Please try refreshing the page.'}</p>
+          </div>
+        `;
+      } finally {
+        this.isLoading = false;
+        if (loadingEl) loadingEl.style.display = 'none';
+      }
+    }
+    
+    getFilteredNotifications() {
+      let filtered = [...this.notifications];
+      
+      switch (this.currentFilter) {
+        case 'unread':
+          filtered = filtered.filter(n => !n.is_dismissed);
+          break;
+        case 'info':
+        case 'warning':
+        case 'alert':
+        case 'maintenance':
+          filtered = filtered.filter(n => n.type === this.currentFilter);
+          break;
+      }
+      
+      return filtered;
+    }
+    
+    renderNotifications() {
+      const container = document.getElementById('notificationsList');
+      const filtered = this.getFilteredNotifications();
+      
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+            </svg>
+            <h3 class="empty-state-title">No notifications</h3>
+            <p class="empty-state-text">
+              ${this.currentFilter === 'all' ? 'There are no platform notifications at this time.' : `No ${this.currentFilter} notifications found.`}
+            </p>
+          </div>
+        `;
+        return;
+      }
+      
+      container.innerHTML = filtered.map(n => this.renderNotificationCard(n)).join('');
+      
+      // Attach acknowledge handlers
+      container.querySelectorAll('.btn-acknowledge[data-id]').forEach(btn => {
+        btn.addEventListener('click', () => this.acknowledgeNotification(btn.dataset.id));
+      });
+    }
+    
+    renderNotificationCard(notification) {
+      const date = new Date(notification.created_at);
+      const formattedDate = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      const typeIcons = {
+        info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>',
+        alert: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        maintenance: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>'
+      };
+      
+      // Generate action button HTML
+      const actionButtonHtml = notification.action_url ? `
+        <a href="${this.escapeHtml(notification.action_url)}" class="btn-action" target="_blank">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+          </svg>
+          ${this.escapeHtml(notification.action_label || 'View')}
+        </a>
+      ` : '';
+      
+      // Generate acknowledge/acknowledged button
+      let acknowledgeButtonHtml = '';
+      if (notification.is_dismissed) {
+        acknowledgeButtonHtml = `
+          <span class="acknowledged-badge">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Read
+          </span>
+        `;
+      } else if (notification.is_dismissible) {
+        acknowledgeButtonHtml = `
+          <button class="btn-acknowledge" data-id="${notification.id}">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+            </svg>
+            Mark as Read
+          </button>
+        `;
+      }
+      
+      // Pinned indicator
+      const pinnedHtml = notification.is_pinned ? `
+        <span class="pinned-indicator">
+          <svg fill="currentColor" viewBox="0 0 20 20">
+            <path d="M5 5a2 2 0 012-2h6a2 2 0 012 2v2H5V5zm0 4h10v6a2 2 0 01-2 2H7a2 2 0 01-2-2V9z"/>
+          </svg>
+          Pinned
+        </span>
+      ` : '';
+      
+      return `
+        <div class="notification-card ${notification.is_pinned ? 'pinned' : ''} ${notification.is_dismissed ? 'dismissed' : ''}" data-type="${notification.type}" data-id="${notification.id}">
+          <div class="notification-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+              <span class="notification-type-badge ${notification.type}">${notification.type}</span>
+              ${pinnedHtml}
+            </div>
+          </div>
+          <h3 class="notification-title">${this.escapeHtml(notification.title)}</h3>
+          <p class="notification-message">${this.escapeHtml(notification.message)}</p>
+          <div class="notification-footer">
+            <span class="notification-date">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              ${formattedDate}
+            </span>
+            <div class="notification-actions">
+              ${actionButtonHtml}
+              ${acknowledgeButtonHtml}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+    
+    async acknowledgeNotification(notificationId) {
+      try {
+        const { error } = await window.supabaseClient
+          .from('platform_notification_dismissals')
+          .upsert({
+            notification_id: notificationId,
+            user_id: this.userId,
+            dismissed_at: new Date().toISOString()
+          }, {
+            onConflict: 'notification_id,user_id'
+          });
+        
+        if (error) throw error;
+        
+        // Update local state
+        const notification = this.notifications.find(n => n.id === notificationId);
+        if (notification) {
+          notification.is_dismissed = true;
+          notification.dismissed_at = new Date().toISOString();
+        }
+        
+        this.renderNotifications();
+        this.updateUnreadCount();
+        showToast('Marked as read', 'success');
+        
+      } catch (error) {
+        console.error('[PlatformNotifications] Error acknowledging:', error);
+        showToast('Failed to mark as read', 'error');
+      }
+    }
+    
+    updateUnreadCount() {
+      const unreadCount = this.notifications.filter(n => !n.is_dismissed).length;
+      const countEl = document.getElementById('unreadCount');
+      if (countEl) {
+        countEl.textContent = unreadCount;
+        countEl.style.display = unreadCount > 0 ? 'inline-flex' : 'none';
+      }
+    }
+    
+    escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  }
+  
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('[PlatformNotifications] DOM ready, initializing controller...');
+    const controller = new PlatformNotificationsController();
+    controller.init().catch(error => {
+      console.error('[PlatformNotifications] Init error:', error);
+      // Show error to user
+      const container = document.getElementById('notificationsList');
+      const loadingEl = document.getElementById('loadingState');
+      if (loadingEl) loadingEl.style.display = 'none';
+      if (container) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="empty-state-title">Unable to load notifications</h3>
+            <p class="empty-state-text">${error.message || 'Please refresh the page to try again.'}</p>
+          </div>
+        `;
+      }
+    });
+  });
+</script>
+</body>
+</html>

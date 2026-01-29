@@ -181,6 +181,7 @@ function hideAuthLoadingOverlay(): void {
 /**
  * Check if user is authenticated
  * Supports both Supabase auth and dev bypass
+ * RELIABILITY: More graceful handling of initialization failures
  * @returns true if authenticated, false otherwise
  */
 async function isAuthenticated(): Promise<boolean> {
@@ -195,6 +196,26 @@ async function isAuthenticated(): Promise<boolean> {
     return isAuth;
   } catch (error) {
     logError('Error checking authentication:', error);
+    
+    // RELIABILITY: If check failed but we have cached session, don't immediately lock out
+    // This prevents locking out users during temporary network issues
+    const cachedSession = localStorage.getItem('supabase.auth.token');
+    const userInfo = localStorage.getItem('userInfo');
+    
+    if (cachedSession && userInfo) {
+      try {
+        const parsed = JSON.parse(userInfo);
+        if (parsed && parsed.id && parsed.email) {
+          logInfo('Auth check failed but valid cached session exists - allowing access');
+          // Mark that we're in degraded mode so UI can show reconnection status if needed
+          sessionStorage.setItem('authDegradedMode', 'true');
+          return true;
+        }
+      } catch (parseError) {
+        // Invalid cached data, proceed with false
+      }
+    }
+    
     return false;
   }
 }
@@ -351,11 +372,53 @@ async function ensureUserInfoSynced(user: UserInfo): Promise<void> {
 }
 
 /**
+ * Check if user has a valid cached session (quick synchronous check)
+ * Used for early bailout to prevent lockouts during network issues
+ */
+function hasValidCachedSession(): { valid: boolean; userInfo: any } {
+  try {
+    const cachedSession = localStorage.getItem('supabase.auth.token');
+    const userInfoStr = localStorage.getItem('userInfo');
+    
+    if (!cachedSession || !userInfoStr) {
+      return { valid: false, userInfo: null };
+    }
+    
+    const userInfo = JSON.parse(userInfoStr);
+    if (!userInfo || !userInfo.id || !userInfo.email) {
+      return { valid: false, userInfo: null };
+    }
+    
+    // Check if session hasn't expired (if we can parse it)
+    try {
+      const sessionData = JSON.parse(cachedSession);
+      if (sessionData?.currentSession?.expires_at) {
+        const expiresAt = sessionData.currentSession.expires_at;
+        const now = Math.floor(Date.now() / 1000);
+        // Add 5 minute buffer - if expired less than 5 min ago, still consider valid
+        // (Supabase can refresh it)
+        if (expiresAt < now - 300) {
+          logInfo('Cached session expired more than 5 minutes ago');
+          return { valid: false, userInfo: null };
+        }
+      }
+    } catch (parseError) {
+      // Can't parse session expiry, but userInfo exists - trust it
+    }
+    
+    return { valid: true, userInfo };
+  } catch (error) {
+    return { valid: false, userInfo: null };
+  }
+}
+
+/**
  * Initialize authentication check
  * This function runs when the page loads
  * Protects all pages except auth-page.html and index.html
  * ✅ SECURITY FIX: Verifies token with server BEFORE any redirects to prevent homepage flash
  * ✅ UX FIX: Shows loading overlay during auth check to prevent content flash
+ * ✅ RELIABILITY FIX: Early bailout for cached sessions to prevent lockouts
  */
 async function initAuthCheck(): Promise<void> {
   // ✅ FIX: Prevent multiple simultaneous auth checks
@@ -366,6 +429,26 @@ async function initAuthCheck(): Promise<void> {
   
   (window as any).__authCheckInProgress = true;
   
+  const currentPath = window.location.pathname;
+  const isAuthPage = currentPath === '/src/auth/presentation/auth-page.html' || currentPath.endsWith('auth-page.html');
+  const isIndexPage = currentPath === '/' || currentPath === '/index.html';
+  
+  // ✅ RELIABILITY: Early check for cached session BEFORE any async operations
+  // This prevents users from being locked out during network issues
+  const cachedAuth = hasValidCachedSession();
+  
+  // If user is on auth page or index, but has valid cached session, redirect to home immediately
+  // This is a fast path that doesn't require waiting for Supabase
+  if ((isAuthPage || isIndexPage) && cachedAuth.valid) {
+    // Skip if login just completed (let normal flow handle it)
+    if (sessionStorage.getItem('loginJustCompleted') !== 'true') {
+      logInfo('Valid cached session found on auth/index page - redirecting to home (fast path)');
+      window.location.replace('/home');
+      (window as any).__authCheckInProgress = false;
+      return;
+    }
+  }
+  
   // ✅ UX: Show loading overlay for protected pages to prevent content flash
   let loadingOverlay: HTMLElement | null = null;
   if (shouldProtectPage()) {
@@ -375,7 +458,6 @@ async function initAuthCheck(): Promise<void> {
   try {
     // Check if this page should be protected
     if (!shouldProtectPage()) {
-      const currentPath = window.location.pathname;
       
       // For index page, check auth and redirect authenticated users to home
       if (currentPath === '/' || currentPath === '/index.html') {
@@ -384,7 +466,27 @@ async function initAuthCheck(): Promise<void> {
           await initSupabase();
         } catch (error) {
           logError('Failed to initialize Supabase:', error);
-          // If Supabase init fails, redirect to auth page
+          
+          // RELIABILITY: Check if user has cached session before redirecting to login
+          // This prevents locking out users during temporary network issues
+          const cachedSession = localStorage.getItem('supabase.auth.token');
+          const userInfo = localStorage.getItem('userInfo');
+          
+          if (cachedSession && userInfo) {
+            try {
+              const parsed = JSON.parse(userInfo);
+              if (parsed && parsed.id && parsed.email) {
+                logInfo('Supabase init failed but valid cached session exists - redirecting to home');
+                sessionStorage.setItem('authDegradedMode', 'true');
+                window.location.replace('/home');
+                return;
+              }
+            } catch (parseError) {
+              // Invalid cached data, proceed to login
+            }
+          }
+          
+          // If Supabase init fails and no valid cache, redirect to auth page
           redirectToLogin();
           return;
         }
@@ -426,13 +528,35 @@ async function initAuthCheck(): Promise<void> {
         console.log('[Auth-Checker] Running on auth page, checking authentication status...');
         
         // Initialize Supabase first
+        let initSucceeded = false;
         try {
           await initSupabase();
           console.log('[Auth-Checker] Supabase initialized successfully');
+          initSucceeded = true;
         } catch (error) {
           logError('Failed to initialize Supabase:', error);
           console.error('[Auth-Checker] Supabase initialization failed:', error);
-          // If Supabase init fails, stay on auth page
+          
+          // RELIABILITY: Check if user has cached session - they might just have network issues
+          const cachedSession = localStorage.getItem('supabase.auth.token');
+          const userInfo = localStorage.getItem('userInfo');
+          
+          if (cachedSession && userInfo) {
+            try {
+              const parsed = JSON.parse(userInfo);
+              if (parsed && parsed.id && parsed.email) {
+                console.log('[Auth-Checker] Init failed but valid cached session exists - redirecting to home');
+                logInfo('Supabase init failed but valid cached session exists - redirecting to home');
+                sessionStorage.setItem('authDegradedMode', 'true');
+                window.location.replace('/home');
+                return;
+              }
+            } catch (parseError) {
+              // Invalid cached data, stay on auth page
+            }
+          }
+          
+          // If Supabase init fails and no valid cache, stay on auth page (let them login)
           return;
         }
 
@@ -481,7 +605,30 @@ async function initAuthCheck(): Promise<void> {
       await initSupabase();
     } catch (error) {
       logError('Failed to initialize Supabase:', error);
-      // If Supabase init fails, redirect to auth page
+      
+      // RELIABILITY: Check if user has cached session before redirecting to login
+      // This prevents locking out users during temporary network issues on page navigation
+      const cachedSession = localStorage.getItem('supabase.auth.token');
+      const userInfo = localStorage.getItem('userInfo');
+      
+      if (cachedSession && userInfo) {
+        try {
+          const parsed = JSON.parse(userInfo);
+          if (parsed && parsed.id && parsed.email) {
+            logInfo('Supabase init failed but valid cached session exists - allowing access to protected page');
+            sessionStorage.setItem('authDegradedMode', 'true');
+            hideAuthLoadingOverlay();
+            markSessionVerified();
+            // Don't redirect - allow access to page with cached credentials
+            // Supabase will auto-reconnect in background
+            return;
+          }
+        } catch (parseError) {
+          // Invalid cached data, proceed to login
+        }
+      }
+      
+      // If Supabase init fails and no valid cache, redirect to auth page
       redirectToLogin();
       return;
     }
@@ -636,13 +783,143 @@ async function initAuthCheck(): Promise<void> {
   }
 }
 
+/**
+ * Show a subtle reconnection indicator when in degraded mode
+ */
+function showReconnectionIndicator(): void {
+  // Don't show if already exists
+  if (document.getElementById('auth-reconnection-indicator')) {
+    return;
+  }
+  
+  const indicator = document.createElement('div');
+  indicator.id = 'auth-reconnection-indicator';
+  indicator.style.cssText = `
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-out;
+  `;
+  
+  indicator.innerHTML = `
+    <div style="
+      width: 12px;
+      height: 12px;
+      border: 2px solid #f59e0b;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    "></div>
+    <span>Reconnecting...</span>
+    <style>
+      @keyframes spin { to { transform: rotate(360deg); } }
+      @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
+    </style>
+  `;
+  
+  document.body.appendChild(indicator);
+}
+
+/**
+ * Hide the reconnection indicator
+ */
+function hideReconnectionIndicator(): void {
+  const indicator = document.getElementById('auth-reconnection-indicator');
+  if (indicator) {
+    indicator.style.animation = 'slideOut 0.3s ease-out';
+    setTimeout(() => indicator.remove(), 300);
+  }
+}
+
+/**
+ * Attempt background reconnection when in degraded mode
+ */
+async function attemptBackgroundReconnection(): Promise<void> {
+  if (sessionStorage.getItem('authDegradedMode') !== 'true') {
+    return;
+  }
+  
+  logInfo('Attempting background reconnection...');
+  showReconnectionIndicator();
+  
+  let retryCount = 0;
+  const maxRetries = 5;
+  const retryDelays = [2000, 5000, 10000, 20000, 30000]; // Exponential backoff
+  
+  while (retryCount < maxRetries) {
+    try {
+      await new Promise(resolve => setTimeout(resolve, retryDelays[retryCount]));
+      
+      const result = await initSupabase();
+      if (result) {
+        logInfo('Background reconnection successful!');
+        sessionStorage.removeItem('authDegradedMode');
+        hideReconnectionIndicator();
+        
+        // Show success notification
+        const successToast = document.createElement('div');
+        successToast.style.cssText = `
+          position: fixed;
+          bottom: 1rem;
+          right: 1rem;
+          background: #d1fae5;
+          border: 1px solid #10b981;
+          color: #065f46;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          font-size: 0.875rem;
+          z-index: 9999;
+          animation: slideIn 0.3s ease-out;
+        `;
+        successToast.textContent = '✓ Connection restored';
+        document.body.appendChild(successToast);
+        setTimeout(() => successToast.remove(), 3000);
+        
+        return;
+      }
+    } catch (error) {
+      logInfo(`Reconnection attempt ${retryCount + 1} failed, will retry...`);
+    }
+    
+    retryCount++;
+  }
+  
+  // Max retries reached - update indicator
+  const indicator = document.getElementById('auth-reconnection-indicator');
+  if (indicator) {
+    indicator.style.background = '#fee2e2';
+    indicator.style.borderColor = '#ef4444';
+    indicator.style.color = '#991b1b';
+    indicator.innerHTML = `
+      <span>⚠️ Connection issues - <a href="javascript:location.reload()" style="color: #991b1b; text-decoration: underline;">Refresh</a></span>
+    `;
+  }
+}
+
 // Run auth check when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    initAuthCheck();
+    initAuthCheck().then(() => {
+      // Start background reconnection if in degraded mode
+      attemptBackgroundReconnection();
+    });
   });
 } else {
-  initAuthCheck();
+  initAuthCheck().then(() => {
+    // Start background reconnection if in degraded mode
+    attemptBackgroundReconnection();
+  });
 }
 
 // Export functions for use in other modules

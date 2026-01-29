@@ -17,8 +17,8 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         return cache.addAll(urlsToCache);
       })
-      .catch((error) => {
-        console.error('Service worker install error:', error);
+      .catch(() => {
+        // Intentionally silent in production
       })
   );
   // Force the waiting service worker to become the active service worker
@@ -44,8 +44,6 @@ self.addEventListener('activate', (event) => {
 
 // Push event - handle incoming push notifications
 self.addEventListener('push', (event) => {
-  console.log('Push notification received:', event);
-
   let notificationData = {
     title: 'New Notification',
     body: 'You have a new notification',
@@ -90,8 +88,6 @@ self.addEventListener('push', (event) => {
 
 // Notification click event - handle user clicking on notification
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
-
   event.notification.close();
 
   const notificationData = event.notification.data || {};
@@ -120,15 +116,42 @@ self.addEventListener('notificationclick', (event) => {
 
 // Notification close event
 self.addEventListener('notificationclose', (event) => {
-  console.log('Notification closed:', event);
+  // Intentionally silent in production
 });
 
 // Message event - handle messages from the main thread
 self.addEventListener('message', (event) => {
-  console.log('Service worker received message:', event.data);
-
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+  }
+
+  // Handle cache clear command from admin broadcast
+  if (event.data && event.data.type === 'CLEAR_ALL_CACHES') {
+    event.waitUntil(
+      (async () => {
+        try {
+          // Delete all caches
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map(cacheName => {
+              return caches.delete(cacheName);
+            })
+          );
+          
+          // Notify all clients that caches are cleared
+          const clients = await self.clients.matchAll({ type: 'window' });
+          clients.forEach(client => {
+            client.postMessage({
+              type: 'CACHES_CLEARED',
+              timestamp: new Date().toISOString()
+            });
+          });
+          
+        } catch (error) {
+          // Intentionally silent in production
+        }
+      })()
+    );
   }
 });
 

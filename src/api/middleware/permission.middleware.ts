@@ -80,6 +80,72 @@ export function requirePermission(
 }
 
 /**
+ * Require permission, but allow a role-based fallback when no explicit rule exists.
+ *
+ * Why: New pages may be added before CQMS has an access_control_rules row seeded.
+ * In that case PermissionService returns "No matching permission rule found" which would
+ * block even Super Admins. This middleware preserves a safe default:
+ * - If permission system explicitly denies (individual deny / role rule mismatch) → deny
+ * - If permission system has no rule configured → fall back to allowedRoles
+ */
+export function requirePermissionOrRole(
+  resourceName: string,
+  ruleType: 'page' | 'feature' | 'api_endpoint' | 'action',
+  ...allowedRoles: string[]
+) {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
+        return;
+      }
+
+      const userEmail = req.user.email?.toLowerCase().trim();
+      if (!userEmail) {
+        res.status(401).json({ error: 'Unauthorized', message: 'User email not found' });
+        return;
+      }
+
+      const userRole = await getUserRole(userEmail);
+      const check = await permissionService.checkPermission(userEmail, userRole, resourceName, ruleType);
+
+      if (check.hasAccess) {
+        (req as any).permissionCheck = check;
+        next();
+        return;
+      }
+
+      const reason = String(check.reason || '');
+      const canFallback =
+        reason === 'No matching permission rule found' ||
+        reason.toLowerCase().includes('no matching permission rule found');
+
+      if (canFallback && userRole && allowedRoles.includes(userRole)) {
+        logger.info(
+          `Permission fallback allowed for ${userEmail} (${userRole}) on ${resourceName}/${ruleType} (no rule configured)`
+        );
+        next();
+        return;
+      }
+
+      logger.warn(
+        `Permission denied for ${userEmail} (${userRole}) accessing ${resourceName} (${ruleType}): ${check.reason}`
+      );
+      res.status(403).json({
+        error: 'Forbidden',
+        message: `Access denied: ${check.reason || 'Insufficient permissions'}`,
+        resource: resourceName,
+        ruleType,
+        userRole,
+      });
+    } catch (error: any) {
+      logger.error('Error in requirePermissionOrRole middleware:', error);
+      res.status(500).json({ error: 'Internal server error', message: 'Failed to check permissions' });
+    }
+  };
+}
+
+/**
  * Require any of the specified permissions (OR logic)
  */
 export function requireAnyPermission(

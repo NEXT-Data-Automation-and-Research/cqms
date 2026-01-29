@@ -58,7 +58,7 @@ async function getAuthToken(): Promise<string | null> {
 async function getCSRFToken(authToken: string): Promise<string | null> {
   if (cachedCsrfToken) return cachedCsrfToken;
   try {
-    const res = await fetch('/api/users/me', {
+    const res = await fetch('/api/csrf', {
       method: 'GET',
       headers: { Authorization: `Bearer ${authToken}` },
     });

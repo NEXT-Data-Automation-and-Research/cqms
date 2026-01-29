@@ -76,7 +76,7 @@ const FEATURE_CATEGORIES: Record<string, { title: string; resources: string[] }>
   },
   reports: {
     title: 'Reports & Analytics',
-    resources: ['audit-reports', 'ai-audit-reports', 'performance'],
+    resources: ['audit-reports', 'ai-audit-reports', 'performance', 'bau-metrics'],
   },
   other: {
     title: 'Other Features',

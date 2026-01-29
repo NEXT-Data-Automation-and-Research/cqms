@@ -8,6 +8,9 @@ export interface ReversalRequest {
   scorecard_table_name: string;
   requested_by_email: string;
   requested_at: string;
+  // Employee whose audit is being reversed (may be different from requester)
+  employee_email?: string;
+  employee_name?: string;
   reversal_type: string;
   justification: string;
   metrics_parameters?: Record<string, any>;

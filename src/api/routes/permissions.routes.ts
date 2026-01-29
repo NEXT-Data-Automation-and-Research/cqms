@@ -99,7 +99,9 @@ router.get('/resources', (_req, res) => {
  * POST /api/permissions/check-batch
  * Check multiple permissions for current user in one call (e.g. for sidebar).
  * Body: { checks: Array<{ resourceName: string, ruleType: string }> }
- * Returns: { results: Record<string, boolean> } keyed by "resourceName:ruleType"
+ * Returns:
+ * - results: Record<string, boolean> keyed by "resourceName:ruleType" (backward compatible)
+ * - details: Record<string, { hasAccess: boolean, reason: string }> (new, for UI edge cases like explicit DENY)
  */
 router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) => {
   try {
@@ -119,6 +121,7 @@ router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) =
       .maybeSingle();
     const userRole = peopleData?.role || null;
     const results: Record<string, boolean> = {};
+    const details: Record<string, { hasAccess: boolean; reason: string }> = {};
     for (const { resourceName, ruleType } of checks) {
       const key = `${resourceName}:${ruleType}`;
       const check = await permissionService.checkPermission(
@@ -128,8 +131,9 @@ router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) =
         ruleType as 'page' | 'feature' | 'api_endpoint' | 'action'
       );
       results[key] = check.hasAccess;
+      details[key] = { hasAccess: check.hasAccess, reason: check.reason || 'Unknown' };
     }
-    res.json({ results });
+    res.json({ results, details, userRole, userEmail });
   } catch (error: any) {
     logger.error('Error in check-batch:', error);
     res.status(500).json({ error: 'Internal server error', message: error.message });

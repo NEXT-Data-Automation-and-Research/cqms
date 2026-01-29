@@ -145,8 +145,9 @@ export function clearAuthCache(): void {
 /**
  * Wait for Supabase to be initialized
  * This helps with race conditions where components load before Supabase is ready
+ * RELIABILITY: Increased timeout to 15 seconds for consistency across codebase
  */
-async function waitForSupabaseInit(maxWait: number = 10000): Promise<any> {
+async function waitForSupabaseInit(maxWait: number = 15000): Promise<any> {
   // First check if already initialized
   let supabase = getSupabase();
   if (supabase) {

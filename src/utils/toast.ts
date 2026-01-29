@@ -44,16 +44,19 @@ export function showToast(options: ToastOptions | string): void {
     right: 1rem;
     background: ${color.bg};
     color: ${color.text};
-    padding: 0.75rem 1rem;
+    padding: 1rem 1.25rem;
     border-radius: 0.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    z-index: 10000;
-    font-size: 0.875rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 999999;
+    font-size: 0.9375rem;
     font-family: 'Poppins', sans-serif;
     font-weight: 500;
-    max-width: 400px;
+    max-width: 420px;
     animation: slideIn 0.3s ease-out;
+    pointer-events: auto;
   `;
+  
+  console.log('[Toast] Created toast element:', message);
 
   toast.textContent = message;
 
@@ -87,9 +90,11 @@ export function showToast(options: ToastOptions | string): void {
   }
 
   document.body.appendChild(toast);
+  console.log('[Toast] Appended to body, should be visible at top-right');
 
   // Auto-remove after duration
   setTimeout(() => {
+    console.log('[Toast] Removing toast after', duration, 'ms');
     toast.style.animation = 'slideOut 0.3s ease-out';
     setTimeout(() => toast.remove(), 300);
   }, duration);

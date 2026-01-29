@@ -175,9 +175,12 @@ app.use(helmet({
         "'self'", 
         "https://*.supabase.co", 
         "https://*.supabase.in",
+        "wss://*.supabase.co", // Allow Supabase Realtime WebSocket connections
+        "wss://*.supabase.in", // Allow Supabase Realtime WebSocket connections
         "https://cdn.jsdelivr.net", // Allow jsDelivr CDN for source maps and module loading
-        "http://127.0.0.1:7242" // Allow debug logging endpoint
-      ], // Allow Supabase connections and CDN
+        "http://127.0.0.1:7242", // Allow debug logging endpoint
+        "ws://127.0.0.1:7242" // Allow WebSocket debug logging endpoint
+      ], // Allow Supabase connections, Realtime WebSockets, and CDN
       fontSrc: [
         "'self'", 
         "data:",
@@ -220,7 +223,8 @@ logWithTimestamp('debug', 'Rate limiting configured: API (100/15min), Auth (5/15
 // Cache control middleware
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  const isHtml = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+  const isHtml = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics' || !!getFilePathFromCleanPath(url);
+  const isProd = (process.env.NODE_ENV || 'development') === 'production';
 
   if (isHtml) {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -230,8 +234,16 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   }
   // Static assets (JS, CSS, images) - cache with version
   else if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp)$/)) {
-    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    res.setHeader('ETag', `"${appVersion}"`);
+    // In development, avoid immutable caching so route/menu changes show up immediately
+    if (!isProd) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('ETag', `"${appVersion}"`);
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      res.setHeader('ETag', `"${appVersion}"`);
+    }
   }
   // API endpoints - no cache
   else if (url.startsWith('/api/')) {
@@ -248,7 +260,7 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 // Runs after routes but before static file serving
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
+  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics' || !!getFilePathFromCleanPath(url);
 
   if (!isHtmlPage) {
     return next();
@@ -262,6 +274,24 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   const originalSend = res.send;
   res.send = function(body: any) {
     if (typeof body === 'string' && body.trim().startsWith('<!')) {
+      // ✅ PRODUCTION: Silence console output globally without touching huge feature files
+      const isProd = (process.env.NODE_ENV || 'development') === 'production';
+      if (isProd && !body.includes('console-stub.js') && !body.includes('/js/console-stub.js')) {
+        const consoleStubScript =
+          '  <!-- Console Stub - Auto-injected to silence console in production -->\n' +
+          '  <script src="/js/console-stub.js"></script>\n';
+
+        if (/<head[^>]*>/i.test(body)) {
+          body = body.replace(/<head[^>]*>/i, (match) => `${match}\n${consoleStubScript}`);
+        } else if (body.includes('</head>')) {
+          body = body.replace('</head>', `${consoleStubScript}</head>`);
+        } else if (/<body[^>]*>/i.test(body)) {
+          body = body.replace(/<body[^>]*>/i, (match) => `${match}\n${consoleStubScript}`);
+        } else {
+          body = `${consoleStubScript}${body}`;
+        }
+      }
+
       let scriptsToInject = '';
       if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
         scriptsToInject += '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
@@ -418,6 +448,34 @@ app.get('/help', (req: express.Request, res: express.Response): void => {
   }
 });
 
+// Admin Portal Route (integrated with platform layout)
+// The admin portal is now part of the main app with sidebar
+app.get('/admin-portal', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/admin-portal/presentation/admin-portal.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing admin-portal.html:', error);
+    const filePath = path.join(__dirname, '../src/features/admin-portal/presentation/admin-portal.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
+// Redirect old admin portal routes to the new integrated page
+app.get('/admin-portal/login', (req: express.Request, res: express.Response): void => {
+  res.redirect('/admin-portal');
+});
+
+app.get('/admin-portal/dashboard', (req: express.Request, res: express.Response): void => {
+  res.redirect('/admin-portal');
+});
+
+logWithTimestamp('debug', 'Admin portal route registered: /admin-portal');
+
 // ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
 // These routes are checked BEFORE the regex fallback for better performance
 // Backward compatibility: Old URLs still work via the regex route below
@@ -508,6 +566,13 @@ app.use('/api', csrfToken);
 // Apply CSRF protection to state-changing API routes
 app.use('/api', csrfProtection);
 
+// Lightweight CSRF bootstrap endpoint.
+// Clients can call this with Authorization header to obtain X-CSRF-Token
+// without depending on any auth-protected business route.
+app.get('/api/csrf', (_req: express.Request, res: express.Response): void => {
+  res.status(204).end();
+});
+
 // API Routes
 logWithTimestamp('debug', 'Loading API routes...');
 import usersRouter from './api/routes/users.routes.js';
@@ -515,7 +580,11 @@ import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
 import peopleRouter from './api/routes/people.routes.js';
 import permissionsRouter from './api/routes/permissions.routes.js';
+import analyticsRouter from './api/routes/analytics.routes.js';
 import adminRouter from './api/routes/admin.routes.js';
+import platformNotificationsRouter from './api/routes/platform-notifications.routes.js';
+import cacheManagementRouter from './api/routes/cache-management.routes.js';
+import activeUsersRouter from './api/routes/active-users.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -523,8 +592,12 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);
 app.use('/api/notification-subscriptions', notificationSubscriptionsRouter);
 app.use('/api/permissions', permissionsRouter);
+app.use('/api/analytics', analyticsRouter);
 app.use('/api/admin', adminRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/admin');
+app.use('/api/platform-notifications', platformNotificationsRouter);
+app.use('/api/cache', cacheManagementRouter);
+app.use('/api/active-users', activeUsersRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications');
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -228,6 +228,10 @@ export class SidebarRepository {
    * Count employee reversals from reversal_requests table
    * Uses the new reversal_requests table structure
    * Counts pending reversals (those awaiting response - not yet approved or rejected)
+   * 
+   * An employee should see reversals where:
+   * 1. They requested the reversal (requested_by_email matches), OR
+   * 2. The reversal is for their audit (employee_email matches)
    */
   async countEmployeeReversalsFromRequests(employeeEmail: string): Promise<number> {
     try {
@@ -241,10 +245,14 @@ export class SidebarRepository {
       const normalizedEmail = employeeEmail.toLowerCase().trim()
 
       // Get all reversal requests for this employee
+      // Include reversals where:
+      // 1. requested_by_email matches (they submitted the reversal), OR
+      // 2. employee_email matches (the reversal is for their audit)
+      // Use Supabase's or() filter to combine both conditions
       const { data: reversalRequests, error: requestsError } = await supabaseClient
         .from('reversal_requests')
         .select('id')
-        .eq('requested_by_email', normalizedEmail)
+        .or(`requested_by_email.eq.${normalizedEmail},employee_email.eq.${normalizedEmail}`)
 
       if (requestsError) {
         // Handle table not found gracefully
@@ -275,7 +283,7 @@ export class SidebarRepository {
           const { count, error: countError } = await supabaseClient
             .from('reversal_requests')
             .select('*', { count: 'exact', head: true })
-            .eq('requested_by_email', normalizedEmail)
+            .or(`requested_by_email.eq.${normalizedEmail},employee_email.eq.${normalizedEmail}`)
             .is('final_decision', null)
           
           if (countError) {
@@ -303,7 +311,7 @@ export class SidebarRepository {
         const { count, error: countError } = await supabaseClient
           .from('reversal_requests')
           .select('*', { count: 'exact', head: true })
-          .eq('requested_by_email', normalizedEmail)
+          .or(`requested_by_email.eq.${normalizedEmail},employee_email.eq.${normalizedEmail}`)
           .is('final_decision', null)
         
         if (countError) {

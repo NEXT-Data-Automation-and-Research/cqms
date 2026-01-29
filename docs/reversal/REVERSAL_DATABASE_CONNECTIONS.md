@@ -14,6 +14,8 @@ The Reversal Management page handles the complete lifecycle of audit reversal re
 - `scorecard_table_name` (TEXT, NOT NULL) - Name of the scorecard table containing the audit
 - `requested_by_email` (TEXT, NOT NULL) - Email of agent requesting reversal
 - `requested_at` (TIMESTAMPTZ, NOT NULL) - When reversal was requested
+- `employee_email` (TEXT) - Email of employee whose audit is being reversed (may differ from requester)
+- `employee_name` (TEXT) - Name of employee whose audit is being reversed
 - `reversal_type` (TEXT, NOT NULL) - Type: "Clarification Requested" or "Revision Requested"
 - `justification` (TEXT, NOT NULL) - Agent's justification for reversal
 - `metrics_parameters` (JSONB) - Parameters being disputed
@@ -30,7 +32,9 @@ The Reversal Management page handles the complete lifecycle of audit reversal re
 - `updated_at` (TIMESTAMPTZ)
 
 **Indexes**:
-- `idx_reversal_requests_requested_by_email` - For filtering by agent
+- `idx_reversal_requests_requested_by_email` - For filtering by requester
+- `idx_reversal_requests_employee_email` - For filtering by employee (subject of audit)
+- `idx_reversal_requests_emails` - Composite index for the common OR query pattern
 - `idx_reversal_requests_audit_id` - For lookup by audit
 - `idx_reversal_requests_scorecard_table` - For filtering by scorecard type
 - `idx_reversal_requests_requested_at` - For date-based queries
@@ -129,12 +133,14 @@ The Reversal Management page handles the complete lifecycle of audit reversal re
 ### Role-Based Filtering
 
 **Agents (Employees)**:
-- See only reversals they requested (`requested_by_email = user.email`)
-- Filter by `employee_email` in audit tables
+- See reversals where they are involved in one of two ways:
+  1. They requested the reversal (`requested_by_email = user.email`), OR
+  2. The reversal is for their audit (`employee_email = user.email`)
+- This allows employees to see reversals submitted on their behalf by team leads/managers
 - See pending, approved, and rejected reversals (until acknowledged)
 
 **Auditors/Managers/Admins**:
-- See all reversals
+- See all reversals (RLS handles access control)
 - Filter by workflow state (pending vs all)
 - Can process reversals (approve/reject)
 

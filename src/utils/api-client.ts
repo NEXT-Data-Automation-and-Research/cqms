@@ -39,10 +39,10 @@ async function getCSRFToken(authToken: string): Promise<string | null> {
       return null;
     }
 
-    // Make a GET request to any API endpoint to get CSRF token from response headers
-    // The csrfToken middleware generates a new token for each request
-    // IMPORTANT: Use the same auth token that will be used in the POST request
-    const response = await fetch('/api/users/me', {
+    // Make a lightweight GET request to obtain CSRF token from response headers.
+    // IMPORTANT: Include the same Authorization header used in the state-changing request
+    // so the server derives the same sessionId for CSRF validation.
+    const response = await fetch('/api/csrf', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${authToken}`,
@@ -55,13 +55,7 @@ async function getCSRFToken(authToken: string): Promise<string | null> {
       logger.debug('CSRF token fetched successfully', { tokenLength: token.length });
       return token;
     } else {
-      // Log available headers for debugging
-      const headerKeys: string[] = [];
-      response.headers.forEach((_, key) => headerKeys.push(key));
-      logger.warn('CSRF token not found in response headers', { 
-        availableHeaders: headerKeys,
-        status: response.status 
-      });
+      // Don't spam logs here; callers will gracefully handle missing token.
     }
   } catch (error) {
     logger.error('Failed to get CSRF token:', error);
@@ -108,8 +102,11 @@ async function apiRequest<T>(
         headers['X-CSRF-Token'] = csrfToken;
         logger.debug('CSRF token added to request', { endpoint, method, tokenLength: csrfToken.length });
       } else {
-        logger.warn('CSRF token not available for request', { endpoint, method });
-        // Don't fail the request, let the server handle it
+        // Avoid making a doomed network request that will 403 (and show up in console).
+        return {
+          data: null,
+          error: { message: 'CSRF token not available', code: 'CSRF_REQUIRED' },
+        };
       }
     }
 

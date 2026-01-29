@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/console-stub.js"></script>
+<meta charset="UTF-8">
+<title>Admin Portal | QMS</title>
+<meta name="description" content="Platform Administration - Manage notifications and settings">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- CSS Loading Order -->
+    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    
+    <!-- Import map for npm packages -->
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    
+    <!-- Authentication Guard -->
+    <script type="module" src="/js/auth-checker.js"></script>
+    
+    <!-- Initialize Supabase -->
+    <script type="module">
+      (async function initSupabaseFirst() {
+        try {
+          const secureWindowModule = await import('/js/utils/secure-window-supabase.js');
+          if (secureWindowModule?.initSecureWindowSupabase) {
+            await secureWindowModule.initSecureWindowSupabase();
+            if (window.supabaseClient) {
+              window.dispatchEvent(new CustomEvent('supabaseReady'));
+            }
+          }
+        } catch (error) {
+          console.error('[AdminPortal] Supabase init error:', error);
+        }
+      })();
+    </script>
+    
+    <style>
+      :root {
+        --primary-green: #1a733e;
+        --primary-green-light: #ecfdf5;
+        --primary-green-dark: #0d5e3a;
+      }
+      
+      .admin-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        position: relative;
+        min-height: calc(100vh - 100px);
+      }
+      
+      /* Password Gate - overlays content area only */
+      .password-gate {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(249, 250, 251, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 1rem;
+      }
+      
+      .password-gate.hidden {
+        display: none;
+      }
+      
+      .password-gate-card {
+        background: white;
+        border-radius: 12px;
+        padding: 2rem 2.5rem;
+        width: 100%;
+        max-width: 400px;
+        min-width: 320px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      }
+      
+      .password-gate-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+      }
+      
+      .password-gate-icon svg {
+        width: 32px;
+        height: 32px;
+        color: white;
+      }
+      
+      .password-gate-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+        margin-bottom: 0.5rem;
+        white-space: nowrap;
+      }
+      
+      .password-gate-subtitle {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+      }
+      
+      .password-input-wrapper {
+        position: relative;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+      }
+      
+      .password-input {
+        width: 100%;
+        padding: 0.875rem 3rem 0.875rem 1rem;
+        font-size: 1rem;
+        font-family: inherit;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        outline: none;
+        transition: all 0.2s;
+        text-align: center;
+        letter-spacing: 0.15em;
+      }
+      
+      .password-input:focus {
+        border-color: var(--primary-green);
+        box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1);
+      }
+      
+      .password-input.error {
+        border-color: #ef4444;
+        animation: shake 0.4s ease-in-out;
+      }
+      
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-6px); }
+        75% { transform: translateX(6px); }
+      }
+      
+      .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #9ca3af;
+        cursor: pointer;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .password-toggle:hover {
+        color: #6b7280;
+      }
+      
+      .password-toggle svg {
+        width: 20px;
+        height: 20px;
+      }
+      
+      .password-error {
+        color: #ef4444;
+        font-size: 0.8125rem;
+        margin-bottom: 0.75rem;
+        min-height: 1.25rem;
+      }
+      
+      .password-submit {
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+        background: var(--primary-green);
+        color: white;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        font-family: inherit;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+      
+      .password-submit:hover {
+        background: var(--primary-green-dark);
+      }
+      
+      .password-submit svg {
+        width: 18px;
+        height: 18px;
+      }
+      
+      /* Page Header */
+      .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      
+      .page-title-section {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      
+      .page-icon {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .page-icon svg {
+        width: 22px;
+        height: 22px;
+        color: white;
+      }
+      
+      .page-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+      }
+      
+      .page-subtitle {
+        font-size: 0.8125rem;
+        color: #6b7280;
+        margin: 0;
+      }
+      
+      .header-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .btn-create {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 1rem;
+        background: var(--primary-green);
+        color: white;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-family: inherit;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-create:hover {
+        background: var(--primary-green-dark);
+      }
+      
+      .btn-create svg {
+        width: 16px;
+        height: 16px;
+      }
+      
+      /* Stats Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .stat-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 1rem;
+      }
+      
+      .stat-label {
+        font-size: 0.6875rem;
+        font-weight: 500;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        margin-bottom: 0.25rem;
+      }
+      
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #111827;
+      }
+      
+      /* Notifications Table */
+      .table-container {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      
+      .notifications-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8125rem;
+      }
+      
+      .notifications-table th {
+        background: #f9fafb;
+        padding: 0.75rem 1rem;
+        text-align: left;
+        font-weight: 500;
+        color: #6b7280;
+        border-bottom: 1px solid #e5e7eb;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      .notifications-table td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        color: #374151;
+      }
+      
+      .notifications-table tr:last-child td {
+        border-bottom: none;
+      }
+      
+      .notifications-table tr:hover {
+        background: #fafafa;
+      }
+      
+      .notification-title-cell {
+        max-width: 250px;
+      }
+      
+      .notification-title-text {
+        font-weight: 500;
+        color: #111827;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .notification-message-preview {
+        font-size: 0.75rem;
+        color: #9ca3af;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 0.125rem;
+      }
+      
+      .type-badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        text-transform: capitalize;
+      }
+      
+      .type-badge.info { background: #e0f2fe; color: #0369a1; }
+      .type-badge.success { background: #dcfce7; color: #15803d; }
+      .type-badge.warning { background: #fef3c7; color: #b45309; }
+      .type-badge.alert { background: #fee2e2; color: #b91c1c; }
+      .type-badge.maintenance { background: #f3e8ff; color: #7c3aed; }
+      
+      .status-badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+      }
+      
+      .status-badge.active { background: #dcfce7; color: #15803d; }
+      .status-badge.inactive { background: #f3f4f6; color: #6b7280; }
+      .status-badge.pinned { background: #fef3c7; color: #b45309; }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.375rem;
+      }
+      
+      .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.375rem 0.625rem;
+        background: #f3f4f6;
+        color: #374151;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        font-family: inherit;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-action:hover {
+        background: #e5e7eb;
+      }
+      
+      .btn-action.danger {
+        color: #b91c1c;
+      }
+      
+      .btn-action.danger:hover {
+        background: #fee2e2;
+      }
+      
+      .btn-action svg {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        color: #6b7280;
+      }
+      
+      .empty-state svg {
+        width: 48px;
+        height: 48px;
+        color: #d1d5db;
+        margin-bottom: 0.75rem;
+      }
+      
+      /* Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s;
+      }
+      
+      .modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow: hidden;
+        transform: translateY(20px);
+        transition: transform 0.2s;
+      }
+      
+      .modal-overlay.show .modal {
+        transform: translateY(0);
+      }
+      
+      .modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .modal-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+      }
+      
+      .modal-close {
+        background: none;
+        border: none;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 0.25rem;
+        display: flex;
+      }
+      
+      .modal-close:hover {
+        color: #111827;
+      }
+      
+      .modal-body {
+        padding: 1.25rem;
+        max-height: 60vh;
+        overflow-y: auto;
+      }
+      
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        padding: 1rem 1.25rem;
+        border-top: 1px solid #e5e7eb;
+        background: #f9fafb;
+      }
+      
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      
+      .form-label {
+        display: block;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.375rem;
+      }
+      
+      .form-input,
+      .form-select,
+      .form-textarea {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        font-size: 0.8125rem;
+        font-family: inherit;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        outline: none;
+        transition: all 0.15s;
+      }
+      
+      .form-input:focus,
+      .form-select:focus,
+      .form-textarea:focus {
+        border-color: var(--primary-green);
+        box-shadow: 0 0 0 3px rgba(26, 115, 62, 0.1);
+      }
+      
+      .form-textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+      }
+      
+      .form-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        color: #374151;
+      }
+      
+      .form-checkbox input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary-green);
+      }
+      
+      .btn-secondary {
+        padding: 0.5rem 1rem;
+        background: white;
+        color: #374151;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-family: inherit;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-secondary:hover {
+        background: #f9fafb;
+      }
+      
+      .btn-primary {
+        padding: 0.5rem 1rem;
+        background: var(--primary-green);
+        color: white;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-family: inherit;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      
+      .btn-primary:hover {
+        background: var(--primary-green-dark);
+      }
+      
+      /* Toast */
+      .toast-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .toast {
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        animation: toastIn 0.2s ease-out;
+      }
+      
+      @keyframes toastIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      
+      .toast.success { background: #dcfce7; color: #15803d; }
+      .toast.error { background: #fee2e2; color: #b91c1c; }
+      .toast.info { background: #e0f2fe; color: #0369a1; }
+      
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      .btn-primary:hover:not(:disabled) {
+        filter: brightness(0.9);
+      }
+      
+      .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+      
+      /* Cache Management Card Styles */
+      .cache-management-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      
+      .cache-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.25rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #f3f4f6;
+      }
+      
+      .cache-icon {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .cache-title-section {
+        flex: 1;
+      }
+      
+      .cache-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 0 0 0.25rem 0;
+      }
+      
+      .cache-subtitle {
+        font-size: 0.8125rem;
+        color: #6b7280;
+        margin: 0;
+      }
+      
+      .cache-info-box {
+        background: #f0fdf4;
+        border: 1px solid #86efac;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      
+      .cache-info-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #166534;
+        margin-bottom: 0.75rem;
+      }
+      
+      .cache-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.5rem 1rem;
+      }
+      
+      .cache-info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-size: 0.75rem;
+        color: #15803d;
+      }
+      
+      .cache-warning-box {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+        display: flex;
+        gap: 0.875rem;
+      }
+      
+      .cache-warning-icon {
+        width: 40px;
+        height: 40px;
+        background: #f59e0b;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        color: white;
+      }
+      
+      .cache-warning-content {
+        flex: 1;
+      }
+      
+      .cache-warning-title {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #92400e;
+        margin-bottom: 0.5rem;
+      }
+      
+      .cache-warning-list {
+        margin: 0;
+        padding-left: 1.25rem;
+        font-size: 0.75rem;
+        color: #78350f;
+        line-height: 1.6;
+      }
+      
+      .cache-warning-list li {
+        margin-bottom: 0.25rem;
+      }
+      
+      .cache-warning-list li:last-child {
+        margin-bottom: 0;
+      }
+      
+      .cache-action-section {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+      
+      .cache-reason-input {
+        flex: 1;
+        min-width: 280px;
+      }
+      
+      .cache-reason-input .form-label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        display: block;
+      }
+      
+      .label-optional {
+        font-weight: 400;
+        color: #9ca3af;
+        font-size: 0.75rem;
+      }
+      
+      .cache-reason-input .form-input {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        font-size: 0.875rem;
+      }
+      
+      .cache-clear-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.75rem 1.25rem;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        font-size: 0.875rem;
+        font-weight: 600;
+        font-family: inherit;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+        box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
+      }
+      
+      .cache-clear-btn:hover:not(:disabled) {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(220, 38, 38, 0.4);
+      }
+      
+      .cache-clear-btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      
+      .cache-clear-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none;
+      }
+      
+      .cache-history-section {
+        margin-top: 1.25rem;
+        display: none;
+      }
+      
+      .cache-history-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: #6b7280;
+        margin-bottom: 0.625rem;
+      }
+      
+      .cache-history-list {
+        max-height: 180px;
+        overflow-y: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        background: #fafafa;
+      }
+      
+      .cache-history-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f3f4f6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.15s;
+      }
+      
+      .cache-history-item:last-child {
+        border-bottom: none;
+      }
+      
+      .cache-history-item:hover {
+        background: white;
+      }
+      
+      .cache-history-reason {
+        font-weight: 500;
+        color: #374151;
+        font-size: 0.8125rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      
+      .cache-type-badge {
+        display: inline-block;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-size: 0.625rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+      }
+      
+      .cache-type-badge.forced {
+        background: #fee2e2;
+        color: #b91c1c;
+      }
+      
+      .cache-type-badge.optional {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      
+      .cache-history-by {
+        font-size: 0.6875rem;
+        color: #9ca3af;
+        margin-top: 0.125rem;
+      }
+      
+      .cache-history-time {
+        text-align: right;
+        color: #6b7280;
+        font-size: 0.75rem;
+      }
+      
+      /* Cache Type Selection Styles */
+      .cache-type-selection {
+        margin-bottom: 1rem;
+      }
+      
+      .cache-type-options {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+      }
+      
+      .cache-type-option {
+        flex: 1;
+        cursor: pointer;
+      }
+      
+      .cache-type-option input {
+        display: none;
+      }
+      
+      .cache-type-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.875rem 1rem;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        transition: all 0.2s;
+        background: white;
+      }
+      
+      .cache-type-option input:checked + .cache-type-card.forced {
+        border-color: #ef4444;
+        background: #fef2f2;
+      }
+      
+      .cache-type-option input:checked + .cache-type-card.skippable {
+        border-color: #1a733e;
+        background: #f0fdf4;
+      }
+      
+      .cache-type-card:hover {
+        border-color: #9ca3af;
+      }
+      
+      .cache-type-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .cache-type-card.forced .cache-type-icon {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+      
+      .cache-type-card.skippable .cache-type-icon {
+        background: #dcfce7;
+        color: #15803d;
+      }
+      
+      .cache-type-option input:checked + .cache-type-card.forced .cache-type-icon {
+        background: #ef4444;
+        color: white;
+      }
+      
+      .cache-type-option input:checked + .cache-type-card.skippable .cache-type-icon {
+        background: #1a733e;
+        color: white;
+      }
+      
+      .cache-type-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+      }
+      
+      .cache-type-name {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #111827;
+      }
+      
+      .cache-type-desc {
+        font-size: 0.6875rem;
+        color: #6b7280;
+      }
+      
+      @media (max-width: 768px) {
+        .cache-info-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .cache-action-section {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        
+        .cache-reason-input {
+          min-width: 100%;
+        }
+        
+        .cache-type-options {
+          flex-direction: column;
+        }
+        
+        .cache-clear-btn {
+          justify-content: center;
+        }
+      }
+      
+      /* Admin content - hidden until unlocked */
+      .admin-content {
+        display: none;
+      }
+      
+      .admin-content.visible {
+        display: block;
+      }
+      
+      /* Responsive */
+      @media (max-width: 768px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+        
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .notifications-table {
+          font-size: 0.75rem;
+        }
+      }
+    </style>
+</head>
+<body>
+<!-- Sidebar will be loaded dynamically -->
+<main class="main-content" role="main">
+  <div class="px-4 py-4 admin-container">
+    
+    <!-- Password Gate - overlays content area -->
+    <div class="password-gate" id="passwordGate">
+      <div class="password-gate-card">
+        <div class="password-gate-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+          </svg>
+        </div>
+        <h2 class="password-gate-title">Admin Access Required</h2>
+        <p class="password-gate-subtitle">Enter the platform admin password to continue</p>
+        
+        <form id="passwordForm">
+          <div class="password-input-wrapper">
+            <input 
+              type="password" 
+              id="adminPassword" 
+              class="password-input" 
+              placeholder="Enter password"
+              autocomplete="off"
+            />
+            <button type="button" class="password-toggle" id="passwordToggle">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
+          <div class="password-error" id="passwordError"></div>
+          <button type="submit" class="password-submit">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+            </svg>
+            Unlock
+          </button>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Admin Content - hidden until password verified -->
+    <div class="admin-content" id="adminContent">
+      <!-- Page Header -->
+      <div class="page-header">
+        <div class="page-title-section">
+          <div class="page-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="page-title">Admin Portal</h1>
+            <p class="page-subtitle">Manage platform notifications</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button class="btn-create" id="createNotificationBtn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            New Notification
+          </button>
+        </div>
+      </div>
+      
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total</div>
+          <div class="stat-value" id="totalNotifications">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Active</div>
+          <div class="stat-value" id="activeNotifications">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pinned</div>
+          <div class="stat-value" id="pinnedNotifications">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Alerts</div>
+          <div class="stat-value" id="alertNotifications">0</div>
+        </div>
+      </div>
+
+      <!-- Cache Management Section -->
+      <div class="cache-management-card">
+        <div class="cache-header">
+          <div class="cache-icon">
+            <svg fill="none" stroke="white" viewBox="0 0 24 24" width="24" height="24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </div>
+          <div class="cache-title-section">
+            <h3 class="cache-title">Platform Cache Management</h3>
+            <p class="cache-subtitle">Force clear browser caches for all users worldwide</p>
+          </div>
+        </div>
+        
+        <!-- What Gets Cleared Info -->
+        <div class="cache-info-box">
+          <div class="cache-info-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>What gets cleared:</span>
+          </div>
+          <div class="cache-info-grid">
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Service Workers
+            </div>
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Cache Storage API
+            </div>
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              IndexedDB
+            </div>
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              localStorage
+            </div>
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              sessionStorage
+            </div>
+            <div class="cache-info-item">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Cookies
+            </div>
+          </div>
+        </div>
+        
+        <!-- Warning Box -->
+        <div class="cache-warning-box">
+          <div class="cache-warning-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+            </svg>
+          </div>
+          <div class="cache-warning-content">
+            <div class="cache-warning-title">Important Warning</div>
+            <ul class="cache-warning-list">
+              <li>All users worldwide will be <strong>signed out immediately</strong></li>
+              <li><strong>You will also be logged out</strong> after triggering this action</li>
+              <li>Users will need to log in again with fresh cached data</li>
+              <li>Use this only after deploying new versions or critical fixes</li>
+            </ul>
+          </div>
+        </div>
+        
+        <!-- Action Section -->
+        <div class="cache-action-section">
+          <div class="cache-reason-input">
+            <label class="form-label" for="cacheClearReason">
+              Reason for cache clear
+              <span class="label-optional">(optional but recommended)</span>
+            </label>
+            <input type="text" id="cacheClearReason" class="form-input" placeholder="e.g., Deploying v2.1.0, Critical bug fix, New feature release" />
+          </div>
+          
+          <!-- Cache Clear Type Selection -->
+          <div class="cache-type-selection">
+            <label class="form-label">Cache Clear Type</label>
+            <div class="cache-type-options">
+              <label class="cache-type-option">
+                <input type="radio" name="cacheType" value="forced" checked />
+                <div class="cache-type-card forced">
+                  <div class="cache-type-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                  </div>
+                  <div class="cache-type-content">
+                    <span class="cache-type-name">Forced</span>
+                    <span class="cache-type-desc">Users cannot skip. Immediate logout.</span>
+                  </div>
+                </div>
+              </label>
+              <label class="cache-type-option">
+                <input type="radio" name="cacheType" value="skippable" />
+                <div class="cache-type-card skippable">
+                  <div class="cache-type-icon">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div class="cache-type-content">
+                    <span class="cache-type-name">Optional</span>
+                    <span class="cache-type-desc">Users can skip and continue working.</span>
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          <button type="button" id="clearCacheBtn" class="cache-clear-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Clear All User Caches
+          </button>
+        </div>
+        
+        <!-- Cache Clear History -->
+        <div id="cacheClearHistory" class="cache-history-section">
+          <div class="cache-history-header">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Recent Cache Clears
+          </div>
+          <div id="cacheHistoryList" class="cache-history-list"></div>
+        </div>
+      </div>
+      
+      <!-- Notifications Table -->
+      <div class="table-container">
+        <table class="notifications-table">
+          <thead>
+            <tr>
+              <th>Notification</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Target</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="notificationsTableBody">
+            <tr>
+              <td colspan="6" class="empty-state">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+                </svg>
+                <p>Loading notifications...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="notificationModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle">Create Notification</h3>
+      <button class="modal-close" id="closeModal">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <form id="notificationForm">
+      <div class="modal-body">
+        <input type="hidden" id="notificationId" name="id" />
+        
+        <div class="form-group">
+          <label class="form-label" for="title">Title *</label>
+          <input type="text" id="title" name="title" class="form-input" placeholder="Enter notification title" required />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="message">Message *</label>
+          <textarea id="message" name="message" class="form-textarea" placeholder="Enter notification message" required></textarea>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="type">Type</label>
+            <select id="type" name="type" class="form-select">
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warning">Warning</option>
+              <option value="alert">Alert</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="priority">Priority</label>
+            <select id="priority" name="priority" class="form-select">
+              <option value="0">Normal</option>
+              <option value="1">High</option>
+              <option value="2">Urgent</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="startsAt">Starts At (empty = now)</label>
+            <input type="datetime-local" id="startsAt" name="starts_at" class="form-input" />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label" for="expiresAt">Expires At (empty = never)</label>
+            <input type="datetime-local" id="expiresAt" name="expires_at" class="form-input" />
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="actionUrl">Action URL (optional)</label>
+          <input type="url" id="actionUrl" name="action_url" class="form-input" placeholder="https://..." />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="actionLabel">Action Button Label</label>
+          <input type="text" id="actionLabel" name="action_label" class="form-input" placeholder="View Details" />
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label" for="targetRoles">Target Roles (empty = all users)</label>
+          <select id="targetRoles" name="target_roles" class="form-select" multiple style="height: 80px;">
+            <option value="Employee">Employee</option>
+            <option value="Quality Analyst">Quality Analyst</option>
+            <option value="Quality Supervisor">Quality Supervisor</option>
+            <option value="Manager">Manager</option>
+            <option value="Admin">Admin</option>
+            <option value="Super Admin">Super Admin</option>
+          </select>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-checkbox">
+            <input type="checkbox" id="isDismissible" name="is_dismissible" checked />
+            <label for="isDismissible">Allow users to dismiss</label>
+          </div>
+          
+          <div class="form-checkbox">
+            <input type="checkbox" id="isPinned" name="is_pinned" />
+            <label for="isPinned">Pin to top</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn-primary" id="saveBtn">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Load sidebar -->
+<script type="module" src="/js/features/sidebar/presentation/sidebar-loader.js"></script>
+
+<script type="module">
+  import { showToast } from '/js/utils/toast.js';
+  
+  // Platform admin password
+  const ADMIN_PASSWORD = 'CQMS@Admin2026!';
+  
+  // Platform admins - only these emails can access
+  const PLATFORM_ADMINS = [
+    'saif.alam@nextventures.io',
+    'aminul.islam@nextventures.io'
+  ];
+  
+  class AdminPortalController {
+    constructor() {
+      this.supabase = null;
+      this.user = null;
+      this.notifications = [];
+      this.editingId = null;
+      this.isUnlocked = false;
+    }
+    
+    async init() {
+      // Wait for Supabase
+      await this.waitForSupabase();
+      
+      if (!this.supabase) {
+        showToast('Failed to initialize. Please refresh.', 'error');
+        return;
+      }
+      
+      // Verify platform admin access (email check)
+      const isAdmin = await this.verifyAdminAccess();
+      if (!isAdmin) {
+        showToast('Access denied', 'error');
+        setTimeout(() => window.location.href = '/home', 1000);
+        return;
+      }
+      
+      // Setup password gate
+      this.setupPasswordGate();
+      
+      // Focus password input
+      setTimeout(() => document.getElementById('adminPassword')?.focus(), 100);
+    }
+    
+    async waitForSupabase() {
+      // Check if already available
+      if (window.supabaseClient) {
+        this.supabase = window.supabaseClient;
+        return;
+      }
+      
+      // Wait for supabaseReady event
+      return new Promise((resolve) => {
+        const checkInterval = setInterval(() => {
+          if (window.supabaseClient) {
+            clearInterval(checkInterval);
+            this.supabase = window.supabaseClient;
+            resolve();
+          }
+        }, 100);
+        
+        window.addEventListener('supabaseReady', () => {
+          clearInterval(checkInterval);
+          this.supabase = window.supabaseClient;
+          resolve();
+        }, { once: true });
+        
+        // Timeout after 10s
+        setTimeout(() => {
+          clearInterval(checkInterval);
+          resolve();
+        }, 10000);
+      });
+    }
+    
+    async verifyAdminAccess() {
+      try {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (!user) return false;
+        
+        const userEmail = (user.email || '').toLowerCase().trim();
+        
+        // Check if user is a platform admin
+        const isPlatformAdmin = PLATFORM_ADMINS.some(
+          email => email.toLowerCase().trim() === userEmail
+        );
+        
+        if (!isPlatformAdmin) {
+          console.log('[AdminPortal] Access denied - not a platform admin:', userEmail);
+          return false;
+        }
+        
+        const { data: person } = await this.supabase
+          .from('people')
+          .select('name, role')
+          .eq('email', user.email)
+          .single();
+        
+        this.user = { ...user, name: person?.name || user.email, role: person?.role };
+        return true;
+      } catch (error) {
+        console.error('Admin verification failed:', error);
+        return false;
+      }
+    }
+    
+    setupPasswordGate() {
+      const form = document.getElementById('passwordForm');
+      const input = document.getElementById('adminPassword');
+      const toggle = document.getElementById('passwordToggle');
+      const errorEl = document.getElementById('passwordError');
+      
+      // Toggle password visibility
+      toggle.addEventListener('click', () => {
+        const type = input.type === 'password' ? 'text' : 'password';
+        input.type = type;
+        toggle.innerHTML = type === 'password' 
+          ? `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>`
+          : `<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+            </svg>`;
+      });
+      
+      // Handle form submit
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.verifyPassword(input.value, errorEl, input);
+      });
+      
+      // Clear error on input
+      input.addEventListener('input', () => {
+        errorEl.textContent = '';
+        input.classList.remove('error');
+      });
+    }
+    
+    verifyPassword(password, errorEl, inputEl) {
+      if (password === ADMIN_PASSWORD) {
+        this.unlockDashboard();
+      } else {
+        errorEl.textContent = 'Invalid password';
+        inputEl.classList.add('error');
+        inputEl.value = '';
+        inputEl.focus();
+      }
+    }
+    
+    unlockDashboard() {
+      this.isUnlocked = true;
+      
+      // Hide password gate
+      document.getElementById('passwordGate').classList.add('hidden');
+      
+      // Show admin content
+      document.getElementById('adminContent').classList.add('visible');
+      
+      // Setup dashboard
+      this.setupEventListeners();
+      this.loadNotifications();
+      
+      showToast('Access granted', 'success');
+    }
+    
+    setupEventListeners() {
+      // Create notification
+      document.getElementById('createNotificationBtn').addEventListener('click', () => this.openModal());
+      
+      // Modal controls
+      document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
+      document.getElementById('cancelBtn').addEventListener('click', () => this.closeModal());
+      document.getElementById('notificationModal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) this.closeModal();
+      });
+      
+      // Form submit
+      document.getElementById('notificationForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        this.handleSave();
+      });
+      
+      // Cache clear button - use explicit handler with stopPropagation
+      const clearCacheBtn = document.getElementById('clearCacheBtn');
+      if (clearCacheBtn) {
+        clearCacheBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          this.handleCacheClear();
+        });
+      }
+      
+      // Load cache history
+      this.loadCacheHistory();
+    }
+    
+    async loadCacheHistory() {
+      try {
+        const { data, error } = await this.supabase
+          .from('cache_versions')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (error) {
+          // Table might not exist yet - show setup message
+          if (error.code === '42P01' || error.message.includes('does not exist')) {
+            console.log('[AdminPortal] cache_versions table not created yet. Run migration 023.');
+            this.showCacheSetupMessage();
+          } else {
+            console.warn('Cache history not available:', error.message);
+          }
+          return;
+        }
+        
+        // Table exists, hide setup message if shown
+        document.getElementById('cacheSetupMessage')?.remove();
+        
+        if (data && data.length > 0) {
+          document.getElementById('cacheClearHistory').style.display = 'block';
+          
+          const historyHtml = data.map(item => {
+            const typeLabel = item.is_skippable ? 'Optional' : 'Forced';
+            const typeBadgeClass = item.is_skippable ? 'optional' : 'forced';
+            return `
+              <div class="cache-history-item">
+                <div>
+                  <div class="cache-history-reason">
+                    ${this.escapeHtml(item.reason || 'No reason provided')}
+                    <span class="cache-type-badge ${typeBadgeClass}">${typeLabel}</span>
+                  </div>
+                  <div class="cache-history-by">by ${this.escapeHtml(item.triggered_by_email)}</div>
+                </div>
+                <div class="cache-history-time">
+                  ${new Date(item.created_at).toLocaleString()}
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          document.getElementById('cacheHistoryList').innerHTML = historyHtml;
+        }
+      } catch (error) {
+        console.warn('Could not load cache history:', error);
+      }
+    }
+    
+    showCacheSetupMessage() {
+      const cacheSection = document.querySelector('#clearCacheBtn')?.closest('.table-container');
+      if (!cacheSection || document.getElementById('cacheSetupMessage')) return;
+      
+      const setupDiv = document.createElement('div');
+      setupDiv.id = 'cacheSetupMessage';
+      setupDiv.style.cssText = 'background: #e0f2fe; border: 1px solid #7dd3fc; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 1rem;';
+      setupDiv.innerHTML = `
+        <div style="display: flex; align-items: flex-start; gap: 0.5rem;">
+          <svg fill="none" stroke="#0369a1" viewBox="0 0 24 24" width="18" height="18" style="flex-shrink: 0; margin-top: 2px;">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p style="font-size: 0.75rem; color: #0c4a6e; margin: 0; line-height: 1.4;">
+            <strong>Setup Required:</strong> The cache_versions table hasn't been created yet. 
+            Run migration <code style="background: #f0f9ff; padding: 0.125rem 0.25rem; border-radius: 3px;">023_create_cache_versions_table.sql</code> in your Supabase dashboard to enable this feature.
+          </p>
+        </div>
+      `;
+      
+      // Insert before the warning div
+      const warningDiv = cacheSection.querySelector('div[style*="fef3c7"]');
+      if (warningDiv) {
+        warningDiv.before(setupDiv);
+      }
+    }
+    
+    async handleCacheClear() {
+      console.log('[AdminPortal] Cache clear button clicked');
+      
+      const reason = document.getElementById('cacheClearReason').value.trim();
+      const cacheTypeRadio = document.querySelector('input[name="cacheType"]:checked');
+      const isSkippable = cacheTypeRadio?.value === 'skippable';
+      
+      // Build comprehensive warning message
+      let confirmMessage = '⚠️ PLATFORM-WIDE CACHE CLEAR ⚠️\n\n';
+      confirmMessage += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+      
+      if (reason) {
+        confirmMessage += `📝 Reason: ${reason}\n\n`;
+      }
+      
+      confirmMessage += `📋 Type: ${isSkippable ? 'OPTIONAL (users can skip)' : 'FORCED (users cannot skip)'}\n\n`;
+      
+      if (isSkippable) {
+        confirmMessage += 'This action will:\n\n';
+        confirmMessage += '• Show a popup to all users asking if they want to update\n';
+        confirmMessage += '• Users who accept will be signed out and cache cleared\n';
+        confirmMessage += '• Users who skip can continue working\n\n';
+      } else {
+        confirmMessage += 'This action will:\n\n';
+        confirmMessage += '• Sign out ALL users worldwide immediately\n';
+        confirmMessage += '• Clear Service Workers & Cache Storage\n';
+        confirmMessage += '• Clear IndexedDB databases\n';
+        confirmMessage += '• Clear localStorage & sessionStorage\n';
+        confirmMessage += '• Clear browser cookies\n\n';
+      }
+      
+      confirmMessage += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+      confirmMessage += '🔴 IMPORTANT: You will also be affected!\n\n';
+      confirmMessage += 'Are you sure you want to proceed?';
+      
+      if (!confirm(confirmMessage)) {
+        console.log('[AdminPortal] Cache clear cancelled by user');
+        return;
+      }
+      
+      // Double confirmation only for forced clears
+      if (!isSkippable) {
+        const doubleConfirm = confirm(
+          '🔴 FINAL CONFIRMATION 🔴\n\n' +
+          'You are about to FORCE clear caches for ALL platform users.\n\n' +
+          'Users will be logged out immediately with NO option to skip.\n\n' +
+          'Click OK to proceed or Cancel to abort.'
+        );
+        
+        if (!doubleConfirm) {
+          console.log('[AdminPortal] Cache clear cancelled at final confirmation');
+          return;
+        }
+      }
+      
+      const btn = document.getElementById('clearCacheBtn');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg style="animation: spin 1s linear infinite;" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        Broadcasting...
+      `;
+      
+      try {
+        // Insert into cache_versions to trigger realtime broadcast
+        const now = new Date();
+        const version = `${now.toISOString().split('T')[0]}-${now.getTime()}`;
+        
+        console.log('[AdminPortal] Inserting cache clear version:', version);
+        
+        const { data, error } = await this.supabase
+          .from('cache_versions')
+          .insert({
+            version,
+            triggered_by: this.user.id,
+            triggered_by_email: this.user.email,
+            reason: reason || null,
+            clear_type: 'full',
+            is_skippable: isSkippable
+          })
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('[AdminPortal] Cache clear insert error:', error);
+          
+          // Check if table doesn't exist
+          if (error.code === '42P01' || error.message.includes('does not exist')) {
+            showToast('Setup required: Run migration 023_create_cache_versions_table.sql first', 'error');
+            this.showCacheSetupMessage();
+          } else {
+            showToast('Failed: ' + (error.message || 'Database error'), 'error');
+          }
+          return;
+        }
+        
+        console.log('[AdminPortal] Cache clear successful:', data);
+        const typeLabel = isSkippable ? 'Optional' : 'Forced';
+        showToast(`${typeLabel} cache clear broadcast sent to all users!`, 'success');
+        document.getElementById('cacheClearReason').value = '';
+        
+        // Reload history
+        await this.loadCacheHistory();
+        
+      } catch (error) {
+        console.error('[AdminPortal] Cache clear exception:', error);
+        showToast('Failed to trigger cache clear: ' + (error.message || 'Unknown error'), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+    
+    async loadNotifications() {
+      try {
+        const { data, error } = await this.supabase
+          .from('platform_notifications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        this.notifications = data || [];
+        this.renderNotifications();
+        this.updateStats();
+        
+      } catch (error) {
+        console.error('Error loading notifications:', error);
+        showToast('Failed to load notifications', 'error');
+      }
+    }
+    
+    renderNotifications() {
+      const tbody = document.getElementById('notificationsTableBody');
+      
+      if (this.notifications.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="empty-state">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
+              </svg>
+              <p>No notifications yet</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+      
+      tbody.innerHTML = this.notifications.map(n => `
+        <tr data-id="${n.id}">
+          <td class="notification-title-cell">
+            <span class="notification-title-text">${this.escapeHtml(n.title)}</span>
+            <span class="notification-message-preview">${this.escapeHtml(n.message)}</span>
+          </td>
+          <td>
+            <span class="type-badge ${n.type}">${n.type}</span>
+          </td>
+          <td>
+            ${n.is_pinned ? '<span class="status-badge pinned">Pinned</span> ' : ''}
+            <span class="status-badge ${n.is_active ? 'active' : 'inactive'}">
+              ${n.is_active ? 'Active' : 'Inactive'}
+            </span>
+          </td>
+          <td>
+            ${n.target_roles && n.target_roles.length > 0 
+              ? n.target_roles.slice(0, 2).join(', ') + (n.target_roles.length > 2 ? '...' : '')
+              : 'All'}
+          </td>
+          <td>${new Date(n.created_at).toLocaleDateString()}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="btn-action" data-action="edit" data-id="${n.id}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                </svg>
+              </button>
+              <button class="btn-action" data-action="toggle" data-id="${n.id}" data-active="${n.is_active}">
+                ${n.is_active ? 'Off' : 'On'}
+              </button>
+              <button class="btn-action danger" data-action="delete" data-id="${n.id}">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+      
+      // Attach event listeners
+      this.attachTableListeners();
+    }
+    
+    attachTableListeners() {
+      const tbody = document.getElementById('notificationsTableBody');
+      
+      tbody.addEventListener('click', (e) => {
+        const button = e.target.closest('button[data-action]');
+        if (!button) return;
+        
+        const action = button.dataset.action;
+        const id = button.dataset.id;
+        
+        if (action === 'edit') {
+          this.editNotification(id);
+        } else if (action === 'toggle') {
+          const isActive = button.dataset.active === 'true';
+          this.toggleActive(id, !isActive);
+        } else if (action === 'delete') {
+          this.deleteNotification(id);
+        }
+      });
+    }
+    
+    updateStats() {
+      const total = this.notifications.length;
+      const active = this.notifications.filter(n => n.is_active).length;
+      const pinned = this.notifications.filter(n => n.is_pinned).length;
+      const alerts = this.notifications.filter(n => n.type === 'alert' || n.type === 'warning').length;
+      
+      document.getElementById('totalNotifications').textContent = total;
+      document.getElementById('activeNotifications').textContent = active;
+      document.getElementById('pinnedNotifications').textContent = pinned;
+      document.getElementById('alertNotifications').textContent = alerts;
+    }
+    
+    openModal(notification = null) {
+      this.editingId = notification?.id || null;
+      
+      const modal = document.getElementById('notificationModal');
+      const form = document.getElementById('notificationForm');
+      const title = document.getElementById('modalTitle');
+      const saveBtn = document.getElementById('saveBtn');
+      
+      form.reset();
+      
+      if (notification) {
+        title.textContent = 'Edit Notification';
+        saveBtn.textContent = 'Save';
+        
+        document.getElementById('notificationId').value = notification.id;
+        document.getElementById('title').value = notification.title;
+        document.getElementById('message').value = notification.message;
+        document.getElementById('type').value = notification.type;
+        document.getElementById('priority').value = notification.priority;
+        document.getElementById('isDismissible').checked = notification.is_dismissible;
+        document.getElementById('isPinned').checked = notification.is_pinned;
+        document.getElementById('actionUrl').value = notification.action_url || '';
+        document.getElementById('actionLabel').value = notification.action_label || '';
+        
+        if (notification.starts_at) {
+          document.getElementById('startsAt').value = this.formatDateTimeLocal(notification.starts_at);
+        }
+        if (notification.expires_at) {
+          document.getElementById('expiresAt').value = this.formatDateTimeLocal(notification.expires_at);
+        }
+        
+        const select = document.getElementById('targetRoles');
+        Array.from(select.options).forEach(option => {
+          option.selected = notification.target_roles?.includes(option.value);
+        });
+      } else {
+        title.textContent = 'Create Notification';
+        saveBtn.textContent = 'Create';
+        document.getElementById('startsAt').value = '';
+      }
+      
+      modal.classList.add('show');
+    }
+    
+    closeModal() {
+      document.getElementById('notificationModal').classList.remove('show');
+      this.editingId = null;
+    }
+    
+    formatDateTimeLocal(date) {
+      const d = new Date(date);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+    
+    async handleSave() {
+      const startsAtInput = document.getElementById('startsAt').value;
+      const expiresAtInput = document.getElementById('expiresAt').value;
+      
+      let startsAt = new Date().toISOString();
+      if (startsAtInput) {
+        startsAt = new Date(startsAtInput).toISOString();
+      }
+      
+      let expiresAt = null;
+      if (expiresAtInput) {
+        expiresAt = new Date(expiresAtInput).toISOString();
+      }
+      
+      const targetSelect = document.getElementById('targetRoles');
+      const targetRoles = Array.from(targetSelect.selectedOptions).map(opt => opt.value);
+      
+      const formData = {
+        title: document.getElementById('title').value,
+        message: document.getElementById('message').value,
+        type: document.getElementById('type').value,
+        priority: parseInt(document.getElementById('priority').value),
+        is_dismissible: document.getElementById('isDismissible').checked,
+        is_pinned: document.getElementById('isPinned').checked,
+        action_url: document.getElementById('actionUrl').value || null,
+        action_label: document.getElementById('actionLabel').value || null,
+        starts_at: startsAt,
+        expires_at: expiresAt,
+        target_roles: targetRoles.length > 0 ? targetRoles : null,
+        is_active: true
+      };
+      
+      try {
+        if (this.editingId) {
+          const { error } = await this.supabase
+            .from('platform_notifications')
+            .update(formData)
+            .eq('id', this.editingId);
+          
+          if (error) throw error;
+          showToast('Notification updated', 'success');
+        } else {
+          const { error } = await this.supabase
+            .from('platform_notifications')
+            .insert({
+              ...formData,
+              created_by: this.user.id,
+              created_by_email: this.user.email
+            });
+          
+          if (error) throw error;
+          showToast('Notification created', 'success');
+        }
+        
+        this.closeModal();
+        await this.loadNotifications();
+        
+      } catch (error) {
+        console.error('Save error:', error);
+        showToast('Failed to save', 'error');
+      }
+    }
+    
+    editNotification(id) {
+      const notification = this.notifications.find(n => n.id === id);
+      if (notification) {
+        this.openModal(notification);
+      }
+    }
+    
+    async toggleActive(id, isActive) {
+      try {
+        const { error } = await this.supabase
+          .from('platform_notifications')
+          .update({ is_active: isActive })
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast(`Notification ${isActive ? 'activated' : 'deactivated'}`, 'success');
+        await this.loadNotifications();
+        
+      } catch (error) {
+        console.error('Toggle error:', error);
+        showToast('Failed to update', 'error');
+      }
+    }
+    
+    async deleteNotification(id) {
+      if (!confirm('Delete this notification?')) return;
+      
+      try {
+        const { error } = await this.supabase
+          .from('platform_notifications')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        showToast('Notification deleted', 'success');
+        await this.loadNotifications();
+        
+      } catch (error) {
+        console.error('Delete error:', error);
+        showToast('Failed to delete', 'error');
+      }
+    }
+    
+    escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  }
+  
+  // Initialize
+  const adminController = new AdminPortalController();
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    adminController.init();
+  });
+  
+  // Also try on supabaseReady
+  window.addEventListener('supabaseReady', () => {
+    if (!adminController.supabase) {
+      adminController.init();
+    }
+  });
+</script>
+</body>
+</html>

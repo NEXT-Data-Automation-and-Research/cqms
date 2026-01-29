@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from './api-client.js';
+import { logError, logInfo } from './logging-helper.js';
 
 /**
  * Check if current user has permission for a resource
@@ -18,19 +19,16 @@ export async function hasPermission(
       ruleType,
     });
 
-    console.log(`[Permission] Check ${resourceName}/${ruleType}:`, {
-      hasAccess: response.hasAccess,
-      reason: response.reason,
-      userRole: response.userRole,
-    });
-
     return response.hasAccess === true;
   } catch (error: any) {
-    console.error('[Permission] Error checking permission:', {
+    // Keep this silent in production; log helper handles env-based verbosity.
+    logError('[Permission] Error checking permission', {
       resource: resourceName,
       ruleType,
-      error: error.message,
-      details: error.details,
+      error: error?.message,
+      details: error?.details,
+      code: error?.code,
+      status: error?.status,
     });
     // Fail closed - deny access on error
     return false;
@@ -45,14 +43,10 @@ export async function hasPermissionWithDetails(
   ruleType: 'page' | 'feature' | 'api_endpoint' | 'action' = 'feature'
 ): Promise<{ hasAccess: boolean; reason: string; userRole: string | null; userEmail?: string; error?: string }> {
   try {
-    console.log(`[Permission] Checking ${resourceName}/${ruleType}...`);
-    
     const response = await apiClient.post('/api/permissions/check', {
       resourceName,
       ruleType,
     });
-
-    console.log(`[Permission] Response:`, response);
 
     return {
       hasAccess: response.hasAccess === true,
@@ -61,7 +55,7 @@ export async function hasPermissionWithDetails(
       userEmail: response.userEmail || undefined,
     };
   } catch (error: any) {
-    console.error('[Permission] API Error:', error);
+    logError('[Permission] API Error', error);
     return {
       hasAccess: false,
       reason: 'API call failed',
@@ -96,7 +90,7 @@ export async function getUserPermissions(): Promise<{
     const response = await apiClient.get('/api/permissions/user');
     return response;
   } catch (error: any) {
-    console.error('Error getting user permissions:', error);
+    logError('Error getting user permissions', error);
     return {
       role: null,
       level: 0,
@@ -190,19 +184,39 @@ export async function canAccessPageByResource(resourceName: string): Promise<boo
  */
 export async function getPagePermissionsForSidebar(
   resourceNames: string[]
-): Promise<Record<string, boolean> | null> {
+): Promise<Record<string, { hasAccess: boolean; reason?: string }> | null> {
   if (resourceNames.length === 0) return {};
   try {
     const response = (await apiClient.post('/api/permissions/check-batch', {
       checks: resourceNames.map((name) => ({ resourceName: name, ruleType: 'page' })),
-    })) as { results?: Record<string, boolean> };
+    })) as {
+      results?: Record<string, boolean>;
+      details?: Record<string, { hasAccess: boolean; reason?: string }>;
+    };
+
     const results = response?.results ?? {};
-    const byResource: Record<string, boolean> = {};
+    const details = response?.details ?? {};
+    const byResource: Record<string, { hasAccess: boolean; reason?: string }> = {};
+
     resourceNames.forEach((name) => {
-      byResource[name] = results[`${name}:page`] === true;
+      const key = `${name}:page`;
+
+      // Prefer details if backend provides them (lets UI respect explicit DENY).
+      if (details[key]) {
+        byResource[name] = {
+          hasAccess: details[key].hasAccess === true,
+          reason: details[key].reason,
+        };
+        return;
+      }
+
+      // Backward compatible fallback to boolean map.
+      byResource[name] = { hasAccess: results[key] === true };
     });
+
     return byResource;
   } catch {
+    logInfo('[Permission] Sidebar batch permission check skipped/failed (non-critical)');
     return null;
   }
 }

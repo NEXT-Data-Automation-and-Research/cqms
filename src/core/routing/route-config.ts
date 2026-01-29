@@ -118,6 +118,30 @@ export const routes: RouteConfig[] = [
     }
   },
   {
+    path: '/src/features/bau-materics.html',
+    slug: 'bau-metrics',
+    meta: {
+      label: 'BAU Metrics',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19V5m0 14h16M8 17V9m4 8V7m4 10v-4"/>',
+      roles: ['Super Admin'],
+      sidebar: true,
+      order: 6.7,
+      permissionResource: { name: 'bau-metrics', type: 'page' }
+    }
+  },
+  {
+    path: '/src/features/active-users-dashboard.html',
+    slug: 'active-users-dashboard',
+    meta: {
+      label: 'Active Users',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m0 0a4 4 0 100-8 4 4 0 000 8zm8 0a4 4 0 10-8 0"/>',
+      roles: ['Super Admin'],
+      sidebar: true,
+      order: 6.8,
+      permissionResource: { name: 'active-users-dashboard', type: 'page' }
+    }
+  },
+  {
     path: '/src/features/coaching-remediation/presentation/coaching-remediation.html',
     slug: 'coaching-remediation',
     meta: {
@@ -210,6 +234,31 @@ export const routes: RouteConfig[] = [
         permissionResource: { name: 'profile', type: 'page' }
       }
     ]
+  },
+  {
+    path: '/src/features/platform-notifications/presentation/platform-notifications.html',
+    slug: 'platform-notifications',
+    meta: {
+      label: 'Announcements',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>',
+      roles: ['all'],
+      sidebar: true,
+      notificationBadgeId: 'platformNotificationBadge',
+      order: 10
+    }
+  },
+  {
+    path: '/src/features/admin-portal/presentation/admin-portal.html',
+    slug: 'admin-portal',
+    meta: {
+      label: 'Admin Portal',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>',
+      roles: ['Super Admin'],
+      sidebar: true,
+      order: 10.5,
+      // Only these specific emails can see this menu item
+      allowedEmails: ['saif.alam@nextventures.io', 'aminul.islam@nextventures.io']
+    }
   },
   {
     path: '/src/features/help/help/presentation/help.html',

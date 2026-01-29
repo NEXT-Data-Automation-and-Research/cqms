@@ -14,14 +14,16 @@ import { getCleanPathFromFilePath } from '../../../core/routing/route-mapper.js'
  */
 export class SidebarHTMLGenerator {
   /**
-   * Check if user can access a route based on permissions and roles.
+   * Check if user can access a route based on permissions, roles, and allowed emails.
    * 
    * Permission hierarchy:
-   * 1. If permission check returns TRUE → allow (permission system grants access)
-   * 2. If permission check returns FALSE → check route config roles as fallback
-   * 3. If no permissionResource or no pagePermissions → use route config roles only
+   * 1. If allowedEmails is specified → only those emails can access (strict email check)
+   * 2. If permission check returns TRUE → allow (permission system grants access)
+   * 3. If permission check returns FALSE → check route config roles as fallback
+   * 4. If no permissionResource or no pagePermissions → use route config roles only
    * 
    * This ensures:
+   * - Email-restricted routes are only visible to specific users
    * - Individual ALLOW permissions grant access even if role wouldn't
    * - Role-based access from route config is always respected as fallback
    * - Users see all pages their role allows, plus any individually granted
@@ -30,22 +32,35 @@ export class SidebarHTMLGenerator {
     permissionResourceName: string | undefined,
     allowedRoles: UserRole[],
     userRole: string | undefined,
-    pagePermissions?: Record<string, boolean>
+    userEmail: string | undefined,
+    pagePermissions?: Record<string, { hasAccess: boolean; reason?: string }>,
+    allowedEmails?: string[]
   ): boolean {
+    // If route has email restriction, only those specific emails can access
+    if (allowedEmails && allowedEmails.length > 0) {
+      if (!userEmail) return false;
+      const normalizedUserEmail = userEmail.toLowerCase().trim();
+      const hasEmailAccess = allowedEmails.some(
+        email => email.toLowerCase().trim() === normalizedUserEmail
+      );
+      if (!hasEmailAccess) return false;
+      // If email matches, still need to pass role check
+    }
+    
     // If we have permission data and a resource name to check
     if (permissionResourceName && pagePermissions) {
       const permissionResult = pagePermissions[permissionResourceName];
-      
+
       // If permission system explicitly grants access → allow
-      if (permissionResult === true) {
+      if (permissionResult?.hasAccess === true) {
         return true;
       }
-      
-      // If permission system returns false, it could mean:
-      // 1. Explicit DENY rule exists
-      // 2. No rule exists and permission check defaulted to false
-      // In either case, fall back to role-based check from route config
-      // This ensures role-based access is always respected
+
+      // If explicitly denied by an individual rule, hide the item even if role would allow.
+      const reason = (permissionResult?.reason || '').toLowerCase();
+      if (reason.includes('individual deny')) {
+        return false;
+      }
     }
     
     // Fall back to route config role check
@@ -53,16 +68,20 @@ export class SidebarHTMLGenerator {
   }
   /**
    * Generate complete sidebar HTML.
-   * @param userInfo - Current user (for role fallback).
+   * @param userInfo - Current user (for role and email checks).
    * @param pagePermissions - Optional map resourceName -> hasAccess for permission-based menu items.
    */
-  generate(userInfo: UserInfo | null, pagePermissions?: Record<string, boolean> | null): string {
+  generate(
+    userInfo: UserInfo | null,
+    pagePermissions?: Record<string, { hasAccess: boolean; reason?: string }> | null
+  ): string {
     const userRole = userInfo?.role;
+    const userEmail = userInfo?.email;
     const currentPath = router.getCurrentPath();
     const accessibleRoutes = router.getSidebarRoutes(userRole);
 
     const menuItems = accessibleRoutes
-      .map(route => this.generateMenuItem(route, currentPath, userRole, pagePermissions ?? undefined))
+      .map(route => this.generateMenuItem(route, currentPath, userRole, userEmail, pagePermissions ?? undefined))
       .filter(item => item !== '')
       .join('');
 
@@ -73,9 +92,10 @@ export class SidebarHTMLGenerator {
    * Generate a single menu item HTML
    * 
    * Permission hierarchy:
-   * 1. If permission check returns true → show (explicit allow or role allows via permission system)
-   * 2. If permission check returns false → fall back to route config roles (allow if role matches)
-   * 3. If no permissionResource defined → use route config roles only
+   * 1. If allowedEmails specified → only those emails can see this item
+   * 2. If permission check returns true → show (explicit allow or role allows via permission system)
+   * 3. If permission check returns false → fall back to route config roles (allow if role matches)
+   * 4. If no permissionResource defined → use route config roles only
    * 
    * This ensures role-based access from route config is always respected,
    * while individual permissions can grant additional access.
@@ -84,20 +104,23 @@ export class SidebarHTMLGenerator {
     route: RouteConfig,
     currentPath: string,
     userRole?: string,
-    pagePermissions?: Record<string, boolean>
+    userEmail?: string,
+    pagePermissions?: Record<string, { hasAccess: boolean; reason?: string }>
   ): string {
     const hasSubmenu = route.submenu && route.submenu.length > 0;
 
     if (hasSubmenu) {
-      return this.generateSubmenuItem(route, currentPath, userRole, pagePermissions);
+      return this.generateSubmenuItem(route, currentPath, userRole, userEmail, pagePermissions);
     }
 
-    // Determine if user can access this route
+    // Determine if user can access this route (including email check)
     const canAccess = this.checkRouteAccess(
       route.meta.permissionResource?.name,
       route.meta.roles,
       userRole,
-      pagePermissions
+      userEmail,
+      pagePermissions,
+      route.meta.allowedEmails
     );
 
     if (!canAccess) {
@@ -139,15 +162,17 @@ export class SidebarHTMLGenerator {
   /**
    * Generate submenu item HTML.
    * Uses the same permission hierarchy as top-level items:
-   * 1. Permission TRUE → allow
-   * 2. Permission FALSE → fall back to route config roles
-   * 3. No permission data → use route config roles
+   * 1. allowedEmails → strict email check
+   * 2. Permission TRUE → allow
+   * 3. Permission FALSE → fall back to route config roles
+   * 4. No permission data → use route config roles
    */
   private generateSubmenuItem(
     route: RouteConfig,
     currentPath: string,
     userRole?: string,
-    pagePermissions?: Record<string, boolean>
+    userEmail?: string,
+    pagePermissions?: Record<string, { hasAccess: boolean; reason?: string }>
   ): string {
     if (!route.submenu || route.submenu.length === 0) {
       return '';
@@ -162,6 +187,7 @@ export class SidebarHTMLGenerator {
         item.permissionResource?.name,
         item.roles,
         userRole,
+        userEmail,
         pagePermissions
       );
     });

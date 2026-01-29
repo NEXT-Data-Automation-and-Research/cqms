@@ -14,6 +14,9 @@ import { logError } from '../../../utils/logging-helper.js'
 import { getPagePermissionsForSidebar } from '../../../utils/permissions.js'
 import { routes } from '../../../core/routing/route-config.js'
 
+// Sidebar permission map: resourceName -> { hasAccess, reason? }
+type SidebarPagePermissions = Record<string, { hasAccess: boolean; reason?: string }>
+
 /**
  * This class loads the sidebar and makes it work
  */
@@ -23,6 +26,8 @@ export class SidebarLoader {
   private menu: SidebarMenu
   private service: SidebarService
   private htmlGenerator: SidebarHTMLGenerator
+  private latestPagePermissions: SidebarPagePermissions | null = null
+  private permissionsFetchInFlight: Promise<SidebarPagePermissions | null> | null = null
 
   constructor() {
     this.userProfile = new SidebarUserProfile()
@@ -42,8 +47,17 @@ export class SidebarLoader {
    * - Reduces initial load time from ~5s to <100ms
    */
   async init(): Promise<void> {
+    console.log('[Sidebar] init() called, readyState:', document.readyState)
+
     // Check if we should show sidebar on this page
     if (!this.service.shouldShowSidebarOnThisPage()) {
+      console.log('[Sidebar] Skipping - page excluded from sidebar')
+      return
+    }
+
+    // Prevent double initialization
+    if (sidebarState.isSidebarLoaded) {
+      console.log('[Sidebar] Skipping - already loaded')
       return
     }
 
@@ -52,11 +66,27 @@ export class SidebarLoader {
     this.setupUserInfoWatcher()
 
     // Load the sidebar HTML immediately (don't wait for Supabase)
-    await this.loadSidebarHTML()
+    try {
+      console.log('[Sidebar] Loading sidebar HTML...')
+      await this.loadSidebarHTML()
+      console.log('[Sidebar] Sidebar HTML loaded successfully')
+    } catch (error) {
+      console.error('[Sidebar] Critical: loadSidebarHTML failed', error)
+      // Try to show at least a basic sidebar
+      this.showSidebarError()
+      return
+    }
+
+    // Verify sidebar was actually inserted
+    if (!document.querySelector('nav.sidebar')) {
+      console.error('[Sidebar] Critical: sidebar element not found after loadSidebarHTML')
+      return
+    }
 
     // Set up UI features immediately (toggle, menu handlers)
     this.setupSidebarToggle()
     this.menu.setupMenuHandlers()
+    console.log('[Sidebar] Initialization complete')
     // COMMENTED OUT: User permission checks - temporarily disabled for development
     // this.hideEmployeeMenuItems()
     // this.updateAccessControlMenuItem()
@@ -84,15 +114,33 @@ export class SidebarLoader {
    * Watch for user info changes and update sidebar if needed
    */
   private setupUserInfoWatcher(): void {
-    document.addEventListener('userInfoUpdated', async () => {
+    document.addEventListener('userInfoUpdated', async (evt) => {
       if (!sidebarState.isSidebarLoaded) return
       const userInfo = sidebarState.loadUserInfo()
-      let pagePermissions: Record<string, boolean> | null = null
-      try {
-        pagePermissions = await getPagePermissionsForSidebar(this.getSidebarPermissionResourceNames())
-      } catch {
-        // Fall back to role-based
+      let pagePermissions: SidebarPagePermissions | null = null
+
+      // Prefer event-provided permissions to avoid duplicate network calls.
+      const detail = (evt as CustomEvent | undefined)?.detail as
+        | { pagePermissions?: SidebarPagePermissions | null }
+        | undefined
+      if (detail?.pagePermissions) {
+        pagePermissions = detail.pagePermissions
+        this.latestPagePermissions = pagePermissions
+      } else if (this.latestPagePermissions) {
+        pagePermissions = this.latestPagePermissions
       }
+
+      // Fetch permissions with timeout to avoid hanging
+      if (!pagePermissions) {
+        try {
+          const permPromise = this.getOrFetchPermissionsForSidebar()
+          const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+          pagePermissions = (await Promise.race([permPromise, timeoutPromise])) as SidebarPagePermissions | null
+        } catch {
+          // Fall back to role-based
+        }
+      }
+
       const newHTML = this.htmlGenerator.generate(userInfo, pagePermissions ?? undefined)
       const sidebarNav = document.querySelector('nav.sidebar')
       if (sidebarNav) {
@@ -100,8 +148,7 @@ export class SidebarLoader {
         tempDiv.innerHTML = newHTML
         const newNav = tempDiv.querySelector('nav.sidebar')
         if (newNav) {
-          const isCollapsed = sidebarNav.classList.contains('collapsed')
-          if (isCollapsed) newNav.classList.add('collapsed')
+          this.preserveSidebarStateOnReplace(sidebarNav, newNav)
           sidebarNav.replaceWith(newNav)
           this.menu.setupMenuHandlers()
           
@@ -118,10 +165,55 @@ export class SidebarLoader {
     })
   }
 
+  private preserveSidebarStateOnReplace(oldNav: Element, newNav: Element): void {
+    // Desktop collapsed/expanded
+    if (oldNav.classList.contains('collapsed')) newNav.classList.add('collapsed')
+    if (oldNav.classList.contains('sidebar-ready')) newNav.classList.add('sidebar-ready')
+
+    // Mobile-open state is critical (sidebar can be re-rendered while user is interacting).
+    const wasMobileOpen = oldNav.classList.contains('mobile-open')
+    if (wasMobileOpen) {
+      newNav.classList.add('mobile-open')
+      document.body.classList.add('sidebar-open')
+
+      const menuToggle = document.getElementById('mobileMenuToggle') || document.querySelector('.menu-toggle')
+      const sidebarOverlay = document.getElementById('sidebarOverlay')
+      if (menuToggle) {
+        menuToggle.classList.add('active')
+        menuToggle.setAttribute('aria-expanded', 'true')
+      }
+      if (sidebarOverlay) {
+        sidebarOverlay.classList.add('active')
+      }
+    }
+  }
+
+  private async getOrFetchPermissionsForSidebar(): Promise<SidebarPagePermissions | null> {
+    if (this.permissionsFetchInFlight) return this.permissionsFetchInFlight
+
+    this.permissionsFetchInFlight = (async () => {
+      const resourceNames = this.getSidebarPermissionResourceNames()
+      if (resourceNames.length === 0) return {}
+
+      const perms = await getPagePermissionsForSidebar(resourceNames)
+      if (perms) {
+        this.latestPagePermissions = perms
+      }
+      return perms
+    })()
+
+    try {
+      return await this.permissionsFetchInFlight
+    } finally {
+      this.permissionsFetchInFlight = null
+    }
+  }
+
   /**
    * Wait for Supabase client to be available (non-blocking, with timeout)
+   * RELIABILITY: Increased timeout from 2s to 5s for more reliable initialization
    */
-  private async waitForSupabaseClient(maxWaitMs: number = 2000): Promise<boolean> {
+  private async waitForSupabaseClient(maxWaitMs: number = 5000): Promise<boolean> {
     const startTime = Date.now()
     const checkInterval = 100 // Check every 100ms
     
@@ -174,7 +266,40 @@ export class SidebarLoader {
   }
 
   /**
+   * Fetch permissions in background and refresh sidebar when ready.
+   * Uses a timeout to avoid hanging forever if API is slow/unavailable.
+   */
+  private fetchPermissionsAndRefresh(): void {
+    const PERMISSION_TIMEOUT_MS = 5000 // 5 second max wait
+
+    const permissionPromise = (async () => {
+      try {
+        const pagePermissions = await this.getOrFetchPermissionsForSidebar()
+        if (pagePermissions && sidebarState.isSidebarLoaded) {
+          // Trigger sidebar refresh with new permissions
+          document.dispatchEvent(new CustomEvent('userInfoUpdated', {
+            detail: { permissionsLoaded: true, pagePermissions }
+          }))
+        }
+      } catch {
+        // Permission fetch failed - sidebar already rendered with role-based access
+      }
+    })()
+
+    // Race against timeout - don't let permission fetch hang forever
+    const timeoutPromise = new Promise<void>(resolve => setTimeout(resolve, PERMISSION_TIMEOUT_MS))
+    Promise.race([permissionPromise, timeoutPromise]).catch(() => {
+      // Silently ignore - sidebar is already rendered
+    })
+  }
+
+  /**
    * Load the sidebar HTML into the page
+   *
+   * CRITICAL: Render sidebar immediately without waiting for permission API.
+   * After first login the Supabase client or API may not be ready yet, and
+   * awaiting permissions can hang forever, causing the sidebar to never appear.
+   * We render with role-based permissions first, then refresh when permissions load.
    */
   private async loadSidebarHTML(): Promise<void> {
     try {
@@ -183,15 +308,15 @@ export class SidebarLoader {
       }
 
       const userInfo = sidebarState.loadUserInfo()
-      let pagePermissions: Record<string, boolean> | null = null
-      try {
-        const resourceNames = this.getSidebarPermissionResourceNames()
-        pagePermissions = await getPagePermissionsForSidebar(resourceNames)
-      } catch {
-        // Fall back to role-based only
-      }
+
+      // IMPORTANT: Do NOT await permissions here - it can hang and block rendering.
+      // Render immediately with role-based access, then update asynchronously.
+      let pagePermissions: SidebarPagePermissions | null = null
 
       const sidebarHTML = this.htmlGenerator.generate(userInfo, pagePermissions)
+
+      // Kick off permission fetch in background - will trigger userInfoUpdated to refresh sidebar
+      this.fetchPermissionsAndRefresh()
 
       // Create a temporary container to parse the HTML
       const tempDiv = document.createElement('div')
@@ -282,8 +407,9 @@ export class SidebarLoader {
    * This runs in the background after UI is already shown
    */
   private async initializeSidebarFeaturesAsync(): Promise<void> {
-    // Wait for Supabase with short timeout (non-blocking)
-    const hasSupabase = await this.waitForSupabaseClient(2000)
+    // Wait for Supabase with reasonable timeout (non-blocking)
+    // RELIABILITY: Increased timeout from 2s to 5s for more reliable initialization
+    const hasSupabase = await this.waitForSupabaseClient(5000)
 
     if (hasSupabase) {
       // Initialize user profile from database (background refresh)
@@ -305,14 +431,49 @@ export class SidebarLoader {
       this.notifications.setupNotificationUpdateIntervals()
 
       // Real-time audit assignment notifications (toast when someone assigns an audit to this user)
+      console.log('[Sidebar] Checking realtime setup - userInfo:', userInfo?.email, 'role:', userInfo?.role)
       if (userInfo?.email && userInfo.role !== 'Employee') {
         try {
+          console.log('[Sidebar] Setting up audit assignment realtime for:', userInfo.email)
           const { setupAuditAssignmentRealtime } = await import(
             '../../notifications/application/audit-assignment-realtime.js'
           )
           await setupAuditAssignmentRealtime(userInfo.email)
+          console.log('[Sidebar] Audit assignment realtime setup complete')
         } catch (err) {
-          console.warn('Could not set up audit assignment realtime:', err)
+          console.warn('[Sidebar] Could not set up audit assignment realtime:', err)
+        }
+      } else {
+        console.log('[Sidebar] Skipping audit realtime setup - email:', userInfo?.email, 'role:', userInfo?.role, '(only non-Employee roles get realtime)')
+      }
+
+      // Real-time platform notifications (toast for all users when admin posts announcement)
+      if (userInfo?.email) {
+        try {
+          console.log('[Sidebar] Setting up platform notifications realtime')
+          const { setupPlatformNotificationsRealtime } = await import(
+            '../../platform-notifications/application/platform-notifications-realtime.js'
+          )
+          await setupPlatformNotificationsRealtime()
+          console.log('[Sidebar] Platform notifications realtime setup complete')
+        } catch (err) {
+          console.warn('[Sidebar] Could not set up platform notifications realtime:', err)
+        }
+      }
+
+      // Real-time cache clear (for admin-triggered platform-wide cache clearing)
+      if (userInfo?.email) {
+        try {
+          console.log('[Sidebar] Setting up cache clear realtime')
+          const { setupCacheClearRealtime, checkCacheClearOnLoad } = await import(
+            '../../cache-management/application/cache-clear-realtime.js'
+          )
+          await setupCacheClearRealtime()
+          // Also check if we missed a cache clear while offline
+          await checkCacheClearOnLoad()
+          console.log('[Sidebar] Cache clear realtime setup complete')
+        } catch (err) {
+          console.warn('[Sidebar] Could not set up cache clear realtime:', err)
         }
       }
     } else {
@@ -330,9 +491,6 @@ export class SidebarLoader {
    * Make the sidebar expand and collapse when clicking the toggle button
    */
   private setupSidebarToggle(): void {
-    const sidebar = document.querySelector('.sidebar')
-    if (!sidebar) return
-
     // Setup mobile menu toggle
     this.setupMobileMenuToggle()
 
@@ -354,6 +512,8 @@ export class SidebarLoader {
     // Handle desktop toggle button click
     // Toggle between permanently expanded and collapsed (with hover expansion)
     toggleButton.addEventListener('click', () => {
+      const sidebar = document.querySelector('.sidebar')
+      if (!sidebar) return
       const isCollapsed = sidebar.classList.contains('collapsed')
       
       if (isCollapsed) {
@@ -369,39 +529,55 @@ export class SidebarLoader {
       }
     })
 
-    // Handle brand button click (also toggles sidebar)
-    const brandButton = document.querySelector('.sidebar-brand-btn')
-    if (brandButton) {
-      brandButton.addEventListener('click', () => {
-        const isCollapsed = sidebar.classList.contains('collapsed')
-        
-        if (isCollapsed) {
-          // Expand permanently
-          sidebar.classList.remove('collapsed')
-          sidebarState.sidebarIsExpanded = true
-          sidebarState.saveSidebarState('expanded')
-        } else {
-          // Collapse (will auto-expand on hover via CSS)
-          sidebar.classList.add('collapsed')
-          sidebarState.sidebarIsExpanded = false
-          sidebarState.saveSidebarState('collapsed')
-        }
-      })
-    }
+    // Handle brand button click (also toggles sidebar).
+    // NOTE: The sidebar <nav> can be replaced at runtime (userInfoUpdated),
+    // so bind with delegation so it keeps working.
+    this.setupBrandToggleDelegation()
+  }
+
+  private static brandToggleDelegationAttached = false
+
+  private setupBrandToggleDelegation(): void {
+    if (SidebarLoader.brandToggleDelegationAttached) return
+    SidebarLoader.brandToggleDelegationAttached = true
+
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null
+      const brandButton = target?.closest('.sidebar-brand-btn') as HTMLElement | null
+      if (!brandButton) return
+
+      const sidebar = document.querySelector('.sidebar')
+      if (!sidebar) return
+
+      const isCollapsed = sidebar.classList.contains('collapsed')
+      if (isCollapsed) {
+        sidebar.classList.remove('collapsed')
+        sidebarState.sidebarIsExpanded = true
+        sidebarState.saveSidebarState('expanded')
+      } else {
+        sidebar.classList.add('collapsed')
+        sidebarState.sidebarIsExpanded = false
+        sidebarState.saveSidebarState('collapsed')
+      }
+    })
   }
 
   /**
    * Setup mobile menu toggle functionality
    */
   private setupMobileMenuToggle(): void {
-    const sidebar = document.querySelector('.sidebar')
     // Find hamburger button - could be in page HTML or inserted by sidebar loader
     const menuToggle = document.getElementById('mobileMenuToggle') || document.querySelector('.menu-toggle')
     const sidebarOverlay = document.getElementById('sidebarOverlay')
     
-    if (!sidebar || !menuToggle) return
+    if (!menuToggle) return
+
+    const getSidebar = () => document.querySelector('.sidebar') as HTMLElement | null
 
     const toggleMobileMenu = (open: boolean) => {
+      const sidebar = getSidebar()
+      if (!sidebar) return
+
       if (open) {
         sidebar.classList.add('mobile-open')
         menuToggle.classList.add('active')
@@ -424,6 +600,8 @@ export class SidebarLoader {
     // Toggle menu on hamburger button click
     menuToggle.addEventListener('click', (e) => {
       e.stopPropagation()
+      const sidebar = getSidebar()
+      if (!sidebar) return
       const isOpen = sidebar.classList.contains('mobile-open')
       toggleMobileMenu(!isOpen)
     })
@@ -437,6 +615,8 @@ export class SidebarLoader {
 
     // Close menu when clicking outside on mobile
     const handleClickOutside = (e: MouseEvent) => {
+      const sidebar = getSidebar()
+      if (!sidebar) return
       const target = e.target as HTMLElement
       if (
         window.innerWidth <= 767 &&
@@ -450,6 +630,20 @@ export class SidebarLoader {
 
     document.addEventListener('click', handleClickOutside)
 
+    // Close menu when any sidebar link is clicked (delegated, survives sidebar re-render)
+    const handleSidebarLinkClick = (e: MouseEvent) => {
+      if (window.innerWidth > 767) return
+      const sidebar = getSidebar()
+      if (!sidebar || !sidebar.classList.contains('mobile-open')) return
+
+      const target = e.target as HTMLElement | null
+      const link = target?.closest('a.menu-item, a.submenu-item') as HTMLAnchorElement | null
+      if (link && sidebar.contains(link)) {
+        toggleMobileMenu(false)
+      }
+    }
+    document.addEventListener('click', handleSidebarLinkClick)
+
     // Close menu when window is resized to desktop size
     const handleResize = () => {
       if (window.innerWidth > 767) {
@@ -458,16 +652,6 @@ export class SidebarLoader {
     }
 
     window.addEventListener('resize', handleResize)
-
-    // Close menu when a menu item is clicked (navigation)
-    const menuItems = sidebar.querySelectorAll('.menu-item, .submenu-item')
-    menuItems.forEach(item => {
-      item.addEventListener('click', () => {
-        if (window.innerWidth <= 767) {
-          toggleMobileMenu(false)
-        }
-      })
-    })
   }
 
   /**

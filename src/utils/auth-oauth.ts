@@ -12,40 +12,102 @@ import { showLoadingOverlay, hideLoadingOverlay, updateLoadingOverlayMessage } f
 
 /**
  * Wait for Supabase to be initialized with timeout
+ * RELIABILITY: Increased timeout and added retry logic to prevent lockouts
  */
-async function waitForSupabaseInit(maxWait: number = 5000): Promise<any> {
+async function waitForSupabaseInit(maxWait: number = 15000): Promise<any> {
   // If already initialized, return immediately
   if (isSupabaseInitialized()) {
     return getSupabase();
   }
 
-  // Try to initialize
-  const initResult = await initSupabase();
-  if (initResult) {
-    return initResult;
+  // Try to initialize (includes retry logic)
+  try {
+    const initResult = await initSupabase();
+    if (initResult) {
+      return initResult;
+    }
+  } catch (initError) {
+    logWarn('Initial Supabase init attempt failed:', initError);
+    // Continue to polling as fallback
   }
 
   // If initialization didn't complete, wait for it with timeout
   const startTime = Date.now();
+  const pollInterval = 200; // Check every 200ms
+  
   while (Date.now() - startTime < maxWait) {
     if (isSupabaseInitialized()) {
       return getSupabase();
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Every 3 seconds, try to trigger initialization again
+    const elapsed = Date.now() - startTime;
+    if (elapsed > 0 && elapsed % 3000 < pollInterval) {
+      logInfo('Re-attempting Supabase initialization...');
+      try {
+        const retryResult = await initSupabase();
+        if (retryResult) {
+          return retryResult;
+        }
+      } catch (retryError) {
+        // Continue polling
+      }
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, pollInterval));
   }
 
-  // Final check
+  // Final check before giving up
   if (isSupabaseInitialized()) {
     return getSupabase();
   }
 
-  throw new Error('Supabase initialization timeout. Please refresh the page and try again.');
+  // Check if user has a cached session - if so, redirect them to home instead of showing error
+  // They're already logged in, no need to re-authenticate
+  const cachedSession = localStorage.getItem('supabase.auth.token');
+  const userInfo = localStorage.getItem('userInfo');
+  
+  if (cachedSession && userInfo) {
+    try {
+      const parsed = JSON.parse(userInfo);
+      if (parsed && parsed.id && parsed.email) {
+        logInfo('Supabase init timeout but valid cached session exists - redirecting to home');
+        sessionStorage.setItem('authDegradedMode', 'true');
+        window.location.replace('/home');
+        // Return null instead of throwing - the redirect will happen
+        return null as any;
+      }
+    } catch (parseError) {
+      // Invalid cache, throw error
+    }
+  }
+
+  throw new Error('Unable to connect to authentication service. Please check your internet connection and refresh the page.');
 }
 
 /**
  * Sign in with Google using Supabase OAuth
+ * RELIABILITY: Added check for existing session before attempting sign-in
  */
 export async function signInWithGoogle(): Promise<void> {
+  // RELIABILITY: Check if user already has a valid session
+  // If so, redirect to home instead of trying to sign in again
+  const cachedSession = localStorage.getItem('supabase.auth.token');
+  const userInfo = localStorage.getItem('userInfo');
+  
+  if (cachedSession && userInfo) {
+    try {
+      const parsed = JSON.parse(userInfo);
+      if (parsed && parsed.id && parsed.email) {
+        logInfo('User already has valid session, redirecting to home instead of sign-in');
+        window.location.replace('/home');
+        return;
+      }
+    } catch (parseError) {
+      // Invalid cache, continue with sign-in
+    }
+  }
+  
   const supabase = await waitForSupabaseInit();
   if (!supabase) {
     throw new Error('Supabase not initialized. Please wait a moment and try again.');

@@ -55,6 +55,8 @@ export interface RouteMeta {
   order?: number
   /** Permission resource for access control; when set, sidebar uses permission API */
   permissionResource?: PermissionResource
+  /** Specific emails that can access this route (overrides roles check) */
+  allowedEmails?: string[]
 }
 
 /**

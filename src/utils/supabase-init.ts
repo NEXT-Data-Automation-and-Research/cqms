@@ -1,6 +1,11 @@
 /**
  * Supabase Initialization Utility
  * Initializes Supabase client from environment variables exposed by server
+ * 
+ * RELIABILITY IMPROVEMENTS:
+ * - Retry mechanism with exponential backoff for /api/env fetch
+ * - Longer timeouts to handle slow networks
+ * - Graceful handling of temporary failures
  */
 
 import { supabaseLogger } from './logger.js';
@@ -8,10 +13,78 @@ import { supabaseLogger } from './logger.js';
 let supabaseInstance: any = null;
 let initializationPromise: Promise<any> | null = null;
 
+// Configuration for retry behavior
+const INIT_CONFIG = {
+  maxRetries: 3,
+  initialRetryDelayMs: 500,
+  maxRetryDelayMs: 3000,
+  fetchTimeoutMs: 10000, // 10 seconds per fetch attempt
+};
+
+/**
+ * Fetch with timeout to prevent hanging requests
+ */
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Fetch environment with retry and exponential backoff
+ */
+async function fetchEnvWithRetry(): Promise<any> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < INIT_CONFIG.maxRetries; attempt++) {
+    try {
+      if (attempt > 0) {
+        // Exponential backoff with jitter
+        const delay = Math.min(
+          INIT_CONFIG.initialRetryDelayMs * Math.pow(2, attempt - 1) + Math.random() * 200,
+          INIT_CONFIG.maxRetryDelayMs
+        );
+        supabaseLogger.info(`Retry attempt ${attempt + 1}/${INIT_CONFIG.maxRetries} after ${Math.round(delay)}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      
+      const response = await fetchWithTimeout('/api/env', INIT_CONFIG.fetchTimeoutMs);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch environment variables: ${response.status} ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error: any) {
+      lastError = error;
+      supabaseLogger.warn(`Fetch attempt ${attempt + 1} failed:`, error.message);
+      
+      // Don't retry on 4xx errors (client errors)
+      if (error.message?.includes('4')) {
+        break;
+      }
+    }
+  }
+  
+  throw lastError || new Error('Failed to fetch environment after retries');
+}
+
 /**
  * Initialize Supabase client from server environment
  * This fetches the config from /api/env endpoint
  * Prevents multiple simultaneous initializations
+ * Includes retry mechanism for reliability
  */
 export async function initSupabase(): Promise<any> {
   // If already initialized, return immediately
@@ -38,14 +111,8 @@ export async function initSupabase(): Promise<any> {
   initializationPromise = (async () => {
 
   try {
-    // Fetch environment variables from server
-    const response = await fetch('/api/env');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch environment variables: ${response.status} ${response.statusText}`);
-    }
-    
-    const env = await response.json();
+    // Fetch environment variables from server with retry
+    const env = await fetchEnvWithRetry();
     supabaseLogger.debug('Environment variables fetched from server');
 
     if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
@@ -146,10 +213,10 @@ export function getSupabase(): any {
 
 /**
  * Get Supabase client instance, waiting for initialization if in progress
- * @param maxWaitMs Maximum time to wait for initialization (default: 5000ms)
+ * @param maxWaitMs Maximum time to wait for initialization (default: 15000ms - increased for reliability)
  * @returns Supabase client or null if initialization fails or times out
  */
-export async function getSupabaseAsync(maxWaitMs: number = 5000): Promise<any> {
+export async function getSupabaseAsync(maxWaitMs: number = 15000): Promise<any> {
   // If already initialized, return immediately
   if (supabaseInstance) {
     return supabaseInstance;
@@ -168,7 +235,22 @@ export async function getSupabaseAsync(maxWaitMs: number = 5000): Promise<any> {
       return result;
     } catch (error) {
       if (Date.now() - startTime >= maxWaitMs) {
-        supabaseLogger.warn('Timeout waiting for Supabase initialization');
+        supabaseLogger.warn('Timeout waiting for Supabase initialization after', maxWaitMs, 'ms');
+        
+        // If we have a cached session, don't give up completely
+        // This prevents locking out users who have valid sessions
+        if (typeof window !== 'undefined') {
+          const cachedSession = localStorage.getItem('supabase.auth.token');
+          if (cachedSession) {
+            supabaseLogger.info('Found cached session, retrying initialization...');
+            initializationPromise = null; // Reset for retry
+            try {
+              return await initSupabase();
+            } catch (retryError) {
+              supabaseLogger.warn('Retry also failed:', retryError);
+            }
+          }
+        }
       }
       return null;
     }
