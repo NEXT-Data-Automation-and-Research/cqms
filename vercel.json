@@ -9,11 +9,7 @@
   ],
   "functions": {
     "api/index.ts": {
-      "includeFiles": [
-        "public/**",
-        "src/**",
-        "dist/**"
-      ],
+      "includeFiles": "{public,src,dist}/**",
       "maxDuration": 30
     }
   }
