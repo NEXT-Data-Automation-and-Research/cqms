@@ -87,18 +87,53 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
       const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError || !refreshedSession) {
-        // Check if refresh token itself is expired (user needs to re-login)
-        const isRefreshTokenExpired = refreshError?.message?.includes('refresh_token') || 
-                                       refreshError?.message?.includes('expired') ||
-                                       refreshError?.message?.includes('invalid_grant') ||
-                                       refreshError?.message?.includes('token_not_found');
-        
-        if (isRefreshTokenExpired) {
-          logWarn('Refresh token expired - user needs to re-login:', refreshError?.message);
-          // Only logout if refresh token is expired (user needs to re-login)
+        const refreshMessage = refreshError?.message || '';
+        const isNetworkError =
+          refreshMessage.includes('network') ||
+          refreshMessage.includes('fetch') ||
+          refreshMessage.includes('timeout') ||
+          (refreshError as any)?.status === 0;
+
+        /**
+         * MULTI-TAB SAFETY:
+         * In multi-tab scenarios, two tabs can refresh at the same time. Supabase rotates refresh tokens,
+         * so the "losing" tab may get invalid_grant/token_not_found even though the session was refreshed
+         * successfully in the other tab (and will be synced via storage/broadcast).
+         *
+         * If we treat that as "expired" and call signOut(), we log the user out across ALL tabs.
+         *
+         * So for these error shapes, re-read the latest session first and only sign out if no session exists.
+         */
+        const isPossiblyMultiTabRefreshRace =
+          refreshMessage.includes('invalid_grant') || refreshMessage.includes('token_not_found');
+
+        if (isPossiblyMultiTabRefreshRace) {
+          logWarn('Token refresh failed (possible multi-tab refresh race):', refreshMessage);
+          // Give the other tab a moment to persist the refreshed session
+          await new Promise((r) => setTimeout(r, 300));
+          const { data: { session: latestSession } } = await supabase.auth.getSession();
+          if (latestSession && latestSession.user) {
+            logInfo('Detected valid session after refresh failure (likely refreshed in another tab) - continuing');
+            currentSession = latestSession;
+          } else {
+            logWarn('Refresh failed and no valid session found - user needs to re-login');
+            try {
+              await supabase.auth.signOut();
+            } catch {
+              // Ignore sign out errors
+            }
+            localStorage.removeItem('userInfo');
+            const supabaseAuthKey = 'supabase.auth.token';
+            if (localStorage.getItem(supabaseAuthKey)) {
+              localStorage.removeItem(supabaseAuthKey);
+            }
+            return false;
+          }
+        } else if (refreshMessage.includes('refresh_token') || refreshMessage.includes('expired')) {
+          logWarn('Refresh token expired - user needs to re-login:', refreshMessage);
           try {
             await supabase.auth.signOut();
-          } catch (signOutError) {
+          } catch {
             // Ignore sign out errors
           }
           localStorage.removeItem('userInfo');
@@ -107,12 +142,15 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
             localStorage.removeItem(supabaseAuthKey);
           }
           return false;
-        } else {
+        } else if (isNetworkError) {
           // Network or temporary error - don't logout, trust the existing session
           // Supabase's autoRefreshToken will retry automatically
-          logWarn('Token refresh failed (non-expiration error, likely network issue):', refreshError?.message);
+          logWarn('Token refresh failed (likely network issue):', refreshMessage);
           logInfo('Continuing with existing session - Supabase will auto-refresh when possible');
           // Continue with existing session - don't return false for network errors
+        } else {
+          // Unknown refresh failure - be conservative but avoid forced sign out across tabs.
+          logWarn('Token refresh failed (unknown error), continuing with existing session:', refreshMessage);
         }
       } else {
         // Use refreshed session

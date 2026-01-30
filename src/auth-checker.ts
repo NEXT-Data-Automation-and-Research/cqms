@@ -251,6 +251,13 @@ function redirectToLogin(): void {
     return;
   }
   
+  // ✅ FIX: Don't interfere if cache reload is in progress
+  // The cache-clear-realtime module handles its own redirect to auth page
+  if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+    logInfo('Cache reload in progress, skipping redirect to let cache-clear handle it');
+    return;
+  }
+  
   (window as any).__redirectingToLogin = true;
   const authPagePath = '/src/auth/presentation/auth-page.html';
   
@@ -442,6 +449,13 @@ async function initAuthCheck(): Promise<void> {
   if ((isAuthPage || isIndexPage) && cachedAuth.valid) {
     // Skip if login just completed (let normal flow handle it)
     if (sessionStorage.getItem('loginJustCompleted') !== 'true') {
+      // ✅ FIX: Also skip if OAuth callback is in progress to prevent double redirect race
+      const oauthInProgress = sessionStorage.getItem('oauthCallbackInProgress') === 'true' || (window as any).__oauthCallbackInProgress;
+      if (oauthInProgress) {
+        logInfo('OAuth callback in progress, skipping fast path redirect');
+        (window as any).__authCheckInProgress = false;
+        return;
+      }
       logInfo('Valid cached session found on auth/index page - redirecting to home (fast path)');
       window.location.replace('/home');
       (window as any).__authCheckInProgress = false;
@@ -526,6 +540,15 @@ async function initAuthCheck(): Promise<void> {
       const authPagePath = '/src/auth/presentation/auth-page.html';
       if (currentPath === authPagePath || currentPath.endsWith('auth-page.html')) {
         console.log('[Auth-Checker] Running on auth page, checking authentication status...');
+        
+        // ✅ FIX: Skip if OAuth callback is in progress to prevent double redirect race
+        const oauthInProgress = sessionStorage.getItem('oauthCallbackInProgress') === 'true' || (window as any).__oauthCallbackInProgress;
+        if (oauthInProgress) {
+          console.log('[Auth-Checker] OAuth callback in progress, skipping auth check on auth page');
+          logInfo('OAuth callback in progress, skipping auth check on auth page');
+          (window as any).__authCheckInProgress = false;
+          return;
+        }
         
         // Initialize Supabase first
         let initSucceeded = false;
@@ -711,6 +734,13 @@ async function initAuthCheck(): Promise<void> {
           
           // ✅ FIX: Don't redirect if login just completed
           if (sessionStorage.getItem('loginJustCompleted') === 'true') {
+            return;
+          }
+          
+          // ✅ FIX: Don't interfere if cache reload is in progress
+          // The cache-clear-realtime module handles its own redirect
+          if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+            logInfo('Cache reload in progress, skipping auth state change handling');
             return;
           }
           

@@ -67,6 +67,10 @@ function performCompleteCleanup(): void {
     const localStorageKeysToKeep: string[] = [
       'theme',          // Keep theme preference
       'language',       // Keep language preference
+      // ✅ FIX: Preserve cache clear tracking to prevent loops
+      'qms_last_cache_clear_version',
+      'qms_cache_cleared_at',
+      'qms_skipped_cache_versions',
     ];
     
     const localStorageKeysToRemove: string[] = [];
@@ -85,11 +89,25 @@ function performCompleteCleanup(): void {
     });
     logInfo('[Impersonation] localStorage cleared: ' + localStorageKeysToRemove.length + ' keys removed');
     
-    // 2. Clear ALL sessionStorage
+    // 2. Clear sessionStorage but preserve critical flags
+    // ✅ FIX: Preserve flags that other modules depend on to prevent race conditions
+    const sessionStorageKeysToKeep: string[] = [
+      'cacheReloadInProgress',      // Cache clear module flag
+      'oauthCallbackInProgress',    // OAuth callback flag
+      'loginJustCompleted',         // Login flow flag
+      'exitImpersonationInProgress' // This module's own flag
+    ];
+    
+    // Save preserved values
+    const preservedSession: Record<string, string | null> = {};
+    sessionStorageKeysToKeep.forEach(key => {
+      preservedSession[key] = sessionStorage.getItem(key);
+    });
+    
     const sessionStorageKeysToRemove: string[] = [];
     for (let i = 0; i < sessionStorage.length; i++) {
       const key = sessionStorage.key(i);
-      if (key) {
+      if (key && !sessionStorageKeysToKeep.includes(key)) {
         sessionStorageKeysToRemove.push(key);
       }
     }
@@ -100,7 +118,19 @@ function performCompleteCleanup(): void {
         // Ignore individual key removal errors
       }
     });
-    logInfo('[Impersonation] sessionStorage cleared: ' + sessionStorageKeysToRemove.length + ' keys removed');
+    
+    // Restore preserved values
+    sessionStorageKeysToKeep.forEach(key => {
+      if (preservedSession[key]) {
+        try {
+          sessionStorage.setItem(key, preservedSession[key]!);
+        } catch (e) {
+          // Ignore if can't restore
+        }
+      }
+    });
+    
+    logInfo('[Impersonation] sessionStorage cleared: ' + sessionStorageKeysToRemove.length + ' keys removed (preserved critical flags)');
     
     // 3. Clear cookies related to Supabase (if accessible)
     try {
@@ -250,6 +280,12 @@ export function isImpersonating(): boolean {
  */
 export async function startImpersonation(targetEmail: string, reason?: string): Promise<void> {
   logInfo('[Impersonation] Starting impersonation for:', targetEmail);
+  
+  // EDGE CASE: Check if cache reload is in progress
+  // Don't start impersonation if a platform-wide cache clear is happening
+  if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+    throw new Error('Cannot start impersonation while platform cache is being cleared. Please wait and try again.');
+  }
   
   // EDGE CASE: Check if already impersonating (prevent nested impersonation)
   if (isImpersonating()) {
@@ -449,6 +485,30 @@ export async function startImpersonation(targetEmail: string, reason?: string): 
  */
 export async function exitImpersonation(): Promise<void> {
   logInfo('[Impersonation] Exiting impersonation mode - performing complete cleanup...');
+  
+  // ✅ FIX: Check if exit is already in progress (prevent double execution)
+  if ((window as any).__exitImpersonationInProgress || sessionStorage.getItem('exitImpersonationInProgress') === 'true') {
+    logInfo('[Impersonation] Exit already in progress, skipping');
+    return;
+  }
+  
+  // EDGE CASE: If cache reload is in progress, the cache-clear-realtime module
+  // will handle cleanup. We just need to do minimal work here.
+  if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+    logInfo('[Impersonation] Cache reload in progress, skipping redundant cleanup');
+    // Just clear the impersonation state - cache clear will handle the rest
+    sessionStorage.removeItem(STORAGE_KEY);
+    return;
+  }
+  
+  // ✅ FIX: Set flag to indicate exit impersonation is in progress
+  // This prevents cache-clear from interfering mid-operation
+  (window as any).__exitImpersonationInProgress = true;
+  try {
+    sessionStorage.setItem('exitImpersonationInProgress', 'true');
+  } catch {
+    // sessionStorage might not be available
+  }
   
   const state = getImpersonationState();
   

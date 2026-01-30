@@ -19,17 +19,66 @@ const logger = createLogger('UsersAPI');
 router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const supabase = getServerSupabase();
-    const userId = req.user!.id;
+    const user = req.user!;
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('users')
       .select(USER_PRIVATE_FIELDS)
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Error fetching user:', error);
       res.status(500).json({ error: 'Failed to fetch user data' });
+      return;
+    }
+
+    // If the user doesn't have a row in our `users` table yet, auto-provision it.
+    // This prevents the profile page from failing for users who authenticated successfully
+    // but never triggered the "create user profile" flow.
+    if (!data) {
+      if (!user.email) {
+        res.status(404).json({ error: 'User profile not found' });
+        return;
+      }
+
+      const metadata = (user as any).user_metadata || {};
+      const appMetadata = (user as any).app_metadata || {};
+
+      const provider =
+        appMetadata.provider ||
+        (Array.isArray(appMetadata.providers) ? appMetadata.providers[0] : undefined) ||
+        metadata.provider ||
+        'unknown';
+
+      const full_name = metadata.full_name || metadata.name || null;
+      const avatar_url = metadata.avatar_url || metadata.picture || null;
+      const now = new Date().toISOString();
+
+      const { data: created, error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: user.email,
+          full_name,
+          avatar_url,
+          provider,
+          device_info: {},
+          first_sign_in_at: now,
+          last_sign_in_at: now,
+          sign_in_count: '1',
+        })
+        .select(USER_PRIVATE_FIELDS)
+        .single();
+
+      if (createError) {
+        logger.error('Error creating user profile:', createError);
+        res.status(500).json({ error: 'Failed to create user profile' });
+        return;
+      }
+
+      res.json({ data: created });
       return;
     }
 

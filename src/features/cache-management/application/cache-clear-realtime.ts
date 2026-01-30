@@ -17,6 +17,8 @@ const CHANNEL_NAME = 'cache-versions-changes';
 const LAST_CLEAR_VERSION_KEY = 'qms_last_cache_clear_version';
 const SKIPPED_VERSIONS_KEY = 'qms_skipped_cache_versions';
 const CACHE_CLEARED_AT_KEY = 'qms_cache_cleared_at';
+const IMPERSONATION_STATE_KEY = 'impersonation_state';
+const IMPERSONATION_WAS_ACTIVE_KEY = 'qms_impersonation_was_active';
 
 let cacheVersionsChannel: RealtimeChannel | null = null;
 let isSubscribed = false;
@@ -26,6 +28,134 @@ const RETRY_DELAY_MS = 2000;
 
 // Track if a cache clear is currently in progress (prevents double-triggers)
 let isCacheClearInProgress = false;
+
+/**
+ * Check if user is currently in impersonation mode
+ */
+function isCurrentlyImpersonating(): { isImpersonating: boolean; adminEmail: string | null; targetEmail: string | null } {
+  try {
+    const stateStr = sessionStorage.getItem(IMPERSONATION_STATE_KEY);
+    if (!stateStr) return { isImpersonating: false, adminEmail: null, targetEmail: null };
+    
+    const state = JSON.parse(stateStr);
+    if (state?.isImpersonating === true) {
+      return {
+        isImpersonating: true,
+        adminEmail: state.adminEmail || null,
+        targetEmail: state.targetEmail || null
+      };
+    }
+    return { isImpersonating: false, adminEmail: null, targetEmail: null };
+  } catch {
+    return { isImpersonating: false, adminEmail: null, targetEmail: null };
+  }
+}
+
+/**
+ * Properly exit impersonation before cache clear
+ * This ensures the impersonation end is logged to the server
+ */
+async function exitImpersonationBeforeCacheClear(adminEmail: string, targetEmail: string): Promise<void> {
+  console.log('[Cache clear realtime] 🔄 Exiting impersonation before cache clear...');
+  
+  try {
+    const supabase = getSupabase();
+    if (supabase) {
+      // Try to log impersonation end to server
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        try {
+          // Fetch CSRF token
+          const tokenResponse = await fetch('/api/env', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${session.access_token}` }
+          });
+          const csrfToken = tokenResponse.headers.get('X-CSRF-Token');
+          
+          await fetch('/api/admin/end-impersonation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+              ...(csrfToken ? { 'X-CSRF-Token': csrfToken } : {})
+            },
+            body: JSON.stringify({ adminEmail, targetEmail })
+          });
+          console.log('[Cache clear realtime] ✅ Impersonation end logged to server');
+        } catch (err) {
+          console.warn('[Cache clear realtime] Could not log impersonation end:', err);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Cache clear realtime] Error during impersonation exit:', err);
+  }
+  
+  // Mark that impersonation was active (so we can show message after re-login)
+  try {
+    localStorage.setItem(IMPERSONATION_WAS_ACTIVE_KEY, JSON.stringify({
+      adminEmail,
+      targetEmail,
+      endedAt: new Date().toISOString(),
+      reason: 'cache_clear'
+    }));
+  } catch {
+    // localStorage might be full
+  }
+}
+
+/**
+ * Show special notification for impersonating users during cache clear
+ */
+function showImpersonationCacheClearNotification(data: {
+  version: string;
+  reason?: string;
+  adminEmail: string;
+  targetEmail: string;
+}): void {
+  console.log('[Cache clear realtime] 🔄 Showing impersonation cache clear notification');
+  
+  // Remove any existing notifications
+  document.getElementById('cache-clear-notification')?.remove();
+  document.getElementById('cache-clear-modal-overlay')?.remove();
+  
+  addCacheClearStyles();
+  
+  const notificationDiv = document.createElement('div');
+  notificationDiv.id = 'cache-clear-notification';
+  notificationDiv.innerHTML = `
+    <div style="
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: white;
+      padding: 16px 24px;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    ">
+      <div class="pulse-dot" style="
+        width: 10px;
+        height: 10px;
+        background: white;
+        border-radius: 50%;
+        flex-shrink: 0;
+      "></div>
+      <div style="text-align: center;">
+        <div style="font-size: 14px; font-weight: 600;">
+          Platform Cache Clear - Impersonation Ending
+        </div>
+        <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">
+          You are impersonating ${data.targetEmail}. Exiting impersonation and clearing cache...
+        </div>
+        ${data.reason ? `<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Reason: ${data.reason}</div>` : ''}
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(notificationDiv);
+}
 
 /**
  * Add cache clear notification styles
@@ -377,12 +507,25 @@ async function clearAllCaches(clearType: string): Promise<void> {
         'qms_impersonation_original_user',
         LAST_CLEAR_VERSION_KEY,  // Critical: prevents cache clear loop on re-login
         CACHE_CLEARED_AT_KEY,    // Track when cache was last cleared
-        SKIPPED_VERSIONS_KEY     // Remember which versions user skipped
+        SKIPPED_VERSIONS_KEY,    // Remember which versions user skipped
+        IMPERSONATION_WAS_ACTIVE_KEY  // Track if impersonation was active during cache clear
       ];
       const preserved: Record<string, string | null> = {};
       
       preserveKeys.forEach(key => {
         preserved[key] = localStorage.getItem(key);
+      });
+      
+      // ✅ FIX: Also preserve critical sessionStorage keys to prevent race conditions
+      const preserveSessionKeys = [
+        'oauthCallbackInProgress',  // Prevents race with OAuth callback
+        'loginJustCompleted',       // Prevents race with login flow
+        'cacheReloadInProgress'     // Already set by this module
+      ];
+      const preservedSession: Record<string, string | null> = {};
+      
+      preserveSessionKeys.forEach(key => {
+        preservedSession[key] = sessionStorage.getItem(key);
       });
       
       const localStorageCount = localStorage.length;
@@ -395,6 +538,13 @@ async function clearAllCaches(clearType: string): Promise<void> {
       preserveKeys.forEach(key => {
         if (preserved[key]) {
           localStorage.setItem(key, preserved[key]!);
+        }
+      });
+      
+      // ✅ FIX: Restore critical session keys
+      preserveSessionKeys.forEach(key => {
+        if (preservedSession[key]) {
+          sessionStorage.setItem(key, preservedSession[key]!);
         }
       });
       
@@ -434,10 +584,20 @@ async function clearAllCaches(clearType: string): Promise<void> {
 }
 
 /**
- * Sign out from Supabase and redirect to login
+ * Sign out from Supabase (without redirect)
+ * Called BEFORE clearing caches to ensure Supabase can properly invalidate session
  */
-async function signOutAndReload(): Promise<void> {
-  console.log('[Cache clear realtime] 🔐 Signing out and reloading...');
+async function signOutFromSupabase(): Promise<void> {
+  console.log('[Cache clear realtime] 🔐 Signing out from Supabase...');
+  
+  // Set a flag to prevent auth-checker's onAuthStateChange from interfering
+  // This flag is checked in auth-checker.ts to avoid redirect races
+  try {
+    sessionStorage.setItem('cacheReloadInProgress', 'true');
+  } catch {
+    // sessionStorage might already be cleared
+  }
+  (window as any).__cacheReloadInProgress = true;
   
   try {
     const supabase = getSupabase();
@@ -447,13 +607,52 @@ async function signOutAndReload(): Promise<void> {
     }
   } catch (error) {
     console.error('[Cache clear realtime] Error signing out:', error);
+    // Continue anyway - cache will be cleared regardless
   }
+}
+
+/**
+ * Redirect to auth page after cache clear is complete
+ */
+function redirectToAuthPage(): void {
+  console.log('[Cache clear realtime] 🔄 Redirecting to auth page...');
   
   // Small delay to let user see the notification
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Reload the page (will redirect to login since signed out)
-  window.location.href = '/';
+  setTimeout(() => {
+    // Redirect directly to auth page instead of '/' to avoid extra redirect hop
+    // This prevents the glitch where '/' redirects to auth page (double redirect)
+    window.location.href = '/src/auth/presentation/auth-page.html';
+  }, 1500);
+}
+
+/**
+ * Check if OAuth callback is currently in progress
+ * This prevents cache clear from interfering with the login flow
+ */
+function isOAuthCallbackInProgress(): boolean {
+  try {
+    // Check both sessionStorage and window flag (window flag is set synchronously in auth-page.html)
+    const sessionFlag = sessionStorage.getItem('oauthCallbackInProgress') === 'true';
+    const windowFlag = (window as any).__oauthCallbackInProgress === true;
+    const oauthRedirectFlag = (window as any).__oauthRedirectInProgress === true;
+    return sessionFlag || windowFlag || oauthRedirectFlag;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if exit impersonation is currently in progress
+ * This prevents cache clear from interfering with impersonation exit flow
+ */
+function isExitImpersonationInProgress(): boolean {
+  try {
+    const sessionFlag = sessionStorage.getItem('exitImpersonationInProgress') === 'true';
+    const windowFlag = (window as any).__exitImpersonationInProgress === true;
+    return sessionFlag || windowFlag;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -470,6 +669,40 @@ async function handleCacheClear(data: {
   if (isCacheClearInProgress) {
     console.log('[Cache clear realtime] Cache clear already in progress, ignoring');
     return;
+  }
+  
+  // ✅ FIX: Skip if OAuth callback is in progress to prevent interfering with login flow
+  // This prevents the screen jumping issue where cache clear races with OAuth redirect
+  if (isOAuthCallbackInProgress()) {
+    console.log('[Cache clear realtime] OAuth callback in progress, deferring cache clear');
+    // Store the version so we can check on next page load
+    // But don't clear cache now - let the user complete their login first
+    // The checkCacheClearOnLoad will catch this if needed
+    return;
+  }
+  
+  // ✅ FIX: Skip if exit impersonation is in progress to prevent double cleanup
+  // The impersonation service handles its own cleanup and redirect
+  if (isExitImpersonationInProgress()) {
+    console.log('[Cache clear realtime] Exit impersonation in progress, deferring cache clear');
+    // Don't interfere - impersonation exit will redirect to auth page anyway
+    // Store the version so next login will be on latest version
+    try {
+      localStorage.setItem(LAST_CLEAR_VERSION_KEY, data.version);
+    } catch {
+      // localStorage might be full
+    }
+    return;
+  }
+  
+  // ✅ FIX: Skip if user just logged in (loginJustCompleted flag)
+  try {
+    if (sessionStorage.getItem('loginJustCompleted') === 'true') {
+      console.log('[Cache clear realtime] User just logged in, deferring cache clear');
+      return;
+    }
+  } catch {
+    // sessionStorage might not be available
   }
   
   // Check if we've already processed this version
@@ -498,6 +731,49 @@ async function handleCacheClear(data: {
   }
   
   console.log(`[Cache clear realtime] Processing cache clear: ${data.version} (skippable: ${data.is_skippable})`);
+  
+  // EDGE CASE: Check if user is currently impersonating
+  // If so, we need to properly exit impersonation before clearing cache
+  const impersonationStatus = isCurrentlyImpersonating();
+  if (impersonationStatus.isImpersonating) {
+    console.log(`[Cache clear realtime] ⚠️ User is impersonating ${impersonationStatus.targetEmail}, will exit impersonation first`);
+    
+    // Show special notification for impersonating users
+    showImpersonationCacheClearNotification({
+      version: data.version,
+      reason: data.reason,
+      adminEmail: impersonationStatus.adminEmail || 'Unknown',
+      targetEmail: impersonationStatus.targetEmail || 'Unknown'
+    });
+    
+    // Mark as in progress
+    isCacheClearInProgress = true;
+    
+    // Store version info before clearing
+    try {
+      localStorage.setItem(LAST_CLEAR_VERSION_KEY, data.version);
+      localStorage.setItem(CACHE_CLEARED_AT_KEY, Date.now().toString());
+    } catch {
+      // localStorage might be full
+    }
+    
+    // Wait for notification to be visible
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Exit impersonation properly (logs to server)
+    await exitImpersonationBeforeCacheClear(
+      impersonationStatus.adminEmail || 'Unknown',
+      impersonationStatus.targetEmail || 'Unknown'
+    );
+    
+    // Sign out, clear caches, and redirect
+    await signOutFromSupabase();
+    await clearAllCaches(data.clear_type);
+    redirectToAuthPage();
+    
+    isCacheClearInProgress = false;
+    return;
+  }
   
   // Handle SKIPPABLE cache clear - show modal with choice
   if (data.is_skippable) {
@@ -537,14 +813,27 @@ async function handleCacheClear(data: {
   // Wait a moment for notification to be visible
   await new Promise(resolve => setTimeout(resolve, 500));
   
-  // Clear caches
+  // IMPORTANT ORDER OF OPERATIONS:
+  // 1. Sign out FIRST while Supabase's IndexedDB and localStorage are intact
+  //    This ensures proper session invalidation on the server
+  // 2. Clear all caches (localStorage, sessionStorage, IndexedDB, etc.)
+  // 3. Redirect to auth page
+  //
+  // Previously, caches were cleared before signOut, which corrupted the
+  // Supabase client state and caused unpredictable behavior including
+  // the glitch where users would flicker between auth and home pages.
+  
+  // Step 1: Sign out from Supabase (while data is still intact)
+  await signOutFromSupabase();
+  
+  // Step 2: Clear all caches
   await clearAllCaches(data.clear_type);
   
-  // Sign out and reload
-  await signOutAndReload();
+  // Step 3: Redirect to auth page (with delay for notification visibility)
+  redirectToAuthPage();
   
-  // Note: signOutAndReload will redirect, so we never reach here
-  // But just in case:
+  // Note: redirectToAuthPage uses setTimeout, so this continues
+  // But the page will navigate away shortly
   isCacheClearInProgress = false;
 }
 
@@ -723,6 +1012,140 @@ export function teardownCacheClearRealtime(): void {
 }
 
 /**
+ * Check if user was impersonating when cache clear happened
+ * Shows a notification to inform them that their impersonation session ended
+ */
+export function checkPreviousImpersonationEnded(): void {
+  try {
+    const impersonationDataStr = localStorage.getItem(IMPERSONATION_WAS_ACTIVE_KEY);
+    if (!impersonationDataStr) return;
+    
+    const impersonationData = JSON.parse(impersonationDataStr);
+    if (!impersonationData || impersonationData.reason !== 'cache_clear') return;
+    
+    // Clear the flag so we don't show this again
+    localStorage.removeItem(IMPERSONATION_WAS_ACTIVE_KEY);
+    
+    const { adminEmail, targetEmail, endedAt } = impersonationData;
+    
+    console.log('[Cache clear realtime] 📢 Previous impersonation was ended by cache clear:', {
+      adminEmail,
+      targetEmail,
+      endedAt
+    });
+    
+    // Show a toast notification to inform the admin
+    showImpersonationEndedNotification(targetEmail, endedAt);
+    
+  } catch (err) {
+    console.warn('[Cache clear realtime] Error checking previous impersonation:', err);
+    // Clean up the flag even if parsing failed
+    try {
+      localStorage.removeItem(IMPERSONATION_WAS_ACTIVE_KEY);
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+/**
+ * Show a notification that impersonation was ended due to cache clear
+ */
+function showImpersonationEndedNotification(targetEmail: string, endedAt: string): void {
+  // Use a timeout to ensure the page is fully loaded
+  setTimeout(() => {
+    const notificationDiv = document.createElement('div');
+    notificationDiv.id = 'impersonation-ended-notification';
+    notificationDiv.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+      z-index: 10000;
+      max-width: 400px;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+      animation: slideInFromRight 0.3s ease-out;
+    `;
+    
+    // Add animation style
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideInFromRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutToRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    const formattedTime = new Date(endedAt).toLocaleTimeString();
+    
+    notificationDiv.innerHTML = `
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <div style="flex-shrink: 0; margin-top: 2px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="8.5" cy="7" r="4"/>
+            <path d="M20 8v6"/>
+            <path d="M23 11h-6"/>
+          </svg>
+        </div>
+        <div style="flex: 1;">
+          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">
+            Impersonation Session Ended
+          </div>
+          <div style="font-size: 12px; opacity: 0.9; line-height: 1.4;">
+            Your impersonation of <strong>${targetEmail}</strong> was automatically ended at ${formattedTime} due to a platform-wide cache clear.
+          </div>
+        </div>
+        <button id="close-impersonation-notice" style="
+          background: rgba(255,255,255,0.2);
+          border: none;
+          color: white;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          line-height: 1;
+          flex-shrink: 0;
+        ">×</button>
+      </div>
+    `;
+    
+    document.body.appendChild(notificationDiv);
+    
+    // Close button handler
+    const closeBtn = document.getElementById('close-impersonation-notice');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        notificationDiv.style.animation = 'slideOutToRight 0.3s ease-out forwards';
+        setTimeout(() => notificationDiv.remove(), 300);
+      };
+    }
+    
+    // Auto-dismiss after 10 seconds
+    setTimeout(() => {
+      if (document.getElementById('impersonation-ended-notification')) {
+        notificationDiv.style.animation = 'slideOutToRight 0.3s ease-out forwards';
+        setTimeout(() => notificationDiv.remove(), 300);
+      }
+    }, 10000);
+    
+  }, 1000); // Delay to ensure page is loaded
+}
+
+/**
  * Check for cache clear on page load (for users who were offline)
  * This is called separately after authentication
  * 
@@ -730,9 +1153,33 @@ export function teardownCacheClearRealtime(): void {
  * 1. Only triggers for cache clears in the last 2 minutes (not 24 hours)
  * 2. Checks if we recently cleared cache to avoid re-triggering
  * 3. Compares versions to avoid duplicate processing
+ * 4. Skips if user just logged in (loginJustCompleted flag)
  */
 export async function checkCacheClearOnLoad(): Promise<void> {
   try {
+    // PROTECTION: Skip if user just logged in
+    // This prevents triggering cache clear immediately after login
+    try {
+      if (sessionStorage.getItem('loginJustCompleted') === 'true') {
+        console.log('[Cache clear realtime] User just logged in, skipping cache check');
+        return;
+      }
+    } catch {
+      // sessionStorage might not be available
+    }
+    
+    // ✅ FIX: Skip if OAuth callback is in progress
+    if (isOAuthCallbackInProgress()) {
+      console.log('[Cache clear realtime] OAuth callback in progress, skipping cache check');
+      return;
+    }
+    
+    // ✅ FIX: Skip if exit impersonation is in progress
+    if (isExitImpersonationInProgress()) {
+      console.log('[Cache clear realtime] Exit impersonation in progress, skipping cache check');
+      return;
+    }
+    
     // PROTECTION: Check if we recently cleared cache (within last 5 minutes)
     // This prevents the loop where user logs back in after cache clear
     const lastClearedAt = localStorage.getItem('qms_cache_cleared_at');

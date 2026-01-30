@@ -322,6 +322,35 @@ export function stopSessionMonitoring(): void {
  * ✅ UX: Reduced redirect delay (configurable), added Login Now button
  */
 export function handleSessionExpiry(): void {
+  // ✅ FIX: Don't interfere if cache reload is in progress
+  // The cache-clear-realtime module handles its own redirect and messaging
+  if ((window as any).__cacheReloadInProgress) {
+    logInfo('[SessionWarning] Cache reload in progress, skipping session expiry handling');
+    return;
+  }
+  try {
+    if (sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+      logInfo('[SessionWarning] Cache reload in progress (sessionStorage), skipping session expiry handling');
+      return;
+    }
+  } catch {
+    // sessionStorage might not be available
+  }
+  
+  // ✅ FIX: Don't interfere if OAuth callback is in progress
+  // This prevents session expiry handling from racing with login flow
+  try {
+    const oauthInProgress = sessionStorage.getItem('oauthCallbackInProgress') === 'true' || 
+                            (window as any).__oauthCallbackInProgress || 
+                            (window as any).__oauthRedirectInProgress;
+    if (oauthInProgress) {
+      logInfo('[SessionWarning] OAuth callback in progress, skipping session expiry handling');
+      return;
+    }
+  } catch {
+    // sessionStorage might not be available
+  }
+  
   autoSaveFormData();
 
   const authPagePath = '/src/auth/presentation/auth-page.html';

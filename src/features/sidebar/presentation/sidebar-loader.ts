@@ -465,12 +465,14 @@ export class SidebarLoader {
       if (userInfo?.email) {
         try {
           console.log('[Sidebar] Setting up cache clear realtime')
-          const { setupCacheClearRealtime, checkCacheClearOnLoad } = await import(
+          const { setupCacheClearRealtime, checkCacheClearOnLoad, checkPreviousImpersonationEnded } = await import(
             '../../cache-management/application/cache-clear-realtime.js'
           )
           await setupCacheClearRealtime()
           // Also check if we missed a cache clear while offline
           await checkCacheClearOnLoad()
+          // Check if user was impersonating when cache clear happened
+          checkPreviousImpersonationEnded()
           console.log('[Sidebar] Cache clear realtime setup complete')
         } catch (err) {
           console.warn('[Sidebar] Could not set up cache clear realtime:', err)

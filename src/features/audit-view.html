@@ -10758,7 +10758,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const isResubmission = ackStatus.includes('cqc_sent_back') || ackStatus.includes('agent_re_review');
             
             const reversalData = {
-                reversal_requested_at: isResubmission ? currentAudit.reversal_requested_at : new Date().toISOString(), // Keep original timestamp on resubmission
+                // Keep original timestamp on resubmission (support both snake_case and camelCase)
+                reversal_requested_at: isResubmission ? (currentAudit.reversal_requested_at || currentAudit.reversalRequestedAt || new Date().toISOString()) : new Date().toISOString(),
                 reversal_type: reversalType,
                 // Combine reversal reason and detailed justification from parameter comments
                 reversal_justification_from_agent: `${reversalReason}: ${detailedJustification}`,
@@ -10864,19 +10865,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 // ALSO: Create reversal_requests record (new structure)
                 try {
                     // Check if reversal_requests record already exists (for resubmissions)
-                    const { data: existingReversalRequest } = await window.supabaseClient
+                    const { data: existingReversalRequest, error: existingRRError } = await window.supabaseClient
                         .from('reversal_requests')
                         .select('id')
                         .eq('audit_id', currentAudit.id)
                         .eq('scorecard_table_name', currentTableName)
                         .maybeSingle();
                     
+                    if (existingRRError) {
+                        console.warn('Error checking existing reversal_requests record (will attempt create/update anyway):', existingRRError);
+                    }
+                    
                     if (!existingReversalRequest) {
                         // Create new reversal_requests record
                         const reversalRequestData = {
                             audit_id: currentAudit.id,
                             scorecard_table_name: currentTableName,
-                            requested_at: isResubmission ? currentAudit.reversal_requested_at : new Date().toISOString(),
+                            // For resubmissions, keep the original request timestamp if available
+                            requested_at: isResubmission ? (currentAudit.reversal_requested_at || currentAudit.reversalRequestedAt || new Date().toISOString()) : new Date().toISOString(),
                             requested_by_email: logUserEmail,
                             requested_by_name: logUserName,
                             // Store the employee email from the audit so employees can see reversals for their audits
@@ -10885,7 +10891,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             employee_name: currentAudit.employee_name || currentAudit.employeeName || null,
                             reversal_type: reversalType,
                             justification: `${reversalReason}: ${detailedJustification}`,
-                            metrics_parameters: selectedParameters.join(', ') || null,
+                            // JSONB column: store as array for reliable inserts/queries
+                            metrics_parameters: selectedParameters.length ? selectedParameters : null,
                             attachments: null, // Can be added later if needed
                             original_score: currentAudit.average_score || currentAudit.averageScore || 0,
                             original_passing_status: currentAudit.passing_status || currentAudit.passingStatus || 'Not Passing',
@@ -10950,7 +10957,79 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
-                        console.log('Reversal_requests record already exists, skipping creation');
+                        // Resubmission / update flow:
+                        // Ensure the existing reversal request reflects the latest agent justification and disputed parameters.
+                        console.log('Reversal_requests record already exists, updating it with latest request data');
+                        
+                        try {
+                            const reversalUpdateData = {
+                                requested_by_email: logUserEmail,
+                                requested_by_name: logUserName,
+                                employee_email: currentAudit.employee_email || currentAudit.employeeEmail || null,
+                                employee_name: currentAudit.employee_name || currentAudit.employeeName || null,
+                                reversal_type: reversalType,
+                                justification: `${reversalReason}: ${detailedJustification}`,
+                                metrics_parameters: selectedParameters.length ? selectedParameters : null,
+                                original_score: currentAudit.average_score || currentAudit.averageScore || 0,
+                                original_passing_status: currentAudit.passing_status || currentAudit.passingStatus || 'Not Passing',
+                                original_parameters: fullAuditState.parameters,
+                                original_feedback: fullAuditState.feedback,
+                                // Touch updated_at so lists sorted/filtered by recency reflect the resubmission
+                                updated_at: new Date().toISOString()
+                            };
+                            
+                            const { data: updatedRR, error: updateRRError } = await window.supabaseClient
+                                .from('reversal_requests')
+                                .update(reversalUpdateData)
+                                .eq('id', existingReversalRequest.id)
+                                .select('id, current_state_id')
+                                .single();
+                            
+                            if (updateRRError) {
+                                console.error('Error updating existing reversal_requests record:', updateRRError);
+                            } else if (updatedRR) {
+                                // On resubmission, reset workflow state back to Team Lead review
+                                // so Team Leads see it immediately and the reversal page reflects the latest state.
+                                if (isResubmission) {
+                                    try {
+                                        // Mark any current workflow states as not current
+                                        await window.supabaseClient
+                                            .from('reversal_workflow_states')
+                                            .update({ is_current: false })
+                                            .eq('reversal_request_id', updatedRR.id)
+                                            .eq('is_current', true);
+                                        
+                                        // Insert new team_lead_review state as current
+                                        const { data: newState, error: newStateError } = await window.supabaseClient
+                                            .from('reversal_workflow_states')
+                                            .insert({
+                                                reversal_request_id: updatedRR.id,
+                                                state: 'team_lead_review',
+                                                entered_at: new Date().toISOString(),
+                                                entered_by_email: logUserEmail,
+                                                entered_by_name: logUserName,
+                                                notes: 'Reversal resubmitted by agent - awaiting Team Lead review',
+                                                is_current: true
+                                            })
+                                            .select()
+                                            .single();
+                                        
+                                        if (newStateError) {
+                                            console.error('Error inserting team_lead_review workflow state on resubmission:', newStateError);
+                                        } else if (newState?.id) {
+                                            await window.supabaseClient
+                                                .from('reversal_requests')
+                                                .update({ current_state_id: newState.id })
+                                                .eq('id', updatedRR.id);
+                                        }
+                                    } catch (wsResubErr) {
+                                        console.error('Error resetting reversal workflow state on resubmission:', wsResubErr);
+                                    }
+                                }
+                            }
+                        } catch (rrUpdateErr) {
+                            console.error('Error in reversal_requests update flow:', rrUpdateErr);
+                        }
                     }
                 } catch (rrErr) {
                     console.error('Error creating reversal_requests record:', rrErr);

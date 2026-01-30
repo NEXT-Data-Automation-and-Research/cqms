@@ -3,10 +3,171 @@
  * Handles database operations for reversals
  */
 
-import type { ReversalRequest, ReversalWorkflowState, ReversalWorkflowStateType } from '../domain/types.js';
+import type { ReversalRequest, ReversalWithAuditData, ReversalWorkflowState, ReversalWorkflowStateType } from '../domain/types.js';
 
 export class ReversalRepository {
   constructor(private supabase: any) {}
+
+  /**
+   * Backward compatibility: load reversals directly from audit tables (old structure)
+   * Used when reversal_requests table has no rows (or when older reversals exist).
+   */
+  async getLegacyReversalsFromAuditTables(options: {
+    employeeEmail?: string;
+    limit?: number;
+  } = {}): Promise<ReversalWithAuditData[]> {
+    try {
+      const normalizedEmployeeEmail = options.employeeEmail?.toLowerCase().trim();
+
+      // Load scorecard tables
+      const { data: scorecards, error: scorecardError } = await this.supabase
+        .from('scorecards')
+        .select('id, name, table_name')
+        .eq('is_active', true);
+
+      if (scorecardError) {
+        console.warn('[ReversalRepository] Failed to load scorecards for legacy fallback:', scorecardError);
+        return [];
+      }
+
+      const tables = (scorecards || [])
+        .map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          table_name: s.table_name
+        }))
+        .filter((t: any) => !!t.table_name);
+
+      if (tables.length === 0) return [];
+
+      // Query all audit tables in parallel; skip tables that don't have reversal columns
+      const results = await Promise.all(
+        tables.map(async (t: any) => {
+          try {
+            let q = this.supabase
+              .from(t.table_name)
+              .select(
+                [
+                  'id',
+                  'employee_email',
+                  'employee_name',
+                  'auditor_email',
+                  'auditor_name',
+                  'interaction_id',
+                  'submitted_at',
+                  'average_score',
+                  'passing_status',
+                  'acknowledgement_status',
+                  'reversal_requested_at',
+                  'reversal_responded_at',
+                  'reversal_approved',
+                  // Optional legacy fields (may not exist in all tables)
+                  'reversal_type',
+                  'reversal_justification_from_agent',
+                  'reversal_metrics_parameters',
+                  'reversal_attachments',
+                  'score_before_appeal',
+                  'score_after_appeal',
+                  'reversal_approved_by',
+                  'reversal_sla_hours',
+                  'within_auditor_scope'
+                ].join(',')
+              )
+              .not('reversal_requested_at', 'is', null)
+              .order('reversal_requested_at', { ascending: false });
+
+            // For employees, only show reversals for their audits
+            if (normalizedEmployeeEmail) {
+              q = q.eq('employee_email', normalizedEmployeeEmail);
+            }
+
+            if (options.limit) {
+              q = q.limit(options.limit);
+            }
+
+            const { data, error } = await q;
+
+            if (error) {
+              // Expected for some scorecard tables (missing columns, permissions, or table absent)
+              const msg = String((error as any).message || '');
+              const code = (error as any).code;
+              const expected =
+                code === 'PGRST205' ||
+                code === 'PGRST202' ||
+                code === '42703' ||
+                msg.includes('Could not find the table') ||
+                msg.includes('does not exist') ||
+                msg.includes('column') ||
+                msg.includes('permission denied');
+              if (!expected) {
+                console.warn(`[ReversalRepository] Legacy query failed for ${t.table_name}:`, error);
+              }
+              return [] as ReversalWithAuditData[];
+            }
+
+            return (data || []).map((row: any) => {
+              const requestedAt = row.reversal_requested_at || row.reversalRequestedAt;
+              const auditId = row.id;
+              const originalScore = row.score_before_appeal ?? row.average_score ?? 0;
+
+              const legacy: ReversalWithAuditData = {
+                // Synthesize an id for UI purposes (no DB writes use this id)
+                id: `legacy:${t.table_name}:${auditId}`,
+                audit_id: auditId,
+                scorecard_table_name: t.table_name,
+                requested_by_email: row.employee_email || '',
+                requested_at: requestedAt || row.submitted_at || new Date().toISOString(),
+                employee_email: row.employee_email,
+                employee_name: row.employee_name,
+                reversal_type: row.reversal_type || 'Revision Requested',
+                justification: row.reversal_justification_from_agent || row.reversalJustificationFromAgent || '',
+                original_score: typeof originalScore === 'number' ? originalScore : parseFloat(String(originalScore || 0)) || 0,
+
+                // Merge audit fields for display
+                auditor_email: row.auditor_email,
+                auditor_name: row.auditor_name,
+                interaction_id: row.interaction_id,
+                submitted_at: row.submitted_at,
+                average_score: row.average_score,
+                passing_status: row.passing_status,
+                acknowledgement_status: row.acknowledgement_status,
+
+                // Legacy reversal fields
+                reversal_requested_at: row.reversal_requested_at,
+                reversal_responded_at: row.reversal_responded_at,
+                reversal_approved: row.reversal_approved,
+                reversal_approved_by: row.reversal_approved_by,
+                sla_in_hours: row.reversal_sla_hours,
+                within_auditor_scope: row.within_auditor_scope,
+
+                // Scorecard metadata (helps UI)
+                _scorecard_id: t.id,
+                _scorecard_name: t.name,
+                _scorecard_table: t.table_name
+              };
+
+              return legacy;
+            });
+          } catch (err) {
+            return [] as ReversalWithAuditData[];
+          }
+        })
+      );
+
+      // Flatten and sort
+      const flattened = results.flat();
+      flattened.sort((a, b) => {
+        const da = new Date(a.requested_at || '').getTime() || 0;
+        const db = new Date(b.requested_at || '').getTime() || 0;
+        return db - da;
+      });
+
+      return options.limit ? flattened.slice(0, options.limit) : flattened;
+    } catch (error) {
+      console.warn('[ReversalRepository] Legacy fallback failed:', error);
+      return [];
+    }
+  }
 
   /**
    * Get all reversal requests with optional filters

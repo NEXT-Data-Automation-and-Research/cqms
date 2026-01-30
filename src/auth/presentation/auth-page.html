@@ -217,6 +217,21 @@
 
         let callbackHandlingInProgress = false;
         let callbackHandled = false;
+        
+        // ✅ FIX: Detect OAuth params immediately (synchronously) and set flag BEFORE any async work
+        // This prevents auth-checker from racing and causing double redirects
+        (function setOAuthFlagImmediately() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlHash = window.location.hash;
+            const hasOAuthParams = urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code');
+            if (hasOAuthParams) {
+                // Set flag immediately so auth-checker knows OAuth is being handled
+                sessionStorage.setItem('oauthCallbackInProgress', 'true');
+                window.__oauthCallbackInProgress = true;
+                console.log('[Auth] OAuth params detected, flag set to prevent auth-checker race');
+            }
+        })();
+        
         async function checkAndHandleCallback() {
             if (callbackHandlingInProgress || callbackHandled) return false;
             if (!supabaseInitialized) await initializeSupabase();
@@ -233,6 +248,9 @@
                 return true;
             } catch (e) {
                 console.error('OAuth callback error:', e);
+                // Clear the flag on error so user can try again
+                sessionStorage.removeItem('oauthCallbackInProgress');
+                delete window.__oauthCallbackInProgress;
                 return false;
             } finally {
                 callbackHandlingInProgress = false;
