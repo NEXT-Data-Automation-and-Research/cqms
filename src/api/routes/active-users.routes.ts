@@ -7,13 +7,14 @@
  * Security:
  * - verifyAuth required
  * - requirePermission('active-users-dashboard', 'page') so access can be managed via DB rules
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabaseAdmin: Admin client for cross-user aggregation queries
  */
 
 import { Router, Response } from 'express';
-import { verifyAuth } from '../middleware/auth.middleware.js';
-import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requirePermissionOrRole } from '../middleware/permission.middleware.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('ActiveUsersAPI');
@@ -87,14 +88,15 @@ router.get(
   '/users',
   verifyAuth,
   requirePermissionOrRole('active-users-dashboard', 'page', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     const days = parseDays(req.query.days);
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
     const cutoffIso = cutoff.toISOString();
 
     try {
-      const supabase = getServerSupabase();
+      // Use admin client for cross-user aggregation queries
+      const supabase = req.supabaseAdmin!;
 
       const [
         usersRes,
@@ -331,7 +333,7 @@ router.get(
   '/date-activity',
   verifyAuth,
   requirePermissionOrRole('active-users-dashboard', 'page', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     const date = String(req.query.date || '').trim();
     if (!isValidISODateOnly(date)) {
       res.status(400).json({ error: 'Bad Request', message: 'date must be YYYY-MM-DD' });
@@ -342,7 +344,8 @@ router.get(
     const endIso = toEndOfDayISO(date);
 
     try {
-      const supabase = getServerSupabase();
+      // Use admin client for cross-user aggregation queries
+      const supabase = req.supabaseAdmin!;
 
       const [
         assignmentsRes,

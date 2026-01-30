@@ -28,13 +28,62 @@ export async function getCurrentSupabaseUser(): Promise<any> {
 }
 
 /**
+ * Check if OAuth callback is in progress (to avoid interfering with login flow)
+ */
+function isOAuthInProgress(): boolean {
+  // Check URL for OAuth parameters
+  if (typeof window !== 'undefined') {
+    const urlHash = window.location.hash || '';
+    const urlSearch = window.location.search || '';
+    const hasOAuthParams = urlHash.includes('access_token') || 
+                           urlHash.includes('code') ||
+                           urlSearch.includes('code') ||
+                           urlSearch.includes('access_token');
+    if (hasOAuthParams) return true;
+  }
+  
+  // Check flags
+  try {
+    if (sessionStorage.getItem('oauthCallbackInProgress') === 'true') return true;
+    if ((window as any).__oauthCallbackInProgress === true) return true;
+  } catch (e) {
+    // sessionStorage may not be available
+  }
+  
+  return false;
+}
+
+/**
+ * Token refresh lock to prevent concurrent refresh attempts
+ * This prevents race conditions when multiple components try to refresh simultaneously
+ */
+let tokenRefreshPromise: Promise<any> | null = null;
+let lastRefreshAttempt = 0;
+const REFRESH_DEBOUNCE_MS = 2000; // Don't attempt refresh more than once per 2 seconds
+
+/**
  * Check if user is authenticated with Supabase
  * Also handles token expiration and refresh
  * ✅ SECURITY: Always verifies token with server AND device fingerprint to prevent token copying attacks
  * ✅ FIX: Checks expiration and refreshes token BEFORE calling getUser() to prevent premature logouts
  * ✅ RELIABILITY: More graceful handling of temporary network issues
+ * ✅ FIX: Added OAuth callback detection to prevent false negatives during login
  */
 export async function checkSupabaseAuthentication(): Promise<boolean> {
+  // If OAuth callback is in progress, defer to the OAuth handler
+  // Return true to prevent redirect loops during login
+  if (isOAuthInProgress()) {
+    logInfo('OAuth callback in progress - deferring auth check to OAuth handler');
+    return true;
+  }
+  
+  // If login just completed, trust the session
+  const loginJustCompleted = sessionStorage.getItem('loginJustCompleted') === 'true';
+  if (loginJustCompleted) {
+    logInfo('Login just completed - trusting session');
+    return true;
+  }
+  
   const supabase = getSupabase();
   if (!supabase) {
     // RELIABILITY: If Supabase isn't ready yet, check cached session
@@ -84,7 +133,36 @@ export async function checkSupabaseAuthentication(): Promise<boolean> {
       // Token is expiring soon or expired - try to refresh BEFORE verifying with getUser()
       logInfo('Token expiring soon, refreshing before verification...');
       
-      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
+      // ✅ FIX: Use refresh lock to prevent concurrent refresh attempts
+      const currentTime = Date.now();
+      if (tokenRefreshPromise && (currentTime - lastRefreshAttempt) < REFRESH_DEBOUNCE_MS) {
+        logInfo('Token refresh already in progress, waiting for it...');
+        try {
+          const existingResult = await tokenRefreshPromise;
+          if (existingResult?.session) {
+            currentSession = existingResult.session;
+            logInfo('Used existing refresh result');
+            // Skip to verification below
+          }
+        } catch (e) {
+          // Previous refresh failed, continue with new attempt
+        }
+      }
+      
+      lastRefreshAttempt = currentTime;
+      tokenRefreshPromise = supabase.auth.refreshSession();
+      
+      let refreshedSession: any = null;
+      let refreshError: any = null;
+      
+      try {
+        const result = await tokenRefreshPromise;
+        refreshedSession = result.data?.session;
+        refreshError = result.error;
+      } finally {
+        // Clear the promise after it completes so future attempts can try again
+        tokenRefreshPromise = null;
+      }
       
       if (refreshError || !refreshedSession) {
         const refreshMessage = refreshError?.message || '';
@@ -325,6 +403,15 @@ export async function signOut(): Promise<void> {
         }
       }
 
+      // ✅ Clean up realtime subscriptions BEFORE signing out
+      // This prevents stale subscriptions from receiving data after logout
+      try {
+        supabase.removeAllChannels();
+        logInfo('Cleaned up realtime subscriptions');
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+
       // Sign out from Supabase
       await supabase.auth.signOut();
     } catch (error) {
@@ -344,6 +431,10 @@ export async function signOut(): Promise<void> {
   
   // ✅ UX: Clear session verification flag so auth overlay shows on next login
   sessionStorage.removeItem('authSessionVerified');
+  
+  // ✅ Clear any impersonation state
+  sessionStorage.removeItem('isImpersonating');
+  sessionStorage.removeItem('impersonatorEmail');
   
   logInfo('User signed out successfully');
   

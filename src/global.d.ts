@@ -1,5 +1,5 @@
 /**
- * Global type declarations for window object extensions
+ * Global type declarations for window object extensions and Express Request augmentation
  */
 
 interface AccessControl {

@@ -1,13 +1,28 @@
 /**
- * Server-Side Supabase Client
+ * Server-Side Supabase Client (Admin/Service Role)
  * 
- * This creates a Supabase client using the SERVICE ROLE KEY.
- * This key has elevated privileges and should NEVER be exposed to the client.
+ * ╔══════════════════════════════════════════════════════════════════════════╗
+ * ║ IMPORTANT: This client BYPASSES Row Level Security (RLS)                 ║
+ * ║                                                                          ║
+ * ║ Use this ONLY for:                                                       ║
+ * ║   - Admin operations that need cross-user access                        ║
+ * ║   - System-level operations (migrations, background jobs)               ║
+ * ║   - Verifying JWT tokens (auth.getUser)                                 ║
+ * ║                                                                          ║
+ * ║ For USER-SCOPED operations, use req.supabase instead!                   ║
+ * ║ The req.supabase client respects RLS and is safer.                      ║
+ * ╚══════════════════════════════════════════════════════════════════════════╝
  * 
- * Usage:
+ * Usage in routes:
+ *   // PREFERRED: Use req.supabase (respects RLS, user-scoped)
+ *   const { data } = await req.supabase.from('audits').select('*');
+ * 
+ *   // ADMIN ONLY: Use when you need to bypass RLS
+ *   const { data } = await req.supabaseAdmin.from('people').select('*');
+ * 
+ * Usage outside routes (background jobs, etc.):
  *   import { getServerSupabase } from './core/config/server-supabase.js';
  *   const supabase = getServerSupabase();
- *   const { data } = await supabase.from('users').select('*');
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -18,11 +33,21 @@ dotenv.config();
 
 const logger = createLogger('ServerSupabase');
 
+// Singleton admin client - safe because it has no user-specific state
 let serverSupabaseClient: SupabaseClient | null = null;
 
 /**
- * Get or create server-side Supabase client with service role key
- * This client bypasses RLS and should only be used server-side
+ * Get or create server-side Supabase client with service role key.
+ * 
+ * ⚠️  WARNING: This client BYPASSES RLS!
+ * 
+ * This is a singleton - safe to use because:
+ * - It has no user-specific state
+ * - Service role key is the same for all requests
+ * - Supabase clients are thread-safe for reads
+ * 
+ * For user-scoped queries that should respect RLS,
+ * use req.supabase instead (created per-request with user's JWT).
  */
 export function getServerSupabase(): SupabaseClient {
   if (serverSupabaseClient) {
@@ -45,7 +70,12 @@ export function getServerSupabase(): SupabaseClient {
       throw new Error('Either SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY must be set');
     }
     logger.warn('Using anon key as fallback - RLS will be enforced');
-    serverSupabaseClient = createClient(supabaseUrl, anonKey);
+    serverSupabaseClient = createClient(supabaseUrl, anonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
     return serverSupabaseClient;
   }
 
@@ -54,6 +84,10 @@ export function getServerSupabase(): SupabaseClient {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    // Optimize for server-side usage
+    db: {
+      schema: 'public',
     },
   });
 
@@ -66,5 +100,12 @@ export function getServerSupabase(): SupabaseClient {
  */
 export function resetServerSupabase(): void {
   serverSupabaseClient = null;
+  logger.debug('Server Supabase client reset');
 }
+
+/**
+ * Alias for getServerSupabase - clearer naming
+ * @deprecated Use getServerSupabase or req.supabaseAdmin
+ */
+export const getAdminSupabase = getServerSupabase;
 

@@ -1,11 +1,13 @@
 /**
  * Notification Subscriptions API Routes
  * Server-side API for notification subscription operations
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabase!: User-scoped client for user's own subscriptions
  */
 
 import { Router, Response } from 'express';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { NOTIFICATION_SUBSCRIPTION_FIELDS } from '../../core/constants/field-whitelists.js';
 
@@ -16,9 +18,10 @@ const logger = createLogger('NotificationSubscriptionsAPI');
  * GET /api/notification-subscriptions
  * Get user's notification subscriptions
  */
-router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     const { is_active } = req.query;
@@ -51,9 +54,10 @@ router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Pr
  * POST /api/notification-subscriptions
  * Create a notification subscription
  */
-router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     const {
@@ -161,9 +165,10 @@ router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): P
  * DELETE /api/notification-subscriptions/:id
  * Delete a notification subscription
  */
-router.delete('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.delete('/:id', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
     const subscriptionId = req.params.id;
 

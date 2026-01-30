@@ -554,6 +554,20 @@ export async function exitImpersonation(): Promise<void> {
     // 3. Perform COMPLETE system cleanup
     performCompleteCleanup();
     
+    // 4. Notify other tabs that impersonation has ended
+    // They should reload to get a fresh state
+    try {
+      localStorage.setItem('impersonationEnded', 'true');
+      // Remove it after a short delay so the storage event fires
+      setTimeout(() => {
+        try {
+          localStorage.removeItem('impersonationEnded');
+        } catch (e) {}
+      }, 100);
+    } catch (e) {
+      // Ignore storage errors
+    }
+    
     logInfo('[Impersonation] Cleanup complete - redirecting to login page');
     
     // 4. Force complete page refresh and redirect to login

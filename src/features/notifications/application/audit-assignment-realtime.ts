@@ -247,7 +247,43 @@ function createRealtimeSubscription(supabase: SupabaseClient, normalizedEmail: s
           retryCount
         });
         
-        // Attempt retry with exponential backoff
+        // ✅ FIX: Check if this is an auth-related error
+        const errorMessage = err?.message?.toLowerCase() || '';
+        const isAuthError = errorMessage.includes('jwt') || 
+                           errorMessage.includes('token') ||
+                           errorMessage.includes('auth') ||
+                           errorMessage.includes('401') ||
+                           errorMessage.includes('unauthorized');
+        
+        if (isAuthError) {
+          console.log('[Audit assignment realtime] Auth error detected - will retry after session refresh');
+          // Wait for potential token refresh before retrying
+          setTimeout(async () => {
+            // Check if still authenticated
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                console.log('[Audit assignment realtime] Session valid after auth error - retrying');
+                if (auditAssignmentsChannel) {
+                  try {
+                    supabase.removeChannel(auditAssignmentsChannel);
+                  } catch (_) {}
+                  auditAssignmentsChannel = null;
+                }
+                createRealtimeSubscription(supabase, normalizedEmail);
+              } else {
+                console.log('[Audit assignment realtime] No valid session - subscription will not be retried');
+                auditAssignmentsChannel = null;
+                currentSubscribedEmail = null;
+              }
+            } catch (e) {
+              console.warn('[Audit assignment realtime] Error checking session:', e);
+            }
+          }, 2000); // Wait 2 seconds for token refresh
+          return;
+        }
+        
+        // Attempt retry with exponential backoff for non-auth errors
         if (retryCount < MAX_RETRIES) {
           retryCount++;
           const delay = RETRY_DELAY_MS * Math.pow(2, retryCount - 1);
