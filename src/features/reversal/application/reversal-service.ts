@@ -54,39 +54,6 @@ export class ReversalService {
 
       console.log('[ReversalService] Got', reversalRequests.length, 'reversal requests');
 
-      if (reversalRequests.length === 0) {
-        // Backward compatibility fallback:
-        // Some reversals were historically stored only on the audit tables (reversal_requested_at, etc.)
-        // and may not exist in reversal_requests (e.g., if the insert failed or for older data).
-        console.log('[ReversalService] No reversal_requests rows found, trying legacy audit-table fallback');
-        
-        const legacy = await this.repository.getLegacyReversalsFromAuditTables({
-          employeeEmail: options.employeeEmail,
-          limit: options.limit
-        });
-        
-        if (!legacy.length) {
-          console.log('[ReversalService] Legacy fallback returned no rows, returning empty array');
-          return [];
-        }
-        
-        // Apply employee ownership filter (already applied in repository when employeeEmail is passed,
-        // but keep defensive filtering here in case repository behavior changes).
-        const normalizedEmployeeEmail = options.employeeEmail?.toLowerCase().trim();
-        let filtered = legacy;
-        if (normalizedEmployeeEmail) {
-          filtered = legacy.filter(r => (r.employee_email || '').toLowerCase().trim() === normalizedEmployeeEmail);
-        }
-        
-        // Apply pending filter if requested
-        if (options.onlyPending) {
-          filtered = filtered.filter(r => this.isPendingReversal(r));
-        }
-        
-        console.log('[ReversalService] Returning', filtered.length, 'legacy reversals after filtering');
-        return filtered;
-      }
-
       // Get workflow states
       const reversalIds = reversalRequests.map(rr => rr.id);
       const workflowStates = await this.repository.getWorkflowStates(reversalIds);
@@ -165,7 +132,52 @@ export class ReversalService {
         mergedReversals.push(merged);
       }
 
-      console.log('[ReversalService] Returning', mergedReversals.length, 'merged reversals after filtering');
+      // Also check for legacy reversals that might exist only in audit tables
+      // This handles cases where reversal was written to audit table but insert to reversal_requests failed
+      console.log('[ReversalService] Checking for legacy reversals not in reversal_requests...');
+      
+      const legacyReversals = await this.repository.getLegacyReversalsFromAuditTables({
+        employeeEmail: options.employeeEmail,
+        limit: options.limit
+      });
+
+      // Create a Set of audit_ids we already have from reversal_requests
+      const existingAuditIds = new Set(mergedReversals.map(r => r.audit_id));
+      
+      // Add legacy reversals that are not already in mergedReversals
+      let legacyAdded = 0;
+      for (const legacyReversal of legacyReversals) {
+        if (!existingAuditIds.has(legacyReversal.audit_id)) {
+          // Apply employee filter if needed
+          if (normalizedEmployeeEmail) {
+            const legacyEmployeeEmail = (legacyReversal.employee_email || '').toLowerCase().trim();
+            if (legacyEmployeeEmail !== normalizedEmployeeEmail) {
+              continue;
+            }
+          }
+          
+          // Apply pending filter if requested
+          if (options.onlyPending && !this.isPendingReversal(legacyReversal)) {
+            continue;
+          }
+          
+          mergedReversals.push(legacyReversal);
+          legacyAdded++;
+        }
+      }
+      
+      if (legacyAdded > 0) {
+        console.log('[ReversalService] Added', legacyAdded, 'legacy reversals not in reversal_requests');
+      }
+
+      // Sort by requested_at descending
+      mergedReversals.sort((a, b) => {
+        const dateA = new Date(a.reversal_requested_at || a.requested_at || '').getTime() || 0;
+        const dateB = new Date(b.reversal_requested_at || b.requested_at || '').getTime() || 0;
+        return dateB - dateA;
+      });
+
+      console.log('[ReversalService] Returning', mergedReversals.length, 'total reversals after merging');
       return mergedReversals;
     } catch (error) {
       console.error('Error getting reversals with audit data:', error);
