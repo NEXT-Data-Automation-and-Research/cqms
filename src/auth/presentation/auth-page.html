@@ -70,20 +70,27 @@
                 <p class="mt-1 text-slate-500 text-sm">Use your work account to continue.</p>
 
                 <form id="loginForm" class="mt-4 sm:mt-6 lg:mt-8">
-                    <div class="space-y-4 flex flex-col items-center">
+                    <div class="space-y-3 flex flex-col items-center">
                         <button
                             type="button"
                             id="googleSignInButton"
                             class="w-auto min-w-[240px] flex items-center justify-center gap-3 rounded-full border border-[#dadce0] bg-white py-2.5 px-5 text-sm font-bold text-black transition hover:bg-[#f8f9fa] focus:outline-none focus:ring-2 focus:ring-[#1a73e8]/30 disabled:opacity-60">
-                            <svg class="h-5 w-5 flex-shrink-0" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                            <svg id="googleIcon" class="h-5 w-5 flex-shrink-0" viewBox="0 0 18 18" fill="none" aria-hidden="true">
                                 <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
                                 <path d="M9 18c2.43 0 4.467-.806 5.965-2.184l-2.908-2.258c-.806.54-1.837.86-3.057.86-2.35 0-4.34-1.587-5.053-3.72H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
                                 <path d="M3.947 10.698c-.18-.54-.282-1.117-.282-1.698s.102-1.158.282-1.698V4.97H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.03l2.99-2.332z" fill="#FBBC05"/>
                                 <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.97L3.947 7.302C4.66 5.167 6.65 3.58 9 3.58z" fill="#EA4335"/>
                             </svg>
-                            <span id="googleButtonContent">Sign in with Google</span>
+                            <span id="googleButtonContent" class="flex flex-col items-start leading-tight">
+                                <span id="googleButtonText">Sign in with Google</span>
+                            </span>
                         </button>
                         <p id="googleError" class="text-sm text-red-600 empty:hidden text-center"></p>
+
+                        <!-- Sign out link (shown only when already signed in) -->
+                        <button type="button" id="signOutButton" class="hidden text-xs text-slate-500 hover:text-slate-700 underline underline-offset-2 transition-colors">
+                            Sign out
+                        </button>
                     </div>
                 </form>
 
@@ -186,7 +193,7 @@
         })();
 
         import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
-        import { signInWithGoogle, handleGoogleOAuthCallback, enableDevBypassAuthentication } from '/js/utils/auth.js';
+        import { signInWithGoogle, handleGoogleOAuthCallback, enableDevBypassAuthentication, signOut } from '/js/utils/auth.js';
 
         function isDevModeEnabled() {
             const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.endsWith('.local');
@@ -217,6 +224,21 @@
 
         let callbackHandlingInProgress = false;
         let callbackHandled = false;
+        
+        // ✅ FIX: Detect OAuth params immediately (synchronously) and set flag BEFORE any async work
+        // This prevents auth-checker from racing and causing double redirects
+        (function setOAuthFlagImmediately() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlHash = window.location.hash;
+            const hasOAuthParams = urlParams.get('code') || urlParams.get('access_token') || urlHash.includes('access_token') || urlHash.includes('code');
+            if (hasOAuthParams) {
+                // Set flag immediately so auth-checker knows OAuth is being handled
+                sessionStorage.setItem('oauthCallbackInProgress', 'true');
+                window.__oauthCallbackInProgress = true;
+                console.log('[Auth] OAuth params detected, flag set to prevent auth-checker race');
+            }
+        })();
+        
         async function checkAndHandleCallback() {
             if (callbackHandlingInProgress || callbackHandled) return false;
             if (!supabaseInitialized) await initializeSupabase();
@@ -233,6 +255,9 @@
                 return true;
             } catch (e) {
                 console.error('OAuth callback error:', e);
+                // Clear the flag on error so user can try again
+                sessionStorage.removeItem('oauthCallbackInProgress');
+                delete window.__oauthCallbackInProgress;
                 return false;
             } finally {
                 callbackHandlingInProgress = false;
@@ -242,7 +267,7 @@
         const handled = await checkAndHandleCallback();
         if (!handled) {
             function setGoogleButtonLabel(text) {
-                const el = document.getElementById('googleButtonContent');
+                const el = document.getElementById('googleButtonText');
                 if (el) el.textContent = text;
             }
 
@@ -250,7 +275,33 @@
             const errEl = document.getElementById('googleError');
             if (btn) {
                 btn.addEventListener('click', async () => {
+                    // If in continue mode, just redirect to home
+                    if (btn.dataset.continueMode === 'true') {
+                        window.location.replace('/home');
+                        return;
+                    }
+                    
                     if (!supabaseInitialized) await initializeSupabase();
+                    // Allow switching accounts even if an existing session is present.
+                    // If a session exists, sign out first (without redirect) and then start OAuth.
+                    try {
+                        const supabase = getSupabase();
+                        if (supabase) {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (session?.user) {
+                                try {
+                                    await supabase.auth.signOut({ scope: 'local' });
+                                } catch (_) {
+                                    // Ignore sign out errors and continue to OAuth
+                                }
+                                try {
+                                    localStorage.removeItem('userInfo');
+                                } catch (_) {}
+                            }
+                        }
+                    } catch (_) {
+                        // Ignore session check errors and continue
+                    }
                     if (errEl) errEl.textContent = '';
                     btn.disabled = true;
                     setGoogleButtonLabel('Redirecting…');
@@ -274,6 +325,65 @@
                     });
                 }
             }
+
+            // If user is already authenticated, transform the sign-in button into a "Continue as" button.
+            // This avoids the multi-tab case where a second tab can't reach the login page to switch accounts.
+            try {
+                const supabase = getSupabase();
+                if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user?.email) {
+                        const googleBtn = document.getElementById('googleSignInButton');
+                        const googleIcon = document.getElementById('googleIcon');
+                        const googleButtonContent = document.getElementById('googleButtonContent');
+                        const googleButtonText = document.getElementById('googleButtonText');
+                        const signOutBtn = document.getElementById('signOutButton');
+
+                        if (googleBtn && googleButtonContent && googleButtonText) {
+                            // Transform button to "Continue as" style - white with shadow for contrast
+                            googleBtn.classList.remove('py-2.5', 'px-5', 'min-w-[240px]');
+                            googleBtn.classList.add('py-3', 'px-5', 'min-w-[280px]', 'shadow-lg', 'shadow-black/10', 'hover:shadow-xl', 'hover:shadow-black/15', 'hover:-translate-y-0.5', 'active:translate-y-0', 'border-slate-200');
+                            
+                            // Hide the Google icon
+                            if (googleIcon) googleIcon.classList.add('hidden');
+                            
+                            // Get user avatar (from Google OAuth metadata)
+                            const avatarUrl = session.user.user_metadata?.avatar_url || session.user.user_metadata?.picture || '';
+                            const userName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || '';
+                            
+                            // Update button content to show profile picture, name/email, and continue
+                            googleButtonContent.innerHTML = `
+                                <span class="flex items-center gap-3 w-full">
+                                    ${avatarUrl 
+                                        ? `<img src="${avatarUrl}" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-slate-100" referrerpolicy="no-referrer">`
+                                        : `<span class="w-10 h-10 rounded-full bg-[#1A733E] flex items-center justify-center flex-shrink-0 text-white font-semibold text-sm">${(userName || session.user.email || '?').charAt(0).toUpperCase()}</span>`
+                                    }
+                                    <span class="flex flex-col items-start text-left flex-1 min-w-0">
+                                        <span class="text-slate-500 text-xs font-normal">Continue as</span>
+                                        <span class="text-slate-900 font-semibold text-sm truncate w-full">${userName || session.user.email}</span>
+                                    </span>
+                                    <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                    </svg>
+                                </span>
+                            `;
+                            
+                            // Mark button as continue mode
+                            googleBtn.dataset.continueMode = 'true';
+                        }
+                        
+                        // Show sign out link
+                        if (signOutBtn) {
+                            signOutBtn.classList.remove('hidden');
+                            signOutBtn.addEventListener('click', async () => {
+                                try { await signOut(); } catch (_) { window.location.href = '/src/auth/presentation/auth-page.html'; }
+                            });
+                        }
+                    }
+                }
+            } catch (_) {
+                // Ignore - login UI still works
+            }
         }
     </script>
     <script type="module">
@@ -287,7 +397,45 @@
         }
         setInterval(checkForUpdates, 5 * 60 * 1000);
         document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdates(); });
+        
+        // ✅ FIX: Handle back button navigation to auth page when already authenticated
+        // This addresses Scenario 59: Back button after login
+        window.addEventListener('popstate', async (event) => {
+            // Check if user is authenticated
+            try {
+                const supabase = getSupabase?.();
+                if (supabase) {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session?.user) {
+                        // User is authenticated but navigated back to auth page
+                        // Redirect them to home instead of showing login
+                        console.log('[Auth Page] Authenticated user pressed back button - redirecting to home');
+                        window.history.replaceState({}, '', '/home');
+                        window.location.replace('/home');
+                    }
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+        });
+        
+        // Also check on page load if this was a back navigation
+        if (window.performance?.navigation?.type === 2 || 
+            (window.performance?.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
+            // This was a back/forward navigation
+            (async () => {
+                try {
+                    const supabase = getSupabase?.();
+                    if (supabase) {
+                        const { data: { session } } = await supabase.auth.getSession();
+                        if (session?.user) {
+                            console.log('[Auth Page] Back navigation detected with valid session - redirecting to home');
+                            window.location.replace('/home');
+                        }
+                    }
+                } catch (e) {}
+            })();
+        }
     </script>
-    <script type="module" src="/js/auth-checker.js"></script>
 </body>
 </html>

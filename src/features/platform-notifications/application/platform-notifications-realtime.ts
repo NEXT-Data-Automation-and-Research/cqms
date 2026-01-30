@@ -310,6 +310,40 @@ function createRealtimeSubscription(supabase: SupabaseClient): void {
           retryCount
         });
         
+        // ✅ FIX: Check if this is an auth-related error
+        const errorMessage = err?.message?.toLowerCase() || '';
+        const isAuthError = errorMessage.includes('jwt') || 
+                           errorMessage.includes('token') ||
+                           errorMessage.includes('auth') ||
+                           errorMessage.includes('401') ||
+                           errorMessage.includes('unauthorized');
+        
+        if (isAuthError) {
+          console.log('[Platform notifications realtime] Auth error detected - will retry after session refresh');
+          setTimeout(async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session?.user) {
+                console.log('[Platform notifications realtime] Session valid - retrying');
+                if (platformNotificationsChannel) {
+                  try {
+                    supabase.removeChannel(platformNotificationsChannel);
+                  } catch (_) {}
+                  platformNotificationsChannel = null;
+                }
+                createRealtimeSubscription(supabase);
+              } else {
+                console.log('[Platform notifications realtime] No valid session - not retrying');
+                platformNotificationsChannel = null;
+                isSubscribed = false;
+              }
+            } catch (e) {
+              console.warn('[Platform notifications realtime] Error checking session:', e);
+            }
+          }, 2000);
+          return;
+        }
+        
         if (retryCount < MAX_RETRIES) {
           retryCount++;
           const delay = RETRY_DELAY_MS * Math.pow(2, retryCount - 1);

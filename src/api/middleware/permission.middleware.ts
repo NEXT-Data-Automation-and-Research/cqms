@@ -1,10 +1,13 @@
 /**
  * Permission Middleware
  * Express middleware for route protection based on permissions
+ * 
+ * Uses per-request Supabase clients when available (via SupabaseRequest),
+ * falls back to admin client for standalone usage.
  */
 
-import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from './auth.middleware.js';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
+import { SupabaseRequest } from './auth.middleware.js';
 import { permissionService } from '../../core/permissions/permission.service.js';
 import { createLogger } from '../../utils/logger.js';
 import { getServerSupabase } from '../../core/config/server-supabase.js';
@@ -18,14 +21,15 @@ const logger = createLogger('PermissionMiddleware');
 export function requirePermission(
   resourceName: string,
   ruleType: 'page' | 'feature' | 'api_endpoint' | 'action' = 'api_endpoint'
-) {
+): RequestHandler {
   return async (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
@@ -33,7 +37,7 @@ export function requirePermission(
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({
           error: 'Unauthorized',
@@ -92,15 +96,16 @@ export function requirePermissionOrRole(
   resourceName: string,
   ruleType: 'page' | 'feature' | 'api_endpoint' | 'action',
   ...allowedRoles: string[]
-) {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+): RequestHandler {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({ error: 'Unauthorized', message: 'Authentication required' });
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({ error: 'Unauthorized', message: 'User email not found' });
         return;
@@ -150,14 +155,15 @@ export function requirePermissionOrRole(
  */
 export function requireAnyPermission(
   resources: Array<{ name: string; type: 'page' | 'feature' | 'api_endpoint' | 'action' }>
-) {
+): RequestHandler {
   return async (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
@@ -165,7 +171,7 @@ export function requireAnyPermission(
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({
           error: 'Unauthorized',
@@ -205,14 +211,15 @@ export function requireAnyPermission(
  */
 export function requireAllPermissions(
   resources: Array<{ name: string; type: 'page' | 'feature' | 'api_endpoint' | 'action' }>
-) {
+): RequestHandler {
   return async (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
@@ -220,7 +227,7 @@ export function requireAllPermissions(
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({
           error: 'Unauthorized',
@@ -258,14 +265,15 @@ export function requireAllPermissions(
 /**
  * Require specific role(s)
  */
-export function requireRole(...roles: string[]) {
+export function requireRole(...roles: string[]): RequestHandler {
   return async (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
@@ -273,7 +281,7 @@ export function requireRole(...roles: string[]) {
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({
           error: 'Unauthorized',
@@ -311,14 +319,15 @@ export function requireRole(...roles: string[]) {
 /**
  * Require minimum role level
  */
-export function requireMinRoleLevel(minLevel: number) {
+export function requireMinRoleLevel(minLevel: number): RequestHandler {
   return async (
-    req: AuthenticatedRequest,
+    req: Request,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
+    const supabaseReq = req as SupabaseRequest;
     try {
-      if (!req.user) {
+      if (!supabaseReq.user) {
         res.status(401).json({
           error: 'Unauthorized',
           message: 'Authentication required',
@@ -326,7 +335,7 @@ export function requireMinRoleLevel(minLevel: number) {
         return;
       }
 
-      const userEmail = req.user.email?.toLowerCase().trim();
+      const userEmail = supabaseReq.user.email?.toLowerCase().trim();
       if (!userEmail) {
         res.status(401).json({
           error: 'Unauthorized',

@@ -1,12 +1,14 @@
 /**
  * Cache Management Routes
  * API endpoints for platform-wide cache clearing by admins
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabaseAdmin!: Admin client for system operations
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, verifyAuth } from '../middleware/auth.middleware.js';
+import { SupabaseRequest, verifyAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/permission.middleware.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
 
 const router = Router();
@@ -26,7 +28,7 @@ router.post(
   '/clear',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const user = req.user;
       const { reason, clearType = 'full' } = req.body;
@@ -46,7 +48,8 @@ router.post(
         return;
       }
 
-      const supabase = getServerSupabase();
+      // Use admin client for system operations
+      const supabase = req.supabaseAdmin!;
 
       // Generate a unique version identifier
       const now = new Date();
@@ -96,11 +99,12 @@ router.get(
   '/history',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
 
-      const supabase = getServerSupabase();
+      // Use admin client for system operations
+      const supabase = req.supabaseAdmin!;
 
       const { data, error } = await supabase
         .from('cache_versions')
@@ -131,9 +135,10 @@ router.get(
 router.get(
   '/latest',
   verifyAuth,
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
-      const supabase = getServerSupabase();
+      // Use user's client for reading public cache info
+      const supabase = req.supabase!;
 
       const { data, error } = await supabase
         .from('cache_versions')

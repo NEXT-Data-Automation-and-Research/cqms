@@ -1,11 +1,14 @@
 /**
  * Users API Routes
  * Server-side API for user operations
+ * 
+ * Uses per-request Supabase clients for proper user isolation:
+ * - req.supabase!: User-scoped client (respects RLS)
+ * - req.supabaseAdmin!: Admin client (bypasses RLS, use sparingly)
  */
 
 import { Router, Response } from 'express';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { USER_PRIVATE_FIELDS } from '../../core/constants/field-whitelists.js';
 
@@ -16,20 +19,70 @@ const logger = createLogger('UsersAPI');
  * GET /api/users/me
  * Get current user's profile
  */
-router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
-    const userId = req.user!.id;
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
+    const user = req.user!;
+    const userId = user.id;
 
     const { data, error } = await supabase
       .from('users')
       .select(USER_PRIVATE_FIELDS)
       .eq('id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       logger.error('Error fetching user:', error);
       res.status(500).json({ error: 'Failed to fetch user data' });
+      return;
+    }
+
+    // If the user doesn't have a row in our `users` table yet, auto-provision it.
+    // This prevents the profile page from failing for users who authenticated successfully
+    // but never triggered the "create user profile" flow.
+    if (!data) {
+      if (!user.email) {
+        res.status(404).json({ error: 'User profile not found' });
+        return;
+      }
+
+      const metadata = (user as any).user_metadata || {};
+      const appMetadata = (user as any).app_metadata || {};
+
+      const provider =
+        appMetadata.provider ||
+        (Array.isArray(appMetadata.providers) ? appMetadata.providers[0] : undefined) ||
+        metadata.provider ||
+        'unknown';
+
+      const full_name = metadata.full_name || metadata.name || null;
+      const avatar_url = metadata.avatar_url || metadata.picture || null;
+      const now = new Date().toISOString();
+
+      const { data: created, error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: user.email,
+          full_name,
+          avatar_url,
+          provider,
+          device_info: {},
+          first_sign_in_at: now,
+          last_sign_in_at: now,
+          sign_in_count: '1',
+        })
+        .select(USER_PRIVATE_FIELDS)
+        .single();
+
+      if (createError) {
+        logger.error('Error creating user profile:', createError);
+        res.status(500).json({ error: 'Failed to create user profile' });
+        return;
+      }
+
+      res.json({ data: created });
       return;
     }
 
@@ -44,9 +97,10 @@ router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): 
  * PUT /api/users/me
  * Update current user's profile
  */
-router.put('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     // Validate input
@@ -87,9 +141,10 @@ router.put('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): 
  * POST /api/users
  * Create user profile (called after signup)
  */
-router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for user creation (may need to bypass RLS)
+    const supabase = req.supabaseAdmin!;
     const userId = req.user!.id;
 
     const { email, full_name, avatar_url, provider, device_info } = req.body;

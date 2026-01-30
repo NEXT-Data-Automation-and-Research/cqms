@@ -1,6 +1,9 @@
 /**
  * Intelligent Data Refresh Service
  * Handles selective data refresh without full page reloads
+ * 
+ * ✅ FIX: Added auth-aware refresh to prevent API calls during auth transitions
+ * This addresses Scenario 28-32: Background process conflicts
  */
 
 interface RefreshOptions {
@@ -12,6 +15,29 @@ interface RefreshOptions {
 type RefreshFunction = () => Promise<void>;
 
 /**
+ * Check if auth is in a transitional state
+ * Checks both the new auth coordinator and legacy flags
+ */
+function isAuthTransitioning(): boolean {
+  try {
+    // Check legacy flags
+    if (sessionStorage.getItem('oauthCallbackInProgress') === 'true') return true;
+    if (sessionStorage.getItem('loginJustCompleted') === 'true') return true;
+    if (sessionStorage.getItem('cacheReloadInProgress') === 'true') return true;
+    if ((window as any).__oauthCallbackInProgress) return true;
+    if ((window as any).__cacheReloadInProgress) return true;
+    if ((window as any).__redirectingToLogin) return true;
+    
+    // Check auth coordinator if available
+    if ((window as any).authCoordinator?.isTransitioning?.()) return true;
+    
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
  * Service for managing intelligent data refresh
  * Replaces full page reloads with selective section updates
  */
@@ -19,6 +45,7 @@ export class DataRefreshService {
   private refreshInterval: number | null = null;
   private refreshFunctions: Map<string, RefreshFunction> = new Map();
   private readonly DEFAULT_INTERVAL = 2 * 60 * 1000; // 2 minutes
+  private isPaused: boolean = false;
 
   /**
    * Register a refresh function for a specific section
@@ -51,6 +78,20 @@ export class DataRefreshService {
   }
 
   /**
+   * Pause refresh temporarily (during auth transitions)
+   */
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  /**
+   * Resume refresh after auth transition
+   */
+  resume(): void {
+    this.isPaused = false;
+  }
+
+  /**
    * Refresh specific sections or all sections
    */
   async refresh(options: RefreshOptions = {}): Promise<void> {
@@ -58,6 +99,15 @@ export class DataRefreshService {
 
     // Only refresh if page is visible
     if (document.hidden && !force) {
+      return;
+    }
+
+    // ✅ FIX: Don't refresh if auth is in a transitional state
+    // This prevents API errors during login/logout/token refresh
+    if (!force && (this.isPaused || isAuthTransitioning())) {
+      if (!silent) {
+        console.log('[DataRefreshService] Skipping refresh - auth transition in progress');
+      }
       return;
     }
 

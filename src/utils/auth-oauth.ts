@@ -90,24 +90,6 @@ async function waitForSupabaseInit(maxWait: number = 15000): Promise<any> {
  * RELIABILITY: Added check for existing session before attempting sign-in
  */
 export async function signInWithGoogle(): Promise<void> {
-  // RELIABILITY: Check if user already has a valid session
-  // If so, redirect to home instead of trying to sign in again
-  const cachedSession = localStorage.getItem('supabase.auth.token');
-  const userInfo = localStorage.getItem('userInfo');
-  
-  if (cachedSession && userInfo) {
-    try {
-      const parsed = JSON.parse(userInfo);
-      if (parsed && parsed.id && parsed.email) {
-        logInfo('User already has valid session, redirecting to home instead of sign-in');
-        window.location.replace('/home');
-        return;
-      }
-    } catch (parseError) {
-      // Invalid cache, continue with sign-in
-    }
-  }
-  
   const supabase = await waitForSupabaseInit();
   if (!supabase) {
     throw new Error('Supabase not initialized. Please wait a moment and try again.');
@@ -143,10 +125,24 @@ export async function signInWithGoogle(): Promise<void> {
 export async function handleGoogleOAuthCallback(): Promise<void> {
   logInfo('🔄 Starting OAuth callback handling...');
   
+  // ✅ CRITICAL: Set OAuth flag IMMEDIATELY before any async operations
+  // This prevents auth-checker race conditions
+  try {
+    sessionStorage.setItem('oauthCallbackInProgress', 'true');
+    (window as any).__oauthCallbackInProgress = true;
+  } catch (e) {
+    // sessionStorage may not be available
+  }
+  
   const supabase = await waitForSupabaseInit();
   if (!supabase) {
     logError('❌ Supabase not initialized - cannot handle OAuth callback');
     hideLoadingOverlay();
+    // Clear OAuth flag on failure
+    try {
+      sessionStorage.removeItem('oauthCallbackInProgress');
+      delete (window as any).__oauthCallbackInProgress;
+    } catch (e) {}
     return;
   }
   
@@ -421,6 +417,19 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
 
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
     logInfo('✅ Updated localStorage with full user profile data including role:', userInfo.role);
+    
+    // ✅ FIX: Signal other tabs that login completed (for cross-tab sync)
+    try {
+      localStorage.setItem('crossTabLoginCompleted', Date.now().toString());
+      // Remove immediately - the storage event is what matters
+      setTimeout(() => {
+        try {
+          localStorage.removeItem('crossTabLoginCompleted');
+        } catch (e) {}
+      }, 100);
+    } catch (e) {
+      // Ignore storage errors
+    }
 
     // ✅ SECURITY: Store device fingerprint for this session to prevent token copying
     // ✅ FIX: Pass userId to ensure fingerprint is stored with user-based key
@@ -435,6 +444,15 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     if (window.location.search || window.location.hash) {
       const cleanUrl = window.location.origin + window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
+    }
+    
+    // ✅ FIX: Replace current history entry to prevent back button going to auth page
+    // This addresses Scenario 59: Back button after login
+    try {
+      // Replace the auth page in history so back button doesn't return here
+      window.history.replaceState({ authenticated: true }, '', window.location.href);
+    } catch (e) {
+      // Ignore history errors
     }
 
     // ✅ CRITICAL: Ensure redirect happens - wrap in try-catch to prevent any errors from blocking redirect
@@ -532,6 +550,12 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     } catch (sessionCheckError) {
       logError('Could not check session after error:', sessionCheckError);
     }
+    
+    // ✅ Clear OAuth flags on error so user can retry
+    try {
+      sessionStorage.removeItem('oauthCallbackInProgress');
+      delete (window as any).__oauthCallbackInProgress;
+    } catch (e) {}
     
     hideLoadingOverlay();
     // Show error to user

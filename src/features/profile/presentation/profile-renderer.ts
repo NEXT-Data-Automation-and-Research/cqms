@@ -243,7 +243,32 @@ export class ProfileRenderer {
         </div>
       `);
       messageEl.classList.remove('hidden');
+      return;
     }
+
+    // Fallback: if the form hasn't rendered yet, show the error in the main container
+    const container = document.getElementById('profile-container');
+    if (container) {
+      safeSetHTML(container, `
+        <div class="max-w-2xl mx-auto">
+          <div class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            ${escapeHtml(message)}
+            <div class="mt-3">
+              <button
+                type="button"
+                class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                onclick="location.reload()"
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    logWarn('[ProfileRenderer] Unable to display error - no container found');
   }
 }
 

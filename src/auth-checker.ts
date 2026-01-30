@@ -103,6 +103,194 @@ function markSessionVerified(): void {
 }
 
 /**
+ * Cross-tab auth sync
+ *
+ * Supabase syncs auth across tabs via storage/broadcast, but our UI relies on `userInfo`
+ * and custom events. When `userInfo` changes in another tab, this tab won't receive
+ * the `userInfoUpdated` event automatically, so the sidebar can show stale user info.
+ *
+ * ✅ Enhanced to handle:
+ * - Login in another tab (Scenario 15)
+ * - Logout in another tab (Scenario 16)
+ * - Session refresh across tabs (Scenario 17)
+ * - Impersonation changes (Scenario 18-19)
+ */
+function setupCrossTabAuthSync(): void {
+  if (typeof window === 'undefined') return;
+  if ((window as any).__crossTabAuthSyncSetup) return;
+  (window as any).__crossTabAuthSyncSetup = true;
+
+  window.addEventListener('storage', (evt: StorageEvent) => {
+    try {
+      // ✅ FIX: Don't process storage events during our own auth transitions
+      if (isOAuthCallbackInProgress()) {
+        logInfo('[CrossTabSync] Ignoring storage event during OAuth callback');
+        return;
+      }
+
+      // User info changes (e.g., another tab completed OAuth and wrote userInfo)
+      if (evt.key === 'userInfo') {
+        // ✅ FIX: Handle logout (userInfo removed)
+        if (!evt.newValue && evt.oldValue) {
+          logInfo('[CrossTabSync] User logged out in another tab');
+          // Show notification and redirect
+          showCrossTabLogoutNotification();
+          return;
+        }
+        
+        if (!evt.newValue) return;
+        
+        const parsed = JSON.parse(evt.newValue);
+        if (parsed && parsed.id && parsed.email) {
+          // ✅ FIX: Check if user changed (different user logged in)
+          if (evt.oldValue) {
+            try {
+              const oldParsed = JSON.parse(evt.oldValue);
+              if (oldParsed.id !== parsed.id) {
+                logInfo('[CrossTabSync] Different user logged in - reloading page');
+                // Different user logged in - reload to get fresh state
+                window.location.reload();
+                return;
+              }
+            } catch (e) {
+              // Old value was invalid, just update
+            }
+          }
+          
+          document.dispatchEvent(new CustomEvent('userInfoUpdated', { detail: { userInfo: parsed } }));
+        }
+        return;
+      }
+
+      // Auth token changes: clear auth caches so subsequent checks re-verify with latest token.
+      if (evt.key === 'supabase.auth.token') {
+        // ✅ FIX: If token was removed, user logged out
+        if (!evt.newValue && evt.oldValue) {
+          logInfo('[CrossTabSync] Auth token removed in another tab - session ended');
+          showCrossTabLogoutNotification();
+          return;
+        }
+        
+        import('./utils/authenticated-supabase.js')
+          .then((module) => {
+            if (typeof module.clearAuthCache === 'function') {
+              module.clearAuthCache();
+            }
+          })
+          .catch(() => {
+            // Ignore if module isn't available yet
+          });
+      }
+      
+      // ✅ FIX: Handle impersonation end in another tab
+      if (evt.key === 'impersonationEnded' && evt.newValue === 'true') {
+        logInfo('[CrossTabSync] Impersonation ended in another tab - reloading');
+        try {
+          localStorage.removeItem('impersonationEnded');
+        } catch (e) {}
+        window.location.reload();
+      }
+      
+      // ✅ FIX: Handle cross-tab login signal
+      if (evt.key === 'crossTabLoginCompleted' && evt.newValue) {
+        logInfo('[CrossTabSync] Login completed in another tab');
+        try {
+          localStorage.removeItem('crossTabLoginCompleted');
+        } catch (e) {}
+        // Refresh the page to load with new auth state
+        window.location.reload();
+      }
+    } catch {
+      // Ignore cross-tab sync errors
+    }
+  });
+  
+  // ✅ FIX: Also listen for visibility change to re-check auth when tab becomes visible
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      // Tab became visible - check if auth state changed while we were hidden
+      checkAuthStateOnVisibilityChange();
+    }
+  });
+}
+
+/**
+ * Show notification that user was logged out in another tab
+ */
+function showCrossTabLogoutNotification(): void {
+  // Don't show if already on auth page
+  const currentPath = window.location.pathname;
+  if (currentPath.includes('auth-page')) return;
+  
+  const notification = document.createElement('div');
+  notification.id = 'cross-tab-logout-notification';
+  notification.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 2rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    z-index: 99999;
+    text-align: center;
+    max-width: 400px;
+  `;
+  notification.innerHTML = `
+    <h3 style="margin-bottom: 1rem; color: #1f2937;">Session Ended</h3>
+    <p style="color: #6b7280; margin-bottom: 1.5rem;">You were logged out in another tab.</p>
+    <button onclick="window.location.href='/src/auth/presentation/auth-page.html'" style="
+      background: #1A733E;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 500;
+    ">Sign In Again</button>
+  `;
+  
+  // Add backdrop
+  const backdrop = document.createElement('div');
+  backdrop.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 99998;
+  `;
+  
+  document.body.appendChild(backdrop);
+  document.body.appendChild(notification);
+}
+
+/**
+ * Check auth state when tab becomes visible after being hidden
+ * This handles cases where session expired or user logged out while tab was hidden
+ */
+async function checkAuthStateOnVisibilityChange(): Promise<void> {
+  // Skip if we're in an auth transition
+  if (isOAuthCallbackInProgress()) return;
+  if (sessionStorage.getItem('loginJustCompleted') === 'true') return;
+  
+  // Quick check: is userInfo still valid?
+  const userInfo = localStorage.getItem('userInfo');
+  const authToken = localStorage.getItem('supabase.auth.token');
+  
+  if (!userInfo || !authToken) {
+    // Auth data missing - might have been logged out
+    const currentPath = window.location.pathname;
+    if (!currentPath.includes('auth-page')) {
+      logInfo('[CrossTabSync] Auth data missing on visibility change - redirecting to login');
+      redirectToLogin();
+    }
+  }
+}
+
+/**
  * Create and show auth loading overlay
  * Prevents content flash during authentication verification
  * ✅ FIX: Only shows on initial load, not on every page navigation
@@ -178,46 +366,68 @@ function hideAuthLoadingOverlay(): void {
   }
 }
 
+// Track authentication check promise to prevent duplicate simultaneous checks
+let authCheckPromise: Promise<boolean> | null = null;
+let lastAuthCheckTime = 0;
+const AUTH_CHECK_DEBOUNCE_MS = 500; // Don't run auth check more than once per 500ms
+
 /**
  * Check if user is authenticated
  * Supports both Supabase auth and dev bypass
  * RELIABILITY: More graceful handling of initialization failures
+ * DEBOUNCING: Prevents multiple simultaneous auth checks
  * @returns true if authenticated, false otherwise
  */
 async function isAuthenticated(): Promise<boolean> {
-  try {
-    // Check dev bypass first (faster check)
-    if (isDevBypassActive()) {
-      return true;
-    }
-
-    // Check Supabase authentication
-    const isAuth = await checkSupabaseAuthentication();
-    return isAuth;
-  } catch (error) {
-    logError('Error checking authentication:', error);
-    
-    // RELIABILITY: If check failed but we have cached session, don't immediately lock out
-    // This prevents locking out users during temporary network issues
-    const cachedSession = localStorage.getItem('supabase.auth.token');
-    const userInfo = localStorage.getItem('userInfo');
-    
-    if (cachedSession && userInfo) {
-      try {
-        const parsed = JSON.parse(userInfo);
-        if (parsed && parsed.id && parsed.email) {
-          logInfo('Auth check failed but valid cached session exists - allowing access');
-          // Mark that we're in degraded mode so UI can show reconnection status if needed
-          sessionStorage.setItem('authDegradedMode', 'true');
-          return true;
-        }
-      } catch (parseError) {
-        // Invalid cached data, proceed with false
-      }
-    }
-    
-    return false;
+  // Debounce: If we just checked auth, return the cached promise
+  const now = Date.now();
+  if (authCheckPromise && (now - lastAuthCheckTime) < AUTH_CHECK_DEBOUNCE_MS) {
+    logInfo('Auth check debounced, returning cached result');
+    return authCheckPromise;
   }
+  
+  lastAuthCheckTime = now;
+  
+  authCheckPromise = (async () => {
+    try {
+      // Check dev bypass first (faster check)
+      if (isDevBypassActive()) {
+        return true;
+      }
+
+      // Check Supabase authentication
+      const isAuth = await checkSupabaseAuthentication();
+      return isAuth;
+    } catch (error) {
+      logError('Error checking authentication:', error);
+      
+      // RELIABILITY: If check failed but we have cached session, don't immediately lock out
+      // This prevents locking out users during temporary network issues
+      // BUT: Only trust cache if no OAuth is in progress
+      if (!isOAuthCallbackInProgress()) {
+        const cachedSession = localStorage.getItem('supabase.auth.token');
+        const userInfo = localStorage.getItem('userInfo');
+        
+        if (cachedSession && userInfo) {
+          try {
+            const parsed = JSON.parse(userInfo);
+            if (parsed && parsed.id && parsed.email) {
+              logInfo('Auth check failed but valid cached session exists - allowing access');
+              // Mark that we're in degraded mode so UI can show reconnection status if needed
+              sessionStorage.setItem('authDegradedMode', 'true');
+              return true;
+            }
+          } catch (parseError) {
+            // Invalid cached data, proceed with false
+          }
+        }
+      }
+      
+      return false;
+    }
+  })();
+  
+  return authCheckPromise;
 }
 
 /**
@@ -237,6 +447,8 @@ async function getCurrentUser(): Promise<UserInfo | null> {
 /**
  * Redirect to login page
  * ✅ FIX: Add guard to prevent redirect loops
+ * ✅ FIX: Check for OAuth callback to prevent interfering with login flow
+ * ✅ FIX: Save form data before redirecting (Scenario 55, 56)
  */
 function redirectToLogin(): void {
   // ✅ FIX: Prevent redirect loops - check if we're already redirecting
@@ -251,8 +463,38 @@ function redirectToLogin(): void {
     return;
   }
   
+  // ✅ FIX: Don't redirect if OAuth callback is in progress
+  if (isOAuthCallbackInProgress()) {
+    logInfo('OAuth callback in progress, skipping redirect to let OAuth complete');
+    return;
+  }
+  
+  // ✅ FIX: Don't interfere if cache reload is in progress
+  // The cache-clear-realtime module handles its own redirect to auth page
+  if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+    logInfo('Cache reload in progress, skipping redirect to let cache-clear handle it');
+    return;
+  }
+  
+  // ✅ FIX: Don't redirect if we're already on the auth page
+  const currentPath = window.location.pathname;
+  if (currentPath.includes('auth-page')) {
+    logInfo('Already on auth page, skipping redirect');
+    return;
+  }
+  
   (window as any).__redirectingToLogin = true;
   const authPagePath = '/src/auth/presentation/auth-page.html';
+  
+  // ✅ FIX: Save any form data before redirecting
+  try {
+    if ((window as any).formProtection?.saveAllForms) {
+      (window as any).formProtection.saveAllForms();
+      logInfo('Saved form data before redirect');
+    }
+  } catch (e) {
+    // Ignore form protection errors
+  }
   
   // ✅ UX: Hide loading overlay before redirect
   hideAuthLoadingOverlay();
@@ -372,11 +614,47 @@ async function ensureUserInfoSynced(user: UserInfo): Promise<void> {
 }
 
 /**
+ * Check if OAuth callback is in progress (synchronously)
+ * This prevents race conditions where auth-checker redirects before OAuth completes
+ */
+function isOAuthCallbackInProgress(): boolean {
+  // Check URL for OAuth parameters
+  const urlHash = window.location.hash || '';
+  const urlSearch = window.location.search || '';
+  const hasOAuthParams = urlHash.includes('access_token') || 
+                         urlHash.includes('code') ||
+                         urlSearch.includes('code') ||
+                         urlSearch.includes('access_token');
+  
+  // Check flags set by auth-page.html
+  const oauthFlag = sessionStorage.getItem('oauthCallbackInProgress') === 'true';
+  const windowFlag = (window as any).__oauthCallbackInProgress === true;
+  
+  return hasOAuthParams || oauthFlag || windowFlag;
+}
+
+/**
  * Check if user has a valid cached session (quick synchronous check)
  * Used for early bailout to prevent lockouts during network issues
+ * 
+ * IMPORTANT: This should NOT be used on auth page when OAuth callback is in progress
+ * to prevent redirect loops during login
  */
 function hasValidCachedSession(): { valid: boolean; userInfo: any } {
   try {
+    // CRITICAL: Don't trust cache during OAuth callback - let the flow complete
+    if (isOAuthCallbackInProgress()) {
+      logInfo('OAuth callback in progress - skipping cached session check');
+      return { valid: false, userInfo: null };
+    }
+    
+    // Don't trust cache if login was recently completed - wait for full verification
+    const loginJustCompleted = sessionStorage.getItem('loginJustCompleted') === 'true';
+    if (loginJustCompleted) {
+      logInfo('Login just completed - skipping cached session check');
+      return { valid: false, userInfo: null };
+    }
+    
     const cachedSession = localStorage.getItem('supabase.auth.token');
     const userInfoStr = localStorage.getItem('userInfo');
     
@@ -421,6 +699,9 @@ function hasValidCachedSession(): { valid: boolean; userInfo: any } {
  * ✅ RELIABILITY FIX: Early bailout for cached sessions to prevent lockouts
  */
 async function initAuthCheck(): Promise<void> {
+  // Set up cross-tab auth sync early (safe no-op if already set)
+  setupCrossTabAuthSync();
+
   // ✅ FIX: Prevent multiple simultaneous auth checks
   if ((window as any).__authCheckInProgress) {
     logInfo('Auth check already in progress, skipping...');
@@ -435,18 +716,28 @@ async function initAuthCheck(): Promise<void> {
   
   // ✅ RELIABILITY: Early check for cached session BEFORE any async operations
   // This prevents users from being locked out during network issues
+  // 
+  // IMPORTANT: hasValidCachedSession() now checks for OAuth callback and loginJustCompleted
+  // internally, so it will return { valid: false } during active login flows
   const cachedAuth = hasValidCachedSession();
   
   // If user is on auth page or index, but has valid cached session, redirect to home immediately
   // This is a fast path that doesn't require waiting for Supabase
   if ((isAuthPage || isIndexPage) && cachedAuth.valid) {
-    // Skip if login just completed (let normal flow handle it)
-    if (sessionStorage.getItem('loginJustCompleted') !== 'true') {
-      logInfo('Valid cached session found on auth/index page - redirecting to home (fast path)');
-      window.location.replace('/home');
+    // Double-check: Skip if any login-related flags are set
+    const loginJustCompleted = sessionStorage.getItem('loginJustCompleted') === 'true';
+    const oauthInProgress = isOAuthCallbackInProgress();
+    
+    if (loginJustCompleted || oauthInProgress) {
+      logInfo('Login/OAuth in progress, skipping fast path redirect');
       (window as any).__authCheckInProgress = false;
       return;
     }
+    
+    logInfo('Valid cached session found on auth/index page - redirecting to home (fast path)');
+    window.location.replace('/home');
+    (window as any).__authCheckInProgress = false;
+    return;
   }
   
   // ✅ UX: Show loading overlay for protected pages to prevent content flash
@@ -493,9 +784,9 @@ async function initAuthCheck(): Promise<void> {
 
         // ✅ SECURITY FIX: Verify authentication with server BEFORE redirecting
         // This prevents the flash of homepage when token is copied to another browser
-        // ✅ FIX: Skip check if login just completed
-        if (sessionStorage.getItem('loginJustCompleted') === 'true') {
-          logInfo('Login just completed, skipping auth check');
+        // ✅ FIX: Skip check if login just completed or OAuth in progress
+        if (sessionStorage.getItem('loginJustCompleted') === 'true' || isOAuthCallbackInProgress()) {
+          logInfo('Login/OAuth in progress, skipping auth check on index page');
           return;
         }
         
@@ -526,6 +817,15 @@ async function initAuthCheck(): Promise<void> {
       const authPagePath = '/src/auth/presentation/auth-page.html';
       if (currentPath === authPagePath || currentPath.endsWith('auth-page.html')) {
         console.log('[Auth-Checker] Running on auth page, checking authentication status...');
+        
+        // ✅ FIX: Skip if OAuth callback is in progress to prevent double redirect race
+        // Use robust detection that checks URL params, session storage, and window flags
+        if (isOAuthCallbackInProgress()) {
+          console.log('[Auth-Checker] OAuth callback in progress, skipping auth check on auth page');
+          logInfo('OAuth callback in progress, skipping auth check on auth page');
+          (window as any).__authCheckInProgress = false;
+          return;
+        }
         
         // Initialize Supabase first
         let initSucceeded = false;
@@ -711,6 +1011,13 @@ async function initAuthCheck(): Promise<void> {
           
           // ✅ FIX: Don't redirect if login just completed
           if (sessionStorage.getItem('loginJustCompleted') === 'true') {
+            return;
+          }
+          
+          // ✅ FIX: Don't interfere if cache reload is in progress
+          // The cache-clear-realtime module handles its own redirect
+          if ((window as any).__cacheReloadInProgress || sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+            logInfo('Cache reload in progress, skipping auth state change handling');
             return;
           }
           

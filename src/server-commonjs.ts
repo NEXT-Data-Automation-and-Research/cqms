@@ -196,12 +196,27 @@ app.use(helmet({
 
 // ✅ SECURITY: Rate limiting for API endpoints
 logWithTimestamp('debug', 'Configuring rate limiting...');
+
+// Endpoints that are called frequently and should be exempt from rate limiting
+// These are lightweight, public endpoints used for app initialization
+// NOTE: This limiter is mounted at `/api/`, so `req.path` here is relative (e.g. `/env`)
+const rateLimitExemptPaths = ['/env', '/version', '/csrf'];
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  /**
+   * IMPORTANT:
+   * This limiter is mounted at `/api/`, so inside the middleware `req.path` is relative (e.g. `/env`),
+   * while `req.baseUrl` is `/api`. Use the combined path for reliable exemptions.
+   */
+  skip: (req) => {
+    const fullPath = `${req.baseUrl}${req.path}`; // e.g. /api + /env => /api/env
+    return rateLimitExemptPaths.includes(fullPath) || rateLimitExemptPaths.includes(req.path);
+  }, // Skip rate limiting for exempt paths
 });
 
 // Apply rate limiting to all API routes

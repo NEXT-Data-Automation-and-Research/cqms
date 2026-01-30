@@ -55,8 +55,36 @@ export class ReversalService {
       console.log('[ReversalService] Got', reversalRequests.length, 'reversal requests');
 
       if (reversalRequests.length === 0) {
-        console.log('[ReversalService] No reversal requests found, returning empty array');
-        return [];
+        // Backward compatibility fallback:
+        // Some reversals were historically stored only on the audit tables (reversal_requested_at, etc.)
+        // and may not exist in reversal_requests (e.g., if the insert failed or for older data).
+        console.log('[ReversalService] No reversal_requests rows found, trying legacy audit-table fallback');
+        
+        const legacy = await this.repository.getLegacyReversalsFromAuditTables({
+          employeeEmail: options.employeeEmail,
+          limit: options.limit
+        });
+        
+        if (!legacy.length) {
+          console.log('[ReversalService] Legacy fallback returned no rows, returning empty array');
+          return [];
+        }
+        
+        // Apply employee ownership filter (already applied in repository when employeeEmail is passed,
+        // but keep defensive filtering here in case repository behavior changes).
+        const normalizedEmployeeEmail = options.employeeEmail?.toLowerCase().trim();
+        let filtered = legacy;
+        if (normalizedEmployeeEmail) {
+          filtered = legacy.filter(r => (r.employee_email || '').toLowerCase().trim() === normalizedEmployeeEmail);
+        }
+        
+        // Apply pending filter if requested
+        if (options.onlyPending) {
+          filtered = filtered.filter(r => this.isPendingReversal(r));
+        }
+        
+        console.log('[ReversalService] Returning', filtered.length, 'legacy reversals after filtering');
+        return filtered;
       }
 
       // Get workflow states

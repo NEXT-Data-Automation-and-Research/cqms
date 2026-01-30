@@ -1,12 +1,15 @@
 /**
  * Platform Notifications Routes
  * API endpoints for managing platform-wide notifications
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabase: User-scoped client for reading notifications
+ * - req.supabaseAdmin!: Admin client for creating/managing notifications
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, verifyAuth } from '../middleware/auth.middleware.js';
+import { SupabaseRequest, verifyAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/permission.middleware.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
 
 const router = Router();
@@ -54,7 +57,7 @@ function parseTargetRoles(value: unknown): string[] | null {
  * Get active platform notifications for the current user
  * Available to all authenticated users
  */
-router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     if (!user?.email) {
@@ -62,7 +65,7 @@ router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Pr
       return;
     }
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const now = new Date().toISOString();
 
     // Get user's role
@@ -138,7 +141,7 @@ router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Pr
  * GET /api/platform-notifications/count
  * Get count of undismissed notifications for the current user
  */
-router.get('/count', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/count', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     if (!user?.email) {
@@ -146,7 +149,7 @@ router.get('/count', verifyAuth, async (req: AuthenticatedRequest, res: Response
       return;
     }
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const now = new Date().toISOString();
 
     // Get user's role
@@ -199,7 +202,7 @@ router.get('/count', verifyAuth, async (req: AuthenticatedRequest, res: Response
  * POST /api/platform-notifications/dismiss/:id
  * Dismiss a notification for the current user
  */
-router.post('/dismiss/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/dismiss/:id', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
     const user = req.user;
     const notificationId = req.params.id;
@@ -209,7 +212,7 @@ router.post('/dismiss/:id', verifyAuth, async (req: AuthenticatedRequest, res: R
       return;
     }
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
 
     // Verify notification exists and is dismissible
     const { data: notification } = await supabase
@@ -264,9 +267,9 @@ router.get(
   '/admin/all',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
-      const supabase = getServerSupabase();
+      const supabase = req.supabaseAdmin!;
 
       const { data, error } = await supabase
         .from('platform_notifications')
@@ -297,7 +300,7 @@ router.post(
   '/admin',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const user = req.user;
       const raw = req.body ?? {};
@@ -354,7 +357,7 @@ router.post(
         return;
       }
 
-      const supabase = getServerSupabase();
+      const supabase = req.supabaseAdmin!;
 
       const { data, error } = await supabase
         .from('platform_notifications')
@@ -402,7 +405,7 @@ router.put(
   '/admin/:id',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const user = req.user;
       const notificationId = req.params.id;
@@ -540,7 +543,7 @@ router.put(
         }
       }
 
-      const supabase = getServerSupabase();
+      const supabase = req.supabaseAdmin!;
 
       const { data, error } = await supabase
         .from('platform_notifications')
@@ -577,12 +580,12 @@ router.delete(
   '/admin/:id',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const user = req.user;
       const notificationId = req.params.id;
 
-      const supabase = getServerSupabase();
+      const supabase = req.supabaseAdmin!;
 
       const { error } = await supabase
         .from('platform_notifications')

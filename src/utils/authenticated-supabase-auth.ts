@@ -1,6 +1,11 @@
 /**
  * Authentication Verification for Supabase
  * Handles authentication status checking and caching
+ * 
+ * MULTI-USER NOTES:
+ * - This runs in the browser, where each user has their own tab
+ * - The cache is per-tab, so there's no cross-user contamination
+ * - Cache is cleared on auth state changes (sign in/out, token refresh)
  */
 
 import { getSupabase } from './supabase-init.js';
@@ -16,14 +21,21 @@ export interface AuthStatus {
   userId: string | null;
   session: any | null;
   error?: string;
+  /** Timestamp when this status was verified */
+  verifiedAt?: number;
 }
 
 /**
- * Cache for authentication status (valid for 30 seconds)
+ * Cache for authentication status
+ * 
+ * IMPORTANT: This is per-browser-tab, not shared between users.
+ * Each browser tab has its own instance of this module.
  */
 let authStatusCache: {
   status: AuthStatus;
   timestamp: number;
+  /** User ID that this cache belongs to (for extra safety) */
+  userId: string | null;
 } | null = null;
 
 const AUTH_CACHE_DURATION = 30000; // 30 seconds
@@ -55,13 +67,10 @@ function getTokenRefreshTestInterval(): number | null {
 /**
  * Verify user authentication
  * Uses caching to avoid excessive API calls
+ * 
+ * SAFETY: Cache is validated to ensure it belongs to the same user session
  */
 export async function verifyAuth(): Promise<AuthStatus> {
-  // Check cache first
-  if (authStatusCache && (Date.now() - authStatusCache.timestamp) < AUTH_CACHE_DURATION) {
-    return authStatusCache.status;
-  }
-
   const supabase = getSupabase();
   if (!supabase) {
     const status: AuthStatus = {
@@ -69,10 +78,30 @@ export async function verifyAuth(): Promise<AuthStatus> {
       userId: null,
       session: null,
       error: 'Supabase client not initialized',
+      verifiedAt: Date.now(),
     };
-    authStatusCache = { status, timestamp: Date.now() };
+    authStatusCache = { status, timestamp: Date.now(), userId: null };
     return status;
   }
+
+  // Quick check: get current session to compare user ID with cache
+  let currentSessionUserId: string | null = null;
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    currentSessionUserId = session?.user?.id || null;
+  } catch (e) {
+    // Ignore - we'll do a full verification
+  }
+
+  // Check cache - but only if it's for the same user
+  if (authStatusCache && 
+      (Date.now() - authStatusCache.timestamp) < AUTH_CACHE_DURATION &&
+      authStatusCache.userId === currentSessionUserId) {
+    return authStatusCache.status;
+  }
+
+  // Cache miss or user changed - do full verification
+  logger.debug('Cache miss or user changed, doing full verification');
 
   try {
     // First check session - this is faster and uses cached session
@@ -85,7 +114,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
         session: null,
         error: sessionError?.message || 'No active session',
       };
-      authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+      authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
       return status;
     }
 
@@ -134,7 +163,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
             session: null,
             error: refreshError?.message || 'Refresh token expired',
           };
-          authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+          authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
           return status;
         } else {
           // Network or temporary error - don't invalidate session
@@ -147,7 +176,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
             session: session,
             error: refreshError?.message || 'Refresh failed but session still valid',
           };
-          authStatusCache = { status, timestamp: Date.now() };
+          authStatusCache = { status, timestamp: Date.now(), userId: session.user.id };
           return status;
         }
       }
@@ -159,7 +188,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
         userId: refreshedUser.id,
         session: refreshedSession,
       };
-      authStatusCache = { status, timestamp: Date.now() };
+      authStatusCache = { status, timestamp: Date.now(), userId: refreshedUser.id };
       logger.debug('Session refreshed successfully');
       return status;
     }
@@ -184,7 +213,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
           session: session,
           error: userError?.message || 'Network error but session valid',
         };
-        authStatusCache = { status, timestamp: Date.now() };
+        authStatusCache = { status, timestamp: Date.now(), userId: session.user.id };
         return status;
       }
       
@@ -196,7 +225,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
           session: null,
           error: userError?.message || 'User verification failed',
         };
-        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
         return status;
       }
       
@@ -208,7 +237,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
           session: null,
           error: 'User ID mismatch',
         };
-        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+        authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
         return status;
       }
     }
@@ -222,7 +251,7 @@ export async function verifyAuth(): Promise<AuthStatus> {
         session: null,
         error: 'No user found in session',
       };
-      authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+      authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
       return status;
     }
 
@@ -230,8 +259,10 @@ export async function verifyAuth(): Promise<AuthStatus> {
       isAuthenticated: true,
       userId: verifiedUser.id,
       session: session,
+      verifiedAt: Date.now(),
     };
-    authStatusCache = { status, timestamp: Date.now() };
+    // Store cache with userId for validation
+    authStatusCache = { status, timestamp: Date.now(), userId: verifiedUser.id };
     return status;
   } catch (error: any) {
     const status: AuthStatus = {
@@ -239,8 +270,9 @@ export async function verifyAuth(): Promise<AuthStatus> {
       userId: null,
       session: null,
       error: error.message || 'Authentication verification failed',
+      verifiedAt: Date.now(),
     };
-    authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000) };
+    authStatusCache = { status, timestamp: Date.now() - (AUTH_CACHE_DURATION - 5000), userId: null };
     return status;
   }
 }

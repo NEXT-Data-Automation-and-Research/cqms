@@ -219,8 +219,9 @@ export function hideNetworkErrorBanner(): void {
 
 /**
  * Auto-save form data to localStorage
+ * Returns true if save succeeded, false otherwise
  */
-function autoSaveFormData(): void {
+function autoSaveFormData(): boolean {
   try {
     const forms = document.querySelectorAll('form');
     const formData: Record<string, any> = {};
@@ -256,36 +257,170 @@ function autoSaveFormData(): void {
         page: window.location.pathname
       }));
       logInfo('[SessionWarning] Form data auto-saved');
+      return true;
     }
+    return true; // No forms to save is still a success
   } catch (error) {
     logWarn('[SessionWarning] Failed to auto-save form data:', error);
+    return false;
   }
 }
 
 /**
+ * Restore auto-saved form data from localStorage
+ * Call this on page load to restore form data after session expiry
+ */
+export function restoreAutoSavedFormData(): boolean {
+  try {
+    const saved = localStorage.getItem('autoSavedFormData');
+    if (!saved) return false;
+    
+    const { timestamp, data, page } = JSON.parse(saved);
+    
+    // Only restore if saved within last 30 minutes and on same page
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    if (timestamp < thirtyMinutesAgo || page !== window.location.pathname) {
+      localStorage.removeItem('autoSavedFormData');
+      return false;
+    }
+    
+    // Restore form data
+    Object.entries(data).forEach(([formId, formData]) => {
+      const form = document.getElementById(formId) || document.querySelector(`form:nth-of-type(${parseInt(formId.replace('form-', '')) + 1})`);
+      if (!form) return;
+      
+      Object.entries(formData as Record<string, any>).forEach(([key, value]) => {
+        const input = form.querySelector(`[name="${key}"], [id="${key}"]`) as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null;
+        if (input) {
+          if (input.type === 'checkbox') {
+            (input as HTMLInputElement).checked = value as boolean;
+          } else {
+            input.value = value as string;
+          }
+        }
+      });
+    });
+    
+    // Clear saved data after restore
+    localStorage.removeItem('autoSavedFormData');
+    logInfo('[SessionWarning] Form data restored from auto-save');
+    
+    // Show toast notification
+    showRestoreNotification();
+    
+    return true;
+  } catch (error) {
+    logWarn('[SessionWarning] Failed to restore form data:', error);
+    return false;
+  }
+}
+
+/**
+ * Show notification that form data was restored
+ */
+function showRestoreNotification(): void {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    background: #d1fae5;
+    border: 1px solid #10b981;
+    color: #065f46;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    z-index: 9999;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    animation: slideIn 0.3s ease-out;
+  `;
+  toast.innerHTML = `
+    <style>
+      @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } }
+    </style>
+    ✓ Your previous work has been restored
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'slideIn 0.3s ease-out reverse';
+    setTimeout(() => toast.remove(), 300);
+  }, 5000);
+}
+
+// Track if we've attempted proactive refresh
+let proactiveRefreshAttempted = false;
+
+/**
  * Start monitoring session expiry
  * ✅ UX: Warning threshold is now configurable
+ * ✅ FIX: Proactively refresh token before expiry to prevent session issues
  */
 export function startSessionMonitoring(): void {
   if (expiryCheckInterval) return; // Already monitoring
 
-  expiryCheckInterval = window.setInterval(() => {
+  expiryCheckInterval = window.setInterval(async () => {
     const supabase = getSupabase();
     if (!supabase) return;
+    
+    // ✅ FIX: Skip if auth is in a transitional state
+    try {
+      if (sessionStorage.getItem('oauthCallbackInProgress') === 'true') return;
+      if (sessionStorage.getItem('loginJustCompleted') === 'true') return;
+      if ((window as any).__oauthCallbackInProgress) return;
+    } catch (e) {
+      // Ignore sessionStorage errors
+    }
 
-    supabase.auth.getSession().then(({ data: { session }, error }: { data: { session: any }, error: any }) => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
       if (error || !session) return;
 
       const now = Math.floor(Date.now() / 1000);
       const expiresAt = session.expires_at || 0;
       const timeUntilExpiry = expiresAt - now;
 
+      // ✅ FIX: Proactively refresh token 5 minutes before expiry
+      // This prevents the "jumping" behavior when token expires during page navigation
+      const PROACTIVE_REFRESH_THRESHOLD = 300; // 5 minutes
+      if (timeUntilExpiry < PROACTIVE_REFRESH_THRESHOLD && timeUntilExpiry > 60 && !proactiveRefreshAttempted) {
+        logInfo(`[SessionMonitor] Token expiring in ${timeUntilExpiry}s - proactively refreshing`);
+        proactiveRefreshAttempted = true;
+        
+        try {
+          const { data: { session: newSession }, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && newSession) {
+            logInfo('[SessionMonitor] Proactive token refresh successful');
+            proactiveRefreshAttempted = false; // Reset for next cycle
+          } else {
+            logWarn('[SessionMonitor] Proactive refresh failed:', refreshError?.message);
+            // Don't reset - will try again on next interval
+          }
+        } catch (refreshErr) {
+          logWarn('[SessionMonitor] Proactive refresh error:', refreshErr);
+        }
+      }
+
       // Warn before expiry (configurable, default 120 seconds / 2 minutes)
       // Only show if more than 60 seconds remain (avoid showing right before expiry)
       if (timeUntilExpiry < config.warningThresholdSeconds && timeUntilExpiry > 60 && !warningShown) {
         showSessionWarning();
       }
-    });
+      
+      // ✅ FIX: If session is about to expire (< 30 seconds) and refresh failed, handle gracefully
+      if (timeUntilExpiry < 30 && timeUntilExpiry > 0) {
+        logWarn('[SessionMonitor] Session expiring very soon - attempting final refresh');
+        try {
+          const { data: { session: lastChanceSession }, error: lastChanceError } = await supabase.auth.refreshSession();
+          if (lastChanceError || !lastChanceSession) {
+            logWarn('[SessionMonitor] Final refresh failed - session will expire');
+          }
+        } catch (e) {
+          logWarn('[SessionMonitor] Final refresh error:', e);
+        }
+      }
+    } catch (err) {
+      logWarn('[SessionMonitor] Error checking session:', err);
+    }
   }, 30000); // Check every 30 seconds
 }
 
@@ -322,7 +457,47 @@ export function stopSessionMonitoring(): void {
  * ✅ UX: Reduced redirect delay (configurable), added Login Now button
  */
 export function handleSessionExpiry(): void {
-  autoSaveFormData();
+  // ✅ FIX: Don't interfere if cache reload is in progress
+  // The cache-clear-realtime module handles its own redirect and messaging
+  if ((window as any).__cacheReloadInProgress) {
+    logInfo('[SessionWarning] Cache reload in progress, skipping session expiry handling');
+    return;
+  }
+  try {
+    if (sessionStorage.getItem('cacheReloadInProgress') === 'true') {
+      logInfo('[SessionWarning] Cache reload in progress (sessionStorage), skipping session expiry handling');
+      return;
+    }
+  } catch {
+    // sessionStorage might not be available
+  }
+  
+  // ✅ FIX: Don't interfere if OAuth callback is in progress
+  // This prevents session expiry handling from racing with login flow
+  // Check URL parameters, session storage flags, and window flags
+  try {
+    // Check URL for OAuth parameters
+    const urlHash = window.location.hash || '';
+    const urlSearch = window.location.search || '';
+    const hasOAuthParams = urlHash.includes('access_token') || 
+                           urlHash.includes('code') ||
+                           urlSearch.includes('code') ||
+                           urlSearch.includes('access_token');
+    
+    const oauthInProgress = hasOAuthParams ||
+                            sessionStorage.getItem('oauthCallbackInProgress') === 'true' || 
+                            sessionStorage.getItem('loginJustCompleted') === 'true' ||
+                            (window as any).__oauthCallbackInProgress || 
+                            (window as any).__oauthRedirectInProgress;
+    if (oauthInProgress) {
+      logInfo('[SessionWarning] OAuth callback in progress, skipping session expiry handling');
+      return;
+    }
+  } catch {
+    // sessionStorage might not be available
+  }
+  
+  const saveSucceeded = autoSaveFormData();
 
   const authPagePath = '/src/auth/presentation/auth-page.html';
   
@@ -383,10 +558,14 @@ export function handleSessionExpiry(): void {
     <div style="width: 2rem; height: 2rem; border: 3px solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: session-spin 1s linear infinite; margin: 1rem auto 0;"></div>
   `;
   
+  const saveMessage = saveSucceeded 
+    ? 'Your work has been saved and will be restored after login.'
+    : 'Please note any unsaved changes before logging in again.';
+  
   message.innerHTML = `
     <h3 style="margin-bottom: 1rem; color: #1f2937;">Session Expired</h3>
     <p style="color: #6b7280; margin-bottom: 0.5rem;">Your session has expired.</p>
-    <p style="color: #6b7280; font-size: 0.875rem;">Your work has been saved automatically.</p>
+    <p style="color: #6b7280; font-size: 0.875rem;">${saveMessage}</p>
     ${loginButtonHtml}
     <style>
       @keyframes session-spin {

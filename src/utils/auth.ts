@@ -8,6 +8,7 @@
  * - auth-device.ts: Device fingerprinting and validation
  * - auth-user-profile.ts: User profile management
  * - auth-dev-bypass.ts: Development bypass functionality
+ * - auth-state-manager.ts: Unified auth state management
  */
 
 // Core authentication functions
@@ -43,4 +44,21 @@ export {
   enableDevBypassAuthentication,
   isDevBypassActive,
 } from './auth-dev-bypass.js';
+
+// Auth state manager (unified state management)
+export {
+  getAuthState,
+  onAuthStateChange,
+  verifySession,
+  isAuthenticated as isAuthenticatedSync,
+  getCurrentUser,
+  isImpersonating,
+  requireAuth,
+  handle401Error,
+  initAuthStateManager,
+  cleanupAuthState,
+  cleanupRealtimeSubscriptions,
+} from './auth-state-manager.js';
+
+export type { AuthUser, AuthState, AuthStateInfo } from './auth-state-manager.js';
 
