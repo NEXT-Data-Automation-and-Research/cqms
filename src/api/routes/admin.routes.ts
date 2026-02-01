@@ -2,12 +2,14 @@
  * Admin Routes
  * Provides endpoints including user impersonation.
  * SECURITY: Impersonation is gated by permission (settings/impersonation), not role alone.
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabaseAdmin!: Admin client for cross-user operations
  */
 
 import { Router, Response } from 'express';
-import { AuthenticatedRequest, verifyAuth } from '../middleware/auth.middleware.js';
+import { SupabaseRequest, verifyAuth } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/permission.middleware.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
 
 const router = Router();
@@ -22,7 +24,7 @@ router.post(
   '/impersonate',
   verifyAuth,
   requirePermission('settings/impersonation', 'api_endpoint'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
     const { targetEmail, reason } = req.body;
     const adminUser = req.user;
@@ -45,7 +47,8 @@ router.post(
       return;
     }
 
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
 
     // Get target user's role for hierarchy check (who can be impersonated)
     const { data: targetPeopleData } = await supabase
@@ -195,9 +198,10 @@ router.get(
   '/impersonation-logs',
   verifyAuth,
   requirePermission('settings/impersonation', 'api_endpoint'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin queries
+    const supabase = req.supabaseAdmin!;
 
     // Get logs
     const limit = parseInt(req.query.limit as string) || 50;
@@ -232,7 +236,7 @@ router.get(
  * POST /api/admin/end-impersonation
  * Log the end of an impersonation session
  */
-router.post('/end-impersonation', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/end-impersonation', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
     const { adminEmail, targetEmail } = req.body;
     
@@ -241,7 +245,8 @@ router.post('/end-impersonation', verifyAuth, async (req: AuthenticatedRequest, 
       return;
     }
 
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
 
     // Update the most recent impersonation log entry
     const { error } = await supabase

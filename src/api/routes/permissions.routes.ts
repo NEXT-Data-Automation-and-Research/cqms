@@ -1,17 +1,18 @@
 /**
  * Permission Management API Routes
  * CRUD uses requirePermission('settings/permissions', 'page') so anyone who can access the page can manage rules.
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabaseAdmin!: Admin client for permission management operations
  */
 
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
-import { verifyAuth } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/permission.middleware.js';
 import { permissionService } from '../../core/permissions/permission.service.js';
 import { ALL_RESOURCES_FOR_UI } from '../../core/permissions/permission-resources.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
-import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 
 const logger = createLogger('PermissionsAPI');
 const router = Router();
@@ -20,7 +21,7 @@ const router = Router();
  * POST /api/permissions/check
  * Check current user's permissions for a resource
  */
-router.post('/check', verifyAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/check', verifyAuth, async (req: SupabaseRequest, res) => {
   try {
     const { resourceName, ruleType = 'feature' } = req.body;
 
@@ -42,8 +43,8 @@ router.post('/check', verifyAuth, async (req: AuthenticatedRequest, res) => {
       });
     }
 
-    // Get user role
-    const supabase = getServerSupabase();
+    // Get user role - use admin client for cross-user lookups
+    const supabase = req.supabaseAdmin!;
     const { data: peopleData } = await supabase
       .from('people')
       .select('role')
@@ -103,7 +104,7 @@ router.get('/resources', (_req, res) => {
  * - results: Record<string, boolean> keyed by "resourceName:ruleType" (backward compatible)
  * - details: Record<string, { hasAccess: boolean, reason: string }> (new, for UI edge cases like explicit DENY)
  */
-router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) => {
+router.post('/check-batch', verifyAuth, async (req: SupabaseRequest, res) => {
   try {
     const { checks } = req.body as { checks?: Array<{ resourceName: string; ruleType: string }> };
     if (!Array.isArray(checks) || checks.length === 0) {
@@ -113,7 +114,7 @@ router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) =
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User email not found' });
     }
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data: peopleData } = await supabase
       .from('people')
       .select('role')
@@ -144,7 +145,7 @@ router.post('/check-batch', verifyAuth, async (req: AuthenticatedRequest, res) =
  * GET /api/permissions/user
  * Get current user's permissions summary
  */
-router.get('/user', verifyAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/user', verifyAuth, async (req: SupabaseRequest, res) => {
   try {
     const userEmail = req.user?.email?.toLowerCase().trim();
     if (!userEmail) {
@@ -155,7 +156,7 @@ router.get('/user', verifyAuth, async (req: AuthenticatedRequest, res) => {
     }
 
     // Get user role
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data: peopleData } = await supabase
       .from('people')
       .select('role')
@@ -181,11 +182,11 @@ router.get('/user', verifyAuth, async (req: AuthenticatedRequest, res) => {
  * GET /api/permissions/rules
  * List all permission rules (admin only)
  */
-router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { ruleType, resourceName, isActive } = req.query;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     let query = supabase.from('access_control_rules').select('*');
 
     if (ruleType) {
@@ -218,7 +219,7 @@ router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page
  * POST /api/permissions/rules
  * Create a new permission rule (admin only)
  */
-router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const {
       ruleType,
@@ -236,7 +237,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
       });
     }
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data, error } = await supabase
       .from('access_control_rules')
       .insert({
@@ -274,7 +275,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
  * PUT /api/permissions/rules/:id
  * Update a permission rule (admin only)
  */
-router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { id } = req.params;
     const {
@@ -286,7 +287,7 @@ router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', '
       isActive,
     } = req.body;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const updateData: any = {
       updated_by: req.user?.email || null,
       updated_at: new Date().toISOString(),
@@ -328,11 +329,11 @@ router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', '
  * DELETE /api/permissions/rules/:id
  * Delete a permission rule (admin only)
  */
-router.delete('/rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.delete('/rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { id } = req.params;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { error } = await supabase
       .from('access_control_rules')
       .delete()
@@ -361,11 +362,11 @@ router.delete('/rules/:id', verifyAuth, requirePermission('settings/permissions'
  * Get all individual user permissions (admin only)
  * Optional query params: email, ruleType, accessType
  */
-router.get('/user-rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.get('/user-rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { email, ruleType, accessType } = req.query;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     let query = supabase.from('user_access_rule').select('*');
 
     if (email) {
@@ -398,11 +399,11 @@ router.get('/user-rules', verifyAuth, requirePermission('settings/permissions', 
  * GET /api/permissions/user-rules/:email
  * Get individual user permissions by email (admin only)
  */
-router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { email } = req.params;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data, error } = await supabase
       .from('user_access_rule')
       .select('*')
@@ -427,7 +428,7 @@ router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permiss
  * POST /api/permissions/user-rules
  * Create individual user permission (admin only)
  */
-router.post('/user-rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.post('/user-rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const {
       userEmail,
@@ -455,7 +456,7 @@ router.post('/user-rules', verifyAuth, requirePermission('settings/permissions',
     const normalizedRuleType = String(ruleType).toLowerCase().trim();
     const normalizedResourceName = String(resourceName).trim();
     
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     
     // Check for existing duplicate rule
     const { data: existingRule } = await supabase
@@ -539,7 +540,7 @@ router.post('/user-rules', verifyAuth, requirePermission('settings/permissions',
  * PUT /api/permissions/user-rules/:id
  * Update individual user permission (admin only)
  */
-router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { id } = req.params;
     const idTrimmed = typeof id === 'string' ? id.trim() : '';
@@ -558,7 +559,7 @@ router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permission
       isActive,
     } = req.body;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     // Build update payload from whitelist only – never include id (would violate not-null on update)
     const updateData: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
@@ -603,11 +604,11 @@ router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permission
  * DELETE /api/permissions/user-rules/:id
  * Delete individual user permission (admin only)
  */
-router.delete('/user-rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.delete('/user-rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { id } = req.params;
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     
     // Get the rule first to get user email for cache clearing
     const { data: rule } = await supabase
@@ -643,13 +644,13 @@ router.delete('/user-rules/:id', verifyAuth, requirePermission('settings/permiss
  * GET /api/permissions/debug
  * Debug endpoint to see current user's auth info and permissions
  */
-router.get('/debug', verifyAuth, async (req: AuthenticatedRequest, res) => {
+router.get('/debug', verifyAuth, async (req: SupabaseRequest, res) => {
   try {
     const userEmail = req.user?.email?.toLowerCase().trim();
     const userId = req.user?.id;
 
     // Get user from people table
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data: peopleData } = await supabase
       .from('people')
       .select('*')
@@ -697,7 +698,7 @@ router.get('/debug', verifyAuth, async (req: AuthenticatedRequest, res) => {
  * Test permission for a specific user (admin can test any user)
  * Returns detailed breakdown of why access is granted/denied
  */
-router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { userEmail, resourceName, ruleType = 'page' } = req.body;
 
@@ -711,7 +712,7 @@ router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page
     const normalizedEmail = String(userEmail).toLowerCase().trim();
 
     // Get user role from people table
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     const { data: peopleData } = await supabase
       .from('people')
       .select('role, name')
@@ -756,7 +757,7 @@ router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page
  * POST /api/permissions/clear-cache
  * Clear all permission cache (admin only)
  */
-router.post('/clear-cache', verifyAuth, requirePermission('settings/permissions', 'page'), async (_req: AuthenticatedRequest, res) => {
+router.post('/clear-cache', verifyAuth, requirePermission('settings/permissions', 'page'), async (_req: SupabaseRequest, res) => {
   try {
     permissionService.clearCache();
     res.json({ message: 'Permission cache cleared successfully', clearedAt: new Date().toISOString() });
@@ -774,12 +775,12 @@ router.post('/clear-cache', verifyAuth, requirePermission('settings/permissions'
  * Get complete access summary for a user (role + individual overrides)
  * Shows all features and whether user has access to each
  */
-router.get('/user-access/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: AuthenticatedRequest, res) => {
+router.get('/user-access/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { email } = req.params;
     const normalizedEmail = String(email).toLowerCase().trim();
 
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
 
     // Get user info
     const { data: userData } = await supabase

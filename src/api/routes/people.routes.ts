@@ -1,12 +1,14 @@
 /**
  * People API Routes
  * Server-side API for people/user management operations
- * Uses service role key to bypass RLS for authorized operations
+ * Uses admin client to bypass RLS for authorized admin operations
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabaseAdmin!: Admin client for cross-user admin operations
  */
 
 import { Router, Response } from 'express';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requireAdmin } from '../utils/admin-check.js';
 import { createLogger } from '../../utils/logger.js';
 import { PEOPLE_USER_MANAGEMENT_FIELDS } from '../../core/constants/field-whitelists.js';
@@ -22,9 +24,10 @@ const logger = createLogger('PeopleAPI');
  * Get all people/users (for user management)
  * Requires Admin access (uses service role key, bypasses RLS)
  */
-router.get('/', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', verifyAuth, requireAdmin, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
     
     const { data, error } = await supabase
       .from('people')
@@ -49,9 +52,10 @@ router.get('/', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res:
  * Get a specific person by email
  * Requires Admin access (uses service role key, bypasses RLS)
  */
-router.get('/:email', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/:email', verifyAuth, requireAdmin, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
     const { email } = req.params;
 
     const { data, error } = await supabase
@@ -89,9 +93,10 @@ router.post('/',
     department: VALIDATION_RULES.department,
     employee_id: VALIDATION_RULES.employee_id
   }),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
     const userData = req.body;
 
     // Validate and sanitize required fields
@@ -186,9 +191,10 @@ router.post('/',
  * Update a person by email
  * Requires Admin access (uses service role key, bypasses RLS)
  */
-router.put('/:email', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/:email', verifyAuth, requireAdmin, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
     const { email } = req.params;
     const updates = req.body;
 
@@ -273,9 +279,10 @@ router.put('/:email', verifyAuth, requireAdmin, async (req: AuthenticatedRequest
  * Bulk update multiple people
  * Requires Admin access (uses service role key, bypasses RLS)
  */
-router.post('/bulk-update', verifyAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/bulk-update', verifyAuth, requireAdmin, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin operations
+    const supabase = req.supabaseAdmin!;
     const { emails, updates } = req.body;
 
     if (!Array.isArray(emails) || emails.length === 0) {

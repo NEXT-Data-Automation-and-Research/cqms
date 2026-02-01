@@ -1,11 +1,14 @@
 /**
  * Users API Routes
  * Server-side API for user operations
+ * 
+ * Uses per-request Supabase clients for proper user isolation:
+ * - req.supabase!: User-scoped client (respects RLS)
+ * - req.supabaseAdmin!: Admin client (bypasses RLS, use sparingly)
  */
 
 import { Router, Response } from 'express';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { USER_PRIVATE_FIELDS } from '../../core/constants/field-whitelists.js';
 
@@ -16,9 +19,10 @@ const logger = createLogger('UsersAPI');
  * GET /api/users/me
  * Get current user's profile
  */
-router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const user = req.user!;
     const userId = user.id;
 
@@ -93,9 +97,10 @@ router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): 
  * PUT /api/users/me
  * Update current user's profile
  */
-router.put('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.put('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     // Validate input
@@ -136,9 +141,10 @@ router.put('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): 
  * POST /api/users
  * Create user profile (called after signup)
  */
-router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for user creation (may need to bypass RLS)
+    const supabase = req.supabaseAdmin!;
     const userId = req.user!.id;
 
     const { email, full_name, avatar_url, provider, device_info } = req.body;

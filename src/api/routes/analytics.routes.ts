@@ -5,19 +5,21 @@
  * GET /api/analytics/admin/summary — platform summary (Admin/Super Admin only)
  * GET /api/analytics/admin/by-page — aggregated by page_slug (Admin/Super Admin only)
  * GET /api/analytics/admin/by-user/:userId — page views for a user (Admin/Super Admin only)
+ * 
+ * Uses per-request Supabase clients:
+ * - req.supabase: User-scoped client for user's own analytics
+ * - req.supabaseAdmin!: Admin client for platform-wide analytics
  */
 
 import { Router, Response } from 'express';
-import { verifyAuth } from '../middleware/auth.middleware.js';
-import type { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/permission.middleware.js';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { getAuthenticatedServerSupabase } from '../utils/authenticated-server-supabase.js';
 import {
   getAllowedSlugForPath,
   ANALYTICS_LIMITS,
 } from '../../core/analytics/analytics-allowlist.js';
 import { createLogger } from '../../utils/logger.js';
+import { getAuthenticatedServerSupabase } from '../utils/authenticated-server-supabase.js';
 
 const logger = createLogger('AnalyticsAPI');
 const router = Router();
@@ -161,7 +163,7 @@ function checkRateLimit(userId: string, eventsCount: number): boolean {
  * - Strict validation; reject entire payload on first invalid event.
  * - Idempotency: client_event_id unique; duplicates ignored.
  */
-router.post('/events', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/events', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   const analyticsEnabled = process.env.ANALYTICS_ENABLED !== 'false';
   if (!analyticsEnabled) {
     res.status(204).end();
@@ -209,7 +211,7 @@ router.post('/events', verifyAuth, async (req: AuthenticatedRequest, res: Respon
   }
 
   try {
-    const supabase = getServerSupabase();
+    const supabase = req.supabaseAdmin!;
     for (const row of rows) {
       const { error } = await supabase.from('user_page_views').insert(row);
       if (error) {
@@ -241,7 +243,7 @@ function parseDateRange(req: { query: Record<string, unknown> }): { from: string
  * GET /api/analytics/me
  * Current user's page views (my activity). Optional: ?days=7&limit=100
  */
-router.get('/me', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   const userId = req.user?.id;
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized', message: 'User not found' });
@@ -283,7 +285,7 @@ router.get(
   '/admin/summary',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     const { from, to } = parseDateRange(req);
     try {
       // Use authenticated client - RLS allows Admin/Super Admin to read all page views
@@ -334,7 +336,7 @@ router.get(
   '/admin/by-page',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     const { from, to } = parseDateRange(req);
     try {
       // Use authenticated client - RLS allows Admin/Super Admin to read all page views
@@ -384,7 +386,7 @@ router.get(
   '/admin/by-user/:userId',
   verifyAuth,
   requireRole('Admin', 'Super Admin'),
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: SupabaseRequest, res: Response): Promise<void> => {
     const { userId } = req.params;
     if (!userId) {
       res.status(400).json({ error: 'Bad Request', message: 'userId required' });

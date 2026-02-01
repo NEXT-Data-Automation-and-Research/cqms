@@ -1,11 +1,14 @@
 /**
  * Notifications API Routes
  * Server-side API for notification operations
+ * 
+ * Uses per-request Supabase clients for proper user isolation:
+ * - req.supabase!: User-scoped client (respects RLS)
+ * - req.supabaseAdmin!: Admin client (bypasses RLS, use for admin operations)
  */
 
 import { Router, Response } from 'express';
-import { getServerSupabase } from '../../core/config/server-supabase.js';
-import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { NOTIFICATION_FIELDS } from '../../core/constants/field-whitelists.js';
 
@@ -16,9 +19,10 @@ const logger = createLogger('NotificationsAPI');
  * GET /api/notifications
  * Get user's notifications
  */
-router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS for user's own notifications
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     const { status, limit = 50, offset = 0 } = req.query;
@@ -53,9 +57,10 @@ router.get('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Pr
  * POST /api/notifications
  * Create a notification
  */
-router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     const { title, body, icon_url, image_url, action_url, type, category, metadata } = req.body;
@@ -101,9 +106,10 @@ router.post('/', verifyAuth, async (req: AuthenticatedRequest, res: Response): P
  * PATCH /api/notifications/:id
  * Update a notification (e.g., mark as read)
  */
-router.patch('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.patch('/:id', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
     const notificationId = req.params.id;
 
@@ -145,9 +151,10 @@ router.patch('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response
  * DELETE /api/notifications/:id
  * Delete a notification
  */
-router.delete('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.delete('/:id', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
     const notificationId = req.params.id;
 
@@ -177,9 +184,10 @@ router.delete('/:id', verifyAuth, async (req: AuthenticatedRequest, res: Respons
  * Create a test notification for the current user
  * Useful for testing the notification system
  */
-router.post('/test', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/test', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use per-request client - respects RLS
+    const supabase = req.supabase!;
     const userId = req.user!.id;
 
     const { type = 'info', title, body } = req.body;
@@ -226,9 +234,10 @@ router.post('/test', verifyAuth, async (req: AuthenticatedRequest, res: Response
  * Send notification to specific user(s) - Admin only
  * This creates a notification in the database and optionally sends web push
  */
-router.post('/send', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/send', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user operations
+    const supabase = req.supabaseAdmin!;
     const senderId = req.user!.id;
 
     // Check if user is admin or super admin
@@ -331,9 +340,10 @@ router.post('/send', verifyAuth, async (req: AuthenticatedRequest, res: Response
  * GET /api/notifications/users
  * Get list of users for notification targeting - Admin only
  */
-router.get('/users', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/users', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user queries
+    const supabase = req.supabaseAdmin!;
     const userId = req.user!.id;
 
     // Check if user has permission
@@ -372,9 +382,10 @@ router.get('/users', verifyAuth, async (req: AuthenticatedRequest, res: Response
  * GET /api/notifications/subscriptions
  * Get notification subscriptions for users - Admin only (for debugging)
  */
-router.get('/subscriptions', verifyAuth, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/subscriptions', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const supabase = getServerSupabase();
+    // Use admin client for cross-user admin queries
+    const supabase = req.supabaseAdmin!;
     const userId = req.user!.id;
 
     // Check if user is admin

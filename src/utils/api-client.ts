@@ -4,6 +4,11 @@
  * Helper functions for making authenticated API calls to the server
  * This provides a clean interface for client-side code to use server-side APIs
  * 
+ * Features:
+ * - Automatic token refresh on 401 errors
+ * - CSRF token handling for state-changing requests
+ * - Consistent error handling across all endpoints
+ * 
  * Usage:
  *   import { apiClient } from './utils/api-client.js';
  *   const user = await apiClient.users.getMe();
@@ -14,6 +19,9 @@ import { getSupabase } from './supabase-init.js';
 import { createLogger } from './logger.js';
 
 const logger = createLogger('APIClient');
+
+// Track if we're currently handling a 401 to prevent infinite loops
+let isHandling401 = false;
 
 /**
  * Get authentication token from Supabase
@@ -117,55 +125,92 @@ async function apiRequest<T>(
 
     const json = await response.json();
 
-      if (!response.ok) {
-        // Extract error message from various response formats
-        let errorMessage = 'Request failed';
-        let errorCode = response.status;
+    if (!response.ok) {
+      // Handle 401 errors with automatic token refresh
+      if (response.status === 401 && !isHandling401) {
+        logger.warn('401 error - attempting token refresh');
+        isHandling401 = true;
         
-        // Try multiple ways to extract error message
-        if (json.error) {
-          if (typeof json.error === 'string') {
-            errorMessage = json.error;
-          } else {
-            errorMessage = json.error.message || json.error.error || errorMessage;
-            errorCode = json.error.code || json.error.status || errorCode;
+        try {
+          const supabase = getSupabase();
+          if (supabase) {
+            const { data: { session }, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (!refreshError && session) {
+              // Token refreshed successfully - retry the request once
+              logger.info('Token refreshed - retrying request');
+              isHandling401 = false;
+              return apiRequest<T>(endpoint, options);
+            }
           }
-        } else if (json.message) {
-          errorMessage = json.message;
-        } else if (json.details?.message) {
-          errorMessage = json.details.message;
-        } else if (json.details?.error) {
-          errorMessage = json.details.error;
+          
+          // Refresh failed - session is invalid
+          logger.error('Token refresh failed - redirecting to login');
+          
+          // Store current path for redirect after login
+          try {
+            const currentPath = window.location.pathname + window.location.search;
+            if (currentPath && !currentPath.includes('auth-page')) {
+              sessionStorage.setItem('redirectAfterLogin', currentPath);
+            }
+          } catch (e) {}
+          
+          // Redirect to login
+          window.location.href = '/src/auth/presentation/auth-page.html';
+          
+        } finally {
+          isHandling401 = false;
         }
-        
-        // Log the full response for debugging
-        logger.error('API request failed:', {
-          status: response.status,
-          statusText: response.statusText,
-          response: json,
-          endpoint,
-        });
-        
-        // Include all error details from the response
-        const errorResponse: any = { 
-          message: errorMessage, 
-          code: errorCode, 
-          status: response.status,
-          statusText: response.statusText,
-        };
-        
-        // Include details if available
-        if (json.details) {
-          errorResponse.details = json.details;
-        } else {
-          errorResponse.details = json;
-        }
-        
-        return {
-          data: null,
-          error: errorResponse,
-        };
       }
+      
+      // Extract error message from various response formats
+      let errorMessage = 'Request failed';
+      let errorCode = response.status;
+      
+      // Try multiple ways to extract error message
+      if (json.error) {
+        if (typeof json.error === 'string') {
+          errorMessage = json.error;
+        } else {
+          errorMessage = json.error.message || json.error.error || errorMessage;
+          errorCode = json.error.code || json.error.status || errorCode;
+        }
+      } else if (json.message) {
+        errorMessage = json.message;
+      } else if (json.details?.message) {
+        errorMessage = json.details.message;
+      } else if (json.details?.error) {
+        errorMessage = json.details.error;
+      }
+      
+      // Log the full response for debugging
+      logger.error('API request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        response: json,
+        endpoint,
+      });
+      
+      // Include all error details from the response
+      const errorResponse: any = { 
+        message: errorMessage, 
+        code: errorCode, 
+        status: response.status,
+        statusText: response.statusText,
+      };
+      
+      // Include details if available
+      if (json.details) {
+        errorResponse.details = json.details;
+      } else {
+        errorResponse.details = json;
+      }
+      
+      return {
+        data: null,
+        error: errorResponse,
+      };
+    }
 
     return { data: json.data || json, error: null };
   } catch (error: any) {
