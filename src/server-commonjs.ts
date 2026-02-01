@@ -586,6 +586,7 @@ import adminRouter from './api/routes/admin.routes.js';
 import platformNotificationsRouter from './api/routes/platform-notifications.routes.js';
 import cacheManagementRouter from './api/routes/cache-management.routes.js';
 import activeUsersRouter from './api/routes/active-users.routes.js';
+import auditWebhookRouter from './api/routes/audit-webhook.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -598,7 +599,8 @@ app.use('/api/admin', adminRouter);
 app.use('/api/platform-notifications', platformNotificationsRouter);
 app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications');
+app.use('/api/webhooks', auditWebhookRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks');
 
 // Error handler (must be last)
 app.use(errorHandler);

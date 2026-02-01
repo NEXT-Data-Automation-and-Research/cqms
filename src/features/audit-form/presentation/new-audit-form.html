@@ -5176,26 +5176,17 @@ async function sendAuditEmailNotification(auditData, scorecard) {
 
 
 
-// Send audit data to n8n workflow
+// Send audit data to n8n workflow via server proxy (avoids CORS; n8n is called server-side)
 async function sendN8nWebhook(auditData, scorecard) {
     try {
-        // Get n8n webhook URL from environment or use default
-        // Default URL: https://qaatsaas.app.n8n.cloud/webhook/audit-submission
-        const n8nWebhookUrl = window.env?.N8N_WEBHOOK_URL || window.N8N_WEBHOOK_URL || 'https://qaatsaas.app.n8n.cloud/webhook/audit-submission';
-        
-        if (!n8nWebhookUrl) {
-            console.warn('N8N webhook URL not configured. Skipping n8n webhook notification.');
-            return;
-        }
-        
         // Get base URL for audit view link
         const baseUrl = window.location?.origin || window.env?.BASE_URL || window.BASE_URL || '';
         
-        // Prepare webhook payload with audit data
+        // Prepare webhook payload with audit data (same shape n8n expects)
         const webhookData = {
             employee_email: auditData.employee_email || null,
             employee_name: auditData.employee_name || null,
-            employeeEmail: auditData.employee_email || null, // Alternative field name for compatibility
+            employeeEmail: auditData.employee_email || null,
             employeeName: auditData.employee_name || null,
             auditor_name: auditData.auditor_name || null,
             auditor_email: auditData.auditor_email || null,
@@ -5221,34 +5212,51 @@ async function sendN8nWebhook(auditData, scorecard) {
             baseUrl: baseUrl || null
         };
         
-        // Only send if employee email is available
         if (!webhookData.employee_email) {
             console.warn('Employee email not found. n8n webhook notification skipped.');
             return;
         }
         
-        console.log('Sending audit submission to n8n webhook:', n8nWebhookUrl);
+        // Use same-origin API proxy so server calls n8n (avoids browser CORS)
+        const apiUrl = '/api/webhooks/audit-submission';
+        console.log('Sending audit submission to n8n via API proxy');
         
-        const response = await fetch(n8nWebhookUrl, {
+        const supabase = window.supabaseClient;
+        const { data: { session } } = (supabase && (await supabase.auth.getSession())) || { data: { session: null } };
+        const token = session?.access_token || null;
+        if (!token) {
+            console.warn('Not authenticated. n8n webhook notification skipped.');
+            return;
+        }
+        
+        const csrfRes = await fetch('/api/csrf', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const csrfToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer ' + token
+        };
+        if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+        
+        const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify(webhookData)
         });
         
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('n8n webhook error:', response.status, response.statusText, errorText);
-            // Don't throw - we don't want to fail audit submission if webhook fails
+            console.error('n8n webhook proxy error:', response.status, response.statusText, errorText);
             return;
         }
         
         const result = await response.json();
         console.log('n8n webhook triggered successfully:', result);
     } catch (error) {
-        // Log error but don't throw - we don't want to fail audit submission if webhook fails
         console.error('Error sending n8n webhook:', error);
     }
 }
