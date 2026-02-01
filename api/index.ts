@@ -472,6 +472,7 @@ import adminRouter from '../src/api/routes/admin.routes.js';
 import platformNotificationsRouter from '../src/api/routes/platform-notifications.routes.js';
 import cacheManagementRouter from '../src/api/routes/cache-management.routes.js';
 import activeUsersRouter from '../src/api/routes/active-users.routes.js';
+import auditWebhookRouter from '../src/api/routes/audit-webhook.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/users', usersRouter);
@@ -484,6 +485,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/platform-notifications', platformNotificationsRouter);
 app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
+app.use('/api/webhooks', auditWebhookRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

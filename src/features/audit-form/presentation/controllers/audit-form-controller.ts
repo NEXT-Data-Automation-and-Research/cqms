@@ -716,20 +716,11 @@ export class AuditFormController {
   }
 
   /**
-   * Send N8N webhook
+   * Send N8N webhook via API proxy (server calls n8n to avoid browser CORS).
    */
   private async sendN8nWebhook(auditData: Partial<AuditFormData>, scorecard: Scorecard): Promise<void> {
     try {
-      const n8nWebhookUrl = (window as any).env?.N8N_WEBHOOK_URL || (window as any).N8N_WEBHOOK_URL || 
-        'https://qaatsaas.app.n8n.cloud/webhook/audit-submission';
-      
-      if (!n8nWebhookUrl) {
-        logWarn('N8N webhook URL not configured. Skipping n8n webhook notification.');
-        return;
-      }
-      
       const baseUrl = window.location?.origin || (window as any).env?.BASE_URL || (window as any).BASE_URL || '';
-      
       const webhookData = {
         employee_email: auditData.employeeEmail || null,
         employee_name: auditData.employeeName || null,
@@ -758,29 +749,36 @@ export class AuditFormController {
         base_url: baseUrl || null,
         baseUrl: baseUrl || null
       };
-      
       if (!webhookData.employee_email) {
         logWarn('Employee email not found. n8n webhook notification skipped.');
         return;
       }
-      
-      logInfo(`Sending audit submission to n8n webhook: ${n8nWebhookUrl}`);
-      
-      const response = await fetch(n8nWebhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(webhookData)
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        logError(`n8n webhook error: ${response.status} ${response.statusText} - ${errorText}`);
+      const supabase = (window as any).supabaseClient;
+      const { data: { session } } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+      const token = session?.access_token ?? null;
+      if (!token) {
+        logWarn('Not authenticated. n8n webhook notification skipped.');
         return;
       }
-      
+      const csrfRes = await fetch('/api/csrf', { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
+      const csrfToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`
+      };
+      if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+      logInfo('Sending audit submission to n8n via API proxy');
+      const response = await fetch('/api/webhooks/audit-submission', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(webhookData)
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        logError(`n8n webhook proxy error: ${response.status} ${response.statusText} - ${errorText}`);
+        return;
+      }
       const result = await response.json();
       logInfo('n8n webhook triggered successfully');
     } catch (error) {

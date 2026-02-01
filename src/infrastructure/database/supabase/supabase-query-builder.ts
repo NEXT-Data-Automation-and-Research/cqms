@@ -217,6 +217,23 @@ export class SupabaseQueryBuilder implements IQueryBuilder {
   }
 
   /**
+   * Set range of results (for pagination and bypassing default limits)
+   * @param from - Start index (0-based)
+   * @param to - End index (inclusive)
+   */
+  range(from: number, to: number): IQueryBuilder {
+    if (typeof from !== 'number' || from < 0) {
+      throw new Error('Range "from" must be a non-negative number');
+    }
+    if (typeof to !== 'number' || to < from) {
+      throw new Error('Range "to" must be a number >= from');
+    }
+    console.log(`[QueryBuilder] 🔢 Setting range(${from}, ${to})`);
+    this.query = this.query.range(from, to);
+    return this;
+  }
+
+  /**
    * Return single result (instead of array)
    */
   single(): IQueryBuilder {

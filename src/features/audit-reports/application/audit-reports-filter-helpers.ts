@@ -11,7 +11,8 @@ import type { AuditReport, AuditFilters, DateRange } from '../domain/entities.js
 function normalizePassingStatus(status: string | undefined): string {
   if (!status) return 'Not Passed';
   const normalized = status.toLowerCase().trim();
-  if (normalized === 'passed' || normalized === 'pass') {
+  // Check for all variations: "passing", "passed", "pass"
+  if (normalized === 'passing' || normalized === 'passed' || normalized === 'pass') {
     return 'Passed';
   }
   return 'Not Passed';
@@ -29,8 +30,15 @@ export function filterAudits(
 
   // Date range filter
   if (dateRange && dateRange.startDate && dateRange.endDate) {
-    const start = new Date(dateRange.startDate).getTime();
-    const end = new Date(dateRange.endDate).getTime() + 86400000; // Add 1 day to include end date
+    // Parse dates as local time (not UTC) by using the Date constructor with year, month, day
+    // This ensures the filter works correctly regardless of timezone
+    const [startYear, startMonth, startDay] = dateRange.startDate.split('-').map(Number);
+    const [endYear, endMonth, endDay] = dateRange.endDate.split('-').map(Number);
+    
+    // Start of start date in local time (00:00:00)
+    const start = new Date(startYear, startMonth - 1, startDay, 0, 0, 0, 0).getTime();
+    // End of end date in local time (23:59:59.999)
+    const end = new Date(endYear, endMonth - 1, endDay, 23, 59, 59, 999).getTime();
     
     filtered = filtered.filter(audit => {
       const dateValue = audit.submittedAt || 

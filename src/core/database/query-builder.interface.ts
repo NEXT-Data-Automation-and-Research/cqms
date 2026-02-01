@@ -113,6 +113,13 @@ export interface IQueryBuilder {
   limit(count: number): IQueryBuilder;
   
   /**
+   * Set range of results (for pagination and bypassing default limits)
+   * @param from - Start index (0-based)
+   * @param to - End index (inclusive)
+   */
+  range(from: number, to: number): IQueryBuilder;
+  
+  /**
    * Return single result (instead of array)
    */
   single(): IQueryBuilder;

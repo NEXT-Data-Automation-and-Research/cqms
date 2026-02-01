@@ -61,4 +61,3 @@ export {
 } from './auth-state-manager.js';
 
 export type { AuthUser, AuthState, AuthStateInfo } from './auth-state-manager.js';
-

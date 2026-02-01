@@ -25,6 +25,8 @@ export async function getAuditTablesRPC(
 
     const { data, error } = await adapter.client.rpc('get_audit_tables');
     
+    console.log('[AuditReports] 🔧 RPC get_audit_tables result:', { data, error });
+    
     if (error) {
       // Handle RPC function not found gracefully (404)
       if (error.code === 'PGRST202' || 

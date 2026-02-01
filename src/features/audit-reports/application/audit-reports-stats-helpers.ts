@@ -11,7 +11,8 @@ import type { AuditReport, AuditStats } from '../domain/entities.js';
 function normalizePassingStatus(status: string | undefined): string {
   if (!status) return 'Not Passed';
   const normalized = status.toLowerCase().trim();
-  if (normalized === 'passed' || normalized === 'pass') {
+  // Check for all variations: "passing", "passed", "pass"
+  if (normalized === 'passing' || normalized === 'passed' || normalized === 'pass') {
     return 'Passed';
   }
   return 'Not Passed';
@@ -55,9 +56,10 @@ export function calculateAuditStats(audits: AuditReport[]): AuditStats {
     const criticalFail = typeof audit.criticalFailError === 'number'
       ? audit.criticalFailError
       : parseFloat(String(audit.criticalFailError || 0));
-    const critical = typeof audit.criticalError === 'number'
-      ? audit.criticalError
-      : parseFloat(String(audit.criticalError || 0));
+    // Use criticalErrors (plural) - this is the correct field from the database
+    const critical = typeof audit.criticalErrors === 'number'
+      ? audit.criticalErrors
+      : parseFloat(String(audit.criticalErrors || 0));
     return sum + (isNaN(criticalFail) ? 0 : criticalFail) + (isNaN(critical) ? 0 : critical);
   }, 0);
 

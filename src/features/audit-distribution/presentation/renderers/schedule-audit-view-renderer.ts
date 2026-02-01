@@ -94,14 +94,16 @@ export class ScheduleAuditViewRenderer {
                 />
               </div>
               
-              <!-- Recurring Schedule -->
-              <div>
+              <!-- Recurring Schedule (Upcoming - disabled for now) -->
+              <div class="opacity-60 pointer-events-none" title="Coming soon">
                 <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 mb-2">
                   <span>Recurring Schedule</span>
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 border border-amber-200">Upcoming</span>
                 </label>
                 <select
                   id="recurringScheduleSelect"
-                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-gray-900"
+                  disabled
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-100 focus:outline-none cursor-not-allowed text-gray-500"
                 >
                   <option value="none">One-time</option>
                   <option value="daily">Daily</option>
