@@ -16,6 +16,7 @@ export function renderFilterPanel(
   // Access private audits property via type assertion
   const audits: AuditReport[] = (controller as any).audits || [];
   const currentFilters = (controller as any).filters || {};
+  const currentDateRange = (controller as any).dateRange || null;
   const filterValues = extractFilterValues(audits);
 
   // Generate multi-select HTML for all filters
@@ -223,13 +224,13 @@ export function renderFilterPanel(
       <!-- From Date -->
       <div>
         <label for="dateFromFilter" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">From Date</label>
-        <input type="date" id="dateFromFilter" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
+        <input type="date" id="dateFromFilter" value="${currentDateRange?.startDate || ''}" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
       </div>
       
       <!-- To Date -->
       <div>
         <label for="dateToFilter" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">To Date</label>
-        <input type="date" id="dateToFilter" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
+        <input type="date" id="dateToFilter" value="${currentDateRange?.endDate || ''}" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
       </div>
       
       <!-- Validation Status -->

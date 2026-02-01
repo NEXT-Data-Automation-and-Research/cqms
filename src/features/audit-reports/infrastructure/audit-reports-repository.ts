@@ -305,6 +305,7 @@ export class AuditReportsRepository extends BaseRepository {
     showAllAudits: boolean = true
   ): Promise<AuditReport[]> {
     const scorecards = await this.loadScorecards();
+    console.log('[AuditReports] 📋 Loaded scorecards:', scorecards.map(s => ({ name: s.name, table: s.table_name })));
     
     let tablesToQuery: TableInfo[];
     
@@ -323,15 +324,20 @@ export class AuditReportsRepository extends BaseRepository {
       tablesToQuery = await this.getAuditTables(scorecards);
     }
 
+    console.log('[AuditReports] 📊 Tables to query:', tablesToQuery.map(t => t.table_name));
+
     // Query all tables in parallel
     const results = await Promise.all(
-      tablesToQuery.map(table => 
-        this.loadAuditsFromTable(table, employeeEmail, showAllAudits)
-      )
+      tablesToQuery.map(async (table) => {
+        const audits = await this.loadAuditsFromTable(table, employeeEmail, showAllAudits);
+        console.log(`[AuditReports] ✅ Loaded ${audits.length} audits from ${table.table_name}`);
+        return audits;
+      })
     );
 
     // Flatten and sort by submitted_at
     const allAudits = results.flat();
+    console.log('[AuditReports] 📦 Total audits loaded:', allAudits.length);
     
     // Enrich all audits with channel names
     const auditsWithChannels = await this.enrichAuditsWithChannelNames(allAudits);

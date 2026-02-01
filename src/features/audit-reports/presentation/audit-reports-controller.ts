@@ -86,6 +86,9 @@ export class AuditReportsController {
       // Show skeleton loaders for KPI cards
       this.renderer.showStatsLoading();
 
+      // Set default date range to current month
+      this.setDefaultDateRangeToCurrentMonth();
+
       // Load scorecards first
       await this.loadScorecards();
 
@@ -99,6 +102,46 @@ export class AuditReportsController {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  /**
+   * Set default date range to current month
+   */
+  private setDefaultDateRangeToCurrentMonth(): void {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const startDate = this.formatDateToYYYYMMDD(firstDay);
+    const endDate = this.formatDateToYYYYMMDD(lastDay);
+    
+    this.dateRange = { startDate, endDate };
+    
+    // Update date input fields
+    const dateFromInput = document.getElementById('dateFromFilter') as HTMLInputElement;
+    const dateToInput = document.getElementById('dateToFilter') as HTMLInputElement;
+    if (dateFromInput) dateFromInput.value = startDate;
+    if (dateToInput) dateToInput.value = endDate;
+    
+    // Also try alternative field IDs
+    const startDateInput = document.getElementById('startDate') as HTMLInputElement;
+    const endDateInput = document.getElementById('endDate') as HTMLInputElement;
+    if (startDateInput) startDateInput.value = startDate;
+    if (endDateInput) endDateInput.value = endDate;
+    
+    // Update date button text if present
+    const dateBtnText = document.getElementById('dateBtnText');
+    if (dateBtnText) {
+      dateBtnText.textContent = this.formatDateRange(startDate, endDate);
+    }
+    
+    // Mark "This Month" button as active
+    const thisMonthBtn = document.getElementById('thisMonthBtn');
+    if (thisMonthBtn) {
+      thisMonthBtn.classList.add('active');
+    }
+    
+    logInfo('[AuditReports] Set default date range to current month:', { startDate, endDate });
   }
 
   /**
@@ -363,6 +406,8 @@ export class AuditReportsController {
   setFilters(filters: AuditFilters): void {
     this.filters = { ...this.filters, ...filters };
     this.applyFilters();
+    // Recalculate stats based on filtered audits and re-render stats cards
+    this.stats = this.service.calculateStats(this.filteredAudits);
     this.renderer.renderStats(this.stats);
     this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
   }
@@ -418,6 +463,8 @@ export class AuditReportsController {
     });
     
     this.applyFilters();
+    // Recalculate stats based on filtered audits and re-render stats cards
+    this.stats = this.service.calculateStats(this.filteredAudits);
     this.renderer.renderStats(this.stats);
     this.renderer.renderFilterPanel();
     this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, false);
@@ -499,6 +546,8 @@ export class AuditReportsController {
     }
     
     this.applyFilters();
+    // Recalculate stats based on filtered audits and re-render stats cards
+    this.stats = this.service.calculateStats(this.filteredAudits);
     this.renderer.renderStats(this.stats);
     this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
   }
@@ -509,6 +558,9 @@ export class AuditReportsController {
   setSearchQuery(query: string): void {
     this.filters.searchQuery = query || undefined;
     this.applyFilters();
+    // Recalculate stats based on filtered audits and re-render stats cards
+    this.stats = this.service.calculateStats(this.filteredAudits);
+    this.renderer.renderStats(this.stats);
     this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
   }
 
@@ -906,6 +958,9 @@ export class AuditReportsController {
         delete this.filters[filterKey];
       }
       this.applyFilters();
+      // Recalculate stats based on filtered audits and re-render stats cards
+      this.stats = this.service.calculateStats(this.filteredAudits);
+      this.renderer.renderStats(this.stats);
       this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
     }
   }
