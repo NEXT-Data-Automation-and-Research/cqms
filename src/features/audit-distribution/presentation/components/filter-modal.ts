@@ -4,6 +4,7 @@
  */
 
 import type { Employee, FilterOptions } from '../../domain/types.js';
+import { getFirstFilterValue } from '../../domain/types.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import {
   createGroupByDropdown,
@@ -73,22 +74,22 @@ export class FilterModal {
 
     const channelContainer = this.modal?.querySelector('#modalChannelDropdown') as HTMLElement;
     if (channelContainer) {
-      this.dropdowns.set('modalChannel', createSimpleDropdown(channelContainer, 'modalChannel', 'Channel', 'Select Channel', channels, filters.channel));
+      this.dropdowns.set('modalChannel', createSimpleDropdown(channelContainer, 'modalChannel', 'Channel', 'Select Channel', channels, getFirstFilterValue(filters.channel)));
     }
 
     const teamContainer = this.modal?.querySelector('#modalTeamDropdown') as HTMLElement;
     if (teamContainer) {
-      this.dropdowns.set('modalTeam', createSimpleDropdown(teamContainer, 'modalTeam', 'Team', 'Select Team', teams, filters.team));
+      this.dropdowns.set('modalTeam', createSimpleDropdown(teamContainer, 'modalTeam', 'Team', 'Select Team', teams, getFirstFilterValue(filters.team)));
     }
 
     const departmentContainer = this.modal?.querySelector('#modalDepartmentDropdown') as HTMLElement;
     if (departmentContainer) {
-      this.dropdowns.set('modalDepartment', createSimpleDropdown(departmentContainer, 'modalDepartment', 'Department', 'Select Department', departments, filters.department));
+      this.dropdowns.set('modalDepartment', createSimpleDropdown(departmentContainer, 'modalDepartment', 'Department', 'Select Department', departments, getFirstFilterValue(filters.department)));
     }
 
     const countryContainer = this.modal?.querySelector('#modalCountryDropdown') as HTMLElement;
     if (countryContainer) {
-      this.dropdowns.set('modalCountry', createSimpleDropdown(countryContainer, 'modalCountry', 'Country', 'Select Country', countries, filters.country));
+      this.dropdowns.set('modalCountry', createSimpleDropdown(countryContainer, 'modalCountry', 'Country', 'Select Country', countries, getFirstFilterValue(filters.country)));
     }
 
     const qualitySupervisorContainer = this.modal?.querySelector('#modalQualitySupervisorDropdown') as HTMLElement;

@@ -7,9 +7,9 @@
 import type { AuditDistributionStateManager } from '../application/audit-distribution-state.js';
 import { AuditDistributionService } from '../application/audit-distribution-service.js';
 import { AuditDistributionSidebar, type AuditDistributionView } from './components/audit-distribution-sidebar.js';
-import { ScheduleAuditView } from './components/schedule-audit-view.js';
 import { AIAuditView } from './components/ai-audit-view.js';
 import { ManualAuditViewRenderer } from './renderers/manual-audit-view-renderer.js';
+import { AssignedAuditsViewRenderer } from './renderers/assigned-audits-view-renderer.js';
 import { TabManager, type TabType } from './managers/tab-manager.js';
 import { StatisticsTabRenderer } from './renderers/statistics-tab-renderer.js';
 import { AssignmentTabRenderer } from './renderers/assignment-tab-renderer.js';
@@ -23,7 +23,7 @@ export class AuditDistributionRenderer {
   private sidebar: AuditDistributionSidebar | null = null;
   private tabManager: TabManager | null = null;
   private manualAuditViewRenderer: ManualAuditViewRenderer | null = null;
-  private scheduleAuditView: ScheduleAuditView | null = null;
+  private assignedAuditsViewRenderer: AssignedAuditsViewRenderer | null = null;
   private aiAuditView: AIAuditView | null = null;
   private statisticsTabRenderer: StatisticsTabRenderer | null = null;
 
@@ -48,23 +48,30 @@ export class AuditDistributionRenderer {
     logInfo('[Renderer] Initializing with container:', { containerId: container.id });
     
     container.textContent = '';
-    // Direct content wrapper - no sidebar wrapper needed
+    // Same structure as Auditors Dashboard: inner wrapper + page heading (no title text)
     const contentWrapperDiv = document.createElement('div');
-    contentWrapperDiv.className = 'w-full flex flex-col';
+    contentWrapperDiv.className = 'w-full flex flex-col items-center audit-distribution-page-main';
     
-    // Page Heading - At the top of content area
-    const headingDiv = document.createElement('div');
-    headingDiv.className = 'px-4 pt-4 pb-2 text-center';
-    headingDiv.innerHTML = '<h1 class="page-heading-global">Audit Distribution</h1>';
+    const innerDiv = document.createElement('div');
+    innerDiv.className = 'audit-distribution-inner';
     
-    // Tab Navigation - Below heading
+    // Page heading - same type as Auditors Dashboard (h1.page-heading-global)
+    const headingEl = document.createElement('h1');
+    headingEl.className = 'page-heading-global';
+    headingEl.textContent = 'Audit Distribution';
+    headingEl.style.marginBottom = '0.5rem';
+    
+    const spacerDiv = document.createElement('div');
+    spacerDiv.style.cssText = 'margin-bottom: 0.5rem; width: 100%;';
+    
+    // Tab Navigation - Below heading area
     const tabNavDiv = document.createElement('div');
     tabNavDiv.className = 'w-full flex justify-center py-4 bg-transparent';
     tabNavDiv.innerHTML = `
       <div class="tab-navigation">
         <div class="tab-slider" id="tabSlider"></div>
         <button class="tab-button active" data-tab="manual" id="manualTab">Manual Assign</button>
-        <button class="tab-button" data-tab="schedule" id="scheduleTab">Schedule Assign</button>
+        <button class="tab-button" data-tab="assigned" id="assignedTab">Assigned Audits</button>
         <button class="tab-button" data-tab="ai" id="aiTab">AI Audit</button>
         <button class="tab-button" data-tab="statistics" id="statisticsTab">Statistics</button>
       </div>
@@ -74,9 +81,11 @@ export class AuditDistributionRenderer {
     contentDiv.id = 'auditDistributionContent';
     contentDiv.className = 'w-full';
     
-    contentWrapperDiv.appendChild(headingDiv);
-    contentWrapperDiv.appendChild(tabNavDiv);
-    contentWrapperDiv.appendChild(contentDiv);
+    innerDiv.appendChild(headingEl);
+    innerDiv.appendChild(spacerDiv);
+    innerDiv.appendChild(tabNavDiv);
+    innerDiv.appendChild(contentDiv);
+    contentWrapperDiv.appendChild(innerDiv);
     container.appendChild(contentWrapperDiv);
 
     // Initialize tab manager
@@ -106,13 +115,10 @@ export class AuditDistributionRenderer {
   private switchTab(tab: TabType): void {
     this.currentTab = tab;
     
-    // Map tab to view
-    if (tab === 'manual' || tab === 'schedule' || tab === 'ai') {
+    // Map tab to view (assigned has no sidebar view)
+    if (tab === 'manual' || tab === 'ai') {
       this.currentView = tab as AuditDistributionView;
-      // Update sidebar if needed
-      if (this.sidebar) {
-        this.sidebar.update({ currentView: this.currentView });
-      }
+      if (this.sidebar) this.sidebar.update({ currentView: this.currentView });
     }
 
     // Render the selected view
@@ -124,7 +130,7 @@ export class AuditDistributionRenderer {
    */
   private switchView(view: AuditDistributionView): void {
     this.currentView = view;
-    this.currentTab = view === 'manual' ? 'manual' : view === 'schedule' ? 'schedule' : 'ai';
+    this.currentTab = view === 'manual' ? 'manual' : 'ai';
     
     // Update tab manager
     if (this.tabManager) {
@@ -158,9 +164,9 @@ export class AuditDistributionRenderer {
         logInfo('[Renderer] Rendering manual audit view...');
         this.renderManualAuditView(contentContainer);
         break;
-      case 'schedule':
-        logInfo('[Renderer] Rendering schedule audit view...');
-        this.renderScheduleAuditView(contentContainer);
+      case 'assigned':
+        logInfo('[Renderer] Rendering assigned audits view...');
+        this.renderAssignedAuditsView(contentContainer);
         break;
       case 'ai':
         logInfo('[Renderer] Rendering AI audit view...');
@@ -191,35 +197,37 @@ export class AuditDistributionRenderer {
   }
 
   /**
-   * Render schedule audit view
+   * Render assigned audits view (dedicated tab for manage assignments)
    */
-  private renderScheduleAuditView(container: HTMLElement): void {
+  private renderAssignedAuditsView(container: HTMLElement): void {
     if (!this.service) {
-      logError('[Renderer] Service not available for schedule audit view');
+      logError('[Renderer] Service not available for assigned audits view');
       return;
     }
-    container.textContent = '';
-    const viewContainer = document.createElement('div');
-    viewContainer.id = 'scheduleAuditViewContainer';
-    container.appendChild(viewContainer);
-    if (viewContainer) {
-      this.scheduleAuditView = new ScheduleAuditView(viewContainer, {
-        stateManager: this.stateManager,
-        service: this.service
-      });
-    }
+    this.assignedAuditsViewRenderer = new AssignedAuditsViewRenderer({
+      stateManager: this.stateManager,
+      service: this.service
+    });
+    this.assignedAuditsViewRenderer.render(container);
   }
 
   /**
    * Render AI audit view
    */
   private renderAIAuditView(container: HTMLElement): void {
+    if (!this.service) {
+      logError('[Renderer] Service not available for AI audit view');
+      return;
+    }
     container.textContent = '';
     const viewContainer = document.createElement('div');
     viewContainer.id = 'aiAuditViewContainer';
     container.appendChild(viewContainer);
     if (viewContainer) {
-      this.aiAuditView = new AIAuditView(viewContainer);
+      this.aiAuditView = new AIAuditView(viewContainer, {
+        stateManager: this.stateManager,
+        service: this.service
+      });
     }
   }
 
@@ -246,24 +254,18 @@ export class AuditDistributionRenderer {
    * Refresh all components
    */
   refresh(): void {
-    // If service is available but view isn't rendered yet, render it now
-    if (this.currentView === 'manual' && this.service) {
-      const contentContainer = document.getElementById('auditDistributionContent');
-      if (contentContainer && (!this.manualAuditViewRenderer || contentContainer.children.length === 0)) {
+    const contentContainer = document.getElementById('auditDistributionContent');
+    if (!contentContainer) return;
+
+    if (this.currentTab === 'manual' && this.service) {
+      if (!this.manualAuditViewRenderer || contentContainer.children.length === 0) {
         logInfo('[Renderer] Refreshing: Re-rendering manual audit view...');
         this.renderCurrentView();
-      } else if (this.manualAuditViewRenderer) {
+      } else {
         this.manualAuditViewRenderer.refresh();
       }
-    } else if (this.currentView === 'schedule' && this.service) {
-      if (this.scheduleAuditView) {
-        this.scheduleAuditView.update();
-      } else {
-        const contentContainer = document.getElementById('auditDistributionContent');
-        if (contentContainer) {
-          this.renderCurrentView();
-        }
-      }
+    } else if (this.currentTab === 'assigned' && this.service && this.assignedAuditsViewRenderer) {
+      this.assignedAuditsViewRenderer.refresh();
     }
   }
 }

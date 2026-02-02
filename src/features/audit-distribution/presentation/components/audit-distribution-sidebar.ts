@@ -5,7 +5,7 @@
 
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 
-export type AuditDistributionView = 'manual' | 'schedule' | 'ai';
+export type AuditDistributionView = 'manual' | 'ai';
 
 export interface AuditDistributionSidebarConfig {
   currentView: AuditDistributionView;

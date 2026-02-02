@@ -101,22 +101,23 @@ export function renderEditModalHTML(scorecard: Scorecard): string {
               </div>
             </div>
             
-            <!-- Parameter Headers -->
-            <div class="parameter-headers" style="min-width: max-content;">
-              <div>Name</div>
-              <div>Points</div>
-              <div>Type</div>
-              <div>Category <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(Severity)</span></div>
-              <div>Field Type</div>
-              <div>Field ID <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(auto)</span></div>
-              <div>Description</div>
-              <div style="text-align: center;">AI Audit</div>
-              <div style="text-align: center;">Fatal Error</div>
-              <div></div>
-            </div>
-            
-            <div id="editParametersContainer" style="min-width: min-content; margin: 0; padding: 0;">
-              <!-- Parameters will be added here -->
+            <div class="parameter-table-wrapper">
+              <div class="parameter-headers with-ai-prompt">
+                <div>Name</div>
+                <div>Points</div>
+                <div>Type</div>
+                <div>Category <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(Severity)</span></div>
+                <div>Field Type</div>
+                <div>Field ID <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(auto)</span></div>
+                <div>Description</div>
+                <div style="text-align: center;">AI Audit</div>
+                <div>AI Prompt</div>
+                <div style="text-align: center;">Fatal Error</div>
+                <div></div>
+              </div>
+              <div id="editParametersContainer">
+                <!-- Parameters will be added here -->
+              </div>
             </div>
           </div>
           

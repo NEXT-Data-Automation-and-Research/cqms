@@ -94,130 +94,89 @@ export class AuditorSelectionModal {
         id="auditorSelectionModal" 
         class="h-full ${this.isOpen ? '' : 'hidden'} transition-opacity duration-300"
       >
-        <div class="bg-white rounded-xl border border-gray-200 shadow-lg h-full flex flex-col overflow-hidden">
-          <!-- Header -->
-          <div class="bg-gray-50 border-b border-gray-200 px-6 py-4 flex-shrink-0">
-            <div class="flex items-center justify-between">
-              <div>
-                <h2 class="text-xl font-bold text-gray-900 m-0 mb-1">Assignment Configuration</h2>
-                <p class="text-xs text-gray-600 m-0 font-medium">Select auditors and configure assignment</p>
-              </div>
+        <div class="bg-white rounded-lg border border-gray-200 shadow h-full flex flex-col overflow-hidden">
+          <!-- Header (compact) -->
+          <div class="bg-gray-50 border-b border-gray-200 px-3 py-2 flex-shrink-0">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-semibold text-gray-900 m-0 truncate">Assignment Configuration</h2>
               <button
                 id="closeModalBtn"
-                class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-all"
+                class="w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-gray-700 flex-shrink-0"
                 data-action="close-modal"
+                aria-label="Close"
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
             </div>
           </div>
 
-          <!-- Content -->
-          <div class="flex-1 overflow-y-auto px-4 py-4">
-            <div class="flex flex-col gap-5">
-              <!-- Audits Configuration & Schedule Date -->
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <div class="flex flex-col gap-3">
-                  <!-- First Row: Audits per employee -->
-                  <div class="flex items-center justify-between gap-4">
-                    <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
-                      <span class="text-red-500 text-xs">*</span>
-                      <span>Audits per employee</span>
-                    </label>
-                    <div id="bulkAuditCountContainer" class="flex-shrink-0"></div>
-                  </div>
-                  <!-- Second Row: Schedule Date -->
-                  <div class="flex items-center gap-3 pt-2 border-t border-gray-200">
-                    <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5 flex-shrink-0">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-600">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
-                      <span>Schedule Date <span class="text-gray-500 font-normal">(Optional)</span></span>
-                    </label>
-                    <div class="flex-1 min-w-0">
-                      <input
-                        type="date"
-                        id="scheduledDateInput"
-                        value="${scheduledDateValue}"
-                        class="w-full px-3 py-1.5 text-xs border border-gray-300 rounded-md bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all text-gray-900"
-                        min="${new Date().toISOString().split('T')[0]}"
-                      />
-                    </div>
-                  </div>
+          <!-- Content (compact) -->
+          <div class="flex-1 overflow-y-auto px-3 py-2 min-h-0">
+            <div class="flex flex-col gap-2">
+              <!-- Audits + Schedule (compact single card) -->
+              <div class="bg-gray-50 rounded border border-gray-200 p-2">
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <label class="text-[10px] font-semibold text-gray-700 flex items-center gap-1">
+                    <span class="text-red-500">*</span> Audits/employee
+                  </label>
+                  <div id="bulkAuditCountContainer" class="flex-shrink-0"></div>
+                </div>
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                  <label class="text-[10px] font-semibold text-gray-700 flex-shrink-0 whitespace-nowrap">Schedule for</label>
+                  <input
+                    type="date"
+                    id="scheduledDateInput"
+                    value="${scheduledDateValue}"
+                    class="w-28 min-w-0 h-6 px-2 text-[10px] border border-gray-300 rounded bg-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-gray-900 flex-shrink-0"
+                    min="${new Date().toISOString().split('T')[0]}"
+                  />
                 </div>
               </div>
 
-              <!-- Auditor Selection -->
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                <div class="flex items-center justify-between mb-3">
-                  <label class="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
-                    <span class="text-red-500 text-xs">*</span>
-                    <span>Select Auditor(s)</span>
+              <!-- Auditors (compact table like people list) -->
+              <div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
+                <div class="flex items-center justify-between gap-1 px-2 py-1.5 border-b border-gray-200">
+                  <label class="text-[10px] font-semibold text-gray-700 flex items-center gap-1">
+                    <span class="text-red-500">*</span> Auditor(s)
                   </label>
                   <button
                     id="toggleOthersBtn"
-                    class="px-2.5 py-1 text-[10px] border border-gray-300 rounded-md bg-white text-gray-700 hover:bg-gray-50 hover:border-primary transition-all font-medium flex items-center gap-1"
+                    class="px-1.5 py-0.5 text-[10px] border border-gray-300 rounded bg-white text-gray-600 hover:bg-gray-100 font-medium"
                     data-action="toggle-others"
                   >
-                    ${includeOtherAuditors ? 'Hide Others' : 'Include Others'}
+                    ${includeOtherAuditors ? 'Hide Others' : 'Others'}
                   </button>
                 </div>
-                <div class="max-h-64 overflow-y-auto space-y-0">
+                <div class="max-h-48 overflow-auto">
                   ${auditorsList}
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Footer -->
-          <div class="border-t border-gray-200 px-6 py-4 flex-shrink-0 bg-gray-50">
+          <!-- Footer (compact) -->
+          <div class="border-t border-gray-200 px-3 py-2 flex-shrink-0 bg-gray-50">
             ${selectedEmployeeCount > 0 || selectedAuditors.size > 0 || totalAudits > 0 ? `
-              <div class="mb-3 pb-3 border-b border-gray-200">
-                <div class="inline-flex items-center gap-3 px-3 py-1.5 bg-gray-100 rounded-md border border-gray-300">
-                  ${selectedEmployeeCount > 0 ? `
-                    <div class="flex items-center gap-1">
-                      <span class="text-[10px] font-medium text-gray-600">Employee:</span>
-                      <span class="text-[10px] font-bold text-gray-900">${selectedEmployeeCount}</span>
-                    </div>
-                  ` : ''}
-                  ${selectedAuditors.size > 0 ? `
-                    <div class="flex items-center gap-1">
-                      <span class="text-[10px] font-medium text-gray-600">Auditor:</span>
-                      <span class="text-[10px] font-bold text-gray-900">${selectedAuditors.size}</span>
-                    </div>
-                  ` : ''}
-                  ${totalAudits > 0 ? `
-                    <div class="flex items-center gap-1">
-                      <span class="text-[10px] font-medium text-gray-600">Total:</span>
-                      <span class="text-[10px] font-bold text-gray-900" id="totalAuditsCount">${totalAudits}</span>
-                    </div>
-                  ` : ''}
-                  ${auditsPerAuditor > 0 && selectedAuditors.size > 0 ? `
-                    <div class="flex items-center gap-1">
-                      <span class="text-[10px] font-medium text-gray-600">Per auditor:</span>
-                      <span class="text-[10px] font-bold text-gray-900">${auditsPerAuditor}</span>
-                    </div>
-                  ` : ''}
-                </div>
+              <div class="flex flex-wrap items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                ${selectedEmployeeCount > 0 ? `<span class="text-[10px] text-gray-600">Emp: <strong>${selectedEmployeeCount}</strong></span>` : ''}
+                ${selectedAuditors.size > 0 ? `<span class="text-[10px] text-gray-600">Aud: <strong>${selectedAuditors.size}</strong></span>` : ''}
+                ${totalAudits > 0 ? `<span class="text-[10px] text-gray-600" id="totalAuditsCount">Total: <strong>${totalAudits}</strong></span>` : ''}
+                ${auditsPerAuditor > 0 && selectedAuditors.size > 0 ? `<span class="text-[10px] text-gray-600">Each: <strong>${auditsPerAuditor}</strong></span>` : ''}
               </div>
             ` : ''}
-            <div class="flex items-center justify-end gap-3">
+            <div class="flex items-center justify-end gap-2">
               <button
                 id="cancelButton"
-                class="px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-all font-medium"
+                class="px-2.5 py-1.5 text-xs border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-50 font-medium"
                 data-action="close-modal"
               >
                 Cancel
               </button>
               <button
                 id="assignButton"
-                class="px-4 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-all font-medium disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                class="px-2.5 py-1.5 text-xs border border-primary rounded bg-primary text-white hover:opacity-90 font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-100 disabled:text-gray-400"
                 ${!canSelectAuditors || selectedAuditors.size === 0 || selectedEmployeeCount === 0 ? 'disabled' : ''}
                 data-action="assign"
               >
@@ -240,50 +199,61 @@ export class AuditorSelectionModal {
     canSelect: boolean
   ): string {
     if (auditors.length === 0) {
-      return '<div class="text-center py-8 text-white/60 text-sm">No auditors available</div>';
+      return '<div class="text-center py-4 text-gray-500 text-[11px]">No auditors available</div>';
     }
 
-    return auditors.map(auditor => {
-      const isSelected = selectedAuditors.has(auditor.email);
-      const initials = auditor.name
-        ? auditor.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-        : 'A';
+    const allSelected = auditors.length > 0 && auditors.every(a => selectedAuditors.has(a.email));
+    const rows = auditors.map(auditor => this.renderAuditorTableRow(auditor, selectedAuditors, auditsPerAuditor, canSelect)).join('');
 
-      return `
-        <div
-          class="flex items-center gap-2.5 px-4 py-2.5 bg-white border-b border-gray-100 last:border-0 transition-all cursor-pointer group ${isSelected ? 'border-l-2 border-l-primary' : 'hover:bg-gray-50'} ${!canSelect ? 'opacity-50 cursor-not-allowed' : ''}"
-          data-email="${this.escapeHtml(auditor.email)}"
-          data-action="auditor-click"
-          ${canSelect ? '' : 'data-disabled="true"'}
-        >
-          <div class="relative flex-shrink-0">
-            <input
-              type="checkbox"
-              class="w-4 h-4 cursor-pointer accent-primary rounded border-2 border-gray-300 checked:bg-primary checked:border-primary transition-all flex-shrink-0 auditor-checkbox"
-              data-email="${this.escapeHtml(auditor.email)}"
-              ${isSelected ? 'checked' : ''}
-              ${!canSelect ? 'disabled' : ''}
-            />
-          </div>
-          <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0 overflow-hidden" style="background-color: var(--home-primary-500, #1a733e);">
-            ${initials}
-          </div>
-          <div class="flex items-center justify-between flex-1 gap-2.5 min-w-0">
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-semibold text-gray-900 m-0 truncate">${this.escapeHtml(auditor.name || auditor.email)}</p>
-              <p class="text-[10px] text-gray-600 m-0 truncate">${auditor.role}</p>
-            </div>
-            ${isSelected && auditsPerAuditor > 0 ? `
-              <div class="flex flex-col items-end gap-0.5 flex-shrink-0">
-                <span class="text-white px-2 py-0.5 rounded text-[10px] font-semibold" style="background-color: var(--home-primary-500, #1a733e);">
-                  ${auditsPerAuditor} audit${auditsPerAuditor !== 1 ? 's' : ''}
-                </span>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      `;
-    }).join('');
+    return `
+      <table class="w-full border-collapse text-sm auditor-list-table">
+        <thead>
+          <tr class="bg-gray-100 border-b border-gray-200">
+            <th class="text-center p-1.5 w-6">
+              <input type="checkbox" id="selectAllAuditors" class="cursor-pointer accent-primary w-3.5 h-3.5" ${allSelected ? 'checked' : ''} ${!canSelect ? 'disabled' : ''} data-action="select-all-auditors" />
+            </th>
+            <th class="text-left p-1.5 font-semibold text-gray-700 text-[10px] min-w-0">Name</th>
+            <th class="text-left p-1.5 font-semibold text-gray-700 text-[10px] w-20">Role</th>
+            <th class="text-center p-1.5 font-semibold text-gray-700 text-[10px] w-12">Audits</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    `;
+  }
+
+  private renderAuditorTableRow(
+    auditor: Auditor,
+    selectedAuditors: Set<string>,
+    auditsPerAuditor: number,
+    canSelect: boolean
+  ): string {
+    const isSelected = selectedAuditors.has(auditor.email);
+    const auditsCell = isSelected && auditsPerAuditor > 0 ? auditsPerAuditor : '—';
+    return `
+      <tr
+        class="border-b border-gray-200 hover:bg-gray-50/80 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''} ${!canSelect ? 'opacity-50 cursor-not-allowed' : ''}"
+        data-email="${this.escapeHtml(auditor.email)}"
+        data-action="auditor-click"
+        ${canSelect ? '' : 'data-disabled="true"'}
+      >
+        <td class="p-1.5 text-center">
+          <input
+            type="checkbox"
+            class="auditor-checkbox cursor-pointer accent-primary w-3.5 h-3.5"
+            data-email="${this.escapeHtml(auditor.email)}"
+            ${isSelected ? 'checked' : ''}
+            ${!canSelect ? 'disabled' : ''}
+            onclick="event.stopPropagation()"
+          />
+        </td>
+        <td class="p-1.5 font-medium text-gray-900 text-xs truncate max-w-[8rem]" title="${this.escapeHtml(auditor.name || auditor.email)}">${this.escapeHtml(auditor.name || auditor.email)}</td>
+        <td class="p-1.5 text-gray-600 text-[10px]">${this.escapeHtml(auditor.role)}</td>
+        <td class="p-1.5 text-center text-[10px] font-semibold ${auditsPerAuditor > 0 && isSelected ? 'text-primary' : 'text-gray-400'}">${auditsCell}</td>
+      </tr>
+    `;
   }
 
   private initializeCounterInput(): void {
@@ -345,6 +315,19 @@ export class AuditorSelectionModal {
         }
       });
     });
+
+    // Select all auditors (header checkbox)
+    const selectAllAuditors = this.modalContainer.querySelector('#selectAllAuditors');
+    if (selectAllAuditors) {
+      selectAllAuditors.addEventListener('change', (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        if (checked) {
+          this.config.onSelectAllAuditors();
+        } else {
+          this.config.onDeselectAllAuditors();
+        }
+      });
+    }
 
     // Toggle others button
     const toggleOthersBtn = this.modalContainer.querySelector('#toggleOthersBtn');

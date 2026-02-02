@@ -7,6 +7,7 @@ import { BaseService } from '../../../core/service/base-service.js';
 import { createValidationError } from '../../../core/errors/app-error.js';
 import { PeopleRepository } from '../infrastructure/people-repository.js';
 import { AuditAssignmentRepository } from '../infrastructure/audit-assignment-repository.js';
+import { ScorecardRepository } from '../infrastructure/scorecard-repository.js';
 import { AuditDistributionDummyData } from '../infrastructure/audit-distribution-dummy-data.js';
 import { logWarn } from '../../../utils/logging-helper.js';
 import type {
@@ -30,7 +31,8 @@ export interface BulkAssignmentRequest {
 export class AuditDistributionService extends BaseService {
   constructor(
     private peopleRepository: PeopleRepository,
-    private assignmentRepository: AuditAssignmentRepository
+    private assignmentRepository: AuditAssignmentRepository,
+    private scorecardRepository: ScorecardRepository
   ) {
     super();
   }
@@ -75,11 +77,15 @@ export class AuditDistributionService extends BaseService {
   }
 
   /**
-   * Load all scorecards
+   * Load all scorecards from Supabase (active and inactive) so assignments show scorecard name, including completed audits.
    */
   async loadScorecards(): Promise<Scorecard[]> {
-    // TODO: Replace with actual repository call
-    return AuditDistributionDummyData.getDummyScorecards();
+    return this.executeBusinessLogic(
+      async () => {
+        return await this.scorecardRepository.findAll();
+      },
+      'Failed to load scorecards'
+    );
   }
 
   /**
@@ -259,6 +265,52 @@ export class AuditDistributionService extends BaseService {
         return createdAssignments;
       },
       'Failed to create bulk audit assignments'
+    );
+  }
+
+  /**
+   * Delete a single audit assignment (only pending/in_progress; completed require policy)
+   */
+  async deleteAssignment(id: string): Promise<void> {
+    return this.executeBusinessLogic(
+      async () => {
+        await this.assignmentRepository.deleteById(id);
+      },
+      'Failed to delete audit assignment'
+    );
+  }
+
+  /**
+   * Delete multiple audit assignments by ids
+   */
+  async deleteAssignments(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    return this.executeBusinessLogic(
+      async () => {
+        await this.assignmentRepository.deleteByIds(ids);
+      },
+      'Failed to delete audit assignments'
+    );
+  }
+
+  /**
+   * Update an assignment (auditor, scorecard, or scheduled date)
+   */
+  async updateAssignment(
+    id: string,
+    updates: { auditor_email?: string; scorecard_id?: string | null; scheduled_date?: string | null }
+  ): Promise<AuditAssignment | null> {
+    return this.executeBusinessLogic(
+      async () => {
+        const updated = await this.assignmentRepository.updateById(id, updates);
+        if (updated) {
+          this.assignmentRepository.invalidateAssignmentsCache();
+          this.assignmentRepository.invalidateEmployeeCache(updated.employee_email);
+          this.assignmentRepository.invalidateAuditorCache(updated.auditor_email);
+        }
+        return updated;
+      },
+      'Failed to update audit assignment'
     );
   }
 }

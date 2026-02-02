@@ -70,7 +70,7 @@ export function createMultiSelectFilterHTML(config: MultiSelectFilterConfig): st
   return `
         <label for="${id}" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">${escapeHtml(label)}</label>
         <div class="multi-select-container">
-            <div class="multi-select-trigger" id="${id}Trigger" onclick="toggleMultiSelect('${id}')" data-placeholder="${escapeHtml(placeholder)}">
+            <div class="multi-select-trigger" id="${id}Trigger" data-filter-id="${escapeHtml(id)}" data-placeholder="${escapeHtml(placeholder)}" role="button" tabindex="0">
                 <span class="multi-select-placeholder" id="${id}Placeholder" data-original="${escapeHtml(placeholder)}">${escapeHtml(displayText)}</span>
                 <span class="multi-select-count" id="${id}Count" style="display: ${selectedCount > 0 ? 'inline' : 'none'};"></span>
                 <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,7 +131,7 @@ export function createMultiSelectFilter(config: MultiSelectFilterConfig): string
           type="button" 
           class="multi-select-trigger ${selectedCount > 0 ? 'active' : ''}" 
           id="${id}Trigger"
-          onclick="toggleMultiSelect('${id}')"
+          data-filter-id="${escapeHtml(id)}" role="button" tabindex="0"
           style="width: 100%; ${!hasOptions ? 'opacity: 0.7;' : ''}"
         >
           <span class="multi-select-placeholder">${escapeHtml(displayText)}</span>

@@ -5,6 +5,124 @@
 
 import { escapeHtml } from './filter-chip-utils.js';
 import type { FilterChip } from './filter-chip-utils.js';
+import { createPeopleMultiSelectHTML } from './people-multi-select.js';
+import { filterValuesToArray } from '../../domain/types.js';
+
+/**
+ * Get compact expanded filter HTML: single row search + multi-select dropdowns (same as audit reports)
+ */
+export function getCompactExpandedFilterHTML(
+  searchValue: string,
+  activeFilterChips: FilterChip[],
+  hasActiveFilters: boolean,
+  employees: any[] = [],
+  currentFilters: any = {}
+): string {
+  const isValidValue = (val: string | null | undefined): val is string => {
+    return Boolean(val && val.trim() !== '' && val.toLowerCase() !== 'null');
+  };
+  const channels = [...new Set(employees.map((e: any) => e.channel).filter(isValidValue))].sort();
+  const teams = [...new Set(employees.map((e: any) => e.team).filter(isValidValue))].sort();
+  const departments = [...new Set(employees.map((e: any) => e.department).filter(isValidValue))].sort();
+  const countries = [...new Set(employees.map((e: any) => e.country).filter(isValidValue))].sort();
+  const roles = [...new Set(employees.map((e: any) => e.designation || e.role).filter(isValidValue))].sort();
+  const roleSelected = filterValuesToArray(currentFilters.role);
+  const channelSelected = filterValuesToArray(currentFilters.channel);
+  const teamSelected = filterValuesToArray(currentFilters.team);
+  const departmentSelected = filterValuesToArray(currentFilters.department);
+  const countrySelected = filterValuesToArray(currentFilters.country);
+  const isActiveValue = (currentFilters.is_active as 'all' | 'active' | 'inactive') || 'all';
+
+  const roleMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleRoleFilter',
+    label: 'Role',
+    placeholder: 'Role',
+    values: roles,
+    selectedValues: roleSelected,
+    compact: true
+  });
+  const channelMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleChannelFilter',
+    label: 'Channel',
+    placeholder: 'Channel',
+    values: channels,
+    selectedValues: channelSelected,
+    compact: true
+  });
+  const teamMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleTeamFilter',
+    label: 'Team',
+    placeholder: 'Team',
+    values: teams,
+    selectedValues: teamSelected,
+    compact: true
+  });
+  const deptMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleDepartmentFilter',
+    label: 'Dept',
+    placeholder: 'Dept',
+    values: departments,
+    selectedValues: departmentSelected,
+    compact: true
+  });
+  const countryMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleCountryFilter',
+    label: 'Country',
+    placeholder: 'Country',
+    values: countries,
+    selectedValues: countrySelected,
+    compact: true
+  });
+
+  return `
+    <div class="flex flex-col gap-2">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="min-w-[160px] max-w-[220px]">
+          <div class="relative">
+            <div class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </div>
+            <input
+              type="text"
+              id="employeeSearch"
+              class="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+              placeholder="Search name, email..."
+              value="${escapeHtml(searchValue)}"
+              autocomplete="off"
+            />
+          </div>
+        </div>
+        ${roleMultiSelect}
+        ${channelMultiSelect}
+        ${teamMultiSelect}
+        ${deptMultiSelect}
+        ${countryMultiSelect}
+        <div class="flex items-center gap-1 min-w-0">
+          <label for="filterActive" class="block text-xs font-medium text-gray-600 mb-0.5 shrink-0">Status</label>
+          <select id="filterActive" class="text-xs border border-gray-300 rounded-md px-2 py-1.5 h-7 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-0">
+            <option value="all" ${isActiveValue === 'all' ? 'selected' : ''}>All</option>
+            <option value="active" ${isActiveValue === 'active' ? 'selected' : ''}>Active</option>
+            <option value="inactive" ${isActiveValue === 'inactive' ? 'selected' : ''}>Inactive</option>
+          </select>
+        </div>
+        ${hasActiveFilters ? `
+          <button type="button" class="px-2 py-1 h-7 text-xs bg-red-100 text-red-700 rounded-md border border-red-200 font-medium hover:bg-red-200/80" data-action="clear-filters" title="Clear all">Clear</button>
+        ` : ''}
+      </div>
+      ${hasActiveFilters ? `
+        <div class="flex items-center gap-1.5 flex-wrap">
+          ${activeFilterChips.map(chip => `
+            <div class="filter-chip inline-flex items-center gap-1 px-2 py-0.5 h-5 bg-primary/10 border border-primary/30 rounded text-[10px] text-gray-900">
+              <span class="font-medium whitespace-nowrap">${escapeHtml(chip.label)}:</span>
+              <span class="whitespace-nowrap">${escapeHtml(chip.value || '')}</span>
+              <button class="remove-filter-btn w-3 h-3 rounded hover:bg-gray-200 flex items-center justify-center flex-shrink-0 text-gray-700" data-filter-key="${escapeHtml(chip.key)}" data-action="remove-filter" title="Remove">×</button>
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
 
 /**
  * Get expanded filter HTML matching AI Audit style
@@ -29,15 +147,56 @@ export function getExpandedFilterHTML(
   const qualitySupervisors = [...new Set(employees.map((e: any) => e.quality_mentor).filter(isValidValue))].sort();
   const teamSupervisors = [...new Set(employees.map((e: any) => e.team_supervisor).filter(isValidValue))].sort();
 
-  const channelValue = currentFilters.channel || '';
-  const teamValue = currentFilters.team || '';
-  const departmentValue = currentFilters.department || '';
-  const countryValue = currentFilters.country || '';
-  const roleValue = currentFilters.role || '';
+  const roleSelected = filterValuesToArray(currentFilters.role);
+  const channelSelected = filterValuesToArray(currentFilters.channel);
+  const teamSelected = filterValuesToArray(currentFilters.team);
+  const departmentSelected = filterValuesToArray(currentFilters.department);
+  const countrySelected = filterValuesToArray(currentFilters.country);
   const isActiveValue = (currentFilters.is_active as 'all' | 'active' | 'inactive') || 'all';
   const groupByValue = currentFilters.groupBy || 'none';
   const qualitySupervisorValue = currentFilters.qualitySupervisor || '';
   const teamSupervisorValue = currentFilters.teamSupervisor || '';
+
+  const roleMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleRoleFilter',
+    label: 'Role',
+    placeholder: 'All Roles',
+    values: roles,
+    selectedValues: roleSelected,
+    compact: false
+  });
+  const channelMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleChannelFilter',
+    label: 'Channel',
+    placeholder: 'All Channels',
+    values: channels,
+    selectedValues: channelSelected,
+    compact: false
+  });
+  const teamMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleTeamFilter',
+    label: 'Team',
+    placeholder: 'All Teams',
+    values: teams,
+    selectedValues: teamSelected,
+    compact: false
+  });
+  const deptMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleDepartmentFilter',
+    label: 'Department',
+    placeholder: 'All Departments',
+    values: departments,
+    selectedValues: departmentSelected,
+    compact: false
+  });
+  const countryMultiSelect = createPeopleMultiSelectHTML({
+    id: 'peopleCountryFilter',
+    label: 'Country',
+    placeholder: 'All Countries',
+    values: countries,
+    selectedValues: countrySelected,
+    compact: false
+  });
 
   return `
     <!-- Search and Filters -->
@@ -60,72 +219,24 @@ export function getExpandedFilterHTML(
         />
       </div>
 
-      <!-- Filter Row -->
+      <!-- Filter Row - multi-select same as audit reports -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <!-- Role Filter -->
-        <select
-          id="filterRole"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="">All Roles</option>
-          ${roles.map(role => `
-            <option value="${escapeHtml(role)}" ${roleValue === role ? 'selected' : ''}>${escapeHtml(role)}</option>
-          `).join('')}
-        </select>
-
-        <!-- Channel Filter -->
-        <select
-          id="filterChannel"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="">All Channels</option>
-          ${channels.map(channel => `
-            <option value="${escapeHtml(channel)}" ${channelValue === channel ? 'selected' : ''}>${escapeHtml(channel)}</option>
-          `).join('')}
-        </select>
-
-        <!-- Team Filter -->
-        <select
-          id="filterTeam"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="">All Teams</option>
-          ${teams.map(team => `
-            <option value="${escapeHtml(team)}" ${teamValue === team ? 'selected' : ''}>${escapeHtml(team)}</option>
-          `).join('')}
-        </select>
-
-        <!-- Department Filter -->
-        <select
-          id="filterDepartment"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="">All Departments</option>
-          ${departments.map(dept => `
-            <option value="${escapeHtml(dept)}" ${departmentValue === dept ? 'selected' : ''}>${escapeHtml(dept)}</option>
-          `).join('')}
-        </select>
-
-        <!-- Country Filter -->
-        <select
-          id="filterCountry"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="">All Countries</option>
-          ${countries.map(country => `
-            <option value="${escapeHtml(country)}" ${countryValue === country ? 'selected' : ''}>${escapeHtml(country)}</option>
-          `).join('')}
-        </select>
-
-        <!-- Active Status Filter -->
-        <select
-          id="filterActive"
-          class="px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
-        >
-          <option value="all" ${isActiveValue === 'all' ? 'selected' : ''}>All Status</option>
-          <option value="active" ${isActiveValue === 'active' ? 'selected' : ''}>Active Only</option>
-          <option value="inactive" ${isActiveValue === 'inactive' ? 'selected' : ''}>Inactive Only</option>
-        </select>
+        ${roleMultiSelect}
+        ${channelMultiSelect}
+        ${teamMultiSelect}
+        ${deptMultiSelect}
+        ${countryMultiSelect}
+        <div>
+          <label for="filterActive" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <select
+            id="filterActive"
+            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+          >
+            <option value="all" ${isActiveValue === 'all' ? 'selected' : ''}>All Status</option>
+            <option value="active" ${isActiveValue === 'active' ? 'selected' : ''}>Active Only</option>
+            <option value="inactive" ${isActiveValue === 'inactive' ? 'selected' : ''}>Inactive Only</option>
+          </select>
+        </div>
       </div>
 
       <!-- Additional Filter Row -->

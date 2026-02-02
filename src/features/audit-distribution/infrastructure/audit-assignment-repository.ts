@@ -174,5 +174,68 @@ export class AuditAssignmentRepository extends BaseRepository {
   invalidateAuditorCache(email: string): void {
     this.invalidateCache(`assignments_auditor_${email}`);
   }
+
+  /**
+   * Delete a single assignment by id
+   */
+  async deleteById(id: string): Promise<void> {
+    await this.executeQuery<unknown>(
+      async () => {
+        return await this.db
+          .from(this.getTableName())
+          .delete()
+          .eq('id', id)
+          .execute();
+      },
+      `Failed to delete assignment ${id}`
+    );
+    this.invalidateAssignmentsCache();
+  }
+
+  /**
+   * Delete multiple assignments by ids
+   */
+  async deleteByIds(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.executeQuery<unknown>(
+      async () => {
+        return await this.db
+          .from(this.getTableName())
+          .delete()
+          .in('id', ids)
+          .execute();
+      },
+      'Failed to delete assignments'
+    );
+    this.invalidateAssignmentsCache();
+  }
+
+  /**
+   * Update an assignment by id
+   */
+  async updateById(
+    id: string,
+    updates: { auditor_email?: string; scorecard_id?: string | null; scheduled_date?: string | null }
+  ): Promise<AuditAssignment | null> {
+    const payload: Record<string, unknown> = {};
+    if (updates.auditor_email !== undefined) payload.auditor_email = updates.auditor_email;
+    if (updates.scorecard_id !== undefined) payload.scorecard_id = updates.scorecard_id;
+    if (updates.scheduled_date !== undefined) payload.scheduled_date = updates.scheduled_date;
+    if (Object.keys(payload).length === 0) return null;
+
+    const result = await this.executeQuery<AuditAssignmentRow[]>(
+      async () => {
+        return await this.db
+          .from(this.getTableName())
+          .update(payload)
+          .eq('id', id)
+          .select(AUDIT_ASSIGNMENT_FIELDS)
+          .execute<AuditAssignmentRow[]>();
+      },
+      `Failed to update assignment ${id}`
+    );
+    const rows = Array.isArray(result) ? result : [];
+    return rows.length > 0 ? this.mapToAssignments(rows)[0] ?? null : null;
+  }
 }
 

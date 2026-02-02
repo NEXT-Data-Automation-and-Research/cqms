@@ -1197,16 +1197,6 @@
   <div class="px-4 py-4 max-w-7xl mx-auto w-full">
     <!-- Action Icons - Directly in main content -->
     <div class="flex items-center justify-between mb-4">
-      <!-- Left: Logo -->
-      <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 text-primary" viewBox="0 -960 960 960" fill="currentColor">
-            <path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm491-80h69v-69l-69 69Zm-457 0h73l120-120h85L452-200h64l120-120h85L541-200h65l120-120h34v-440H200v509l69-69h85L434-200Zm72-200-56-56 177-177 80 80 147-147 56 56-203 204-80-80-121 120Z"/>
-          </svg>
-          <span class="text-xs font-semibold text-gray-800 hidden sm:inline">NEXT CQMS</span>
-        </div>
-      </div>
-
       <!-- Right: Action Icons -->
       <div class="flex items-center gap-2">
         <button id="createAuditBtn" class="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded text-xs font-medium hover:bg-primary-dark transition-colors">
@@ -5232,7 +5222,8 @@ function renderCompletedAuditItem(update) {
   const channel = update.channel || 'No Channel';
   const averageScore = update.averageScore || '0';
   const totalErrors = update.totalErrors || '0';
-  const auditedByLabel = isAgent ? 'you' : (escapeHtml(displayName) || 'Unknown');
+  const auditedByLabel = isAgent ? null : (escapeHtml(displayName) || 'Unknown');
+  const titleText = isAgent ? `#${escapeHtml(interactionId)} audited` : `#${escapeHtml(interactionId)} audited by ${auditedByLabel}`;
 
   // Use the full audit object for status chips (they expect the audit format)
   const fullAudit = update._audit || audit;
@@ -5261,7 +5252,7 @@ function renderCompletedAuditItem(update) {
             ${isAgent ? `
               <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
                 <h4 class="text-xs font-semibold text-gray-900">
-                  #${escapeHtml(interactionId)} audited by ${auditedByLabel}
+                  ${titleText}
                 </h4>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">
                   ${statusIcon} ${passingStatus}
@@ -5279,7 +5270,7 @@ function renderCompletedAuditItem(update) {
             ` : `
               <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
                 <h4 class="text-xs font-semibold text-gray-900">
-                  #${escapeHtml(interactionId)} audited by ${auditedByLabel}
+                  ${titleText}
                 </h4>
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">
                   ${statusIcon} ${passingStatus}

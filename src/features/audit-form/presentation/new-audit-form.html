@@ -1302,7 +1302,7 @@
                     <div id="errorParametersContainer" style="padding: 0 0.6469rem 0.6469rem 0.6469rem; box-shadow: 0 -0.0606rem 0.1213rem rgba(0, 0, 0, 0.05);">
                         <!-- Error parameters will be dynamically loaded based on selected scorecard -->
                         <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
-                            <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">No scorecard selected. Please select a scorecard first to load error parameters.</p>
+                            <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">Select a scorecard first so we can load the criteria for this audit.</p>
                             <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">💡 Tip: Select an employee first to filter scorecards by channel, or choose any scorecard from the list.</p>
                         </div>
                     </div>
@@ -9074,7 +9074,7 @@ function showNoScorecardMessage() {
     if (container) {
         container.innerHTML = `
             <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
-                <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">No scorecard selected. Please select a scorecard first to load error parameters.</p>
+                <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">Select a scorecard first so we can load the criteria for this audit.</p>
                 <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">💡 Tip: Select an employee first to filter scorecards by channel, or choose any scorecard from the list.</p>
             </div>
         `;
@@ -12987,8 +12987,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Validate scorecard selection
             if (!currentScorecard || !currentParameters || currentParameters.length === 0) {
                 await window.confirmationDialog.show({
-                    title: 'No Scorecard Selected',
-                    message: 'Please select a scorecard before submitting the audit.',
+                    title: 'Choose a scorecard',
+                    message: 'Select a scorecard first so we know which criteria to use for this audit.',
                     confirmText: 'OK',
                     type: 'warning'
                 });
@@ -13063,10 +13063,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const interactionIdField = document.getElementById('interactionId');
             if (!interactionIdField || !interactionIdField.value || !interactionIdField.value.trim()) {
                 await window.confirmationDialog.show({
-                    title: 'Validation Error',
-                    message: 'Interaction ID is required. Please enter an Interaction ID before submitting.',
+                    title: 'Almost there',
+                    message: 'Add an Interaction ID so we can link this audit to the right conversation.',
                     confirmText: 'OK',
-                    type: 'error'
+                    type: 'warning'
                 });
                 if (interactionIdField) {
                     interactionIdField.focus();
@@ -13088,10 +13088,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (!hasEmployee) {
                     await window.confirmationDialog.show({
-                        title: 'Validation Error',
-                        message: 'Please select an employee before submitting the audit.',
+                        title: 'Almost there',
+                        message: 'Select an employee so we can record who this audit is for.',
                         confirmText: 'OK',
-                        type: 'error'
+                        type: 'warning'
                     });
                     if (employeeSelect) {
                         employeeSelect.focus();
@@ -13161,7 +13161,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                         
                         if (!hasContent) {
-                            validationErrors.push(`Feedback is required for "${param.error_name}" (Feedback ${i + 1} of ${feedbackCount})`);
+                            validationErrors.push(`"${param.error_name}" (Feedback ${i + 1} of ${feedbackCount})`);
                         }
                     }
                 }
@@ -13170,10 +13170,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // If there are validation errors, show them and stop submission
             if (validationErrors.length > 0) {
                 await window.confirmationDialog.show({
-                    title: 'Validation Error',
-                    message: 'Please fill in all required feedback fields:\n\n' + validationErrors.slice(0, 5).join('\n') + (validationErrors.length > 5 ? `\n... and ${validationErrors.length - 5} more` : ''),
+                    title: 'Almost there',
+                    message: 'Add feedback for each item below so we can complete your audit:\n\n• ' + validationErrors.slice(0, 5).join('\n• ') + (validationErrors.length > 5 ? `\n\n... and ${validationErrors.length - 5} more` : ''),
                     confirmText: 'OK',
-                    type: 'error'
+                    type: 'warning'
                 });
                 // Reset button state on validation error
                 updateSubmitButtonState('reset', originalButtonText);

@@ -110,7 +110,7 @@ export class ErrorDetailsSection {
             <div id="errorParametersContainer" style="padding: 0 0.6469rem 0.6469rem 0.6469rem; box-shadow: 0 -0.0606rem 0.1213rem rgba(0, 0, 0, 0.05);">
               <!-- Error parameters will be dynamically loaded based on selected scorecard -->
               <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
-                <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">No scorecard selected. Please select a scorecard first to load error parameters.</p>
+                <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">Select a scorecard first so we can load the criteria for this audit.</p>
                 <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">💡 Tip: Select an employee first to filter scorecards by channel, or choose any scorecard from the list.</p>
               </div>
             </div>

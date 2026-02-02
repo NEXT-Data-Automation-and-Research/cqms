@@ -14,12 +14,15 @@ import { logInfo, logError } from '../../../../utils/logging-helper.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { getActiveFilterChips, escapeHtml } from '../components/filter-chip-utils.js';
 import type { Employee } from '../../domain/types.js';
+import { getFirstFilterValue } from '../../domain/types.js';
 
 export interface AssignmentTabRendererConfig {
   stateManager: AuditDistributionStateManager;
   service: AuditDistributionService;
   onEmployeeListUpdate?: () => void;
   onAssignmentComplete?: () => void;
+  /** When false, auditor modal is not shown (e.g. for AI Audit tab). Default true. */
+  showAuditorModal?: boolean;
 }
 
 export class AssignmentTabRenderer {
@@ -46,20 +49,23 @@ export class AssignmentTabRenderer {
   }
 
   private initializeFilterBar(): void {
-    // Check for expanded filter container first (new style), then fall back to compact
+    // Prefer filters inside people section header, then legacy expanded/compact
+    const peopleSectionFilter = document.getElementById('peopleSectionFilterContainer');
     const expandedFilterContainer = document.getElementById('expandedFilterContainer');
     const filterBarContainer = document.getElementById('filterBarContainer');
-    const container = expandedFilterContainer || filterBarContainer;
-    
+    const container = peopleSectionFilter || expandedFilterContainer || filterBarContainer;
+
     if (!container) return;
 
     const state = this.stateManager.getState();
-    const useExpanded = !!expandedFilterContainer;
+    const useExpanded = !!(peopleSectionFilter || expandedFilterContainer);
+    const useCompact = !!peopleSectionFilter; // Compact search + filters in people section header
 
     this.filterBar = new FilterBar(container, {
       employees: state.employees,
       filters: state.filters,
       expanded: useExpanded,
+      compact: useCompact,
       onFilterChange: (filters) => {
         // Replace filters completely when coming from modal (preserves search if needed)
         this.stateManager.replaceFilters(filters);
@@ -581,10 +587,10 @@ export class AssignmentTabRenderer {
     const qualitySupervisors = [...new Set(employeesToUse.map(e => e.quality_mentor).filter(isValidValue))].sort();
     const teamSupervisors = [...new Set(employeesToUse.map(e => e.team_supervisor).filter(isValidValue))].sort();
     
-    updateSelectOptions('filterChannel', channels, state.filters.channel || '');
-    updateSelectOptions('filterTeam', teams, state.filters.team || '');
-    updateSelectOptions('filterDepartment', departments, state.filters.department || '');
-    updateSelectOptions('filterCountry', countries, state.filters.country || '');
+    updateSelectOptions('filterChannel', channels, getFirstFilterValue(state.filters.channel));
+    updateSelectOptions('filterTeam', teams, getFirstFilterValue(state.filters.team));
+    updateSelectOptions('filterDepartment', departments, getFirstFilterValue(state.filters.department));
+    updateSelectOptions('filterCountry', countries, getFirstFilterValue(state.filters.country));
     updateSelectOptions('filterQualitySupervisor', qualitySupervisors, state.filters.qualitySupervisor || '', (val) => {
       const emp = state.employees.find(e => e.email === val);
       return emp?.name || val;
@@ -596,6 +602,7 @@ export class AssignmentTabRenderer {
   }
 
   private initializeAuditorModal(): void {
+    if (this.config.showAuditorModal === false) return;
     const modalContainer = document.getElementById('auditorModalContainer');
     if (!modalContainer) {
       logError('[AssignmentTabRenderer] Auditor modal container not found');
@@ -651,6 +658,7 @@ export class AssignmentTabRenderer {
   }
 
   private showAuditorModal(): void {
+    if (this.config.showAuditorModal === false) return;
     this.updateAuditorModal();
     this.auditorModal?.show();
   }
@@ -784,17 +792,20 @@ export class AssignmentTabRenderer {
       selectedEmployees: new Set(state.selectedEmployees.keys()),
       auditStats,
       groupBy: state.filters.groupBy,
+      compact: true, // Compact table view like Assigned Audits list
       onEmployeeSelect: (email, selected) => {
         const currentState = this.stateManager.getState();
         const auditCount = currentState.bulkAuditCount > 0 ? currentState.bulkAuditCount : 1;
         this.stateManager.toggleEmployeeSelection(email, selected, auditCount);
         
-        // Show auditor pane when employees are selected
+        // Show auditor pane when employees are selected (unless showAuditorModal is false)
         const updatedState = this.stateManager.getState();
-        if (updatedState.selectedEmployees.size > 0) {
-          this.showAuditorModal();
-        } else {
-          this.hideAuditorModal();
+        if (this.config.showAuditorModal !== false) {
+          if (updatedState.selectedEmployees.size > 0) {
+            this.showAuditorModal();
+          } else {
+            this.hideAuditorModal();
+          }
         }
         
         this.updateSelectionActions();
@@ -830,12 +841,13 @@ export class AssignmentTabRenderer {
     this.updateEmployeeList();
     this.updateSelectionActions();
     this.updateAuditorModal();
-    
-    // Show/hide auditor pane based on selection
-    if (state.selectedEmployees.size > 0) {
-      this.showAuditorModal();
-    } else {
-      this.hideAuditorModal();
+
+    if (this.config.showAuditorModal !== false) {
+      if (state.selectedEmployees.size > 0) {
+        this.showAuditorModal();
+      } else {
+        this.hideAuditorModal();
+      }
     }
   }
 }

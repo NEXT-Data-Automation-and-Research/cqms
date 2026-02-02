@@ -1,12 +1,14 @@
 /**
  * Manual Audit View Renderer
- * Handles rendering of the manual audit view with tabs
+ * Handles rendering of the manual audit view: assign new audits (people list + auditor selection).
+ * Managing existing assignments is in the dedicated "Assigned Audits" tab.
  */
 
 import type { AuditDistributionStateManager } from '../../application/audit-distribution-state.js';
 import { AuditDistributionService } from '../../application/audit-distribution-service.js';
 import { AssignmentTabRenderer } from './assignment-tab-renderer.js';
-import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
+import { getPeopleSectionHTML } from '../components/people-section-template.js';
+import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logInfo, logError } from '../../../../utils/logging-helper.js';
 
 export interface ManualAuditViewRendererConfig {
@@ -43,49 +45,10 @@ export class ManualAuditViewRenderer {
   private getViewHTML(): string {
     return `
       <div class="px-4 py-6 max-w-7xl mx-auto w-full">
-        <!-- Assignment Content -->
-        <div id="assignmentContent" class="tab-content">
-          <!-- Header Section -->
-          <div class="mb-6">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-8">
-              <div class="flex items-center gap-4 mb-6">
-                <div class="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="8.5" cy="7" r="4"/>
-                    <polyline points="17 11 19 13 23 9"/>
-                  </svg>
-                </div>
-                <div>
-                  <h2 class="text-2xl font-bold text-gray-900">Manual Assign</h2>
-                  <p class="text-sm text-gray-600 mt-1">
-                    Manually assign audits to team members and auditors
-                  </p>
-                </div>
-              </div>
-              <!-- Search and Filters -->
-              <div id="expandedFilterContainer"></div>
-            </div>
+        <div id="assignmentContent" class="tab-content flex flex-row gap-4 items-stretch">
+          <div class="flex-1 min-w-0">
+            ${getPeopleSectionHTML('People', 'Select team members for audit assignment')}
           </div>
-          
-          <!-- People List Section - Below Filters -->
-          <div class="mb-6">
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-              <!-- Header -->
-              <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h3 class="text-lg font-semibold text-gray-900">People</h3>
-                <p class="text-xs text-gray-600 mt-1">Select team members for audit assignment</p>
-              </div>
-              <!-- Selection Actions -->
-              <div id="selectionActionsContainer" class="px-6 py-3 border-b border-gray-200 flex items-center gap-2 flex-shrink-0"></div>
-              <!-- Employee List Content -->
-              <div id="employeeListContent" class="max-h-[60vh] overflow-y-auto"></div>
-              <!-- Pagination -->
-              <div id="paginationBottomContainer" class="px-6 py-3 border-t border-gray-200 flex-shrink-0"></div>
-            </div>
-          </div>
-          
-          <!-- Auditor Selection Pane -->
           <div id="auditorModalContainer" class="flex-shrink-0 w-0 transition-all duration-300 overflow-hidden"></div>
         </div>
       </div>
@@ -106,7 +69,13 @@ export class ManualAuditViewRenderer {
   private initializeTabRenderers(): void {
     this.assignmentTabRenderer = new AssignmentTabRenderer({
       stateManager: this.stateManager,
-      service: this.service
+      service: this.service,
+      onAssignmentComplete: () => {
+        // Refresh assignments in state so Assigned Audits tab has latest data when user switches
+        this.service.loadAssignments().then(assignments => {
+          this.stateManager.setAssignments(assignments);
+        }).catch(err => logError('[ManualAuditView] Error refreshing assignments:', err));
+      }
     });
     this.assignmentTabRenderer.render();
   }

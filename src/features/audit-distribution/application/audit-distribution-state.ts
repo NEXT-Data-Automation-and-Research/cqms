@@ -12,6 +12,7 @@ import type {
   PaginationState,
   AgentSummary
 } from '../domain/types.js';
+import { filterValuesToArray } from '../domain/types.js';
 import { mergeFilters, cleanFilters } from './filter-utils.js';
 
 export interface AuditDistributionState {
@@ -120,20 +121,25 @@ export class AuditDistributionStateManager {
     const { employees, filters } = this.state;
     let filtered = [...employees];
 
-    if (filters.role) {
-      filtered = filtered.filter(e => e.designation === filters.role);
+    const roles = filterValuesToArray(filters.role);
+    if (roles.length) {
+      filtered = filtered.filter(e => e.designation && roles.includes(e.designation));
     }
-    if (filters.channel) {
-      filtered = filtered.filter(e => e.channel === filters.channel);
+    const channels = filterValuesToArray(filters.channel);
+    if (channels.length) {
+      filtered = filtered.filter(e => e.channel && channels.includes(e.channel));
     }
-    if (filters.team) {
-      filtered = filtered.filter(e => e.team === filters.team);
+    const teams = filterValuesToArray(filters.team);
+    if (teams.length) {
+      filtered = filtered.filter(e => e.team && teams.includes(e.team));
     }
-    if (filters.department) {
-      filtered = filtered.filter(e => e.department === filters.department);
+    const departments = filterValuesToArray(filters.department);
+    if (departments.length) {
+      filtered = filtered.filter(e => e.department && departments.includes(e.department));
     }
-    if (filters.country) {
-      filtered = filtered.filter(e => e.country === filters.country);
+    const countries = filterValuesToArray(filters.country);
+    if (countries.length) {
+      filtered = filtered.filter(e => e.country && countries.includes(e.country));
     }
     if (filters.is_active) {
       if (filters.is_active === 'active') {

@@ -770,6 +770,8 @@
                         </button>
                         <div id="sortMenu" style="display: none; position: absolute; top: 100%; left: 0; margin-top: 0.1617rem; background: var(--background-white); border: 0.0405rem solid var(--border-light); border-radius: 0.2425rem; box-shadow: 0 0.1617rem 0.3234rem rgba(0,0,0,0.1); z-index: 1000; min-width: 7.7625rem; padding: 0.3234rem 0;">
                             <select id="auditSortBy" onchange="sortPendingAudits(); toggleSortMenu();" style="width: 100%; padding: 0.2425rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; background-color: #ffffff; color: #374151; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23374151\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right 0.3234rem center; background-size: 0.5659rem; padding-right: 1.2937rem;">
+                                <option value="assigned_asc">Assigned (oldest first)</option>
+                                <option value="assigned_desc">Assigned (newest first)</option>
                                 <option value="name_asc">Name (A-Z)</option>
                                 <option value="name_desc">Name (Z-A)</option>
                                 <option value="status_asc">Status (Pending → In Progress)</option>
@@ -3255,7 +3257,7 @@ let currentAssignmentId = null; // Separate tracking for assignment vs audit edi
 let showAllAudits = false; // Flag to track if showing all audits or just mine
 let isEditingExistingAudit = false; // Flag for editing from audit reports
 let currentEditingTableName = null; // Table name for the audit being edited
-let currentSortOrder = 'name_asc'; // Current sort order for pending audits
+let currentSortOrder = 'assigned_asc'; // Current sort order for pending audits (assigned timestamp, oldest first)
 
 // Filter state
 let activeFilters = {
@@ -3331,6 +3333,15 @@ function sortPendingAudits() {
         let comparison = 0;
         
         switch(field) {
+            case 'assigned':
+                // Sort by assigned timestamp (created_at = when assignment was created); oldest first for asc
+                const tsA = (a.created_at || a.updated_at || a.scheduled_date || '').toString();
+                const tsB = (b.created_at || b.updated_at || b.scheduled_date || '').toString();
+                const timeA = tsA ? new Date(tsA).getTime() : 0;
+                const timeB = tsB ? new Date(tsB).getTime() : 0;
+                comparison = timeA - timeB;
+                break;
+                
             case 'name':
                 const nameA = (a.employee_name || '').toLowerCase();
                 const nameB = (b.employee_name || '').toLowerCase();
@@ -4154,14 +4165,8 @@ async function loadPendingAudits() {
             if (loaderEl) loaderEl.style.display = 'none';
             if (listEl) {
                 listEl.innerHTML = `
-                    <div class="px-4 py-8 text-center text-yellow-600 text-xs">
-                        <p class="font-medium mb-1">No assignments found</p>
-                        <p class="text-gray-500">Query executed but returned 0 results.</p>
-                        <p class="text-gray-400 text-xs mt-2">Email used: ${currentUserEmail}</p>
-                        <p class="text-gray-400 text-xs">Filter field: ${filterField}</p>
-                        <button onclick="window.loadPendingAudits()" class="mt-2 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded text-xs">
-                            Retry Query
-                        </button>
+                    <div class="px-4 py-8 text-center text-gray-500 text-sm">
+                        <p class="font-medium">No assignments found</p>
                     </div>
                 `;
                 listEl.style.display = 'flex';
@@ -4169,13 +4174,12 @@ async function loadPendingAudits() {
             return; // Exit early if no data
         }
         
-        // Sort client-side to handle null created_at values
+        // Sort client-side by assigned timestamp (created_at), oldest first
         if (data && data.length > 0) {
             data.sort((a, b) => {
-                // Sort by created_at if available, otherwise scheduled_date, otherwise updated_at
-                const dateA = a.created_at || a.scheduled_date || a.updated_at || '';
-                const dateB = b.created_at || b.scheduled_date || b.updated_at || '';
-                return new Date(dateB).getTime() - new Date(dateA).getTime();
+                const dateA = a.created_at || a.updated_at || a.scheduled_date || '';
+                const dateB = b.created_at || b.updated_at || b.scheduled_date || '';
+                return new Date(dateA).getTime() - new Date(dateB).getTime();
             });
         }
         
@@ -5309,9 +5313,10 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
         
         // Chip styles: pill, small padding, clear label + value
         const chipBase = 'display: inline-flex; align-items: center; gap: 0.1617rem; padding: 0.1617rem 0.4043rem; border-radius: 9999px; font-size: 0.4852rem; font-weight: 500; white-space: nowrap;';
-        const assignedChip = '<span style="' + chipBase + ' background: #f3f4f6; color: #374151; border: 0.0304rem solid #e5e7eb;" title="When assigned">Assigned ' + assignedDateStr + '</span>';
+        const assignedChip = '<span style="' + chipBase + ' background: #f3f4f6; color: #374151; border: 0.0304rem solid #e5e7eb;" title="Assigned on">Assigned on ' + assignedDateStr + '</span>';
+        const scheduledChipHTML = audit.scheduled_date ? '<span style="' + chipBase + ' background: #dbeafe; color: #1d4ed8; border: 0.0304rem solid #93c5fd;" title="Scheduled for">Scheduled for ' + scheduledDateStr + '</span>' : '';
         const completedChipHTML = completedDateStr ? '<span style="' + chipBase + ' background: #d1fae5; color: #047857; border: 0.0304rem solid #a7f3d0;" title="Completed on">Completed ' + completedDateStr + '</span>' : '';
-        const dateChipsHTML = assignedChip + (completedChipHTML ? ' ' + completedChipHTML : '');
+        const dateChipsHTML = assignedChip + (scheduledChipHTML ? ' ' + scheduledChipHTML : '') + (completedChipHTML ? ' ' + completedChipHTML : '');
         
         return `
             <div class="nested-audit-card ${isNested ? 'select-nested-audit-card' : ''}" data-audit-id="${audit.id}" data-drop-target="true" style="${cardStyle} display: flex; align-items: center; gap: 0.8086rem; padding: 0.4043rem 0.8086rem; min-height: 2.5rem; ${isNested ? 'cursor: pointer;' : ''}" ${clickHandler}>
@@ -5417,7 +5422,8 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                     <p style="margin: 0; font-size: 0.4852rem; color: #6b7280; display: flex; align-items: center; gap: 0.3234rem; flex-wrap: wrap;">
                         <span>${escapeHtml(displayEmail)}</span>
                         ${audit.scorecards?.name ? `<span style="color: #9ca3af;">•</span><span>${escapeHtml(audit.scorecards.name)}</span>` : ''}
-                        <span style="display: inline-flex; align-items: center; gap: 0.1617rem; padding: 0.1213rem 0.3234rem; border-radius: 9999px; font-size: 0.4447rem; font-weight: 500; background: #f3f4f6; color: #374151; border: 0.0304rem solid #e5e7eb; white-space: nowrap;" title="When assigned">Assigned ${assignedDateStr}</span>
+                        <span style="display: inline-flex; align-items: center; gap: 0.1617rem; padding: 0.1213rem 0.3234rem; border-radius: 9999px; font-size: 0.4447rem; font-weight: 500; background: #f3f4f6; color: #374151; border: 0.0304rem solid #e5e7eb; white-space: nowrap;" title="Assigned on">Assigned on ${assignedDateStr}</span>
+                        ${audit.scheduled_date ? `<span style="display: inline-flex; align-items: center; gap: 0.1617rem; padding: 0.1213rem 0.3234rem; border-radius: 9999px; font-size: 0.4447rem; font-weight: 500; background: #dbeafe; color: #1d4ed8; border: 0.0304rem solid #93c5fd; white-space: nowrap;" title="Scheduled for">Scheduled for ${scheduledDateStr}</span>` : ''}
                         ${audit.completed_at ? `<span style="display: inline-flex; align-items: center; padding: 0.1213rem 0.3234rem; border-radius: 9999px; font-size: 0.4447rem; font-weight: 500; background: #d1fae5; color: #047857; border: 0.0304rem solid #a7f3d0; white-space: nowrap;" title="Completed on">Completed ${formatDateDDMMMYYYY(audit.completed_at)}</span>` : ''}
                     </p>
                 </div>
@@ -21922,6 +21928,8 @@ window.toggleYourStatsSection = toggleYourStatsSection;
         </div>
     </div>
 
+  <!-- Confirmation dialog for success/warning/error messages -->
+  <script src="/confirmation-dialog.js"></script>
   <!-- Authentication Guard -->
   <script type="module" src="/js/auth-checker.js"></script>
   

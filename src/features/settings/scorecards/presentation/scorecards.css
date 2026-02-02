@@ -1,6 +1,12 @@
 /**
  * Scorecards Page Styles - Main Layout
+ * Uses explicit colors so text and buttons are visible (theme.css --primary-color is light cream)
  */
+
+/* Ensure page heading is visible on light background (scorecards page only) */
+.main-content:has(.scorecards-container) .page-heading-global {
+  color: #111827;
+}
 
 /* Override main-content to prevent horizontal overflow */
 .main-content {
@@ -74,13 +80,13 @@
 .stat-icon {
     width: 1.25rem;
     height: 1.25rem;
-    color: var(--primary-color);
+    color: #1A733E;
 }
 
 .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: #1A733E;
     margin-bottom: 0.25rem;
     line-height: 1.2;
 }
@@ -123,7 +129,7 @@
 }
 
 .table-count {
-    background-color: var(--primary-color);
+    background-color: #1A733E;
     color: #ffffff;
     padding: 0.25rem 0.5rem;
     border-radius: 0.25rem;

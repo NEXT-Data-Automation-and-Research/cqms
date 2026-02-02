@@ -16,7 +16,6 @@ export function renderFilterPanel(
   // Access private audits property via type assertion
   const audits: AuditReport[] = (controller as any).audits || [];
   const currentFilters = (controller as any).filters || {};
-  const currentDateRange = (controller as any).dateRange || null;
   const filterValues = extractFilterValues(audits);
 
   // Generate multi-select HTML for all filters
@@ -124,7 +123,7 @@ export function renderFilterPanel(
     </div>
 
     <!-- Compact Filter Grid - matching live site exactly -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(5.2734rem, 1fr)); gap: 0.375rem; align-items: end; width: 100%;">
+    <div class="filter-panel-grid" id="allFiltersGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(5.2734rem, 1fr)); gap: 0.375rem; align-items: end; width: 100%; overflow: visible;">
       <!-- Scorecard Selector -->
       <div>
         <label for="scorecardSelector" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">Scorecard</label>
@@ -219,18 +218,6 @@ export function renderFilterPanel(
       <div>
         <label for="maxErrorsFilter" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">Max Errors</label>
         <input type="number" id="maxErrorsFilter" min="0" placeholder="Max errors..." style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
-      </div>
-      
-      <!-- From Date -->
-      <div>
-        <label for="dateFromFilter" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">From Date</label>
-        <input type="date" id="dateFromFilter" value="${currentDateRange?.startDate || ''}" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
-      </div>
-      
-      <!-- To Date -->
-      <div>
-        <label for="dateToFilter" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; font-family: 'Poppins', sans-serif; display: block;">To Date</label>
-        <input type="date" id="dateToFilter" value="${currentDateRange?.endDate || ''}" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
       </div>
       
       <!-- Validation Status -->

@@ -669,27 +669,23 @@ export class AuditReportsEventHandlers {
         }
       }
     }, { capture: false });
-    
-    // Handle date inputs separately
-    filterPanel.addEventListener('change', (e) => {
-      const target = e.target as HTMLElement;
-      if (target.id === 'dateFromFilter' || target.id === 'dateToFilter' || target.id === 'fromDate' || target.id === 'toDate') {
-        const fromDateInput = (document.getElementById('dateFromFilter') || document.getElementById('fromDate')) as HTMLInputElement;
-        const toDateInput = (document.getElementById('dateToFilter') || document.getElementById('toDate')) as HTMLInputElement;
-        const fromDate = fromDateInput?.value || '';
-        const toDate = toDateInput?.value || '';
-        
-        if (fromDate && toDate) {
-          this.controller.setDateRange({ startDate: fromDate, endDate: toDate });
-        } else if (!fromDate && !toDate) {
-          this.controller.setDateRange(null);
-        }
-      }
-    }, { capture: false });
 
     // Add keyboard navigation: Enter key applies filters
     filterPanel.addEventListener('keydown', (e) => {
       const target = e.target as HTMLElement;
+      // Multi-select trigger: Enter/Space toggles dropdown (accessibility)
+      const trigger = target.closest('.multi-select-trigger') as HTMLElement;
+      if (trigger && (e.key === 'Enter' || e.key === ' ')) {
+        const filterId = (trigger.dataset?.filterId as string) || trigger.id?.replace(/Trigger$/, '') || '';
+        if (filterId) {
+          const toggleMultiSelect = (window as any).toggleMultiSelect;
+          if (typeof toggleMultiSelect === 'function') {
+            e.preventDefault();
+            toggleMultiSelect(filterId);
+          }
+        }
+        return;
+      }
       if (e.key === 'Enter' && (target.tagName === 'INPUT' || target.tagName === 'SELECT')) {
         e.preventDefault();
         // Trigger change event to apply filter
@@ -703,6 +699,20 @@ export class AuditReportsEventHandlers {
 
     filterPanel.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
+      // Multi-select trigger: open/close dropdown (delegation so it works even if inline onclick is blocked e.g. CSP)
+      const trigger = target.closest('.multi-select-trigger') as HTMLElement;
+      if (trigger && (trigger.id?.endsWith('Trigger') || trigger.dataset?.filterId)) {
+        const filterId = (trigger.dataset?.filterId as string) || trigger.id?.replace(/Trigger$/, '') || '';
+        if (filterId) {
+          const toggleMultiSelect = (window as any).toggleMultiSelect;
+          if (typeof toggleMultiSelect === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleMultiSelect(filterId);
+          }
+        }
+        return;
+      }
       if (target.id === 'clearFilters' || target.closest('#clearFilters')) {
         e.preventDefault();
         e.stopPropagation();
@@ -711,8 +721,7 @@ export class AuditReportsEventHandlers {
         const inputs = [
           'searchInput', 'auditIdSearch', 'interactionIdFilter', 'interactionIdSearch', 
           'weekFilter', 'weekSearch', 'minScoreFilter', 'minScore', 'maxScoreFilter', 'maxScore',
-          'minErrorsFilter', 'minErrors', 'maxErrorsFilter', 'maxErrors', 
-          'dateFromFilter', 'fromDate', 'dateToFilter', 'toDate'
+          'minErrorsFilter', 'minErrors', 'maxErrorsFilter', 'maxErrors'
         ];
         inputs.forEach(id => {
           const el = document.getElementById(id) as HTMLInputElement;

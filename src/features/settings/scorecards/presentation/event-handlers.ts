@@ -13,14 +13,11 @@ export class ScorecardEventHandlers {
 
   /**
    * Attach event listeners for action buttons (CSP-safe)
-   * Only attaches once to avoid duplicate listeners
+   * Call detachActionListeners() before this when re-rendering to avoid duplicate listeners.
    */
   attachActionListeners(): void {
     const tbody = document.getElementById('scorecardsTableBody');
     if (!tbody) return;
-
-    // Only attach listener once
-    if (this.isAttached) return;
 
     // Create named handler function so we can remove it if needed
     this.clickHandler = (e: Event) => {
@@ -31,25 +28,27 @@ export class ScorecardEventHandlers {
       const action = button.getAttribute('data-action');
       const scorecardId = button.getAttribute('data-scorecard-id');
 
-      if (!action || !scorecardId) return;
+      if (!action) return;
+      // cannot-delete button has no data-scorecard-id; other actions require it
+      if (action !== 'cannot-delete' && !scorecardId) return;
 
       switch (action) {
         case 'view':
-          this.controller.viewScorecard(scorecardId);
+          this.controller.viewScorecard(scorecardId!);
           break;
         case 'edit':
-          this.controller.editScorecard(scorecardId);
+          this.controller.editScorecard(scorecardId!);
           break;
         case 'toggle-status': {
           const newStatusAttr = button.getAttribute('data-new-status');
           // getAttribute always returns a string, so compare to 'true'
           const newStatus = newStatusAttr === 'true';
-          this.controller.toggleStatus(scorecardId, newStatus);
+          this.controller.toggleStatus(scorecardId!, newStatus);
           break;
         }
         case 'delete': {
           const tableName = button.getAttribute('data-table-name') || '';
-          this.controller.deleteScorecard(scorecardId, tableName);
+          this.controller.deleteScorecard(scorecardId!, tableName);
           break;
         }
         case 'cannot-delete': {

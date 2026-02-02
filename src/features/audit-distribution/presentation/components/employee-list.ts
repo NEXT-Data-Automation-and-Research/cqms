@@ -11,6 +11,8 @@ export interface EmployeeListConfig {
   selectedEmployees: Set<string>;
   auditStats: Map<string, EmployeeAuditStats>;
   groupBy?: 'none' | 'channel' | 'team' | 'quality_mentor' | 'team_supervisor' | 'department' | 'country';
+  /** When true, render as compact table (like Assigned Audits list) */
+  compact?: boolean;
   onEmployeeSelect: (email: string, selected: boolean) => void;
   onEmployeeClick?: (email: string) => void;
 }
@@ -46,10 +48,91 @@ export class EmployeeList {
       return;
     }
 
-    if (groupBy === 'none') {
+    if (this.config.compact) {
+      this.renderCompactTable(employees, selectedEmployees, auditStats);
+    } else if (groupBy === 'none') {
       this.renderFlatList(employees, selectedEmployees, auditStats);
     } else {
       this.renderGroupedList(employees, selectedEmployees, auditStats, groupBy);
+    }
+  }
+
+  private renderCompactTable(
+    employees: Employee[],
+    selectedEmployees: Set<string>,
+    auditStats: Map<string, EmployeeAuditStats>
+  ): void {
+    const sortedEmployees = [...employees].sort((a, b) => {
+      const statsA = auditStats.get(a.email) || { assigned: 0, completed: 0 };
+      const statsB = auditStats.get(b.email) || { assigned: 0, completed: 0 };
+      if (statsA.assigned !== statsB.assigned) return statsA.assigned - statsB.assigned;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    const allSelected = sortedEmployees.length > 0 && sortedEmployees.every(emp => selectedEmployees.has(emp.email));
+    const rows = sortedEmployees.map(emp => this.renderCompactTableRow(emp, selectedEmployees, auditStats)).join('');
+
+    safeSetHTML(this.container, `
+      <div class="rounded-xl bg-gray-50/50 border border-gray-200 p-4">
+        <div class="overflow-x-auto overflow-y-visible">
+          <table class="w-full border-collapse text-sm employee-list-table">
+            <thead>
+              <tr class="bg-gray-100 border-b border-gray-200">
+                <th class="text-center p-2 w-4"><input type="checkbox" id="selectAllEmployees" class="cursor-pointer accent-primary w-4 h-4" ${allSelected ? 'checked' : ''} data-action="select-all" /></th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[8rem]">Name</th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[10rem]">Email</th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[6rem]">Channel</th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[6rem]">Team</th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[6rem]">Department</th>
+                <th class="text-left p-2 font-semibold text-gray-700 min-w-[5rem]">Role</th>
+                <th class="text-center p-2 font-semibold text-gray-700 w-16">Assigned</th>
+                <th class="text-center p-2 font-semibold text-gray-700 w-16">Completed</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedEmployees.length === 0 ? `<tr><td colspan="9" class="text-center py-6 text-gray-500">No employees found</td></tr>` : rows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `);
+    this.attachImageErrorHandlers();
+    this.attachEventListeners();
+    this.attachCompactTableListeners();
+  }
+
+  private renderCompactTableRow(
+    employee: Employee,
+    selectedEmployees: Set<string>,
+    auditStats: Map<string, EmployeeAuditStats>
+  ): string {
+    const isSelected = selectedEmployees.has(employee.email);
+    const stats = auditStats.get(employee.email) || { assigned: 0, completed: 0 };
+    return `
+      <tr class="border-b border-gray-200 hover:bg-gray-50/80 transition-colors" data-email="${this.escapeHtml(employee.email)}" data-action="employee-select">
+        <td class="p-2 text-center">
+          <input type="checkbox" class="employee-checkbox cursor-pointer accent-primary w-4 h-4" data-email="${this.escapeHtml(employee.email)}" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation()" />
+        </td>
+        <td class="p-2 font-medium text-gray-900 whitespace-nowrap">${this.escapeHtml(employee.name || '')}</td>
+        <td class="p-2 text-gray-700 text-xs truncate max-w-[12rem]" title="${this.escapeHtml(employee.email || '')}">${this.escapeHtml(employee.email || '')}</td>
+        <td class="p-2 text-gray-600 text-xs">${this.escapeHtml(employee.channel || '—')}</td>
+        <td class="p-2 text-gray-600 text-xs">${this.escapeHtml(employee.team || '—')}</td>
+        <td class="p-2 text-gray-600 text-xs">${this.escapeHtml(employee.department || '—')}</td>
+        <td class="p-2 text-gray-600 text-xs">${this.escapeHtml(employee.designation || '—')}</td>
+        <td class="p-2 text-center text-xs font-semibold text-primary">${stats.assigned}</td>
+        <td class="p-2 text-center text-xs font-semibold ${stats.completed > 0 ? 'text-green-600' : 'text-gray-400'}">${stats.completed}</td>
+      </tr>
+    `;
+  }
+
+  private attachCompactTableListeners(): void {
+    const selectAll = this.container.querySelector('#selectAllEmployees');
+    if (selectAll) {
+      selectAll.addEventListener('change', (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        this.config.employees.forEach(emp => {
+          this.config.onEmployeeSelect(emp.email, checked);
+        });
+      });
     }
   }
 

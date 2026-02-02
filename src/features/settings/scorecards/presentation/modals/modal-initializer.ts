@@ -6,10 +6,12 @@
 import { logError } from '../../../../../utils/logging-helper.js';
 import { CreateScorecardModal } from './create-modal.js';
 import { EditScorecardModal } from './edit-modal.js';
+import { ViewScorecardModal } from './view-modal.js';
 
 // Store modal instances globally to prevent garbage collection
 let createModalInstance: CreateScorecardModal | null = null;
 let editModalInstance: EditScorecardModal | null = null;
+let viewModalInstance: ViewScorecardModal | null = null;
 
 /**
  * Initialize all modals
@@ -38,11 +40,16 @@ export async function initModals(): Promise<void> {
     // Initialize modal instances (store globally)
     createModalInstance = new CreateScorecardModal(controller);
     editModalInstance = new EditScorecardModal(controller);
+    viewModalInstance = new ViewScorecardModal();
 
     // Set up window.scorecardModals
     window.scorecardModals = {
-      openViewModal: () => {
-        console.warn('View modal not yet implemented');
+      openViewModal: (scorecard: any, parameters: any[]) => {
+        if (viewModalInstance) {
+          viewModalInstance.open(scorecard, parameters);
+        } else {
+          console.error('[ModalInit] View modal instance not available');
+        }
       },
       openEditModal: (scorecard: any, parameters: any[]) => {
         if (editModalInstance) {

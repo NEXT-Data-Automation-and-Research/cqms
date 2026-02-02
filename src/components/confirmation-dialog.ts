@@ -47,10 +47,10 @@ export class ConfirmationDialog {
     
     const title = options.title || this.getDefaultTitle(type);
 
-    // Create overlay
+    // Create overlay (dimmed + blurred so background is less focused)
     this.overlay = document.createElement('div');
-    this.overlay.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50';
-    this.overlay.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 99999 !important; display: flex !important; align-items: center !important; justify-content: center !important; overflow-y: auto !important;';
+    this.overlay.className = 'fixed inset-0 z-50 flex items-center justify-center';
+    this.overlay.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; z-index: 99999 !important; display: flex !important; align-items: center !important; justify-content: center !important; overflow-y: auto !important; background: rgba(0, 0, 0, 0.45) !important; -webkit-backdrop-filter: blur(6px) !important; backdrop-filter: blur(6px) !important;';
     this.overlay.setAttribute('role', 'dialog');
     this.overlay.setAttribute('aria-modal', 'true');
     this.overlay.setAttribute('aria-labelledby', 'confirmation-dialog-title');
