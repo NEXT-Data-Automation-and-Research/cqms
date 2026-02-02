@@ -1331,7 +1331,7 @@ body {
 }
 
 .profile-link.logout-link:hover {
-  background-color: #2563eb;
+  background-color: #dc2626;
   color: var(--white);
   width: 100%;
 }
