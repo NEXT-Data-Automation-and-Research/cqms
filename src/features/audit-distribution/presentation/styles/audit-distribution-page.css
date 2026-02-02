@@ -37,6 +37,14 @@ body.audit-distribution-page,
   color: var(--color-text-primary, #1f2937);
 }
 
+/* Center the page container */
+.audit-distribution-page #audit-distribution-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 /* Same layout as Auditors Dashboard: centered inner wrapper */
 .audit-distribution-page .audit-distribution-page-main {
   display: flex;
@@ -50,17 +58,14 @@ body.audit-distribution-page,
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
 }
 
-/* Page heading - same type as Auditors Dashboard, centered */
+/* Page heading - same type as Auditors Dashboard (empty by default) */
 .audit-distribution-page .audit-distribution-inner .page-heading-global {
   color: var(--text-primary, #111827);
   font-size: 1.5rem;
   font-weight: 700;
   font-family: var(--font-family-primary, 'Poppins', sans-serif);
-  text-align: center;
-  width: 100%;
 }
 
 /* Page heading styling - matching homepage */
@@ -832,7 +837,6 @@ body.audit-distribution-page .sidebar .search-input:focus {
   padding: 0 !important;
   position: relative !important;
   z-index: 1 !important;
-  text-align: center !important;
 }
 
 /* Simple list view - matching homepage style */
