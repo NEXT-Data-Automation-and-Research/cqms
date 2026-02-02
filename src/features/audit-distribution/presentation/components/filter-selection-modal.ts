@@ -4,6 +4,7 @@
  */
 
 import type { Employee, FilterOptions } from '../../domain/types.js';
+import { getFirstFilterValue } from '../../domain/types.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { getFilterSelectionModalHTML } from './filter-selection-modal-template.js';
 
@@ -105,13 +106,13 @@ export class FilterSelectionModal {
       if (id === 'filterGroupBy') {
         selectElement.value = this.currentFilters.groupBy || 'none';
       } else if (id === 'filterChannel') {
-        selectElement.value = this.currentFilters.channel || '';
+        selectElement.value = getFirstFilterValue(this.currentFilters.channel);
       } else if (id === 'filterTeam') {
-        selectElement.value = this.currentFilters.team || '';
+        selectElement.value = getFirstFilterValue(this.currentFilters.team);
       } else if (id === 'filterDepartment') {
-        selectElement.value = this.currentFilters.department || '';
+        selectElement.value = getFirstFilterValue(this.currentFilters.department);
       } else if (id === 'filterCountry') {
-        selectElement.value = this.currentFilters.country || '';
+        selectElement.value = getFirstFilterValue(this.currentFilters.country);
       } else if (id === 'filterQualitySupervisor') {
         selectElement.value = this.currentFilters.qualitySupervisor || '';
       } else if (id === 'filterTeamSupervisor') {

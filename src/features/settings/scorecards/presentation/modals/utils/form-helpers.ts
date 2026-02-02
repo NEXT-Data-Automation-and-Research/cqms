@@ -25,6 +25,7 @@ export function collectParametersFromDOM(containerId: string, scorecardId: strin
     const fieldIdInput = row.querySelector('.parameter-field-id-input') as HTMLInputElement;
     const descriptionInput = row.querySelector('.parameter-description-input') as HTMLInputElement;
     const aiAuditCheckbox = row.querySelector('.parameter-ai-audit-checkbox') as HTMLInputElement;
+    const promptInput = row.querySelector('.parameter-prompt-input') as HTMLTextAreaElement;
     const fatalErrorCheckbox = row.querySelector('.parameter-fatal-error-checkbox') as HTMLInputElement;
 
     if (nameInput && pointsInput && typeSelect && categorySelect && fieldTypeSelect && fieldIdInput) {
@@ -38,6 +39,7 @@ export function collectParametersFromDOM(containerId: string, scorecardId: strin
         field_id: fieldIdInput.value.trim(),
         description: descriptionInput?.value.trim() || null,
         enable_ai_audit: aiAuditCheckbox?.checked || false,
+        prompt: promptInput?.value.trim() || null,
         is_fail_all: fatalErrorCheckbox?.checked || false,
         display_order: index + 1
       });

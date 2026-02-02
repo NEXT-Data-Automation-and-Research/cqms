@@ -156,7 +156,7 @@
 .scorecards-table-section table tbody tr:hover,
 .scorecards-table tbody tr:hover {
     background: linear-gradient(to right, #f9fafb, #ffffff);
-    border-left-color: var(--primary-color);
+    border-left-color: #1A733E;
     box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
     transform: translateX(0.0625rem);
 }

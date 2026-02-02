@@ -8,6 +8,7 @@ import { AuditDistributionStateManager } from '../application/audit-distribution
 import { AuditDistributionRenderer } from './audit-distribution-renderer.js';
 import { PeopleRepository } from '../infrastructure/people-repository.js';
 import { AuditAssignmentRepository } from '../infrastructure/audit-assignment-repository.js';
+import { ScorecardRepository } from '../infrastructure/scorecard-repository.js';
 import { SupabaseClientAdapter } from '../../../infrastructure/database/supabase/supabase-client.adapter.js';
 import { getAuthenticatedSupabase } from '../../../utils/authenticated-supabase.js';
 import { getSupabase } from '../../../utils/supabase-init.js';
@@ -45,7 +46,8 @@ export class AuditDistributionLoader {
         const db = new SupabaseClientAdapter(baseClient);
         const peopleRepository = new PeopleRepository(db);
         const assignmentRepository = new AuditAssignmentRepository(db);
-        this.service = new AuditDistributionService(peopleRepository, assignmentRepository);
+        const scorecardRepository = new ScorecardRepository(db);
+        this.service = new AuditDistributionService(peopleRepository, assignmentRepository, scorecardRepository);
         
         logInfo('[AuditDistributionLoader] Service initialized with base client');
       } catch (error) {

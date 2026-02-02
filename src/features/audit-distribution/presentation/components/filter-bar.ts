@@ -6,13 +6,22 @@
 import type { Employee, FilterOptions } from '../../domain/types.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { getActiveFilterChips } from './filter-chip-utils.js';
-import { getFilterBarHTML, getExpandedFilterHTML } from './filter-bar-template.js';
+import { getFilterBarHTML, getExpandedFilterHTML, getCompactExpandedFilterHTML } from './filter-bar-template.js';
+
+const PEOPLE_MULTI_SELECT_IDS = [
+  { id: 'peopleRoleFilter', key: 'role' as keyof FilterOptions },
+  { id: 'peopleChannelFilter', key: 'channel' as keyof FilterOptions },
+  { id: 'peopleTeamFilter', key: 'team' as keyof FilterOptions },
+  { id: 'peopleDepartmentFilter', key: 'department' as keyof FilterOptions },
+  { id: 'peopleCountryFilter', key: 'country' as keyof FilterOptions }
+];
 
 export interface FilterBarConfig {
   employees: Employee[];
   filters: FilterOptions;
   onFilterChange: (filters: FilterOptions) => void;
-  expanded?: boolean; // Use expanded layout matching AI Audit style
+  expanded?: boolean; // Use expanded layout (full filter row)
+  compact?: boolean;   // Use compact single-row search + filters (like Assigned Audits)
 }
 
 export class FilterBar {
@@ -53,7 +62,16 @@ export class FilterBar {
     const activeFilterChips = getActiveFilterChips(filters, employees);
     const hasActiveFilters = activeFilterChips.length > 0;
 
-    const html = this.config.expanded
+    const useCompactExpanded = Boolean(this.config.expanded && this.config.compact);
+    const html = useCompactExpanded
+      ? getCompactExpandedFilterHTML(
+          filters.search || '',
+          activeFilterChips,
+          hasActiveFilters,
+          this.config.employees,
+          this.config.filters
+        )
+      : this.config.expanded
       ? getExpandedFilterHTML(
           filters.search || '',
           activeFilterChips,
@@ -177,10 +195,11 @@ export class FilterBar {
             delete filters.search;
           }
 
-          // Clean up undefined values
+          // Clean up undefined and empty-array values
           Object.keys(filters).forEach(k => {
             const filterKey = k as keyof FilterOptions;
-            if (filters[filterKey] === undefined || filters[filterKey] === null || filters[filterKey] === '') {
+            const v = filters[filterKey];
+            if (v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0)) {
               delete filters[filterKey];
             }
           });
@@ -205,14 +224,14 @@ export class FilterBar {
       });
     }
 
-    // Handle filter dropdowns in expanded layout
+    // Multi-select dropdowns (same as audit reports) in expanded layout
+    if (this.config.expanded) {
+      this.setupPeopleMultiSelectHandlers();
+    }
+
+    // Single-select dropdowns in expanded layout (Status, Group By, Quality/Team Supervisor)
     if (this.config.expanded) {
       const filterSelects = [
-        { id: 'filterRole', key: 'role' as keyof FilterOptions },
-        { id: 'filterChannel', key: 'channel' as keyof FilterOptions },
-        { id: 'filterTeam', key: 'team' as keyof FilterOptions },
-        { id: 'filterDepartment', key: 'department' as keyof FilterOptions },
-        { id: 'filterCountry', key: 'country' as keyof FilterOptions },
         { id: 'filterActive', key: 'is_active' as keyof FilterOptions },
         { id: 'filterGroupBy', key: 'groupBy' as keyof FilterOptions },
         { id: 'filterQualitySupervisor', key: 'qualitySupervisor' as keyof FilterOptions },
@@ -224,30 +243,131 @@ export class FilterBar {
         if (select) {
           select.addEventListener('change', () => {
             let value: string | undefined = select.value.trim();
-            
-            // Handle special cases
-            if (key === 'is_active' && value === 'all') {
-              value = undefined;
-            } else if (key === 'groupBy' && value === 'none') {
-              value = undefined;
-            }
-            
-            const filters: FilterOptions = {
-              ...this.config.filters,
-              [key]: value || undefined
-            };
-            
-            // Clean up undefined values
-            if (!value) {
-              delete filters[key];
-            }
-            
+            if (key === 'is_active' && value === 'all') value = undefined;
+            else if (key === 'groupBy' && value === 'none') value = undefined;
+            const filters: FilterOptions = { ...this.config.filters, [key]: value || undefined };
+            if (!value) delete filters[key];
             this.config.onFilterChange(filters);
           });
         }
       });
     }
+  }
 
+  private setupPeopleMultiSelectHandlers(): void {
+    const container = this.container;
+
+    const getSelectedValues = (filterId: string): string[] => {
+      const optionsEl = container.querySelector(`#${filterId}Options`);
+      if (!optionsEl) return [];
+      const checked = optionsEl.querySelectorAll<HTMLInputElement>('.multi-select-option input[type="checkbox"]:not([disabled])');
+      return Array.from(checked).filter(cb => cb.checked).map(cb => cb.value);
+    };
+
+    const updateTriggerDisplay = (filterId: string, selectedValues: string[]): void => {
+      const trigger = container.querySelector(`#${filterId}Trigger`);
+      const placeholder = trigger?.querySelector('.multi-select-placeholder');
+      const countEl = trigger?.querySelector('.multi-select-count');
+      const placeholderText = trigger?.getAttribute('data-placeholder') || '';
+      if (placeholder) {
+        (placeholder as HTMLElement).textContent = selectedValues.length > 0 ? `${selectedValues.length} selected` : placeholderText;
+      }
+      if (countEl) {
+        (countEl as HTMLElement).textContent = String(selectedValues.length);
+        (countEl as HTMLElement).style.display = selectedValues.length > 0 ? 'inline' : 'none';
+      }
+      trigger?.classList.toggle('active', selectedValues.length > 0);
+    };
+
+    const notifyFilterChange = (filterId: string, selectedValues: string[]): void => {
+      const mapping = PEOPLE_MULTI_SELECT_IDS.find(m => m.id === filterId);
+      if (!mapping) return;
+      const filters: FilterOptions = { ...this.config.filters };
+      if (selectedValues.length === 0) {
+        delete filters[mapping.key];
+      } else {
+        (filters as any)[mapping.key] = selectedValues;
+      }
+      this.config.onFilterChange(filters);
+    };
+
+    const closeAllMultiSelect = (): void => {
+      container.querySelectorAll('.multi-select-container.multi-select-open').forEach(el => el.classList.remove('multi-select-open'));
+      container.querySelectorAll('.multi-select-dropdown').forEach(el => ((el as HTMLElement).style.display = 'none'));
+    };
+
+    PEOPLE_MULTI_SELECT_IDS.forEach(({ id: filterId }) => {
+      const wrapper = container.querySelector(`[data-people-filter-id="${filterId}"]`);
+      if (!wrapper) return;
+
+      const trigger = container.querySelector(`#${filterId}Trigger`);
+      const dropdown = container.querySelector(`#${filterId}Dropdown`);
+      const optionsEl = container.querySelector(`#${filterId}Options`);
+      const searchInput = container.querySelector(`#${filterId}Search`) as HTMLInputElement;
+
+      trigger?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = (wrapper as HTMLElement).classList.toggle('multi-select-open');
+        (dropdown as HTMLElement).style.display = isOpen ? 'flex' : 'none';
+        if (isOpen) {
+          container.querySelectorAll('.multi-select-container').forEach(c => {
+            if (c !== wrapper) {
+              c.classList.remove('multi-select-open');
+              const dd = c.querySelector('.multi-select-dropdown') as HTMLElement;
+              if (dd) dd.style.display = 'none';
+            }
+          });
+          if (searchInput) {
+            searchInput.value = '';
+            optionsEl?.querySelectorAll('.multi-select-option').forEach(o => o.classList.remove('hidden'));
+          }
+        }
+      });
+
+      optionsEl?.addEventListener('change', (e) => {
+        const target = (e.target as HTMLElement).closest('input[type="checkbox"]');
+        if (!target || (target as HTMLInputElement).getAttribute('data-multi-select-id') !== filterId) return;
+        const selected = getSelectedValues(filterId);
+        updateTriggerDisplay(filterId, selected);
+        notifyFilterChange(filterId, selected);
+      });
+
+      container.querySelectorAll(`[data-action="select-all"][data-multi-select-id="${filterId}"]`).forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          optionsEl?.querySelectorAll<HTMLInputElement>('.multi-select-option input[type="checkbox"]').forEach(cb => { cb.checked = true; });
+          const selected = getSelectedValues(filterId);
+          updateTriggerDisplay(filterId, selected);
+          notifyFilterChange(filterId, selected);
+        });
+      });
+
+      container.querySelectorAll(`[data-action="clear"][data-multi-select-id="${filterId}"]`).forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          optionsEl?.querySelectorAll<HTMLInputElement>('.multi-select-option input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+          updateTriggerDisplay(filterId, []);
+          notifyFilterChange(filterId, []);
+        });
+      });
+
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          const q = searchInput.value.toLowerCase().trim();
+          optionsEl?.querySelectorAll('.multi-select-option').forEach(opt => {
+            const val = (opt.getAttribute('data-value') || '').toLowerCase();
+            (opt as HTMLElement).classList.toggle('hidden', q !== '' && !val.includes(q));
+          });
+        });
+        searchInput.addEventListener('click', (e) => e.stopPropagation());
+      }
+    });
+
+    document.addEventListener('click', function closeOnOutside(e: MouseEvent) {
+      const target = e.target as Node;
+      if (container.contains(target)) return;
+      closeAllMultiSelect();
+    });
   }
 
   update(config: Partial<FilterBarConfig>): void {

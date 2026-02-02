@@ -1,14 +1,18 @@
 /**
  * AI-Audit View Component
- * Placeholder view for AI-powered audit functionality
+ * Uses shared People section + AssignmentTabRenderer when stateManager/service provided.
  */
 
 import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
 import { getAuthenticatedSupabase } from '../../../../utils/authenticated-supabase.js';
 import { logInfo, logError } from '../../../../utils/logging-helper.js';
 import { FilterBar } from './filter-bar.js';
-import type { FilterOptions } from '../../domain/types.js';
-import type { Employee } from '../../domain/types.js';
+import { getPeopleSectionHTML } from './people-section-template.js';
+import { AssignmentTabRenderer } from '../renderers/assignment-tab-renderer.js';
+import type { FilterOptions, Employee } from '../../domain/types.js';
+import { getFirstFilterValue } from '../../domain/types.js';
+import type { AuditDistributionStateManager } from '../../application/audit-distribution-state.js';
+import type { AuditDistributionService } from '../../application/audit-distribution-service.js';
 
 interface Scorecard {
   id: string;
@@ -37,11 +41,19 @@ interface Filters {
   team: string;
   department: string;
   country: string;
-  is_active: string; // 'all' | 'active' | 'inactive'
+  is_active: string;
+}
+
+export interface AIAuditViewConfig {
+  stateManager: AuditDistributionStateManager;
+  service: AuditDistributionService;
 }
 
 export class AIAuditView {
   private container: HTMLElement;
+  private stateManager: AuditDistributionStateManager | null = null;
+  private service: AuditDistributionService | null = null;
+  private assignmentTabRenderer: AssignmentTabRenderer | null = null;
   private people: Person[] = [];
   private filteredPeople: Person[] = [];
   private selectedPeople: Set<string> = new Set();
@@ -59,10 +71,16 @@ export class AIAuditView {
   private modalOverlay: HTMLDivElement | null = null;
   private filterBar: FilterBar | null = null;
 
-  constructor(container: HTMLElement) {
+  constructor(container: HTMLElement, config?: AIAuditViewConfig) {
     this.container = container;
-    this.render();
-    this.loadPeople();
+    if (config) {
+      this.stateManager = config.stateManager;
+      this.service = config.service;
+      this.renderShared();
+    } else {
+      this.render();
+      this.loadPeople();
+    }
     this.loadScorecards();
   }
 
@@ -161,6 +179,25 @@ export class AIAuditView {
       }
     });
     return Array.from(values).sort();
+  }
+
+  private renderShared(): void {
+    if (!this.stateManager || !this.service) return;
+    safeSetHTML(this.container, `
+      <div class="px-4 py-6 max-w-7xl mx-auto w-full">
+        <div class="mb-6">
+          ${getPeopleSectionHTML('People', 'Select team members for AI audit')}
+        </div>
+      </div>
+    `);
+    this.assignmentTabRenderer = new AssignmentTabRenderer({
+      stateManager: this.stateManager,
+      service: this.service,
+      showAuditorModal: false,
+      onEmployeeListUpdate: () => this.updateFloatingButton()
+    });
+    this.assignmentTabRenderer.render();
+    this.updateFloatingButton();
   }
 
   private handleSearch = (e: Event): void => {
@@ -390,13 +427,13 @@ export class AIAuditView {
         filters: filterOptions,
         expanded: true,
         onFilterChange: (filters) => {
-          // Update local filters from FilterOptions
+          // Update local filters from FilterOptions (multi-select normalized to first value for AI view)
           this.filters.search = filters.search || '';
-          this.filters.role = filters.role || '';
-          this.filters.channel = filters.channel || '';
-          this.filters.team = filters.team || '';
-          this.filters.department = filters.department || '';
-          this.filters.country = filters.country || '';
+          this.filters.role = getFirstFilterValue(filters.role);
+          this.filters.channel = getFirstFilterValue(filters.channel);
+          this.filters.team = getFirstFilterValue(filters.team);
+          this.filters.department = getFirstFilterValue(filters.department);
+          this.filters.country = getFirstFilterValue(filters.country);
           this.filters.is_active = filters.is_active || 'all';
           
           // Apply filters and re-render
@@ -408,14 +445,14 @@ export class AIAuditView {
   }
 
   private updateFloatingButton(): void {
-    // Remove existing button if any
     const existingBtn = document.getElementById('runAIAuditBtn');
-    if (existingBtn) {
-      existingBtn.remove();
-    }
+    if (existingBtn) existingBtn.remove();
 
-    // Add button if people are selected
-    if (this.selectedPeople.size > 0) {
+    const selectedCount = this.stateManager
+      ? this.stateManager.getState().selectedEmployees.size
+      : this.selectedPeople.size;
+
+    if (selectedCount > 0) {
       const button = document.createElement('button');
       button.id = 'runAIAuditBtn';
       button.className = 'px-6 py-3 bg-black text-white font-semibold rounded-lg shadow-lg hover:bg-gray-800 transition-all transform hover:scale-105 flex items-center gap-2';
@@ -508,16 +545,37 @@ export class AIAuditView {
     }
   }
 
-  private handleRunAIAudit = (): void => {
-    const selectedPeople = this.getSelectedPeople();
+  private handleRunAIAudit = async (): Promise<void> => {
+    const selectedPeople = await this.getSelectedPeopleForModal();
     logInfo('[AIAuditView] Run AI Audit clicked', { selectedCount: selectedPeople.length });
-    
+
     if (selectedPeople.length === 0) {
       logError('[AIAuditView] No people selected');
       return;
     }
 
     this.showRunAIAuditModal(selectedPeople);
+  }
+
+  /** Resolve selected people (from stateManager or local); when using shared flow, fetch intercom_admin_id. */
+  private async getSelectedPeopleForModal(): Promise<Person[]> {
+    if (this.stateManager) {
+      const state = this.stateManager.getState();
+      const emails = Array.from(state.selectedEmployees.keys());
+      if (emails.length === 0) return [];
+      const supabase = await getAuthenticatedSupabase();
+      const { data } = await supabase
+        .from('people')
+        .select('email, name, intercom_admin_id')
+        .in('email', emails);
+      const rows = (data || []).filter((r: any) => r?.email && r?.name);
+      return rows.map((r: any) => ({
+        email: r.email,
+        name: r.name,
+        intercom_admin_id: r.intercom_admin_id ?? null
+      }));
+    }
+    return this.getSelectedPeople();
   }
 
   private showRunAIAuditModal(selectedPeople: Person[]): void {
@@ -851,10 +909,29 @@ export class AIAuditView {
   }
 
   update(): void {
-    this.render();
+    if (this.stateManager && this.assignmentTabRenderer) {
+      this.assignmentTabRenderer.refresh();
+      this.updateFloatingButton();
+    } else {
+      this.render();
+    }
   }
 
   getSelectedPeople(): Person[] {
+    if (this.stateManager) {
+      const state = this.stateManager.getState();
+      return state.employees.filter(emp => state.selectedEmployees.has(emp.email)).map(emp => ({
+        email: emp.email,
+        name: emp.name,
+        role: emp.designation ?? null,
+        channel: emp.channel ?? null,
+        team: emp.team ?? null,
+        department: emp.department ?? null,
+        country: emp.country ?? null,
+        is_active: emp.is_active,
+        intercom_admin_id: undefined
+      }));
+    }
     return this.people.filter(person => this.selectedPeople.has(person.email));
   }
 }

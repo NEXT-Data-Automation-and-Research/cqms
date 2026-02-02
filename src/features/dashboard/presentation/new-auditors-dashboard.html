@@ -355,13 +355,24 @@
             font-weight: 700;
             font-family: var(--font-family);
         }
+        /* Auditors dashboard page: max width and centered */
+        main.main-content.auditors-dashboard-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        main.main-content.auditors-dashboard-page .auditors-dashboard-inner {
+            max-width: 80vw;
+            width: 100%;
+        }
     </style>
 
 </head>
 
 <body>
 <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
- <main class="main-content" role="main">
+ <main class="main-content auditors-dashboard-page" role="main">
+    <div class="auditors-dashboard-inner">
     <h1 class="page-heading-global">Auditors' Dashboard</h1>
     <div style="margin-bottom: 0.5rem; width: 100%;"></div>
 
@@ -623,6 +634,7 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 </main>
 

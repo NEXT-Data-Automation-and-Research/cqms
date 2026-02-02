@@ -63,16 +63,29 @@ export interface AgentSummary {
 }
 
 export interface FilterOptions {
-  channel?: string;
-  team?: string;
-  department?: string;
-  country?: string;
+  /** Single value (legacy) or array for multi-select (same as audit reports) */
+  channel?: string | string[];
+  team?: string | string[];
+  department?: string | string[];
+  country?: string | string[];
   qualitySupervisor?: string;
   teamSupervisor?: string;
   search?: string;
-  role?: string;
+  role?: string | string[];
   is_active?: 'all' | 'active' | 'inactive';
   groupBy?: 'none' | 'channel' | 'team' | 'quality_mentor' | 'team_supervisor' | 'department' | 'country';
+}
+
+/** Normalize a filter value to an array (empty = no filter) */
+export function filterValuesToArray(value: string | string[] | undefined): string[] {
+  if (value == null) return [];
+  return Array.isArray(value) ? value.filter(Boolean) : value ? [value] : [];
+}
+
+/** Get single value for UIs that only support one selection (e.g. legacy dropdowns) */
+export function getFirstFilterValue(value: string | string[] | undefined): string {
+  const arr = filterValuesToArray(value);
+  return arr[0] ?? '';
 }
 
 export interface PaginationState {

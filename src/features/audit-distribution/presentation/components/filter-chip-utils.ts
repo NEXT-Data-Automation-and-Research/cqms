@@ -4,12 +4,18 @@
  */
 
 import type { Employee, FilterOptions } from '../../domain/types.js';
+import { filterValuesToArray } from '../../domain/types.js';
 
 export interface FilterChip {
   key: string;
   label: string;
   value: string;
   type: 'filter' | 'groupBy';
+}
+
+function chipValue(val: string | string[] | undefined): string {
+  const arr = filterValuesToArray(val);
+  return arr.length ? arr.join(', ') : '';
 }
 
 export function getActiveFilterChips(filters: FilterOptions, employees: Employee[]): FilterChip[] {
@@ -32,21 +38,16 @@ export function getActiveFilterChips(filters: FilterOptions, employees: Employee
     });
   }
 
-  if (filters.role && filters.role.trim() !== '') {
-    chips.push({ key: 'role', label: 'Role', value: filters.role.trim(), type: 'filter' });
-  }
-  if (filters.channel && filters.channel.trim() !== '') {
-    chips.push({ key: 'channel', label: 'Channel', value: filters.channel.trim(), type: 'filter' });
-  }
-  if (filters.team && filters.team.trim() !== '') {
-    chips.push({ key: 'team', label: 'Team', value: filters.team.trim(), type: 'filter' });
-  }
-  if (filters.department && filters.department.trim() !== '') {
-    chips.push({ key: 'department', label: 'Department', value: filters.department.trim(), type: 'filter' });
-  }
-  if (filters.country && filters.country.trim() !== '') {
-    chips.push({ key: 'country', label: 'Country', value: filters.country.trim(), type: 'filter' });
-  }
+  const roleVal = chipValue(filters.role);
+  if (roleVal) chips.push({ key: 'role', label: 'Role', value: roleVal, type: 'filter' });
+  const channelVal = chipValue(filters.channel);
+  if (channelVal) chips.push({ key: 'channel', label: 'Channel', value: channelVal, type: 'filter' });
+  const teamVal = chipValue(filters.team);
+  if (teamVal) chips.push({ key: 'team', label: 'Team', value: teamVal, type: 'filter' });
+  const deptVal = chipValue(filters.department);
+  if (deptVal) chips.push({ key: 'department', label: 'Department', value: deptVal, type: 'filter' });
+  const countryVal = chipValue(filters.country);
+  if (countryVal) chips.push({ key: 'country', label: 'Country', value: countryVal, type: 'filter' });
   if (filters.is_active && filters.is_active !== 'all') {
     chips.push({ key: 'is_active', label: 'Status', value: filters.is_active === 'active' ? 'Active' : 'Inactive', type: 'filter' });
   }

@@ -86,9 +86,6 @@ export class AuditReportsController {
       // Show skeleton loaders for KPI cards
       this.renderer.showStatsLoading();
 
-      // Set default date range to current month
-      this.setDefaultDateRangeToCurrentMonth();
-
       // Load scorecards first
       await this.loadScorecards();
 
@@ -424,8 +421,7 @@ export class AuditReportsController {
       'interactionIdFilter', 'interactionIdSearch',
       'weekFilter', 'weekSearch',
       'minScoreFilter', 'minScore', 'maxScoreFilter', 'maxScore',
-      'minErrorsFilter', 'minErrors', 'maxErrorsFilter', 'maxErrors',
-      'dateFromFilter', 'fromDate', 'dateToFilter', 'toDate'
+      'minErrorsFilter', 'minErrors', 'maxErrorsFilter', 'maxErrors'
     ];
     inputs.forEach(id => {
       const el = document.getElementById(id) as HTMLInputElement;
@@ -823,15 +819,24 @@ export class AuditReportsController {
       // Allow toggling even if disabled (to show "No options" message)
       const isOpen = dropdown.style.display !== 'none';
       
-      // Close all other dropdowns
-      document.querySelectorAll('.multi-select-dropdown').forEach((el: any) => {
-        if (el.id !== `${filterId}Dropdown`) {
-          el.style.display = 'none';
+      // Close all other dropdowns and remove is-open from their containers
+      document.querySelectorAll('.multi-select-container').forEach((container: Element) => {
+        const dd = container.querySelector('.multi-select-dropdown') as HTMLElement;
+        if (dd && dd.id !== `${filterId}Dropdown`) {
+          dd.style.display = 'none';
+          container.classList.remove('multi-select-open');
         }
       });
       
-      // Toggle this dropdown (works even if button is disabled)
-      dropdown.style.display = isOpen ? 'none' : 'block';
+      // Toggle this dropdown (remove inline display when open so CSS display:flex applies)
+      const container = trigger.closest('.multi-select-container');
+      if (isOpen) {
+        dropdown.style.display = 'none';
+        container?.classList.remove('multi-select-open');
+      } else {
+        dropdown.style.removeProperty('display');
+        container?.classList.add('multi-select-open');
+      }
       trigger.classList.toggle('active', !isOpen);
     };
 
@@ -917,7 +922,7 @@ export class AuditReportsController {
       });
     };
 
-    // Close dropdowns when clicking outside
+    // Close dropdowns when clicking outside (use capture: false so trigger's handler runs first)
     document.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if (!target.closest('.multi-select-container') && !target.closest('.multi-select-dropdown')) {
@@ -927,8 +932,11 @@ export class AuditReportsController {
         document.querySelectorAll('.multi-select-trigger').forEach((el: any) => {
           el.classList.remove('active');
         });
+        document.querySelectorAll('.multi-select-container').forEach((container: Element) => {
+          container.classList.remove('multi-select-open');
+        });
       }
-    });
+    }, false);
   }
 
   /**

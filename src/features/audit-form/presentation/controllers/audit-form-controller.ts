@@ -62,7 +62,7 @@ export class AuditFormController {
     
     if (!isValid) {
       field.style.borderColor = '#ef4444';
-      this.showFieldError(field, 'Interaction ID is required');
+      this.showFieldError(field, 'Add an Interaction ID so we can link this audit to the right conversation.');
     } else {
       field.style.borderColor = '#10b981';
       this.hideFieldError(field);
@@ -127,7 +127,7 @@ export class AuditFormController {
     
     if (!isValid) {
       field.style.borderColor = '#ef4444';
-      this.showFieldError(field, `Feedback is required for "${paramName}" (Feedback ${index} of ${total})`);
+      this.showFieldError(field, `Add feedback for "${paramName}" (Feedback ${index} of ${total}) so we can complete this audit.`);
     } else {
       field.style.borderColor = '#10b981';
       this.hideFieldError(field);
@@ -145,7 +145,7 @@ export class AuditFormController {
     if (container) {
       if (isEmpty) {
         container.style.borderColor = '#ef4444';
-        this.showFieldError(container, `Feedback is required for "${paramName}" (Feedback ${index} of ${total})`);
+        this.showFieldError(container, `Add feedback for "${paramName}" (Feedback ${index} of ${total}) so we can complete this audit.`);
       } else {
         container.style.borderColor = '#10b981';
         this.hideFieldError(container);
@@ -225,7 +225,7 @@ export class AuditFormController {
     try {
       // Validate scorecard selection
       if (!this.state.currentScorecard || !this.state.currentParameters || this.state.currentParameters.length === 0) {
-        await this.showErrorDialog('No Scorecard Selected', 'Please select a scorecard before submitting the audit.');
+        await this.showErrorDialog('Choose a scorecard', 'Select a scorecard first so we know which criteria to use for this audit.', 'warning');
         this.state.isSubmitting = false;
         // Re-enable button on error
         if (submitButton) {
@@ -241,8 +241,8 @@ export class AuditFormController {
       const supabase = await this.waitForSupabaseClient();
       if (!supabase) {
         await this.showErrorDialog(
-          'Initialization Error',
-          'Supabase client not initialized. Please refresh the page and try again.'
+          'Something went wrong',
+          'The page didn’t load fully. Refresh the page and try again.'
         );
         this.state.isSubmitting = false;
         // Re-enable button on error
@@ -291,7 +291,7 @@ export class AuditFormController {
       this.handleSubmissionSuccess();
     } catch (error) {
       logError('Error submitting audit form:', error);
-      await this.showErrorDialog('Submission Error', 'Failed to submit audit. Please try again.');
+      await this.showErrorDialog('Submission didn’t go through', 'Something went wrong. Please try again.');
       // Re-enable button on error
       const submitButton = this.form.querySelector('button[type="submit"]') as HTMLButtonElement;
       if (submitButton) {
@@ -520,7 +520,7 @@ export class AuditFormController {
     // Validate interaction ID
     const interactionIdField = document.getElementById('interactionId') as HTMLInputElement;
     if (!interactionIdField || !interactionIdField.value || !interactionIdField.value.trim()) {
-      errors.push('Interaction ID is required. Please enter an Interaction ID before submitting.');
+      errors.push('Add an Interaction ID so we can link this audit to the right conversation.');
       return errors;
     }
 
@@ -535,7 +535,7 @@ export class AuditFormController {
           const hasContent = this.hasFeedbackContent(feedbackId);
           
           if (!hasContent) {
-            errors.push(`Feedback is required for "${param.errorName}" (Feedback ${i + 1} of ${feedbackCount})`);
+            errors.push(`"${param.errorName}" (Feedback ${i + 1} of ${feedbackCount})`);
           }
         }
       }
@@ -789,13 +789,13 @@ export class AuditFormController {
   /**
    * Show error dialog
    */
-  private async showErrorDialog(title: string, message: string): Promise<void> {
+  private async showErrorDialog(title: string, message: string, type: 'error' | 'warning' = 'error'): Promise<void> {
     if ((window as any).confirmationDialog && typeof (window as any).confirmationDialog.show === 'function') {
       await (window as any).confirmationDialog.show({
         title,
         message,
         confirmText: 'OK',
-        type: 'error'
+        type
       });
     } else {
       alert(`${title}: ${message}`);
@@ -803,14 +803,14 @@ export class AuditFormController {
   }
 
   /**
-   * Show validation errors
+   * Show validation errors (guiding tone, warning type)
    */
   private async showValidationErrors(errors: string[]): Promise<void> {
-    const message = 'Please fill in all required fields:\n\n' + 
-      errors.slice(0, 5).join('\n') + 
-      (errors.length > 5 ? `\n... and ${errors.length - 5} more` : '');
+    const message = 'Add feedback for each item below so we can complete your audit:\n\n• ' + 
+      errors.slice(0, 5).join('\n• ') + 
+      (errors.length > 5 ? `\n\n... and ${errors.length - 5} more` : '');
     
-    await this.showErrorDialog('Validation Error', message);
+    await this.showErrorDialog('Almost there', message, 'warning');
   }
 
   /**

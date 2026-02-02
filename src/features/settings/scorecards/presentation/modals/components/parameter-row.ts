@@ -37,8 +37,15 @@ export class ParameterRow {
     const checkboxStyle = "width: 0.75rem; height: 0.75rem; cursor: pointer; accent-color: #1A733E;";
     const readonlyInputStyle = inputStyle + " background-color: #f9fafb; cursor: not-allowed;";
     
+    const textareaStyle = "padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%; box-sizing: border-box; min-height: 1.5rem; resize: vertical;";
+    const promptCell = param.enable_ai_audit
+      ? `<textarea class="parameter-prompt-input" data-index="${index}" placeholder="AI prompt (optional)" style="${textareaStyle}" title="Prompt for AI audit">${escapeHtml(param.prompt || '')}</textarea>`
+      : '<div style="min-height: 1rem;" aria-hidden="true"></div>';
+    /* Always use with-ai-prompt so grid has 11 columns and aligns with header */
+    const rowClass = 'parameter-row with-ai-prompt';
+
     return `
-      <div class="parameter-row" data-parameter-index="${index}" data-index="${index}" style="min-width: max-content;">
+      <div class="${rowClass}" data-parameter-index="${index}" data-index="${index}">
         <div>
           <input type="text" 
                  class="parameter-name-input" 
@@ -110,6 +117,7 @@ export class ParameterRow {
                  style="${checkboxStyle}"
                  title="Enable AI Audit for this parameter">
         </div>
+        <div class="parameter-prompt-cell">${promptCell}</div>
         <div style="display: flex; align-items: center; justify-content: center;">
           <input type="checkbox" 
                  class="parameter-fatal-error-checkbox" 

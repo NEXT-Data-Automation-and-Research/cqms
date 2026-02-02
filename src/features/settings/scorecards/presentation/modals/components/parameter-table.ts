@@ -86,7 +86,7 @@ export class ParameterTable {
 
     // Render rows directly into container div using safeSetHTML
     // Parameters are rendered as divs with class "parameter-row", not table rows
-    const emptyMessage = '<div class="parameter-row" style="grid-column: 1 / -1; text-align: center; padding: 1rem; color: #6b7280;">No parameters added. Click "+ Add One" to add a parameter.</div>';
+    const emptyMessage = '<div class="parameter-row with-ai-prompt" style="grid-column: 1 / -1; text-align: center; padding: 1rem; color: #6b7280;">No parameters added. Click "+ Add One" to add a parameter.</div>';
     safeSetHTML(this.container as HTMLElement, rowsHTML || emptyMessage);
     
     this.attachRowListeners();
@@ -214,6 +214,17 @@ export class ParameterTable {
         const checked = (e.target as HTMLInputElement).checked;
         if (index >= 0 && this.parameters[index]) {
           this.parameters[index].enable_ai_audit = checked;
+          this.render();
+        }
+      });
+    });
+
+    this.container.querySelectorAll('.parameter-prompt-input').forEach(input => {
+      input.addEventListener('input', (e) => {
+        const index = parseInt((e.target as HTMLTextAreaElement).getAttribute('data-index') || '-1', 10);
+        const value = (e.target as HTMLTextAreaElement).value;
+        if (index >= 0 && this.parameters[index]) {
+          this.parameters[index].prompt = value || null;
         }
       });
     });

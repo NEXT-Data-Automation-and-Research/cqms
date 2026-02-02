@@ -112,6 +112,8 @@ export class ScorecardController {
     safeSetTableBodyHTML(tbody as HTMLTableSectionElement, rowsHTML);
     
     // ✅ SECURITY: Attach event listeners programmatically (CSP-safe, no inline handlers)
+    // Detach first so we don't double-attach when re-rendering; then attach once per render.
+    this.eventHandlers.detachActionListeners();
     this.eventHandlers.attachActionListeners();
   }
 
@@ -211,25 +213,34 @@ export class ScorecardController {
    */
   async deleteScorecard(id: string, tableName: string): Promise<void> {
     try {
-      const confirmed = await window.confirmationDialog?.show({
-        title: 'Delete Scorecard?',
-        message: `This scorecard has no audit reports.\n\nThe scorecard configuration and its database table will be permanently deleted.\n\nContinue?`,
-        confirmText: 'Delete',
-        cancelText: 'Cancel',
-        type: 'warning'
-      });
+      let confirmed = false;
+      if (window.confirmationDialog?.show) {
+        confirmed = await window.confirmationDialog.show({
+          title: 'Delete Scorecard?',
+          message: `This scorecard has no audit reports.\n\nThe scorecard configuration and its database table will be permanently deleted.\n\nContinue?`,
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          type: 'warning'
+        });
+      } else {
+        confirmed = window.confirm(
+          'Delete Scorecard?\n\nThis scorecard has no audit reports.\n\nThe scorecard configuration and its database table will be permanently deleted.\n\nContinue?'
+        );
+      }
 
       if (!confirmed) return;
 
       await this.service.deleteScorecard(id, tableName);
       await this.loadScorecards();
 
-      await window.confirmationDialog?.show({
-        title: 'Deleted',
-        message: 'Scorecard and its database table deleted successfully.',
-        confirmText: 'OK',
-        type: 'success'
-      });
+      if (window.confirmationDialog?.show) {
+        await window.confirmationDialog.show({
+          title: 'Deleted',
+          message: 'Scorecard and its database table deleted successfully.',
+          confirmText: 'OK',
+          type: 'success'
+        });
+      }
     } catch (error) {
       logError('Failed to delete scorecard', error);
       this.showError('Failed to delete scorecard: ' + (error as Error).message);
