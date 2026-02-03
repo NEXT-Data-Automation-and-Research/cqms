@@ -86,6 +86,9 @@ export class AuditReportsController {
       // Show skeleton loaders for KPI cards
       this.renderer.showStatsLoading();
 
+      // Apply default date range (this month) so stats and list are filtered on first load
+      this.setDefaultDateRangeToCurrentMonth();
+
       // Load scorecards first
       await this.loadScorecards();
 
