@@ -616,6 +616,11 @@ app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
 logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks');
+if (process.env.N8N_WEBHOOK_URL) {
+  logWithTimestamp('info', 'n8n audit-submission webhook: configured');
+} else {
+  logWithTimestamp('warn', 'n8n audit-submission webhook: N8N_WEBHOOK_URL not set; POST /api/webhooks/audit-submission will return 503');
+}
 
 // Error handler (must be last)
 app.use(errorHandler);

@@ -5182,26 +5182,37 @@ async function sendN8nWebhook(auditData, scorecard) {
         // Get base URL for audit view link
         const baseUrl = window.location?.origin || window.env?.BASE_URL || window.BASE_URL || '';
         
+        // Normalize: Supabase may return snake_case or camelCase depending on client/table
+        const empEmail = auditData.employee_email ?? auditData.employeeEmail ?? null;
+        const empName = auditData.employee_name ?? auditData.employeeName ?? null;
+        const audName = auditData.auditor_name ?? auditData.auditorName ?? null;
+        const audEmail = auditData.auditor_email ?? auditData.auditorEmail ?? null;
+        const auditId = auditData.id ?? null;
+        const auditType = auditData.audit_type ?? auditData.auditType ?? null;
+        const passingStatus = auditData.passing_status ?? auditData.passingStatus ?? null;
+        const avgScore = auditData.average_score ?? auditData.averageScore ?? null;
+        const submittedAt = auditData.submitted_at ?? auditData.submittedAt ?? null;
+
         // Prepare webhook payload with audit data (same shape n8n expects)
         const webhookData = {
-            employee_email: auditData.employee_email || null,
-            employee_name: auditData.employee_name || null,
-            employeeEmail: auditData.employee_email || null,
-            employeeName: auditData.employee_name || null,
-            auditor_name: auditData.auditor_name || null,
-            auditor_email: auditData.auditor_email || null,
-            auditorName: auditData.auditor_name || null,
-            auditorEmail: auditData.auditor_email || null,
-            audit_id: auditData.id || null,
-            id: auditData.id || null,
-            audit_type: auditData.audit_type || null,
-            auditType: auditData.audit_type || null,
-            passing_status: auditData.passing_status || null,
-            passingStatus: auditData.passing_status || null,
-            average_score: auditData.average_score || null,
-            averageScore: auditData.average_score || null,
-            submitted_at: auditData.submitted_at || null,
-            submittedAt: auditData.submitted_at || null,
+            employee_email: empEmail,
+            employee_name: empName,
+            employeeEmail: empEmail,
+            employeeName: empName,
+            auditor_name: audName,
+            auditor_email: audEmail,
+            auditorName: audName,
+            auditorEmail: audEmail,
+            audit_id: auditId,
+            id: auditId,
+            audit_type: auditType,
+            auditType: auditType,
+            passing_status: passingStatus,
+            passingStatus: passingStatus,
+            average_score: avgScore,
+            averageScore: avgScore,
+            submitted_at: submittedAt,
+            submittedAt: submittedAt,
             scorecard_name: scorecard?.name || null,
             scorecardName: scorecard?.name || null,
             scorecard_id: scorecard?.id || null,
@@ -5211,7 +5222,7 @@ async function sendN8nWebhook(auditData, scorecard) {
             base_url: baseUrl || null,
             baseUrl: baseUrl || null
         };
-        
+
         if (!webhookData.employee_email) {
             console.warn('Employee email not found. n8n webhook notification skipped.');
             return;
@@ -13938,8 +13949,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const savedAuditId = data[0].id;
                 console.log('💾 Saved audit ID for redirect:', savedAuditId);
                 
-                // Send email notification to the audited employee
-                if (data[0].employee_email || auditPayload.employee_email) {
+                // Send email notification to the audited employee (support both DB snake_case and payload)
+                const hasEmployeeEmail = (data[0].employee_email ?? data[0].employeeEmail ?? auditPayload.employee_email) != null;
+                if (hasEmployeeEmail) {
                     try {
                         console.log('📧 Sending email notification...');
                         await sendAuditEmailNotification(data[0], currentScorecard);

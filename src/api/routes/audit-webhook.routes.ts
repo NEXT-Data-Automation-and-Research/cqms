@@ -20,8 +20,11 @@ router.post('/audit-submission', verifyAuth, async (req: Request, res: Response)
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
 
     if (!n8nWebhookUrl) {
-      logger.warn('N8N_WEBHOOK_URL not set in .env; audit-submission webhook skipped');
-      res.status(503).json({ success: false, error: 'Webhook not configured. Set N8N_WEBHOOK_URL in .env.' });
+      logger.warn('N8N_WEBHOOK_URL not set; audit-submission webhook skipped. Set N8N_WEBHOOK_URL in .env (local) or in your host env (e.g. Vercel).');
+      res.status(503).json({
+        success: false,
+        error: 'Webhook not configured. Set N8N_WEBHOOK_URL in .env (local) or in your deployment environment (e.g. Vercel dashboard).',
+      });
       return;
     }
 
@@ -31,13 +34,17 @@ router.post('/audit-submission', verifyAuth, async (req: Request, res: Response)
       return;
     }
 
-    if (!payload.employee_email) {
-      logger.warn('audit-submission webhook called without employee_email');
-      res.status(400).json({ success: false, error: 'employee_email required' });
+    // Accept both snake_case and camelCase (client/DB may send either)
+    const employeeEmail = payload.employee_email ?? payload.employeeEmail ?? null;
+    if (!employeeEmail) {
+      logger.warn('audit-submission webhook called without employee_email or employeeEmail');
+      res.status(400).json({ success: false, error: 'employee_email or employeeEmail required' });
       return;
     }
+    // Normalize so n8n receives consistent shape
+    const normalizedPayload = { ...payload, employee_email: employeeEmail };
 
-    logger.info('Proxying audit-submission to n8n', { url: n8nWebhookUrl, audit_id: payload.audit_id ?? payload.id });
+    logger.info('Proxying audit-submission to n8n', { url: n8nWebhookUrl, audit_id: normalizedPayload.audit_id ?? normalizedPayload.id });
 
     const forward = await fetch(n8nWebhookUrl, {
       method: 'POST',
@@ -45,7 +52,7 @@ router.post('/audit-submission', verifyAuth, async (req: Request, res: Response)
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(normalizedPayload),
     });
 
     if (!forward.ok) {
@@ -74,7 +81,7 @@ router.post('/audit-submission', verifyAuth, async (req: Request, res: Response)
       result = await forward.text();
     }
 
-    logger.info('n8n webhook succeeded', { audit_id: payload.audit_id ?? payload.id });
+    logger.info('n8n webhook succeeded', { audit_id: normalizedPayload.audit_id ?? normalizedPayload.id });
     res.status(200).json({ success: true, result });
   } catch (error: unknown) {
     logger.error('audit-submission proxy error', error);
