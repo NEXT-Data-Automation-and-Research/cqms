@@ -606,7 +606,19 @@ export class AuditReportsEventHandlers {
     filterPanel.addEventListener('input', (e) => {
       const target = e.target as HTMLElement;
       const input = target as HTMLInputElement;
-      
+
+      // Multi-select search: filter options by typed text (works without inline oninput, e.g. when CSP/sanitizer strips it)
+      if (target.classList.contains('multi-select-search') || (target.id && target.id.endsWith('Search') && target.closest('.multi-select-dropdown'))) {
+        const filterId = target.id ? target.id.replace(/Search$/, '') : '';
+        if (filterId) {
+          const filterMultiSelectOptions = (window as any).filterMultiSelectOptions;
+          if (typeof filterMultiSelectOptions === 'function') {
+            filterMultiSelectOptions(filterId);
+          }
+        }
+        return;
+      }
+
       if (target.id === 'searchInput') {
         const query = input.value.trim();
         this.controller.setFilters({ searchQuery: query || undefined });
