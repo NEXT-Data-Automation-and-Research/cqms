@@ -41,14 +41,14 @@ export class AuditTimer {
    */
   private getHTML(): string {
     return `
-      <div id="auditTimer" style="position: fixed; top: 0.6469rem; right: 3.2344rem; background:var(--primary-color); padding: 0.1294rem 0.3234rem 0.1294rem 0.1294rem; border-radius: 2.0215rem; font-size: 0.6064rem; font-weight: 600; color: #ffffff; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; letter-spacing: 0.0122rem; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 4.8516rem; display: none; align-items: center; gap: 0.3234rem; cursor: grab; user-select: none; z-index: 10001;">
-        <button id="timerControlBtn" title="Play/Pause/Reset Timer" style="width: 1.1321rem; height: 1.1321rem; background: rgba(255, 255, 255, 0.2); border: none; border-radius: 50%; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0;">
+      <div id="auditTimer" style="position: fixed; top: 0.6469rem; right: 3.2344rem; background: #1A733E; padding: 0.1294rem 0.3234rem 0.1294rem 0.1294rem; border-radius: 2.0215rem; font-size: 0.6064rem; font-weight: 600; color: #ffffff; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; letter-spacing: 0.0122rem; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 4.8516rem; display: none; align-items: center; gap: 0.3234rem; cursor: grab; user-select: none; z-index: 10001; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+        <button id="timerControlBtn" title="Play/Pause/Reset Timer" style="width: 1.1321rem; height: 1.1321rem; background: rgba(255, 255, 255, 0.25); border: none; border-radius: 50%; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0;">
           <svg style="width: 0.5659rem; height: 0.5659rem;" viewBox="0 0 24 24" fill="currentColor">
             <path d="M8 5v14l11-7z"/>
           </svg>
         </button>
-        <span id="timerDisplay" style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums;">00:00</span>
-        <button id="timerCloseBtn" class="timer-close-btn" title="Close Timer" style="width: 1.2937rem; height: 1.2937rem; background: var(--primary-color); border: none; border-radius: 0.2425rem; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0; font-size: 0.8086rem; font-weight: bold; transition: all 0.2s;">
+        <span id="timerDisplay" style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums; color: #ffffff;">00:00</span>
+        <button id="timerCloseBtn" class="timer-close-btn" title="Close Timer" style="width: 1.2937rem; height: 1.2937rem; background: rgba(255, 255, 255, 0.25); border: none; border-radius: 0.2425rem; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0; font-size: 0.8086rem; font-weight: bold; transition: all 0.2s;">
           ×
         </button>
       </div>

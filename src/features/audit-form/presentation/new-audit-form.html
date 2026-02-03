@@ -996,7 +996,7 @@
                 <h2 style="font-size: 0.7278rem; font-weight: 700; margin: 0; font-family: 'Poppins', sans-serif;">Create New Audit</h2>
             </div>
             <div style="display: flex; align-items: center; gap: 0.3234rem;">
-                    <button type="button" id="closeAuditFormBtn" class="close-button" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Close (Esc)">×</button>
+                    <button type="button" id="closeAuditFormBtn" class="close-button" onclick="if(typeof closeAuditForm==='function')closeAuditForm();" style="background: rgba(255,255,255,0.2); border: 0.0606rem solid white; border-radius: 0.2425rem; width: 1.2937rem; height: 1.2937rem; font-size: 0.8086rem; cursor: pointer; color: white; font-weight: bold; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Close (Esc)">×</button>
             </div>
         </div>
         <div>
@@ -10694,8 +10694,8 @@ window.closeAuditForm = async function() {
         window.pauseTimer();
     }
     
-    // Navigate back to create-audit.html instead of closing modal
-    window.location.href = 'create-audit.html';
+    // Navigate back to Create Audit page (absolute path works from any route)
+    window.location.href = '/create-audit';
 };
 
 // ============================================================================

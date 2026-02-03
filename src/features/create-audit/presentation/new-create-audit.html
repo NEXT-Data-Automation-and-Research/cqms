@@ -64,6 +64,10 @@
         .copy-button:active {
             transform: scale(0.95);
         }
+        .copy-conversation-id-btn:hover,
+        .remove-conversation-btn:hover { opacity: 1; }
+        .copy-conversation-id-btn:hover { background-color: #f3f4f6; color: #374151; }
+        .remove-conversation-btn:hover { background-color: #fee2e2; color: #991b1b; }
         .copy-button svg {
             width: 0.875rem;
             height: 0.875rem;
@@ -717,6 +721,22 @@
             color: var(--text-color) !important;
         }
 
+        /* Audit timer: always dark green + white text; exclude from dark-theme overrides */
+        [data-theme="dark"] #auditTimer,
+        [data-theme="dark"] #auditTimer *,
+        #auditTimer,
+        #auditTimer * {
+            background-color: #1A733E !important;
+            background: #1A733E !important;
+            color: #ffffff !important;
+        }
+        #auditTimer button,
+        [data-theme="dark"] #auditTimer button {
+            background: rgba(255, 255, 255, 0.25) !important;
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            color: #ffffff !important;
+        }
+
     </style>
     <!-- Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -737,17 +757,6 @@
   <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
   <main class="main-content" role="main">
     <h1 class="page-heading-global">Create Audit</h1>
-
-<!-- Audit Timer Chip -->
-<div id="auditTimer" style="position: fixed; top: 0.6469rem; right: 3.2344rem; background:var(--primary-color); padding: 0.1294rem 0.3234rem 0.1294rem 0.1294rem; border-radius: 2.0215rem; font-size: 0.6064rem; font-weight: 600; color: #ffffff; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; letter-spacing: 0.0122rem; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 4.8516rem; display: none; align-items: center; gap: 0.3234rem; cursor: grab; user-select: none; z-index: 10001;">
-    <button id="timerControlBtn" title="Play/Pause/Reset Timer" style="width: 1.1321rem; height: 1.1321rem; background: rgba(255, 255, 255, 0.2); border: none; border-radius: 50%; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0;">
-        <svg style="width: 0.5659rem; height: 0.5659rem;" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M8 5v14l11-7z"/>
-        </svg>
-    </button>
-    <span style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums;">Time Keeper</span>
-</div>
-<!-- End of Audit Timer Chip -->
 
     <!-- Pending Audits Section -->
     <div id="pendingAuditsSection" style="background: var(--background-white); border-radius: 0.3234rem; padding: 0.6469rem; border: 0.0405rem solid var(--border-light); margin-bottom: 0.6469rem; width: 100%; display: block;">
@@ -1936,6 +1945,15 @@
 
     <!-- Audit Form Modal (Full Screen) -->
 <div id="auditFormModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; display: none; align-items: flex-start; justify-content: center; padding: 0; overflow-y: auto;">
+    <!-- Audit Timer Chip: inside modal so it is visible when form is open; dark background + white text for high contrast -->
+    <div id="auditTimer" style="position: fixed; top: 0.6469rem; right: 3.2344rem; background: #1A733E; padding: 0.1294rem 0.3234rem 0.1294rem 0.1294rem; border-radius: 2.0215rem; font-size: 0.6064rem; font-weight: 600; color: #ffffff; font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; letter-spacing: 0.0122rem; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 4.8516rem; display: none; align-items: center; gap: 0.3234rem; cursor: grab; user-select: none; z-index: 10001; box-shadow: 0 1px 3px rgba(0,0,0,0.2);">
+        <button id="timerControlBtn" title="Play/Pause/Reset Timer" style="width: 1.1321rem; height: 1.1321rem; background: rgba(255, 255, 255, 0.25); border: none; border-radius: 50%; color: #ffffff; cursor: pointer; display: flex; align-items: center; justify-content: center; user-select: none; flex-shrink: 0; margin: 0; padding: 0;">
+            <svg style="width: 0.5659rem; height: 0.5659rem;" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z"/>
+            </svg>
+        </button>
+        <span style="flex: 1; text-align: center; font-size: 0.6064rem; font-weight: 600; font-variant-numeric: tabular-nums; color: #ffffff;">Time Keeper</span>
+    </div>
     <form id="auditForm" method="POST" style="background: white; width: 100%; height: 100vh; display: flex; flex-direction: column; gap: 0; padding: 0; margin: 0; overflow-y: auto;">
     <!-- Hidden audit information fields - populated behind the scenes -->
     <input type="hidden" id="auditDuration" name="auditDuration">
@@ -4985,31 +5003,66 @@ function attachAuditButtonEventListeners() {
     const handler = (e) => {
         const target = e.target;
         
-        // Handle Continue button clicks
+        // Handle Continue button clicks (include manually entered conversation ID from input)
         const continueBtn = target.closest('.continue-audit-btn');
         if (continueBtn) {
             e.stopPropagation();
             const assignmentId = continueBtn.getAttribute('data-assignment-id');
             if (assignmentId && window.navigateToAssignment) {
-                window.navigateToAssignment(assignmentId);
+                const card = continueBtn.closest('.nested-audit-card');
+                const conversationInput = card ? document.getElementById('conversationIdInput_' + assignmentId) : null;
+                const manualConversationId = conversationInput && conversationInput.value ? String(conversationInput.value).trim() : null;
+                window.navigateToAssignment(assignmentId, manualConversationId || undefined);
             }
             return;
         }
         
-        // Handle Start Audit button clicks
+        // Handle Start Audit button clicks (include manually entered conversation ID from input)
         const startBtn = target.closest('.start-audit-btn');
         if (startBtn) {
             e.stopPropagation();
             const assignmentId = startBtn.getAttribute('data-assignment-id');
             if (assignmentId && window.navigateToAssignment) {
-                window.navigateToAssignment(assignmentId);
+                const card = startBtn.closest('.nested-audit-card');
+                const conversationInput = card ? document.getElementById('conversationIdInput_' + assignmentId) : null;
+                const manualConversationId = conversationInput && conversationInput.value ? String(conversationInput.value).trim() : null;
+                window.navigateToAssignment(assignmentId, manualConversationId || undefined);
             }
             return;
         }
         
-        // Handle navigation to assignment (card click)
+        // Handle copy conversation ID button (works when inline onclick is stripped by CSP)
+        const copyConvBtn = target.closest('.copy-conversation-id-btn');
+        if (copyConvBtn) {
+            e.stopPropagation();
+            const conversationId = copyConvBtn.getAttribute('data-conversation-id') || copyConvBtn.closest('.nested-audit-card')?.querySelector('input[id^="conversationIdInput_"]')?.value;
+            if (conversationId && navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(conversationId).then(function() {
+                    const btn = copyConvBtn;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                    setTimeout(function() { btn.innerHTML = originalHTML; }, 1000);
+                }).catch(function(err) { console.error('Failed to copy:', err); });
+            }
+            return;
+        }
+        
+        // Handle remove conversation link button (works when inline onclick is stripped by CSP)
+        const removeConvBtn = target.closest('.remove-conversation-btn');
+        if (removeConvBtn) {
+            e.stopPropagation();
+            const auditId = removeConvBtn.getAttribute('data-audit-id');
+            const conversationId = removeConvBtn.getAttribute('data-conversation-id');
+            if (auditId != null && conversationId != null && typeof window.removeConversationFromAudit === 'function') {
+                window.removeConversationFromAudit(auditId, conversationId);
+            }
+            return;
+        }
+        
+        // Handle navigation to assignment (card click) - skip when clicking buttons/inputs
         const navBtn = target.closest('.navigate-to-assignment-btn');
         if (navBtn) {
+            if (target.closest('button, input, a')) return;
             e.stopPropagation();
             const assignmentId = navBtn.getAttribute('data-assignment-id');
             if (assignmentId && window.navigateToAssignment) {
@@ -5356,10 +5409,9 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                         />
                         ${conversationId ? `
                             <button 
-                                onclick="event.stopPropagation(); navigator.clipboard.writeText('${conversationId}').then(() => { const btn = event.target.closest('button'); const originalHTML = btn.innerHTML; btn.innerHTML = '<svg style=\\'width: 0.7273rem; height: 0.7273rem;\\' fill=\\'none\\' stroke=\\'currentColor\\' viewBox=\\'0 0 24 24\\'><path stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M5 13l4 4L19 7\\'></path></svg>'; setTimeout(() => { btn.innerHTML = originalHTML; }, 1000); }).catch(err => console.error('Failed to copy:', err));"
+                                class="copy-conversation-id-btn"
+                                data-conversation-id="${String(conversationId).replace(/"/g, '&quot;')}"
                                 style="padding: 0.1617rem; background-color: transparent; border: none; border-radius: 0.1617rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6b7280; transition: all 0.2s; flex-shrink: 0;"
-                                onmouseover="this.style.backgroundColor='#f3f4f6'; this.style.color='#374151';"
-                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='#6b7280';"
                                 title="Copy conversation ID"
                             >
                                 <svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5369,11 +5421,8 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                             <button 
                                 class="remove-conversation-btn"
                                 data-audit-id="${audit.id}"
-                                data-conversation-id="${conversationId}"
-                                onclick="event.stopPropagation(); window.removeConversationFromAudit('${String(audit.id).replace(/'/g, "\\'")}', '${String(conversationId).replace(/'/g, "\\'")}')"
+                                data-conversation-id="${String(conversationId).replace(/"/g, '&quot;')}"
                                 style="padding: 0.1617rem; background-color: transparent; border: none; border-radius: 0.1617rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #dc2626; transition: all 0.2s; flex-shrink: 0;"
-                                onmouseover="this.style.backgroundColor='#fee2e2'; this.style.color='#991b1b';"
-                                onmouseout="this.style.backgroundColor='transparent'; this.style.color='#dc2626';"
                                 title="Remove conversation link"
                             >
                                 <svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -13806,16 +13855,17 @@ window.conversationsGoToPage = function(page) {
     displayEmployeeConversations();
 };
 
-window.navigateToAssignment = async function(assignmentId) {
+window.navigateToAssignment = async function(assignmentId, conversationIdFromInput) {
     try {
-        console.log('🚀 Navigating to assignment:', assignmentId);
+        console.log('🚀 Navigating to assignment:', assignmentId, conversationIdFromInput ? '(with manual conversation ID)' : '');
         
         // Get Supabase client
         const supabaseClient = window.SupabaseConfig?.getClient?.();
         if (!supabaseClient) {
             console.error('❌ Supabase client not available');
-            // Fallback to direct navigation
-            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+            var base = '/src/features/audit-form/presentation/new-audit-form.html?assignment=' + encodeURIComponent(assignmentId);
+            if (conversationIdFromInput) base += '&conversation_id=' + encodeURIComponent(String(conversationIdFromInput));
+            window.location.href = base;
             return;
         }
         
@@ -13837,34 +13887,35 @@ window.navigateToAssignment = async function(assignmentId) {
             return;
         }
         
+        // Use manually entered conversation ID from input if provided; otherwise use assignment's
+        const conversationId = conversationIdFromInput && String(conversationIdFromInput).trim()
+            ? String(conversationIdFromInput).trim()
+            : assignment.conversation_id;
+        
         console.log('📋 Assignment details:', {
             id: assignment.id,
             employee_email: assignment.employee_email,
             employee_name: assignment.employee_name,
-            conversation_id: assignment.conversation_id,
+            conversation_id: conversationId,
             status: assignment.status
         });
         
-        // If assignment already has a conversation_id, navigate directly with both parameters
-        if (assignment.conversation_id) {
-            console.log('✅ Assignment already has conversation linked, navigating directly');
-            const conversationId = encodeURIComponent(String(assignment.conversation_id));
-            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${conversationId}`;
-            return;
-        }
-        
-        // No conversation_id: go straight to audit form (auditor can start/continue without pulling conversation)
-        if (!assignment.employee_email) {
+        var url = '/src/features/audit-form/presentation/new-audit-form.html?assignment=' + encodeURIComponent(assignmentId);
+        if (conversationId) {
+            console.log('✅ Navigating with conversation_id:', conversationId);
+            url += '&conversation_id=' + encodeURIComponent(conversationId);
+        } else if (!assignment.employee_email) {
             console.warn('⚠️ Assignment has no employee_email, navigating without conversation');
         } else {
             console.log('📋 No conversation linked – navigating to audit form. Auditor can pull conversation later if needed.');
         }
-        window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+        window.location.href = url;
         
     } catch (error) {
         console.error('❌ Error in navigateToAssignment:', error);
-        // Fallback to direct navigation on error
-        window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}`;
+        var fallback = '/src/features/audit-form/presentation/new-audit-form.html?assignment=' + encodeURIComponent(assignmentId);
+        if (conversationIdFromInput) fallback += '&conversation_id=' + encodeURIComponent(String(conversationIdFromInput));
+        window.location.href = fallback;
     }
 };
 
@@ -14314,39 +14365,26 @@ async function linkConversationToAudit(conversation, auditId) {
                 let removeBtn = conversationContainer.querySelector('.remove-conversation-btn');
                 
                 if (!copyBtn) {
-                    // Create copy button
+                    // Create copy button (class/data used by delegation; no inline onclick for CSP)
                     copyBtn = document.createElement('button');
-                    copyBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(conversationId).then(() => {
-                            const originalHTML = copyBtn.innerHTML;
-                            copyBtn.innerHTML = '<svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-                            setTimeout(() => { copyBtn.innerHTML = originalHTML; }, 1000);
-                        }).catch(err => console.error('Failed to copy:', err));
-                    };
+                    copyBtn.className = 'copy-conversation-id-btn';
+                    copyBtn.setAttribute('data-conversation-id', conversationId);
                     copyBtn.style.cssText = 'padding: 0.1617rem; background-color: transparent; border: none; border-radius: 0.1617rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #6b7280; transition: all 0.2s; flex-shrink: 0;';
-                    copyBtn.onmouseover = () => { copyBtn.style.backgroundColor = '#f3f4f6'; copyBtn.style.color = '#374151'; };
-                    copyBtn.onmouseout = () => { copyBtn.style.backgroundColor = 'transparent'; copyBtn.style.color = '#6b7280'; };
                     copyBtn.title = 'Copy conversation ID';
                     copyBtn.innerHTML = '<svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>';
                     conversationContainer.appendChild(copyBtn);
                 } else {
                     copyBtn.style.display = 'flex';
+                    copyBtn.setAttribute('data-conversation-id', conversationId);
                 }
                 
                 if (!removeBtn) {
-                    // Create remove button
+                    // Create remove button (delegation handles click; no inline handlers for CSP)
                     removeBtn = document.createElement('button');
                     removeBtn.className = 'remove-conversation-btn';
                     removeBtn.setAttribute('data-audit-id', auditId);
                     removeBtn.setAttribute('data-conversation-id', conversationId);
-                    removeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        window.removeConversationFromAudit(auditId, conversationId);
-                    };
                     removeBtn.style.cssText = 'padding: 0.1617rem; background-color: transparent; border: none; border-radius: 0.1617rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #dc2626; transition: all 0.2s; flex-shrink: 0;';
-                    removeBtn.onmouseover = () => { removeBtn.style.backgroundColor = '#fee2e2'; removeBtn.style.color = '#991b1b'; };
-                    removeBtn.onmouseout = () => { removeBtn.style.backgroundColor = 'transparent'; removeBtn.style.color = '#dc2626'; };
                     removeBtn.title = 'Remove conversation link';
                     removeBtn.innerHTML = '<svg style="width: 0.7273rem; height: 0.7273rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
                     conversationContainer.appendChild(removeBtn);
@@ -15471,6 +15509,7 @@ function clearErrorParameters() {
             timerControlBtn.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem;" viewBox="0 0 24 24" fill="currentColor">${pauseIcon}</svg>`;
             timerControlBtn.title = "Pause Timer";
             }
+            if (window.applyAuditTimerStyles) window.applyAuditTimerStyles();
         }
     }
     
@@ -15762,6 +15801,26 @@ function clearErrorParameters() {
     window.updateAuditDuration = updateAuditDuration;
     window.getAuditStartTimestamp = getAuditStartTimestamp;
     window.restoreAuditStartTimestamp = restoreAuditStartTimestamp;
+
+    // Force timer chip to dark green + white text (overrides any CSS that makes it white)
+    function applyAuditTimerStyles() {
+        const el = document.getElementById('auditTimer');
+        if (!el) return;
+        el.style.setProperty('background', '#1A733E', 'important');
+        el.style.setProperty('background-color', '#1A733E', 'important');
+        el.style.setProperty('color', '#ffffff', 'important');
+        el.querySelectorAll('*').forEach(function(child) {
+            if (child.tagName === 'BUTTON') {
+                child.style.setProperty('background', 'rgba(255, 255, 255, 0.25)', 'important');
+                child.style.setProperty('background-color', 'rgba(255, 255, 255, 0.25)', 'important');
+            } else {
+                child.style.setProperty('background', '#1A733E', 'important');
+                child.style.setProperty('background-color', '#1A733E', 'important');
+            }
+            child.style.setProperty('color', '#ffffff', 'important');
+        });
+    }
+    window.applyAuditTimerStyles = applyAuditTimerStyles;
     
     // Timer will start when user clicks "Start Audit" button
     // Don't auto-start on page load
@@ -16501,6 +16560,7 @@ async function loadCalibrationSampleAudit() {
         const auditTimer = document.getElementById('auditTimer');
         if (auditTimer) {
             auditTimer.style.display = 'flex';
+            if (window.applyAuditTimerStyles) window.applyAuditTimerStyles();
         }
 
     } catch (error) {
@@ -16856,6 +16916,7 @@ async function loadATAOriginalAudit() {
         const auditTimer = document.getElementById('auditTimer');
         if (auditTimer) {
             auditTimer.style.display = 'flex';
+            if (window.applyAuditTimerStyles) window.applyAuditTimerStyles();
         }
 
     } catch (error) {

@@ -62,8 +62,8 @@ export class NavigationHelpers {
         (window as any).pauseTimer();
       }
       
-      // Navigate back to create-audit.html
-      window.location.href = 'create-audit.html';
+      // Navigate back to Create Audit page (use absolute path so it works from any route)
+      window.location.href = '/create-audit';
     } catch (error) {
       logError('Error closing audit form:', error);
     }

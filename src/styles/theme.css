@@ -381,3 +381,23 @@ pre {
   color: var(--color-text-inverse);
 }
 
+/* ============================================
+   AUDIT TIMER - Always visible (override theme/form styles)
+   ============================================ */
+body #auditTimer,
+body #auditTimer * {
+  background-color: #1A733E !important;
+  background: #1A733E !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+body #auditTimer button {
+  background: rgba(255, 255, 255, 0.25) !important;
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+body #auditTimer svg {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+}
+

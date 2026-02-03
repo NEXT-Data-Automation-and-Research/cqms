@@ -27,8 +27,6 @@ const RETRY_DELAY_MS = 2000;
 function showAssignmentToast(employeeName?: string | null): void {
   const displayName = employeeName && employeeName !== 'unknown' ? employeeName : 'an employee';
   
-  console.log('[Audit assignment realtime] 🔔 Showing toast for:', displayName);
-  
   // Remove any existing toast first
   document.getElementById('audit-assignment-toast')?.remove();
   
@@ -106,7 +104,6 @@ function showAssignmentToast(employeeName?: string | null): void {
   `;
   
   document.body.appendChild(toastDiv);
-  console.log('[Audit assignment realtime] ✅ Toast displayed');
   
   // Auto-remove after 8 seconds
   setTimeout(() => {
@@ -198,8 +195,6 @@ function createRealtimeSubscription(supabase: SupabaseClient, normalizedEmail: s
         table: 'audit_assignments',
       },
       (payload: { new?: Record<string, unknown>; old?: Record<string, unknown>; eventType?: string }) => {
-        console.log('[Audit assignment realtime] 🚨 RAW EVENT RECEIVED:', payload);
-        
         const newRow = payload?.new;
         const oldRow = payload?.old;
         const eventType =
@@ -208,25 +203,15 @@ function createRealtimeSubscription(supabase: SupabaseClient, normalizedEmail: s
         const row = newRow ?? oldRow;
         const auditorEmail = (row?.auditor_email as string)?.toLowerCase?.()?.trim?.() || 'unknown';
         const employeeName = (row?.employee_name as string) || 'unknown';
-        
-        // Show debug info about email comparison
         const emailMatch = auditorEmail === normalizedEmail;
-        console.log('[Audit assignment realtime] Email comparison:', {
-          auditorEmail,
-          currentUser: normalizedEmail,
-          match: emailMatch
-        });
         
-        // Show toast for INSERT or UPDATE events when this user is the auditor
-        const shouldShowToast = (eventType === 'INSERT' || eventType === 'UPDATE') && emailMatch;
-        
-        console.log('[Audit assignment realtime] Event details:', { eventType, emailMatch, shouldShowToast, employeeName });
+        // Show "New Audit Assignment" toast only for INSERT (new row). Do NOT show for UPDATE:
+        // when the user submits an audit, the assignment row is updated (e.g. status) and that
+        // would incorrectly show "You have been assigned" again.
+        const shouldShowToast = eventType === 'INSERT' && emailMatch;
         
         if (shouldShowToast) {
-          console.log('[Audit assignment realtime] ✅ This assignment is FOR YOU! Showing toast...');
           showAssignmentToast(employeeName);
-        } else if (!emailMatch) {
-          console.log('[Audit assignment realtime] This assignment is for someone else:', auditorEmail);
         }
         
         // Always dispatch event for any audit_assignments change (for homepage refresh)
