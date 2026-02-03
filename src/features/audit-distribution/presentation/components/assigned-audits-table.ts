@@ -87,6 +87,16 @@ export class AssignedAuditsTable {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Refresh
             </button>
+            <div class="flex items-center gap-1.5">
+              <label for="tableStatusFilter" class="text-xs font-medium text-gray-600 whitespace-nowrap">Status</label>
+              <select id="tableStatusFilter" class="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[100px]" data-action="statusFilterChange">
+                <option value="">All</option>
+                <option value="pending" ${columnFilters.status.includes('pending') ? 'selected' : ''}>Pending</option>
+                <option value="in_progress" ${columnFilters.status.includes('in_progress') ? 'selected' : ''}>In Progress</option>
+                <option value="completed" ${columnFilters.status.includes('completed') ? 'selected' : ''}>Completed</option>
+                <option value="cancelled" ${columnFilters.status.includes('cancelled') ? 'selected' : ''}>Cancelled</option>
+              </select>
+            </div>
             <span class="text-sm font-medium text-gray-600">${showPagination ? `Showing ${startItem}–${endItem} of ${total}` : `${total} assignment(s)`}</span>
             ${hasActiveFilters ? `
               <button type="button" data-action="clearFilters" class="px-3 py-1.5 text-xs bg-red-100 text-red-700 rounded-lg border border-red-200 font-medium hover:bg-red-200/80 transition-all flex items-center gap-1.5">
@@ -359,6 +369,15 @@ export class AssignedAuditsTable {
       if (this.config.onPageSizeChange) {
         const size = parseInt(pageSizeSelect.value, 10);
         if (!isNaN(size) && size >= 1) this.config.onPageSizeChange(size);
+      }
+    });
+
+    // Status filter change
+    const statusFilterSelect = this.container.querySelector('#tableStatusFilter') as HTMLSelectElement;
+    statusFilterSelect?.addEventListener('change', () => {
+      if (this.config.onColumnFilterChange) {
+        const value = statusFilterSelect.value;
+        this.config.onColumnFilterChange('status', value ? [value] : []);
       }
     });
   }

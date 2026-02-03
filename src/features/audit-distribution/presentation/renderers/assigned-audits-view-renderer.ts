@@ -6,7 +6,7 @@
 import type { AuditDistributionStateManager } from '../../application/audit-distribution-state.js';
 import { AuditDistributionService } from '../../application/audit-distribution-service.js';
 import { AssignedAuditsTable } from '../components/assigned-audits-table.js';
-import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
+import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
 import { logError } from '../../../../utils/logging-helper.js';
 import type { AuditAssignment, Scorecard } from '../../domain/types.js';
 
@@ -18,11 +18,14 @@ export interface AssignedAuditsViewRendererConfig {
 export class AssignedAuditsViewRenderer {
   private stateManager: AuditDistributionStateManager;
   private service: AuditDistributionService;
+  private container: HTMLElement | null = null;
   private assignedAuditsTable: AssignedAuditsTable | null = null;
   private selectedAssignmentIds = new Set<string>();
   private onRefreshAssignments: (() => void) | null = null;
   private assignedAuditsPage = 1;
   private assignedAuditsPageSize = 20;
+  private assignedAuditsSearch = '';
+  private searchDebounceTimer: number | null = null;
 
   constructor(config: AssignedAuditsViewRendererConfig) {
     this.stateManager = config.stateManager;
@@ -30,12 +33,18 @@ export class AssignedAuditsViewRenderer {
   }
 
   render(container: HTMLElement): void {
+    this.container = container;
     this.onRefreshAssignments = () => {
       this.service.loadAssignments().then(assignments => {
         this.stateManager.setAssignments(assignments);
         this.renderTable();
       }).catch(err => logError('[AssignedAuditsView] Error refreshing assignments:', err));
     };
+
+    const state = this.stateManager.getState();
+    const allAuditors = [...state.auditors, ...state.otherAuditors];
+    const uniqueWeeks = [...new Set(state.assignments.map(a => a.week).filter((w): w is number => w != null))].sort((a, b) => a - b);
+    const cf = state.columnFilters;
 
     safeSetHTML(container, `
       <div class="px-4 py-6 max-w-7xl mx-auto w-full">
@@ -46,12 +55,118 @@ export class AssignedAuditsViewRenderer {
               <p class="text-xs text-gray-600">View, reassign, or delete audit assignments. Use checkboxes for bulk actions.</p>
             </div>
           </div>
+          <div id="assignedAuditsFilterBar" class="px-4 py-3 border-b border-gray-200 bg-white">
+            <div class="flex flex-wrap items-center gap-2">
+              <div class="min-w-[180px] max-w-[240px]">
+                <div class="relative">
+                  <div class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  </div>
+                  <input type="text" id="assignedAuditsSearch" class="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" placeholder="Search employee, auditor, scorecard..." value="${escapeHtml(this.assignedAuditsSearch)}" autocomplete="off" />
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="assignedFilterStatus" class="text-xs font-medium text-gray-600 whitespace-nowrap">Status</label>
+                <select id="assignedFilterStatus" class="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[100px]">
+                  <option value="">All</option>
+                  <option value="pending" ${cf.status.includes('pending') ? 'selected' : ''}>Pending</option>
+                  <option value="in_progress" ${cf.status.includes('in_progress') ? 'selected' : ''}>In Progress</option>
+                  <option value="completed" ${cf.status.includes('completed') ? 'selected' : ''}>Completed</option>
+                  <option value="cancelled" ${cf.status.includes('cancelled') ? 'selected' : ''}>Cancelled</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="assignedFilterAuditor" class="text-xs font-medium text-gray-600 whitespace-nowrap">Auditor</label>
+                <select id="assignedFilterAuditor" class="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[120px]">
+                  <option value="">All</option>
+                  ${allAuditors.map(a => `<option value="${escapeHtml(a.email)}" ${cf.auditor.includes(a.email) ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="assignedFilterScorecard" class="text-xs font-medium text-gray-600 whitespace-nowrap">Scorecard</label>
+                <select id="assignedFilterScorecard" class="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[140px]">
+                  <option value="">All</option>
+                  ${state.scorecards.map(s => `<option value="${escapeHtml(s.id)}" ${cf.scorecard.includes(s.id) ? 'selected' : ''}>${escapeHtml(s.name)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <label for="assignedFilterWeek" class="text-xs font-medium text-gray-600 whitespace-nowrap">Week</label>
+                <select id="assignedFilterWeek" class="text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[80px]">
+                  <option value="">All</option>
+                  ${uniqueWeeks.map(w => `<option value="${w}" ${cf.week.includes(String(w)) ? 'selected' : ''}>${w}</option>`).join('')}
+                </select>
+              </div>
+              <button type="button" id="assignedAuditsClearFilters" class="px-3 py-1.5 text-xs bg-red-100 text-red-700 rounded-lg border border-red-200 font-medium hover:bg-red-200/80 transition-all" style="display: none;">
+                Clear all
+              </button>
+            </div>
+          </div>
           <div id="assignedAuditsTableContainer" class="p-4"></div>
         </div>
       </div>
     `);
 
+    this.attachFilterBarListeners();
     this.renderTable();
+  }
+
+  private syncFilterBarFromState(state: { columnFilters: { week: string[]; status: string[]; auditor: string[]; scorecard: string[] } }): void {
+    const cf = state.columnFilters;
+    const statusSelect = document.getElementById('assignedFilterStatus') as HTMLSelectElement;
+    const auditorSelect = document.getElementById('assignedFilterAuditor') as HTMLSelectElement;
+    const scorecardSelect = document.getElementById('assignedFilterScorecard') as HTMLSelectElement;
+    const weekSelect = document.getElementById('assignedFilterWeek') as HTMLSelectElement;
+    const searchInput = document.getElementById('assignedAuditsSearch') as HTMLInputElement;
+    const clearBtn = document.getElementById('assignedAuditsClearFilters');
+    if (statusSelect) statusSelect.value = cf.status[0] ?? '';
+    if (auditorSelect) auditorSelect.value = cf.auditor[0] ?? '';
+    if (scorecardSelect) scorecardSelect.value = cf.scorecard[0] ?? '';
+    if (weekSelect) weekSelect.value = cf.week[0] ?? '';
+    if (searchInput) searchInput.value = this.assignedAuditsSearch;
+    const hasActive = Boolean(this.assignedAuditsSearch || cf.status.length || cf.auditor.length || cf.scorecard.length || cf.week.length);
+    if (clearBtn) (clearBtn as HTMLElement).style.display = hasActive ? '' : 'none';
+  }
+
+  private attachFilterBarListeners(): void {
+    const searchInput = document.getElementById('assignedAuditsSearch') as HTMLInputElement;
+    const statusSelect = document.getElementById('assignedFilterStatus') as HTMLSelectElement;
+    const auditorSelect = document.getElementById('assignedFilterAuditor') as HTMLSelectElement;
+    const scorecardSelect = document.getElementById('assignedFilterScorecard') as HTMLSelectElement;
+    const weekSelect = document.getElementById('assignedFilterWeek') as HTMLSelectElement;
+    const clearBtn = document.getElementById('assignedAuditsClearFilters');
+
+    const applyFiltersAndRender = () => {
+      this.assignedAuditsPage = 1;
+      this.renderTable();
+    };
+
+    searchInput?.addEventListener('input', () => {
+      if (this.searchDebounceTimer != null) clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = window.setTimeout(() => {
+        this.searchDebounceTimer = null;
+        this.assignedAuditsSearch = (searchInput?.value ?? '').trim();
+        this.assignedAuditsPage = 1;
+        this.renderTable();
+      }, 300);
+    });
+
+    const setColumnFilter = (column: string, value: string) => {
+      this.stateManager.setColumnFilters(column, value ? [value] : []);
+      applyFiltersAndRender();
+    };
+
+    statusSelect?.addEventListener('change', () => setColumnFilter('status', statusSelect?.value ?? ''));
+    auditorSelect?.addEventListener('change', () => setColumnFilter('auditor', auditorSelect?.value ?? ''));
+    scorecardSelect?.addEventListener('change', () => setColumnFilter('scorecard', scorecardSelect?.value ?? ''));
+    weekSelect?.addEventListener('change', () => setColumnFilter('week', weekSelect?.value ?? ''));
+
+    clearBtn?.addEventListener('click', () => {
+      this.assignedAuditsSearch = '';
+      this.stateManager.clearColumnFilters();
+      this.assignedAuditsPage = 1;
+      if (searchInput) searchInput.value = '';
+      if (this.container) this.render(this.container);
+    });
   }
 
   private getFilteredAssignments(): AuditAssignment[] {
@@ -64,13 +179,35 @@ export class AssignedAuditsViewRenderer {
     if (cf.scheduled_date.length) list = list.filter(a => a.scheduled_date && cf.scheduled_date.includes(a.scheduled_date));
     if (cf.scorecard.length) list = list.filter(a => a.scorecard_id && cf.scorecard.includes(a.scorecard_id));
     if (cf.status.length) list = list.filter(a => cf.status.includes(a.status));
+
+    const q = this.assignedAuditsSearch.trim().toLowerCase();
+    if (q) {
+      const auditorByName = new Map<string, string>();
+      for (const au of [...state.auditors, ...state.otherAuditors]) {
+        auditorByName.set(au.email, au.name ?? '');
+      }
+      const scorecardByName = new Map<string, string>();
+      for (const s of state.scorecards) {
+        scorecardByName.set(s.id, s.name ?? '');
+      }
+      list = list.filter(a => {
+        const auditorName = auditorByName.get(a.auditor_email) ?? '';
+        const scorecardName = (a.scorecard_id && scorecardByName.get(a.scorecard_id)) ?? '';
+        const employeeName = a.employee_name ?? '';
+        const statusLabel = a.status.replace('_', ' ');
+        return [employeeName, a.employee_email, auditorName, a.auditor_email, scorecardName, statusLabel].some(
+          val => val.toLowerCase().includes(q)
+        );
+      });
+    }
     return list;
   }
 
   private enrichAssignmentsWithScorecard(assignments: AuditAssignment[], scorecards: Scorecard[]): AuditAssignment[] {
+    const byId = new Map(scorecards.map(s => [s.id, s]));
     return assignments.map(a => ({
       ...a,
-      scorecard: a.scorecard_id ? scorecards.find(s => s.id === a.scorecard_id) : undefined
+      scorecard: a.scorecard_id ? byId.get(a.scorecard_id) : undefined
     }));
   }
 
@@ -100,6 +237,8 @@ export class AssignedAuditsViewRenderer {
     const end = start + this.assignedAuditsPageSize;
     const paginatedAssignments = sorted.slice(start, end);
     const allAuditors = [...state.auditors, ...state.otherAuditors];
+
+    this.syncFilterBarFromState(state);
 
     this.assignedAuditsTable = new AssignedAuditsTable(container, {
       assignments: paginatedAssignments,

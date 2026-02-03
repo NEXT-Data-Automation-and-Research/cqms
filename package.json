@@ -21,6 +21,7 @@
     "watch": "npm run dev",
     "apply-rls": "node -r ts-node/register src/scripts/apply-rls-migration.ts || node dist/scripts/apply-rls-migration.js",
     "apply-audit-migrations": "npx tsx src/scripts/apply-audit-reports-migrations.ts",
+    "apply-audit-assignments-admin-policy": "npx tsx src/scripts/apply-audit-assignments-admin-policy.ts",
     "migrate:prod-to-staging": "npx tsx src/scripts/migrate-prod-to-staging.ts",
     "validate:css": "node scripts/css-pattern-validator.js",
     "postinstall": "node setup-env.js || echo 'Setup skipped - .env file may already exist'",
