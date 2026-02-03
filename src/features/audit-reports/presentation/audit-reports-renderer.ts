@@ -37,8 +37,10 @@ export class AuditReportsRenderer {
 
   /**
    * Render scorecard selector
+   * @param scorecards - list of scorecards to show
+   * @param currentScorecardId - optional current selection to preserve (e.g. when re-rendering panel)
    */
-  renderScorecardSelector(scorecards: ScorecardInfo[]): void {
+  renderScorecardSelector(scorecards: ScorecardInfo[], currentScorecardId?: string | null): void {
     const selector = document.getElementById('scorecardSelector') as HTMLSelectElement;
     if (!selector) {
       logError('scorecardSelector not found');
@@ -55,7 +57,13 @@ export class AuditReportsRenderer {
     }
 
     safeSetHTML(selector, html);
-    selector.value = 'all';
+    const state = this.controller.getState();
+    const selected = currentScorecardId ?? state.currentScorecardId ?? null;
+    if (selected && scorecards?.some(s => s.id === selected)) {
+      selector.value = selected;
+    } else {
+      selector.value = 'all';
+    }
   }
 
   /**
@@ -398,6 +406,11 @@ export class AuditReportsRenderer {
     }
 
     renderFilterPanel(container, this.controller);
+    // Re-populate scorecard dropdown after panel render so it never shows "Loading scorecards..." when we have data
+    const scorecards = this.controller.getScorecards();
+    if (scorecards && scorecards.length >= 0) {
+      this.renderScorecardSelector(scorecards);
+    }
   }
 }
 

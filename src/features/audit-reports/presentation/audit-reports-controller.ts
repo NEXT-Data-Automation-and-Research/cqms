@@ -273,6 +273,8 @@ export class AuditReportsController {
       this.renderer.renderScorecardSelector(this.scorecards);
     } catch (error) {
       logError('Error loading scorecards:', error);
+      this.scorecards = [];
+      this.renderer.renderScorecardSelector([]);
     }
   }
 
