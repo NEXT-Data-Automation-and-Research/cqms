@@ -2851,7 +2851,7 @@ function setupEventListenersForCSP() {
     const createAuditTarget = e.target.closest('[data-action="create-audit"]');
     if (createAuditTarget) {
       e.stopPropagation();
-      window.location.href = 'create-audit.html';
+      window.location.href = '/create-audit';
       return;
     }
   });
@@ -2860,7 +2860,7 @@ function setupEventListenersForCSP() {
   const createAuditBtn = document.getElementById('createAuditBtn');
   if (createAuditBtn) {
     createAuditBtn.addEventListener('click', () => {
-      window.location.href = 'create-audit.html';
+      window.location.href = '/create-audit';
     });
   }
   
@@ -2914,7 +2914,7 @@ function setupEventListenersForCSP() {
   const quickActionCreateAudit = document.getElementById('quickActionCreateAudit');
   if (quickActionCreateAudit) {
     quickActionCreateAudit.addEventListener('click', () => {
-      window.location.href = 'create-audit.html';
+      window.location.href = '/create-audit';
     });
   }
   
@@ -4771,16 +4771,19 @@ function renderUnifiedAuditView(unifiedData) {
 
 // Convert completed audit to update format for unified display
 function convertCompletedAuditToUpdate(audit) {
-  // For agents, don't show auditor info; for auditors, show employee info
-  let displayUser, displayName, displayEmail;
+  // For agents, don't show auditor info; for auditors, show employee info (who was audited) and auditor info (who performed the audit)
+  let displayUser, displayName, displayEmail, auditorDisplayName;
   if (isAgent) {
     displayName = null;
     displayEmail = null;
+    auditorDisplayName = null;
   } else {
     const employeeEmail = (audit.employee_email || '').toLowerCase().trim();
     displayUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === employeeEmail);
     displayName = audit.employee_name || displayUser?.name || audit.employee_email?.split('@')[0] || 'Unknown';
     displayEmail = audit.employee_email || '';
+    const auditorUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === (audit.auditor_email || '').toLowerCase().trim());
+    auditorDisplayName = audit.auditor_name || auditorUser?.name || audit.auditor_email?.split('@')[0] || 'Unknown';
   }
   
   const interactionId = audit.interaction_id || 'N/A';
@@ -4799,6 +4802,7 @@ function convertCompletedAuditToUpdate(audit) {
     scorecardName: audit._scorecard_name || 'Unknown Scorecard',
     displayName: displayName,
     displayEmail: displayEmail,
+    auditorDisplayName: auditorDisplayName,
     timestamp: audit.submitted_at || audit.created_at,
     interactionId: interactionId,
     channel: channel,
@@ -4865,7 +4869,7 @@ function renderPendingAudits(pendingAudits) {
     const requestDate = formatTimestamp(audit.created_at);
     
     return `
-      <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" onclick="window.location.href='create-audit.html'">
+      <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" data-action="create-audit">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-2.5 flex-1 min-w-0">
             <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
@@ -4888,9 +4892,7 @@ function renderPendingAudits(pendingAudits) {
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
             ${statusBadge}
-            <button data-action="create-audit" class="px-2.5 py-1 bg-primary text-white text-[10px] font-semibold rounded hover:bg-primary-dark transition-colors">
-              Get Started
-            </button>
+            <button data-action="create-audit" class="px-2.5 py-1 bg-primary text-white text-[10px] font-semibold rounded hover:bg-primary-dark transition-colors flex-shrink-0">Get Started</button>
           </div>
         </div>
       </div>
@@ -5221,7 +5223,8 @@ function renderCompletedAuditItem(update) {
   const channel = update.channel || 'No Channel';
   const averageScore = update.averageScore || '0';
   const totalErrors = update.totalErrors || '0';
-  const auditedByLabel = isAgent ? null : (escapeHtml(displayName) || 'Unknown');
+  // "audited by" = person who performed the audit (auditor), not the agent who was audited
+  const auditedByLabel = isAgent ? null : (escapeHtml(update.auditorDisplayName || displayName) || 'Unknown');
   const titleText = isAgent ? `#${escapeHtml(interactionId)} audited` : `#${escapeHtml(interactionId)} audited by ${auditedByLabel}`;
 
   // Use the full audit object for status chips (they expect the audit format)
@@ -5572,7 +5575,7 @@ function renderAssignedAudits() {
       const requestDate = formatTimestamp(audit.created_at);
 
       return `
-        <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" onclick="window.location.href='create-audit.html'">
+        <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" data-action="create-audit">
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2.5 flex-1 min-w-0">
               <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
@@ -6450,7 +6453,8 @@ function renderStatsFromData(stats) {
 }
 
 function viewAudit(assignmentId) {
-  window.location.href = `create-audit.html?assignment=${assignmentId}`;
+  const q = assignmentId ? `?assignment=${encodeURIComponent(assignmentId)}` : '';
+  window.location.href = `/create-audit${q}`;
 }
 
 function viewAuditDetails(auditId, scorecardId, tableName) {
