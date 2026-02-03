@@ -359,7 +359,15 @@
     position: relative !important;
     z-index: 1 !important;
   }
-  
+
+  /* Trend lines on KPI cards - ensure nothing hides them */
+  .expert-audits-container .kpi-grid .kpi-card .kpi-chart-container.kpi-trend-visible {
+    display: block !important;
+    visibility: visible !important;
+    height: 2.25rem !important;
+    min-height: 2.25rem !important;
+  }
+
   /* Ensure filter panel is above everything except modals when visible */
   #filterPanel.controls-section:not([style*="display: none"]) {
     z-index: 100 !important;

@@ -154,31 +154,31 @@
 }
 
 .kpi-chart-container {
-    height: 1.6875rem;
+    height: 2.25rem;
+    min-height: 2.25rem;
     margin-top: 0.5rem;
     width: 100%;
     position: relative;
-    display: none; /* Hidden on mobile by default */
+    overflow: hidden;
+}
+
+/* Inline SVG trend lines - always visible, nothing can block */
+.kpi-chart-container.kpi-trend-visible {
+    display: block !important;
+    visibility: visible !important;
+}
+
+.kpi-chart-container.kpi-trend-visible .kpi-sparkline {
+    width: 100%;
+    height: 100%;
+    min-height: 2.25rem;
 }
 
 .kpi-chart-container canvas {
     width: 100% !important;
     height: 100% !important;
+    min-height: 2.25rem;
     display: block;
-}
-
-/* Show charts on desktop only */
-@media screen and (min-width: 1025px) {
-    .kpi-chart-container.desktop-only {
-        display: block !important;
-    }
-}
-
-/* Hide charts on mobile and tablet */
-@media screen and (max-width: 1024px) {
-    .kpi-chart-container.desktop-only {
-        display: none !important;
-    }
 }
 
 /* Tooltip Styles */

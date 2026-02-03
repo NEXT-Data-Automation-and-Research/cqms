@@ -587,6 +587,19 @@ export class AuditReportsEventHandlers {
         const select = target as HTMLSelectElement;
         const value = select.value;
         this.controller.setScorecard(value === 'all' ? null : value);
+        return;
+      }
+      // Multi-select dropdowns: checkbox change should update filters and re-render
+      const checkbox = target as HTMLInputElement;
+      if (checkbox.type === 'checkbox') {
+        const optionsContainer = checkbox.closest('[id$="Options"]') as HTMLElement;
+        if (optionsContainer && optionsContainer.id) {
+          const filterId = optionsContainer.id.replace(/Options$/, '');
+          const updateMultiSelect = (window as any).updateMultiSelect;
+          if (typeof updateMultiSelect === 'function') {
+            updateMultiSelect(filterId);
+          }
+        }
       }
     }, { capture: false });
 
@@ -699,6 +712,22 @@ export class AuditReportsEventHandlers {
 
     filterPanel.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
+      // Multi-select "Select All" / "Clear" buttons (delegation so it works even if inline onclick is blocked)
+      const actionBtn = target.closest('.multi-select-action-btn') as HTMLElement;
+      if (actionBtn) {
+        const dropdown = actionBtn.closest('.multi-select-dropdown') as HTMLElement;
+        if (dropdown?.id?.endsWith('Dropdown')) {
+          const filterId = dropdown.id.replace(/Dropdown$/, '');
+          const isSelectAll = actionBtn.textContent?.trim().toLowerCase().includes('select all');
+          const fn = isSelectAll ? (window as any).selectAllMultiSelect : (window as any).clearMultiSelect;
+          if (typeof fn === 'function') {
+            e.preventDefault();
+            e.stopPropagation();
+            fn(filterId);
+          }
+        }
+        return;
+      }
       // Multi-select trigger: open/close dropdown (delegation so it works even if inline onclick is blocked e.g. CSP)
       const trigger = target.closest('.multi-select-trigger') as HTMLElement;
       if (trigger && (trigger.id?.endsWith('Trigger') || trigger.dataset?.filterId)) {

@@ -361,28 +361,28 @@ export function renderMultiSelectFilters(
   
   const secondBatchFilters = [
     {
-      id: 'validationFilter',
+      id: 'validationStatusFilter',
       label: 'Validation',
       placeholder: 'Select validation...',
       values: filterValues.validationStatuses,
       selectedValues: currentFilters.validationStatuses || []
     },
     {
-      id: 'acknowledgementFilter',
+      id: 'acknowledgementStatusFilter',
       label: 'Acknowledgement',
       placeholder: 'Select status...',
       values: filterValues.acknowledgementStatuses,
       selectedValues: currentFilters.acknowledgementStatuses || []
     },
     {
-      id: 'preStatusFilter',
+      id: 'agentPreStatusFilter',
       label: 'Pre Status',
       placeholder: 'Select pre status...',
       values: filterValues.agentPreStatuses,
       selectedValues: currentFilters.agentPreStatuses || []
     },
     {
-      id: 'postStatusFilter',
+      id: 'agentPostStatusFilter',
       label: 'Post Status',
       placeholder: 'Select post status...',
       values: filterValues.agentPostStatuses,

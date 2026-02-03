@@ -298,16 +298,16 @@ function setupProfileTooltips(container: HTMLElement, audits: AuditReport[]): vo
       
       const avatarHtml = avatarUrl && avatarUrl.trim() !== '' && avatarUrl !== 'null' && avatarUrl !== 'undefined'
         ? `<img src="${escapeHtml(avatarUrl)}" alt="${escapeHtml(employeeName)}" style="width: 100%; height: 100%; object-fit: cover; display: block;" referrerPolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-           <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background-color: var(--primary-color, #1a733e);">
+           <div style="display: none; width: 100%; height: 100%; align-items: center; justify-content: center; background-color: #1a733e;">
              <span style="color: white; font-weight: 700; font-size: 1rem; font-family: 'Poppins', sans-serif;">${escapeHtml(initials)}</span>
            </div>`
-        : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--primary-color, #1a733e);">
+        : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: #1a733e;">
              <span style="color: white; font-weight: 700; font-size: 1rem; font-family: 'Poppins', sans-serif;">${escapeHtml(initials)}</span>
            </div>`;
       
       safeSetHTML(tooltip, `
         <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
-          <div style="width: 3rem; height: 3rem; border-radius: 0.25rem; overflow: hidden; flex-shrink: 0; position: relative; background-color: var(--primary-color, #1a733e);">
+          <div style="width: 3rem; height: 3rem; border-radius: 0.25rem; overflow: hidden; flex-shrink: 0; position: relative; background-color: #1a733e;">
             ${avatarHtml}
           </div>
           <div style="flex: 1; min-width: 0;">
@@ -608,8 +608,8 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
         <!-- Left Section: Avatar, Name, Badges, Metadata -->
         <div style="display: flex; align-items: center; gap: 0.5rem; flex: 1; min-width: 0;">
           <!-- Avatar -->
-          <div class="employee-avatar" style="width: 1.875rem; height: 1.875rem; background-color: var(--primary-color, #1a733e); border-radius: 0.25rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative; transition: transform 0.2s;">
-            <span class="avatar-initials" style="color: white; font-size: 0.6875rem; font-weight: 700; font-family: 'Poppins', sans-serif; z-index: 1;">${initials}</span>
+          <div class="employee-avatar" style="width: 1.875rem; height: 1.875rem; background-color: #1a733e; border-radius: 0.25rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; overflow: hidden; position: relative; transition: transform 0.2s;">
+            <span class="avatar-initials" style="color: #ffffff; font-size: 0.6875rem; font-weight: 700; font-family: 'Poppins', sans-serif; z-index: 1;">${initials}</span>
           </div>
           
           <!-- Name, Badges, and Metadata Container -->
