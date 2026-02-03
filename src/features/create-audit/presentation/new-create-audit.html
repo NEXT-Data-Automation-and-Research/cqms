@@ -10306,10 +10306,9 @@ window.openConversationInIntercom = async function(conversationId) {
     const newTab = window.open(conversationUrl, '_blank', 'noopener,noreferrer');
     
     if (!newTab || newTab.closed || typeof newTab.closed === 'undefined') {
-        // Check if user has chosen to not show this warning
+        // Show the popup-blocked warning only once; after user dismisses it, never show again
         const doNotShowKey = 'intercom_popup_blocked_warning_dismissed';
         if (localStorage.getItem(doNotShowKey) === 'true') {
-            // User chose not to see this warning, just return silently
             return;
         }
         
@@ -10318,13 +10317,13 @@ window.openConversationInIntercom = async function(conversationId) {
                 title: 'Popup Blocked',
                 message: 'Please allow popups for this site to open Intercom conversations.',
                 confirmText: 'OK',
-                type: 'warning',
-                doNotShowAgain: true,
-                doNotShowAgainKey: doNotShowKey
+                type: 'warning'
             });
         } else {
             alert('Please allow popups for this site to open Intercom conversations.');
         }
+        // Remember that we've shown the warning so we don't show it again (e.g. after user enables popups)
+        localStorage.setItem(doNotShowKey, 'true');
         return;
     }
     
