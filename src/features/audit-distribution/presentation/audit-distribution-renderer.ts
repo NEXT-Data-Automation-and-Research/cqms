@@ -48,26 +48,22 @@ export class AuditDistributionRenderer {
     logInfo('[Renderer] Initializing with container:', { containerId: container.id });
     
     container.textContent = '';
-    // Same structure as Auditors Dashboard: inner wrapper + page heading (no title text)
+    // Detached sections: heading (left), tab bar (centered), content (centered) - each full width, centered separately
     const contentWrapperDiv = document.createElement('div');
-    contentWrapperDiv.className = 'w-full flex flex-col items-center audit-distribution-page-main';
-    
-    const innerDiv = document.createElement('div');
-    innerDiv.className = 'audit-distribution-inner';
-    
-    // Page heading - same type as Auditors Dashboard (h1.page-heading-global)
+    contentWrapperDiv.className = 'audit-distribution-page-main';
+
+    // Section 1: Heading only - full width, heading upper left
+    const headingSection = document.createElement('div');
+    headingSection.className = 'audit-distribution-heading-section';
     const headingEl = document.createElement('h1');
     headingEl.className = 'page-heading-global';
     headingEl.textContent = 'Audit Distribution';
-    headingEl.style.marginBottom = '0.5rem';
-    
-    const spacerDiv = document.createElement('div');
-    spacerDiv.style.cssText = 'margin-bottom: 0.5rem; width: 100%;';
-    
-    // Tab Navigation - Below heading area
-    const tabNavDiv = document.createElement('div');
-    tabNavDiv.className = 'w-full flex justify-center py-4 bg-transparent';
-    tabNavDiv.innerHTML = `
+    headingSection.appendChild(headingEl);
+
+    // Section 2: Tab bar only - full width, tab bar centered on page
+    const tabSection = document.createElement('div');
+    tabSection.className = 'audit-distribution-tab-section';
+    tabSection.innerHTML = `
       <div class="tab-navigation">
         <div class="tab-slider" id="tabSlider"></div>
         <button class="tab-button active" data-tab="manual" id="manualTab">Manual Assign</button>
@@ -76,16 +72,18 @@ export class AuditDistributionRenderer {
         <button class="tab-button" data-tab="statistics" id="statisticsTab">Statistics</button>
       </div>
     `;
-    
+
+    // Section 3: Content only - full width, content block centered on page
+    const contentSection = document.createElement('div');
+    contentSection.className = 'audit-distribution-content-section';
     const contentDiv = document.createElement('div');
     contentDiv.id = 'auditDistributionContent';
-    contentDiv.className = 'w-full';
-    
-    innerDiv.appendChild(headingEl);
-    innerDiv.appendChild(spacerDiv);
-    innerDiv.appendChild(tabNavDiv);
-    innerDiv.appendChild(contentDiv);
-    contentWrapperDiv.appendChild(innerDiv);
+    contentDiv.className = 'audit-distribution-content-inner';
+    contentSection.appendChild(contentDiv);
+
+    contentWrapperDiv.appendChild(headingSection);
+    contentWrapperDiv.appendChild(tabSection);
+    contentWrapperDiv.appendChild(contentSection);
     container.appendChild(contentWrapperDiv);
 
     // Initialize tab manager

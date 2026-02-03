@@ -75,17 +75,18 @@ export function getCompactExpandedFilterHTML(
   });
 
   return `
-    <div class="flex flex-col gap-2">
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="min-w-[160px] max-w-[220px]">
+    <div class="people-filter-block flex flex-col gap-3">
+      <div class="people-filter-row flex flex-wrap items-end gap-3">
+        <div class="people-search-cell min-w-[180px] max-w-[240px] flex flex-col gap-0.5">
+          <label for="employeeSearch" class="block text-xs font-medium text-gray-600">Search</label>
           <div class="relative">
-            <div class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+            <div class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             </div>
             <input
               type="text"
               id="employeeSearch"
-              class="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+              class="people-filter-input w-full pl-8 pr-2.5 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               placeholder="Search name, email..."
               value="${escapeHtml(searchValue)}"
               autocomplete="off"
@@ -97,20 +98,20 @@ export function getCompactExpandedFilterHTML(
         ${teamMultiSelect}
         ${deptMultiSelect}
         ${countryMultiSelect}
-        <div class="flex items-center gap-1 min-w-0">
-          <label for="filterActive" class="block text-xs font-medium text-gray-600 mb-0.5 shrink-0">Status</label>
-          <select id="filterActive" class="text-xs border border-gray-300 rounded-md px-2 py-1.5 h-7 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-0">
+        <div class="people-status-cell flex flex-col gap-0.5 min-w-0">
+          <label for="filterActive" class="block text-xs font-medium text-gray-600">Status</label>
+          <select id="filterActive" class="people-filter-input text-sm border border-gray-300 rounded-lg px-2.5 py-2 h-9 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0">
             <option value="all" ${isActiveValue === 'all' ? 'selected' : ''}>All</option>
             <option value="active" ${isActiveValue === 'active' ? 'selected' : ''}>Active</option>
             <option value="inactive" ${isActiveValue === 'inactive' ? 'selected' : ''}>Inactive</option>
           </select>
         </div>
         ${hasActiveFilters ? `
-          <button type="button" class="px-2 py-1 h-7 text-xs bg-red-100 text-red-700 rounded-md border border-red-200 font-medium hover:bg-red-200/80" data-action="clear-filters" title="Clear all">Clear</button>
+          <button type="button" class="people-filter-clear px-3 py-2 h-9 text-sm bg-red-100 text-red-700 rounded-lg border border-red-200 font-medium hover:bg-red-200/80" data-action="clear-filters" title="Clear all">Clear</button>
         ` : ''}
       </div>
       ${hasActiveFilters ? `
-        <div class="flex items-center gap-1.5 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
           ${activeFilterChips.map(chip => `
             <div class="filter-chip inline-flex items-center gap-1 px-2 py-0.5 h-5 bg-primary/10 border border-primary/30 rounded text-[10px] text-gray-900">
               <span class="font-medium whitespace-nowrap">${escapeHtml(chip.label)}:</span>

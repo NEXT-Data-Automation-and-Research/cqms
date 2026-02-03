@@ -111,24 +111,40 @@ export class AuditAssignmentRepository extends BaseRepository {
     );
   }
 
+  /** PostgREST/Supabase default max rows per request; we paginate to fetch all. */
+  private static readonly PAGE_SIZE = 1000;
+
   /**
-   * Find all assignments
+   * Find all assignments.
+   * Fetches in pages of 1000 to bypass PostgREST default row limit and return full list.
    */
   async findAll(): Promise<AuditAssignment[]> {
     return this.getCachedOrFetch(
       'all_assignments',
       async () => {
-        const result = await this.executeQuery<AuditAssignmentRow[]>(
-          async () => {
-            return await this.db
-              .from(this.getTableName())
-              .select(AUDIT_ASSIGNMENT_FIELDS)
-              .execute<AuditAssignmentRow[]>();
-          },
-          'Failed to find all assignments'
-        );
+        const allRows: AuditAssignmentRow[] = [];
+        let offset = 0;
 
-        return this.mapToAssignments(Array.isArray(result) ? result : []);
+        while (true) {
+          const result = await this.executeQuery<AuditAssignmentRow[]>(
+            async () => {
+              return await this.db
+                .from(this.getTableName())
+                .select(AUDIT_ASSIGNMENT_FIELDS)
+                .order('id', { ascending: true })
+                .range(offset, offset + AuditAssignmentRepository.PAGE_SIZE - 1)
+                .execute<AuditAssignmentRow[]>();
+            },
+            'Failed to find all assignments'
+          );
+
+          const page = Array.isArray(result) ? result : [];
+          allRows.push(...page);
+          if (page.length < AuditAssignmentRepository.PAGE_SIZE) break;
+          offset += AuditAssignmentRepository.PAGE_SIZE;
+        }
+
+        return this.mapToAssignments(allRows);
       },
       60000 // 1 minute cache
     );

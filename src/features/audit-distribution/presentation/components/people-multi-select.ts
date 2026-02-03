@@ -43,10 +43,10 @@ export function createPeopleMultiSelectHTML(config: PeopleMultiSelectConfig): st
     : '<div class="multi-select-option" style="padding: 0.5rem; color: #6b7280; font-size: 0.75rem; text-align: center;">No options</div>';
 
   return `
-    <div class="people-multi-select-wrapper" style="min-width: 0; ${compact ? 'max-width: 7rem;' : ''}">
-      <label for="${id}" class="block text-xs font-medium text-gray-600 mb-0.5">${escapeHtml(label)}</label>
+    <div class="people-multi-select-wrapper people-filter-cell flex flex-col gap-0.5" style="min-width: 0; ${compact ? 'min-width: 6rem; max-width: 8rem;' : ''}">
+      <label for="${id}" class="block text-xs font-medium text-gray-600">${escapeHtml(label)}</label>
       <div class="multi-select-container" data-people-filter-id="${escapeHtml(id)}">
-        <div class="${triggerClass}" id="${id}Trigger" data-filter-id="${escapeHtml(id)}" data-placeholder="${escapeHtml(placeholder)}" role="button" tabindex="0">
+        <div class="${triggerClass} people-filter-input" id="${id}Trigger" data-filter-id="${escapeHtml(id)}" data-placeholder="${escapeHtml(placeholder)}" role="button" tabindex="0">
           <span class="multi-select-placeholder" id="${id}Placeholder">${escapeHtml(displayText)}</span>
           <span class="multi-select-count" id="${id}Count" style="display: ${selectedCount > 0 ? 'inline' : 'none'};">${selectedCount}</span>
           <svg style="width: 0.5625rem; height: 0.5625rem; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24">

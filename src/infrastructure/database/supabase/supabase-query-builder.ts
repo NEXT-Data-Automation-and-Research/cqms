@@ -228,7 +228,6 @@ export class SupabaseQueryBuilder implements IQueryBuilder {
     if (typeof to !== 'number' || to < from) {
       throw new Error('Range "to" must be a number >= from');
     }
-    console.log(`[QueryBuilder] 🔢 Setting range(${from}, ${to})`);
     this.query = this.query.range(from, to);
     return this;
   }

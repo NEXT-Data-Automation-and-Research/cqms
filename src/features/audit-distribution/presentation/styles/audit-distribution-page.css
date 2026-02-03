@@ -37,30 +37,55 @@ body.audit-distribution-page,
   color: var(--color-text-primary, #1f2937);
 }
 
-/* Same layout as Auditors Dashboard: centered inner wrapper */
+/* Main: column of 3 detached sections (heading, tab bar, content) - no shared alignment */
 .audit-distribution-page .audit-distribution-page-main {
   display: flex;
   flex-direction: column;
-  align-items: center;
   width: 100%;
-}
-.audit-distribution-page .audit-distribution-inner {
-  max-width: 80vw;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
 }
 
-/* Page heading - same type as Auditors Dashboard, centered */
-.audit-distribution-page .audit-distribution-inner .page-heading-global {
+/* Section 1: Heading only - full width, heading upper left */
+.audit-distribution-page .audit-distribution-heading-section {
+  width: 100%;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+.audit-distribution-page .audit-distribution-heading-section .page-heading-global {
   color: var(--text-primary, #111827);
   font-size: 1.5rem;
   font-weight: 700;
   font-family: var(--font-family-primary, 'Poppins', sans-serif);
-  text-align: center;
+  text-align: left;
+  margin: 0 0 0.5rem 0;
   width: 100%;
+}
+
+/* Section 2: Tab bar only - full width, tab bar centered on page */
+.audit-distribution-page .audit-distribution-tab-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.audit-distribution-page .audit-distribution-tab-section .tab-navigation {
+  margin: 0;
+}
+
+/* Section 3: Content only - full width, content block centered on page */
+.audit-distribution-page .audit-distribution-content-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 0 1rem 1rem;
+  box-sizing: border-box;
+}
+.audit-distribution-page .audit-distribution-content-inner {
+  width: 100%;
+  max-width: 80rem;
+  margin: 0 auto;
 }
 
 /* Page heading styling - matching homepage */
@@ -806,8 +831,6 @@ body.audit-distribution-page .sidebar .search-input:focus {
   padding: 0 !important;
 }
 
-/* Duplicate rule removed - using the one above with scale */
-
 .audit-distribution-page #audit-distribution-container > div {
   display: flex !important;
   flex-direction: column !important;
@@ -821,18 +844,11 @@ body.audit-distribution-page .sidebar .search-input:focus {
 }
 
 .audit-distribution-page #auditDistributionContent {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
   visibility: visible !important;
   opacity: 1 !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
   position: relative !important;
   z-index: 1 !important;
-  text-align: center !important;
+  /* width/max-width/centering come from .audit-distribution-content-inner */
 }
 
 /* Simple list view - matching homepage style */
@@ -999,6 +1015,79 @@ body.audit-distribution-page .sidebar .search-input:focus {
 
 .audit-distribution-page #filterBarContainer > div {
   overflow: visible !important;
+}
+
+/* People section - consistent card and header */
+.audit-distribution-page .people-section-compact {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+.audit-distribution-page .people-section-compact .people-section-header {
+  padding: 1rem 1.25rem;
+}
+.audit-distribution-page .people-section-compact h3.text-base {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+.audit-distribution-page .people-section-compact .text-xs.text-gray-600 {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+}
+.audit-distribution-page .people-filter-block {
+  width: 100%;
+}
+.audit-distribution-page .people-filter-row {
+  width: 100%;
+}
+/* Unified filter controls: same height, radius, focus */
+.audit-distribution-page .people-filter-input,
+.audit-distribution-page .people-filter-row .multi-select-trigger {
+  height: 2.25rem !important;
+  min-height: 2.25rem;
+  border-radius: 0.5rem !important;
+  border: 1px solid #d1d5db !important;
+  font-size: 0.875rem !important;
+  box-sizing: border-box;
+}
+.audit-distribution-page .people-filter-input:focus,
+.audit-distribution-page .people-filter-row .multi-select-trigger:focus {
+  outline: none;
+  border-color: var(--home-primary-500, #1a733e) !important;
+  box-shadow: 0 0 0 2px rgba(26, 115, 62, 0.2);
+}
+.audit-distribution-page .people-filter-row .multi-select-trigger {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 0.5rem 0 0.75rem !important;
+}
+.audit-distribution-page .people-search-cell input,
+.audit-distribution-page .people-status-cell select {
+  padding: 0 0.5rem 0 0.75rem !important;
+}
+.audit-distribution-page .people-filter-clear {
+  height: 2.25rem !important;
+  border-radius: 0.5rem !important;
+}
+/* Placeholder text smaller than field title (label): label = 0.75rem, placeholder = 0.6875rem */
+.audit-distribution-page .people-filter-row .people-filter-input::placeholder,
+.audit-distribution-page .people-search-cell input::placeholder {
+  font-size: 0.6875rem !important;
+  opacity: 0.9;
+}
+.audit-distribution-page .people-search-cell input::-webkit-input-placeholder {
+  font-size: 0.6875rem !important;
+}
+.audit-distribution-page .people-search-cell input::-moz-placeholder {
+  font-size: 0.6875rem !important;
+  opacity: 0.9;
+}
+.audit-distribution-page .people-filter-row .multi-select-placeholder {
+  font-size: 0.6875rem !important;
+  color: #6b7280;
 }
 
 /* Filter Bar Improvements - Compact Horizontal Bar - No container styling (inside People section) */
