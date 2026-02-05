@@ -188,6 +188,7 @@ app.use(helmet({
         "https://fonts.gstatic.com" // Allow Google Fonts
       ],
       objectSrc: ["'none'"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
     },
   },
