@@ -615,11 +615,22 @@
           return;
         }
         
-        console.log('[PlatformNotifications] Raw notifications:', notifications.length);
+        // Deduplicate by id (in case API/realtime returns the same row twice)
+        const seenIds = new Set();
+        const uniqueNotifications = notifications.filter(n => {
+          if (seenIds.has(n.id)) return false;
+          seenIds.add(n.id);
+          return true;
+        });
+        if (uniqueNotifications.length !== notifications.length) {
+          console.log('[PlatformNotifications] Deduplicated by id:', notifications.length, '->', uniqueNotifications.length);
+        }
+        
+        console.log('[PlatformNotifications] Raw notifications:', uniqueNotifications.length);
         
         // Filter by timing (starts_at and expires_at)
         const now = new Date();
-        let filteredNotifications = notifications.filter(n => {
+        let filteredNotifications = uniqueNotifications.filter(n => {
           const startsAt = n.starts_at ? new Date(n.starts_at) : null;
           const expiresAt = n.expires_at ? new Date(n.expires_at) : null;
           

@@ -14058,19 +14058,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             title: 'Success!',
                             message: message,
                             confirmText: 'View Audit',
-                            cancelText: 'Stay Here',
+                            cancelText: 'Go Back',
                             type: 'success'
                         });
                         console.log('Success dialog shown, user choice:', confirmed);
                     } catch (dialogError) {
                         console.error('Error showing success dialog:', dialogError);
                         // Fallback to alert
-                        confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to stay here.');
+                        confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to go back to create audit.');
                     }
                 } else {
                     // Fallback if confirmation dialog is not available
                     console.warn('Confirmation dialog not available, using alert fallback');
-                    confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to stay here.');
+                    confirmed = confirm(message + '\n\nClick OK to view the audit, or Cancel to go back to create audit.');
                 }
                 
                 // ONLY reset form if we've confirmed success above (we've passed all error checks)
@@ -14106,7 +14106,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update stats after submission
                 await updateYourStats();
                 
-                // Redirect to audit view if user clicked "View Audit"
+                // Redirect to audit view if user clicked "View Audit", or to create audit if "Go Back"
                 if (confirmed) {
                     const scorecardId = currentScorecard ? currentScorecard.id : null;
                     const tableName = currentScorecard ? currentScorecard.table_name : null;
@@ -14118,8 +14118,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = 'audit-reports.html';
                     }
                 } else {
-                    // Scroll to top to show pending audits
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // Go back to Create Audit page
+                    window.location.href = '/create-audit';
                 }
                 
             } catch (err) {

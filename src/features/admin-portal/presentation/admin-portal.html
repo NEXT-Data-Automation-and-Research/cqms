@@ -1484,6 +1484,7 @@
       this.notifications = [];
       this.editingId = null;
       this.isUnlocked = false;
+      this.savingNotification = false;
     }
     
     async init() {
@@ -2025,6 +2026,15 @@
     }
     
     async handleSave() {
+      if (this.savingNotification) return;
+      this.savingNotification = true;
+      const saveBtn = document.getElementById('saveBtn');
+      const originalText = saveBtn?.textContent || 'Save';
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+      }
+
       const startsAtInput = document.getElementById('startsAt').value;
       const expiresAtInput = document.getElementById('expiresAt').value;
       
@@ -2084,6 +2094,12 @@
       } catch (error) {
         console.error('Save error:', error);
         showToast('Failed to save', 'error');
+      } finally {
+        this.savingNotification = false;
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
       }
     }
     
