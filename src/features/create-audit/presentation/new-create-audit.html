@@ -38,6 +38,9 @@
             max-width: 100%;
             box-sizing: border-box;
         }
+
+        /* Exit transition when navigating to audit form */
+        body.page-exit { opacity: 0; transition: opacity 0.22s ease-out; pointer-events: none; }
         
         #pullConversationsSection {
             max-width: 100%;
@@ -738,6 +741,12 @@
         }
 
     </style>
+    <script>
+      window.navigateToAuditForm = function(url) {
+        document.body.classList.add('page-exit');
+        setTimeout(function() { window.location.href = url; }, 250);
+      };
+    </script>
     <!-- Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
@@ -5992,14 +6001,12 @@ window.loadPendingAuditIntoForm = async function(auditId) {
 window.createManualAudit = function() {
     try {
         console.log('Create Manual Audit button clicked - navigating to audit form...');
-        // Navigate to audit form for manual audit creation with manual=true parameter
         const auditFormUrl = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
         console.log('Navigating to:', auditFormUrl);
-        window.location.href = auditFormUrl;
+        window.navigateToAuditForm(auditFormUrl);
     } catch (error) {
         console.error('Error in createManualAudit:', error);
-        // Fallback navigation with manual parameter
-        window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
+        window.navigateToAuditForm('/src/features/audit-form/presentation/new-audit-form.html?manual=true');
     }
 }
 
@@ -13865,7 +13872,7 @@ window.navigateToAssignment = async function(assignmentId, conversationIdFromInp
             console.error('❌ Supabase client not available');
             var base = '/src/features/audit-form/presentation/new-audit-form.html?assignment=' + encodeURIComponent(assignmentId);
             if (conversationIdFromInput) base += '&conversation_id=' + encodeURIComponent(String(conversationIdFromInput));
-            window.location.href = base;
+            window.navigateToAuditForm(base);
             return;
         }
         
@@ -13909,13 +13916,13 @@ window.navigateToAssignment = async function(assignmentId, conversationIdFromInp
         } else {
             console.log('📋 No conversation linked – navigating to audit form. Auditor can pull conversation later if needed.');
         }
-        window.location.href = url;
+        window.navigateToAuditForm(url);
         
     } catch (error) {
         console.error('❌ Error in navigateToAssignment:', error);
         var fallback = '/src/features/audit-form/presentation/new-audit-form.html?assignment=' + encodeURIComponent(assignmentId);
         if (conversationIdFromInput) fallback += '&conversation_id=' + encodeURIComponent(String(conversationIdFromInput));
-        window.location.href = fallback;
+        window.navigateToAuditForm(fallback);
     }
 };
 
@@ -14533,7 +14540,7 @@ window.startAssignedAudit = async function(assignmentId, employeeEmail, scorecar
         if (conversationId) {
             url += `&conversation_id=${encodeURIComponent(conversationId)}`;
         }
-        window.location.href = url;
+        window.navigateToAuditForm(url);
         
     } catch (error) {
         console.error('Error starting assigned audit:', error);
@@ -14700,8 +14707,7 @@ window.startAuditFromConversation = async function(conversation) {
                         // If it's the same conversation, just proceed (no need to warn)
                         if (existingConvId === newConvId) {
                             console.log('✅ Same conversation already linked, proceeding...');
-                            // Navigate to the assignment with conversation_id
-                            window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(selectedAuditId)}&conversation_id=${encodeURIComponent(existingConvId)}`;
+                            window.navigateToAuditForm(`/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(selectedAuditId)}&conversation_id=${encodeURIComponent(existingConvId)}`);
                             return;
                         }
                         
@@ -14859,8 +14865,7 @@ window.startAuditFromConversation = async function(conversation) {
                     // Clear selection
                     selectedAuditId = null;
                     
-                    // Navigate to assignment with conversation_id parameter
-                    window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentIdToNavigate)}&conversation_id=${encodeURIComponent(String(conversationId))}`;
+                    window.navigateToAuditForm(`/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentIdToNavigate)}&conversation_id=${encodeURIComponent(String(conversationId))}`);
                     return;
                 } catch (error) {
                     console.error('Exception updating assignment:', error);
@@ -14931,7 +14936,7 @@ window.startAuditFromConversation = async function(conversation) {
             conversation_id: conversation.id || null,  // Store conversation ID for linking
             aiAuditData: aiAuditData  // Include AI audit data if available
         }));
-        window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?fromConversation=true';
+        window.navigateToAuditForm('/src/features/audit-form/presentation/new-audit-form.html?fromConversation=true');
         
     } catch (error) {
         console.error('Error starting audit from conversation:', error);
@@ -17365,7 +17370,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log('Create Manual Audit button clicked!');
-                window.location.href = '/src/features/audit-form/presentation/new-audit-form.html?manual=true';
+                window.navigateToAuditForm('/src/features/audit-form/presentation/new-audit-form.html?manual=true');
             });
         } else {
             console.warn('createManualAuditBtn not found');
