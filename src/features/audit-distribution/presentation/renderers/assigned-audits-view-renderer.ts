@@ -279,12 +279,12 @@ export class AssignedAuditsViewRenderer {
       scorecards: state.scorecards,
       selectedAssignments: this.selectedAssignmentIds,
       columnFilters: state.columnFilters,
-      onAssignmentSelect: (id, selected) => {
+      onAssignmentSelect: (id: string, selected: boolean) => {
         if (selected) this.selectedAssignmentIds.add(id);
         else this.selectedAssignmentIds.delete(id);
         this.assignedAuditsTable?.update({ selectedAssignments: this.selectedAssignmentIds });
       },
-      onSelectAll: (selected) => {
+      onSelectAll: (selected: boolean) => {
         if (selected) {
           paginatedAssignments.filter(a => a.status !== 'completed').forEach(a => this.selectedAssignmentIds.add(a.id));
           paginatedAssignments.filter(a => a.status === 'completed').forEach(a => this.selectedAssignmentIds.delete(a.id));
@@ -293,20 +293,20 @@ export class AssignedAuditsViewRenderer {
         }
         this.assignedAuditsTable?.update({ selectedAssignments: this.selectedAssignmentIds });
       },
-      onPageChange: (page) => {
+      onPageChange: (page: number) => {
         this.assignedAuditsPage = page;
         this.renderTable();
       },
-      onPageSizeChange: (pageSize) => {
+      onPageSizeChange: (pageSize: number) => {
         this.assignedAuditsPageSize = pageSize;
         this.assignedAuditsPage = 1;
         this.renderTable();
       },
-      onColumnFilterChange: (column, values) => {
+      onColumnFilterChange: (column: string, values: string[]) => {
         this.stateManager.setColumnFilters(column, values);
         this.renderTable();
       },
-      onBulkEdit: async (updates) => {
+      onBulkEdit: async (updates: { auditor?: string; scorecard?: string }) => {
         const ids = Array.from(this.selectedAssignmentIds);
         if (ids.length === 0) return;
         try {
@@ -350,7 +350,7 @@ export class AssignedAuditsViewRenderer {
         }
       },
       onRefresh: () => this.onRefreshAssignments?.(),
-      onDeleteAssignment: async (id) => {
+      onDeleteAssignment: async (id: string) => {
         const confirmed = await showConfirmModal({
           title: 'Delete assignment',
           message: 'Delete this assignment? This cannot be undone.',
@@ -371,7 +371,7 @@ export class AssignedAuditsViewRenderer {
           await showAlertModal({ title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error', type: 'error' });
         }
       },
-      onReassignAssignment: async (id, updates) => {
+      onReassignAssignment: async (id: string, updates: { auditor_email?: string; scorecard_id?: string | null; scheduled_date?: string | null }) => {
         const confirmed = await showConfirmModal({
           title: 'Reassign audit',
           message: 'Are you sure you want to reassign this audit? The auditor, scorecard, or scheduled date will be updated.',
