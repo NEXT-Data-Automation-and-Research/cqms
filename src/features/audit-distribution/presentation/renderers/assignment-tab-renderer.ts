@@ -15,6 +15,7 @@ import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { getActiveFilterChips, escapeHtml } from '../components/filter-chip-utils.js';
 import type { Employee } from '../../domain/types.js';
 import { getFirstFilterValue } from '../../domain/types.js';
+import confirmationDialog from '../../../../components/confirmation-dialog.js';
 
 export interface AssignmentTabRendererConfig {
   stateManager: AuditDistributionStateManager;
@@ -751,7 +752,13 @@ export class AssignmentTabRenderer {
       }
     } catch (error) {
       logError('Error assigning audits:', error);
-      alert(`Failed to assign audits: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await confirmationDialog.show({
+        title: 'Assign failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        confirmText: 'OK',
+        type: 'error',
+        showCancel: false,
+      });
     }
   }
 

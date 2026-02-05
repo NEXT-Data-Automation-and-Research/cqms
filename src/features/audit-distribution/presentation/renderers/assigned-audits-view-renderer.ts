@@ -9,6 +9,36 @@ import { AssignedAuditsTable } from '../components/assigned-audits-table.js';
 import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
 import { logError } from '../../../../utils/logging-helper.js';
 import type { AuditAssignment, Scorecard } from '../../domain/types.js';
+import confirmationDialog from '../../../../components/confirmation-dialog.js';
+
+/** Show confirmation modal (logout-style). */
+async function showConfirmModal(options: {
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  type?: 'error' | 'warning' | 'success' | 'info' | 'confirm';
+}): Promise<boolean> {
+  return confirmationDialog.show({
+    ...options,
+    cancelText: options.cancelText ?? 'Cancel',
+    showCancel: true,
+  });
+}
+
+/** Show message modal (alert-style: OK only, no Cancel). */
+async function showAlertModal(options: {
+  title: string;
+  message: string;
+  confirmText?: string;
+  type?: 'error' | 'warning' | 'success' | 'info';
+}): Promise<void> {
+  await confirmationDialog.show({
+    ...options,
+    confirmText: options.confirmText ?? 'OK',
+    showCancel: false,
+  });
+}
 
 export interface AssignedAuditsViewRendererConfig {
   stateManager: AuditDistributionStateManager;
@@ -240,7 +270,7 @@ export class AssignedAuditsViewRenderer {
 
     this.syncFilterBarFromState(state);
 
-    this.assignedAuditsTable = new AssignedAuditsTable(container, {
+    const tableConfig = {
       assignments: paginatedAssignments,
       totalCount,
       page: this.assignedAuditsPage,
@@ -290,54 +320,84 @@ export class AssignedAuditsViewRenderer {
           const updated = await this.service.loadAssignments();
           this.stateManager.setAssignments(updated);
           this.renderTable();
-          alert(`Updated ${ids.length} assignment(s).`);
+          await showAlertModal({ title: 'Success', message: `Updated ${ids.length} assignment(s).`, type: 'success' });
         } catch (e) {
           logError('[AssignedAuditsView] Bulk edit failed:', e);
-          alert(`Failed to update: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          await showAlertModal({ title: 'Update failed', message: e instanceof Error ? e.message : 'Unknown error', type: 'error' });
         }
       },
       onBulkDelete: async () => {
         const ids = Array.from(this.selectedAssignmentIds);
         if (ids.length === 0) return;
-        if (!confirm(`Delete ${ids.length} assignment(s)? This cannot be undone.`)) return;
+        const confirmed = await showConfirmModal({
+          title: 'Delete assignments',
+          message: `Delete ${ids.length} assignment(s)? This cannot be undone.`,
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          type: 'error',
+        });
+        if (!confirmed) return;
         try {
           await this.service.deleteAssignments(ids);
           this.selectedAssignmentIds.clear();
           const updated = await this.service.loadAssignments();
           this.stateManager.setAssignments(updated);
           this.renderTable();
-          alert(`Deleted ${ids.length} assignment(s).`);
+          await showAlertModal({ title: 'Success', message: `Deleted ${ids.length} assignment(s).`, type: 'success' });
         } catch (e) {
           logError('[AssignedAuditsView] Bulk delete failed:', e);
-          alert(`Failed to delete: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          await showAlertModal({ title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error', type: 'error' });
         }
       },
       onRefresh: () => this.onRefreshAssignments?.(),
       onDeleteAssignment: async (id) => {
-        if (!confirm('Delete this assignment? This cannot be undone.')) return;
+        const confirmed = await showConfirmModal({
+          title: 'Delete assignment',
+          message: 'Delete this assignment? This cannot be undone.',
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          type: 'error',
+        });
+        if (!confirmed) return;
         try {
           await this.service.deleteAssignment(id);
           this.selectedAssignmentIds.delete(id);
           const updated = await this.service.loadAssignments();
           this.stateManager.setAssignments(updated);
           this.renderTable();
+          await showAlertModal({ title: 'Success', message: 'Assignment deleted.', type: 'success' });
         } catch (e) {
           logError('[AssignedAuditsView] Delete assignment failed:', e);
-          alert(`Failed to delete: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          await showAlertModal({ title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error', type: 'error' });
         }
       },
       onReassignAssignment: async (id, updates) => {
+        const confirmed = await showConfirmModal({
+          title: 'Reassign audit',
+          message: 'Are you sure you want to reassign this audit? The auditor, scorecard, or scheduled date will be updated.',
+          confirmText: 'Reassign',
+          cancelText: 'Cancel',
+          type: 'warning',
+        });
+        if (!confirmed) return;
         try {
           await this.service.updateAssignment(id, updates);
           const updated = await this.service.loadAssignments();
           this.stateManager.setAssignments(updated);
           this.renderTable();
+          await showAlertModal({ title: 'Success', message: 'Audit reassigned successfully.', type: 'success' });
         } catch (e) {
           logError('[AssignedAuditsView] Reassign failed:', e);
-          alert(`Failed to update: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          await showAlertModal({ title: 'Update failed', message: e instanceof Error ? e.message : 'Unknown error', type: 'error' });
         }
       }
-    });
+    };
+
+    if (this.assignedAuditsTable) {
+      this.assignedAuditsTable.update(tableConfig);
+    } else {
+      this.assignedAuditsTable = new AssignedAuditsTable(container, tableConfig);
+    }
   }
 
   refresh(): void {

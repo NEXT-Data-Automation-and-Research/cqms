@@ -205,7 +205,7 @@ export class AuditorSelectionPanel {
                 </div>
               ` : ''}
             </div>
-            <div class="auditors-list-container flex flex-col gap-2.5 flex-1 min-h-0 overflow-y-auto py-1" style="max-height: calc(100vh - 500px);">
+            <div class="auditors-list-container auditors-list-container--panel flex flex-col gap-2.5 flex-1 min-h-0 overflow-y-auto py-1">
               ${auditorsList}
             </div>
           </div>

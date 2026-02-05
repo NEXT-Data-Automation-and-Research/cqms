@@ -3574,12 +3574,15 @@ function buildConversationLinkHTML(audit) {
         let html = '';
         
         if (ASSIGNED_AUDITS_CONFIG.showViewConversationButton) {
+            const assignmentId = audit.id ? String(audit.id) : '';
             html = `<span style="display: inline-flex; align-items: center; gap: 0.2425rem; margin-left: 0.3234rem;">
                 <span style="font-size: 0.4043rem; color: #6b7280;">Conv:</span>
                 <span style="font-family: 'Poppins', sans-serif; font-size: 0.4043rem; color: #2563eb; font-weight: 500;">${conversationId}</span>
                 <button 
                     class="view-intercom-btn"
                     data-conversation-url="${conversationUrl}"
+                    data-assignment-id="${escapeHtml(assignmentId)}"
+                    data-conversation-id="${escapeHtml(String(audit.conversation_id))}"
                     style="padding: 0.1617rem 0.3234rem; background-color: #2563eb; color: white; border: none; border-radius: 0.1213rem; font-size: 0.3639rem; font-family: 'Poppins', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
                     onmouseover="this.style.backgroundColor='#1d4ed8'"
                     onmouseout="this.style.backgroundColor='#2563eb'"
@@ -4986,6 +4989,43 @@ async function displayPendingAudits() {
 }
 
 /**
+ * Record that a conversation was reviewed for an audit assignment (for ATA / chat review tracking).
+ * Called when the auditor clicks "View" or the Review button. Fire-and-forget; does not block UI.
+ */
+window.recordChatReviewAsReviewed = async function recordChatReviewAsReviewed(assignmentId, conversationId) {
+    if (!assignmentId || !conversationId) {
+        console.warn('[recordChatReviewAsReviewed] Skipped: missing assignmentId or conversationId', { assignmentId: !!assignmentId, conversationId: !!conversationId });
+        return;
+    }
+    let supabase = window.supabaseClient || window.supabase || (window.top && window.top.supabaseClient);
+    if (!supabase && typeof window.SupabaseConfig?.getClient === 'function') {
+        try {
+            const client = window.SupabaseConfig.getClient();
+            supabase = client && typeof client.then === 'function' ? await client : client;
+        } catch (e) {
+            console.warn('[recordChatReviewAsReviewed] SupabaseConfig.getClient failed:', e);
+        }
+    }
+    if (!supabase) {
+        console.warn('[recordChatReviewAsReviewed] Skipped: no Supabase client found');
+        return;
+    }
+    try {
+        const { error } = await supabase.rpc('record_chat_review', {
+            p_audit_assignment_id: String(assignmentId),
+            p_conversation_id: String(conversationId)
+        });
+        if (error) {
+            console.warn('[recordChatReviewAsReviewed] Supabase error:', error.message, error);
+        } else {
+            console.log('[recordChatReviewAsReviewed] Recorded review (click count incremented)', { assignmentId: String(assignmentId).substring(0, 8) + '…', conversationId });
+        }
+    } catch (err) {
+        console.warn('[recordChatReviewAsReviewed] Exception:', err);
+    }
+};
+
+/**
  * Attach event listeners for audit action buttons using event delegation
  * This is CSP-compliant and works with dynamically rendered buttons
  */
@@ -5084,11 +5124,16 @@ function attachAuditButtonEventListeners() {
             return;
         }
         
-        // Handle View Intercom conversation button clicks
+        // Handle View Intercom conversation button clicks (record as reviewed, then open Intercom)
         const viewIntercomBtn = target.closest('.view-intercom-btn');
         if (viewIntercomBtn) {
             e.stopPropagation();
             const conversationUrl = viewIntercomBtn.getAttribute('data-conversation-url');
+            const assignmentId = viewIntercomBtn.getAttribute('data-assignment-id');
+            const conversationId = viewIntercomBtn.getAttribute('data-conversation-id');
+            if (assignmentId && conversationId && typeof window.recordChatReviewAsReviewed === 'function') {
+                window.recordChatReviewAsReviewed(assignmentId, conversationId);
+            }
             if (conversationUrl) {
                 window.open(conversationUrl, '_blank', 'noopener,noreferrer');
             }
@@ -5435,6 +5480,8 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                         <button 
                             class="view-intercom-btn"
                             data-conversation-url="${conversationUrl}"
+                            data-assignment-id="${audit.id}"
+                            data-conversation-id="${String(conversationId).replace(/"/g, '&quot;')}"
                             style="padding: 0.2425rem 0.4043rem; background-color: #f3f4f6; color: #374151; border: none; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem; height: 1.6169rem;"
                             onmouseover="this.style.backgroundColor='#e5e7eb'"
                             onmouseout="this.style.backgroundColor='#f3f4f6'"
@@ -6308,6 +6355,9 @@ let pullConversationsFilters = {
     clientSearch: null,
     conversationId: null
 };
+
+// Set of 'audit_assignment_id|conversation_id' for conversations already reviewed (from DB + in-session clicks)
+let reviewedConversationKeysSet = new Set();
 
 // Select date range and update button styles
 window.selectDateRange = async function(range) {
@@ -9112,6 +9162,30 @@ async function displayPullConversationsList(conversations) {
         highlightedConversationIds.add(convId);
     }
     
+    // Fetch which (assignment, conversation) pairs are already reviewed from DB
+    reviewedConversationKeysSet = new Set();
+    if (employeeAudits.length > 0) {
+        try {
+            let supabaseForReview = window.supabaseClient || window.supabase;
+            if (!supabaseForReview && typeof window.SupabaseConfig?.getClient === 'function') {
+                const client = window.SupabaseConfig.getClient();
+                supabaseForReview = client && typeof client.then === 'function' ? await client : client;
+            }
+            if (supabaseForReview) {
+                const assignmentIds = employeeAudits.map(a => a.id).filter(Boolean);
+                const { data: reviewedRows } = await supabaseForReview
+                    .from('chat_review_records')
+                    .select('audit_assignment_id, conversation_id')
+                    .in('audit_assignment_id', assignmentIds);
+                (reviewedRows || []).forEach(r => {
+                    reviewedConversationKeysSet.add(`${r.audit_assignment_id}|${r.conversation_id}`);
+                });
+            }
+        } catch (e) {
+            console.warn('Could not fetch reviewed state for pull list:', e);
+        }
+    }
+    
     console.log('🔍 Employee email:', pullConversationsAdminEmail, 'Assigned audits count:', assignedAuditsCount, 'Available conversations:', availableConversations.length, 'Highlight count:', highlightCount);
     
     sortedConversations.forEach((conversation, index) => {
@@ -9379,17 +9453,22 @@ async function displayPullConversationsList(conversations) {
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${aiStatusColumn}</td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">
                 <div style="display: flex; gap: 0.25rem; justify-content: center; align-items: center; flex-wrap: wrap;">
+                    ${(function() {
+                        const aid = selectedAuditId || (employeeAudits.length > 0 ? employeeAudits[0].id : null);
+                        const cid = (conversation.id || conversationId || '').toString();
+                        const key = aid && cid ? aid + '|' + cid : '';
+                        return key && reviewedConversationKeysSet.has(key) ? '<span class="reviewed-badge-pull" style="font-size: 0.45rem; font-weight: 600; color: #047857; background: #d1fae5; padding: 0.12rem 0.3rem; border-radius: 0.16rem; white-space: nowrap;">✓ Reviewed</span>' : '';
+                    })()}
                     <button 
                         class="open-in-intercom-btn"
                         data-conversation-id="${conversation.id}"
-                        style="padding: 0.16rem; background: transparent; border: none; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; border-radius: 0.16rem;"
-                        onmouseover="this.style.background='#f3f4f6'" 
-                        onmouseout="this.style.background='transparent'"
-                        title="Open in Intercom"
+                        data-assignment-id="${selectedAuditId || (employeeAudits.length > 0 ? employeeAudits[0]?.id : '')}"
+                        style="padding: 0.2rem 0.4rem; font-size: 0.5rem; font-weight: 600; color: #1d4ed8; background: #dbeafe; border: none; border-radius: 0.2rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; font-family: 'Poppins', sans-serif;"
+                        onmouseover="this.style.background='#bfdbfe'; this.style.color='#1e40af';" 
+                        onmouseout="this.style.background='#dbeafe'; this.style.color='#1d4ed8';"
+                        title="Mark as reviewed and open in Intercom"
                     >
-                        <svg width="18" height="18" viewBox="0 0 232 228" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-                            <path d="M198.821 125.463C198.821 127.496 198.02 129.445 196.594 130.882C195.168 132.319 193.235 133.127 191.218 133.127C189.202 133.127 187.268 132.319 185.842 130.882C184.416 129.445 183.615 127.496 183.615 125.463V57.0003C183.615 54.9679 184.416 53.0187 185.842 51.5816C187.268 50.1444 189.202 49.337 191.218 49.337C193.235 49.337 195.168 50.1444 196.594 51.5816C198.02 53.0187 198.821 54.9679 198.821 57.0003V125.463ZM196.182 172.9C195.177 173.913 166.902 197.663 115.064 197.663C63.227 197.663 35.1406 174.04 33.9467 173.026C33.1944 172.387 32.5747 171.604 32.1231 170.723C31.6716 169.841 31.3971 168.879 31.3153 167.89C31.2336 166.902 31.3463 165.907 31.6469 164.962C31.9475 164.018 32.4301 163.142 33.0671 162.386V162.386C34.3793 160.856 36.2386 159.911 38.2396 159.756C40.2406 159.602 42.2209 160.252 43.7487 161.563C44.1886 161.88 69.4475 182.526 115.002 182.526C160.556 182.526 186.003 161.753 186.254 161.563C187.799 160.263 189.786 159.622 191.792 159.776C193.799 159.93 195.667 160.866 196.999 162.386C198.281 163.894 198.921 165.851 198.779 167.831C198.638 169.811 197.727 171.656 196.245 172.963L196.182 172.9ZM31.2449 57.0003C31.3585 54.9615 32.2683 53.0508 33.7754 51.6861C35.2824 50.3213 37.2642 49.6134 39.2876 49.717C41.1633 49.8244 42.9332 50.628 44.2559 51.9729C45.5786 53.3178 46.3604 55.1088 46.4505 57.0003V125.337C46.4505 127.369 45.6495 129.318 44.2237 130.755C42.7979 132.193 40.8641 133 38.8477 133C36.8313 133 34.8975 132.193 33.4717 130.755C32.0459 129.318 31.2449 127.369 31.2449 125.337V57.0003ZM69.3847 41.8004C69.4983 39.7615 70.4081 37.8509 71.9151 36.4862C73.4222 35.1214 75.404 34.4135 77.4273 34.5171C79.3031 34.6245 81.073 35.4281 82.3957 36.773C83.7183 38.1179 84.5001 39.9088 84.5903 41.8004V143.133C84.5903 145.166 83.7893 147.115 82.3635 148.552C80.9377 149.989 79.0039 150.796 76.9875 150.796C74.9711 150.796 73.0373 149.989 71.6115 148.552C70.1857 147.115 69.3847 145.166 69.3847 143.133V41.8004ZM107.713 38.0004C107.713 35.968 108.514 34.0188 109.94 32.5817C111.366 31.1445 113.299 30.3371 115.316 30.3371C117.332 30.3371 119.266 31.1445 120.692 32.5817C122.118 34.0188 122.919 35.968 122.919 38.0004V148.2C122.919 150.232 122.118 152.181 120.692 153.619C119.266 155.056 117.332 155.863 115.316 155.863C113.299 155.863 111.366 155.056 109.94 153.619C108.514 152.181 107.713 150.232 107.713 148.2V38.0004ZM145.413 41.8004C145.413 39.768 146.214 37.8188 147.64 36.3816C149.065 34.9445 150.999 34.1371 153.016 34.1371C155.032 34.1371 156.966 34.9445 158.392 36.3816C159.817 37.8188 160.618 39.768 160.618 41.8004V143.133C160.618 145.166 159.817 147.115 158.392 148.552C156.966 149.989 155.032 150.796 153.016 150.796C150.999 150.796 149.065 149.989 147.64 148.552C146.214 147.115 145.413 145.166 145.413 143.133V41.8004ZM200.895 0.00063243H29.4856C25.7507 -0.024391 22.0476 0.693392 18.5883 2.11288C15.1289 3.53237 11.9814 5.6257 9.32581 8.27299C6.67023 10.9203 4.55877 14.0695 3.11235 17.5405C1.66592 21.0114 0.912928 24.7358 0.896484 28.5005L0.896484 199.5C0.912928 203.264 1.66592 206.989 3.11235 210.46C4.55877 213.93 6.67023 217.08 9.32581 219.727C11.9814 222.374 15.1289 224.468 18.5883 225.887C22.0476 227.307 25.7507 228.024 29.4856 227.999H200.895C204.624 228.024 208.322 227.309 211.777 225.893C215.233 224.478 218.377 222.39 221.032 219.749C223.687 217.109 225.8 213.967 227.25 210.503C228.7 207.04 229.459 203.322 229.484 199.563V199.563V28.5005C229.467 24.7412 228.716 21.022 227.274 17.5552C225.831 14.0884 223.725 10.942 221.076 8.29549C218.428 5.64903 215.287 3.55438 211.835 2.13115C208.383 0.707912 204.687 -0.0160384 200.957 0.00063243V0.00063243" fill="#081D34"/>
-                        </svg>
+                        Review
                     </button>
                 ${isAlreadyAudited ? `
                     <button 
@@ -9433,11 +9512,25 @@ async function displayPullConversationsList(conversations) {
             </td>
         `;
         
-        // Attach click handler to the "Open in Intercom" button
+        // Attach click handler to the Review button (record as reviewed, then open in Intercom)
         const openInIntercomBtn = row.querySelector('.open-in-intercom-btn');
         if (openInIntercomBtn) {
-            openInIntercomBtn.addEventListener('click', (e) => {
+            openInIntercomBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
+                const assignmentIdToUse = selectedAuditId || (employeeAudits.length > 0 ? employeeAudits[0].id : null);
+                if (assignmentIdToUse && conversation.id && typeof window.recordChatReviewAsReviewed === 'function') {
+                    await window.recordChatReviewAsReviewed(assignmentIdToUse, conversation.id);
+                    reviewedConversationKeysSet.add(assignmentIdToUse + '|' + conversation.id);
+                    const div = row.querySelector('td:last-child div');
+                    const existingBadge = row.querySelector('.reviewed-badge-pull');
+                    if (div && !existingBadge) {
+                        const badge = document.createElement('span');
+                        badge.className = 'reviewed-badge-pull';
+                        badge.style.cssText = 'font-size: 0.45rem; font-weight: 600; color: #047857; background: #d1fae5; padding: 0.12rem 0.3rem; border-radius: 0.16rem; white-space: nowrap;';
+                        badge.textContent = '✓ Reviewed';
+                        div.insertBefore(badge, openInIntercomBtn);
+                    }
+                }
                 openConversationInIntercom(conversation.id);
             });
         }
@@ -14411,6 +14504,8 @@ async function linkConversationToAudit(conversation, auditId) {
                     viewBtn = document.createElement('button');
                     viewBtn.className = 'view-intercom-btn';
                     viewBtn.setAttribute('data-conversation-url', conversationUrl);
+                    viewBtn.setAttribute('data-assignment-id', auditId);
+                    viewBtn.setAttribute('data-conversation-id', conversationId);
                     viewBtn.style.cssText = 'padding: 0.2425rem 0.4043rem; background-color: #f3f4f6; color: #374151; border: none; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 0.1617rem; height: 1.6169rem;';
                     viewBtn.onmouseover = () => viewBtn.style.backgroundColor = '#e5e7eb';
                     viewBtn.onmouseout = () => viewBtn.style.backgroundColor = '#f3f4f6';
@@ -14418,8 +14513,10 @@ async function linkConversationToAudit(conversation, auditId) {
                     viewBtn.innerHTML = '<svg style="width: 0.8886rem; height: 0.8886rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg><span>View</span>';
                     rightSection.insertBefore(viewBtn, rightSection.firstChild);
                 } else {
-                    // Update existing button's URL
+                    // Update existing button's URL and data attributes
                     viewBtn.setAttribute('data-conversation-url', conversationUrl);
+                    viewBtn.setAttribute('data-assignment-id', auditId);
+                    viewBtn.setAttribute('data-conversation-id', conversationId);
                 }
             }
             

@@ -313,6 +313,19 @@
             transition: opacity 0.2s ease;
         }
         
+        /* Chat Review raw data – nested table UX */
+        .chat-review-assignment-row:focus {
+            outline: 0.125rem solid var(--button-primary);
+            outline-offset: 0.125rem;
+        }
+        .chat-review-conv-link:hover {
+            text-decoration: underline;
+        }
+        .chat-review-conv-link:focus {
+            outline: 0.125rem solid var(--button-primary);
+            outline-offset: 0.125rem;
+        }
+        
         /* Hourly Breakdown responsive layout */
         #hourlyBreakdownTable .hourly-content,
         #dynamicHourlyBreakdownTable .hourly-content {
@@ -378,10 +391,11 @@
 
         
             <!-- Tab Navigation -->
-            <div style="position: relative; display: flex; background-color: var(--dark-forest); border-radius: 0.4688rem; overflow: hidden; width: 100%; max-width: 15rem; margin: 0.9375rem auto; padding: 0.2344rem; margin-top: 0.5rem;">
-                <div style="position: absolute; top: 0.2344rem; height: calc(100% - 0.4688rem); background-color: var(--button-primary); border-radius: 0.2344rem; transition: all 0.3s ease; left: 0.2344rem; width: calc(50% - 0.2344rem);"></div>
+            <div id="dashboardTabBar" style="position: relative; display: flex; background-color: var(--dark-forest); border-radius: 0.4688rem; overflow: hidden; width: 100%; max-width: 30rem; margin: 0.9375rem auto; padding: 0.2344rem; margin-top: 0.5rem;">
+                <div id="dashboardTabSlider" style="position: absolute; top: 0.2344rem; height: calc(100% - 0.4688rem); background-color: var(--button-primary); border-radius: 0.2344rem; transition: all 0.3s ease; left: 0.2344rem; width: calc(33.333% - 0.1563rem);"></div>
                 <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" class="active" id="teamStatsTabBtn" data-tab-index="0">Team Stats</button>
                 <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem;" id="standupViewTabBtn" data-tab-index="1">Standup View</button>
+                <button style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: var(--font-family); font-size: .6rem; display: flex; align-items: center; justify-content: center; gap: 0.25rem;" id="chatReviewTabBtn" data-tab-index="2">Chat Review <span style="display: inline-block; padding: 0.0625rem 0.3125rem; border-radius: 0.1875rem; font-size: 0.5rem; font-weight: 600; background: rgba(220,38,38,0.9); color: #ffffff; text-transform: uppercase; letter-spacing: 0.03em;">Beta</span></button>
             </div>
 
     <!-- Action Buttons -->
@@ -633,6 +647,115 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Chat Review Tab Section (visible when Chat Review tab is active) -->
+            <div id="chatReviewSection" style="display: none; width: 100%; margin-top: 1rem;">
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1.125rem;">
+                    <div class="date-picker-dropdown">
+                        <button class="action-btn" id="chatReviewDateBtn" type="button">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.875rem; height: 0.875rem;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span id="chatReviewDateBtnText">Date Range</span>
+                            <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                        <div class="date-dropdown-menu" id="chatReviewDateDropdown">
+                            <div class="filter-group">
+                                <label class="filter-label">Start Date</label>
+                                <input type="date" class="filter-input" id="chatReviewStartDate">
+                            </div>
+                            <div class="filter-group">
+                                <label class="filter-label">End Date</label>
+                                <input type="date" class="filter-input" id="chatReviewEndDate">
+                            </div>
+                            <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
+                                <button class="action-btn" id="chatReviewApplyDateBtn" type="button">Apply</button>
+                                <button class="action-btn" id="chatReviewClearDateBtn" type="button">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.375rem;">
+                        <button class="action-btn quick-date-btn" id="chatReviewTodayBtn" type="button">Today</button>
+                        <button class="action-btn quick-date-btn" id="chatReviewThisMonthBtn" type="button">This Month</button>
+                        <button class="action-btn quick-date-btn" id="chatReviewLastMonthBtn" type="button">Last Month</button>
+                    </div>
+                </div>
+                <!-- Chat Review Summary Cards -->
+                <div id="chatReviewStatsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1.125rem; margin-bottom: 1.5rem; width: 100%;">
+                    <div style="background-color: var(--dark-forest); color: var(--white); padding: 0.75rem; border-radius: 0.5625rem; text-align: left; box-shadow: 0 0.1875rem 0.2812rem -0.0469rem rgba(0, 0, 0, 0.1); min-height: 5.5rem; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.6562rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.375rem;">Conversations Reviewed</div>
+                        <div id="chatReviewStatConversations" style="font-size: 2rem; font-weight: 700;">-</div>
+                    </div>
+                    <div style="background-color: var(--dark-forest); color: var(--white); padding: 0.75rem; border-radius: 0.5625rem; text-align: left; box-shadow: 0 0.1875rem 0.2812rem -0.0469rem rgba(0, 0, 0, 0.1); min-height: 5.5rem; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.6562rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.375rem;">Total Review Clicks</div>
+                        <div id="chatReviewStatClicks" style="font-size: 2rem; font-weight: 700;">-</div>
+                    </div>
+                    <div style="background-color: var(--dark-forest); color: var(--white); padding: 0.75rem; border-radius: 0.5625rem; text-align: left; box-shadow: 0 0.1875rem 0.2812rem -0.0469rem rgba(0, 0, 0, 0.1); min-height: 5.5rem; display: flex; flex-direction: column;">
+                        <div style="font-size: 0.6562rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.375rem;">Active Analysts</div>
+                        <div id="chatReviewStatAnalysts" style="font-size: 2rem; font-weight: 700;">-</div>
+                    </div>
+                </div>
+                <!-- Chat Review Table -->
+                <div id="chatReviewTableContainer" style="background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; width: 100%; margin-bottom: 1.5rem;">
+                    <div style="background-color: var(--gray-50); padding: 0.5625rem 0.75rem; border-bottom: 0.0469rem solid var(--border-light);">
+                        <h3 style="font-size: 0.8438rem; font-weight: 600; color: var(--text-color);">Analyst performance</h3>
+                    </div>
+                    <div style="padding: 0.75rem; overflow-x: auto;">
+                        <div id="chatReviewTableHeader" style="display: grid; grid-template-columns: minmax(8rem, 2fr) minmax(5rem, 1fr) minmax(5rem, 1fr) minmax(5rem, 1fr) minmax(8rem, 1.5fr); gap: 0.75rem; align-items: center; padding: 0.375rem 0 0.5625rem 0; font-weight: 700; font-size: 0.6562rem; color: var(--text-color); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 0.0469rem solid var(--border-light);">
+                            <div>Name</div>
+                            <div style="text-align: center;">Conversations Reviewed</div>
+                            <div style="text-align: center;">Review Clicks</div>
+                            <div style="text-align: center;">Assignments Touched</div>
+                            <div style="text-align: center;">Last Reviewed</div>
+                        </div>
+                        <div id="chatReviewTableBody" style="min-width: fit-content;">
+                            <div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Chat Review Chart -->
+                <div id="chatReviewChartContainer" style="background-color: var(--background-white); border-radius: 0.5625rem; box-shadow: 0 0.0469rem 0.1406rem 0 rgba(0, 0, 0, 0.1); overflow: hidden; width: 100%; padding: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="margin-bottom: 0.5rem;">
+                        <h3 style="font-size: 0.8438rem; font-weight: 600; color: var(--text-color);">Review clicks by analyst</h3>
+                    </div>
+                    <div style="min-height: 18rem; position: relative;">
+                        <canvas id="chatReviewChart"></canvas>
+                    </div>
+                </div>
+                <!-- Chat Review Raw Data (nested by assignment) -->
+                <div id="chatReviewRawContainer" style="background-color: var(--background-white); border-radius: 0.75rem; box-shadow: 0 1px 3px 0 rgba(0,0,0,0.08); overflow: hidden; width: 100%; border: 0.0625rem solid var(--border-light);">
+                    <div style="padding: 1rem 1.25rem; border-bottom: 0.0625rem solid var(--border-light); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;">
+                        <div>
+                            <h3 style="font-size: 0.9375rem; font-weight: 600; color: var(--text-color); margin: 0; letter-spacing: -0.01em;">Raw data</h3>
+                            <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0.25rem 0 0 0;">By assignment · conversations nested below</p>
+                        </div>
+                        <div id="chatReviewExpandCollapseBar" style="display: none; align-items: center; gap: 0.5rem;">
+                            <button type="button" id="chatReviewExpandAllBtn" style="font-size: 0.75rem; font-weight: 500; color: var(--button-primary); background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: var(--font-family); transition: background 0.15s;" onmouseover="this.style.background='rgba(31,158,75,0.1)'" onmouseout="this.style.background='none'">Expand all</button>
+                            <span style="color: var(--border-light); font-size: 0.75rem;">·</span>
+                            <button type="button" id="chatReviewCollapseAllBtn" style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); background: none; border: none; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: var(--font-family); transition: background 0.15s;" onmouseover="this.style.background='var(--gray-50)'" onmouseout="this.style.background='none'">Collapse all</button>
+                        </div>
+                    </div>
+                    <div style="padding: 0 1.25rem 1.25rem; overflow-x: auto;">
+                        <div id="chatReviewRawTableHeader" style="display: grid; grid-template-columns: minmax(6rem, 1fr) minmax(6rem, 1fr) minmax(5rem, 0.9fr) minmax(8rem, 1.4fr) minmax(4.5rem, 0.8fr) minmax(3.5rem, 0.6fr) minmax(3.5rem, 0.6fr) minmax(3rem, 0.55fr) minmax(7rem, 1.1fr) minmax(5.5rem, 0.9fr); gap: 0.5rem; align-items: center; padding: 0.625rem 0 0.75rem; font-weight: 600; font-size: 0.6875rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em;"> 
+                            <div>Auditor</div>
+                            <div>Employee</div>
+                            <div>Channel</div>
+                            <div>Conversations</div>
+                            <div style="text-align: center;">Status</div>
+                            <div style="text-align: center;">Avg score</div>
+                            <div style="text-align: center;">Errors</div>
+                            <div style="text-align: center;">Clicks</div>
+                            <div style="text-align: center;">Last reviewed</div>
+                            <div style="text-align: right;">View audit</div>
+                        </div>
+                        <div id="chatReviewRawTableBody" style="min-width: fit-content;">
+                            <div style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8125rem;">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     </div>
@@ -643,7 +766,9 @@
 // ============================================================================
 // Global Variables
 // ============================================================================
-let currentTab = 0; // 0 = Team Stats, 1 = Standup View (removed Your Stats)
+let currentTab = 0; // 0 = Team Stats, 1 = Standup View, 2 = Chat Review
+let chatReviewDateFilter = { start: null, end: null };
+let chatReviewChartInstance = null;
 let allAssignments = [];
 let unfilteredAssignments = []; // Store unfiltered data
 let currentUserEmail = '';
@@ -685,6 +810,20 @@ document.addEventListener('DOMContentLoaded', async function() {
                 setTimeout(resolve, 5000);
             }
         });
+    }
+    // Default Chat Review tab to this month
+    const d = window.getDhakaNow ? getDhakaNow() : new Date();
+    const crStart = window.getDhakaFirstDayOfMonth ? getDhakaFirstDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth(), 1);
+    const crEnd = window.getDhakaLastDayOfMonth ? getDhakaLastDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+    chatReviewDateFilter = { start: crStart, end: crEnd };
+    const chatReviewStartEl = document.getElementById('chatReviewStartDate');
+    const chatReviewEndEl = document.getElementById('chatReviewEndDate');
+    const chatReviewDateBtnText = document.getElementById('chatReviewDateBtnText');
+    if (chatReviewStartEl && window.formatDhakaDateForInput) chatReviewStartEl.value = formatDhakaDateForInput(crStart);
+    if (chatReviewEndEl && window.formatDhakaDateForInput) chatReviewEndEl.value = formatDhakaDateForInput(crEnd);
+    if (chatReviewDateBtnText) {
+        const fmt = (d) => { const day = String(d.getDate()).padStart(2, '0'); const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const year = String(d.getFullYear()).slice(-2); return `${day}-${months[d.getMonth()]}-${year}`; };
+        chatReviewDateBtnText.textContent = fmt(crStart) + ' – ' + fmt(crEnd);
     }
     
     await initializeDashboard();
@@ -1053,11 +1192,11 @@ async function updateDashboard() {
     
     try {
         if (currentTab === 0) {
-            // Team Stats
             await updateTeamStats();
         } else if (currentTab === 1) {
-            // Standup View
             await updateStandupView();
+        } else if (currentTab === 2) {
+            await updateChatReviewTab();
         }
     } finally {
         // Use a small delay to prevent rapid re-renders
@@ -3743,6 +3882,309 @@ async function updateStandupView() {
     await fetchAndCacheStandupView(period);
 }
 
+// ============================================================================
+// Chat Review Tab
+// ============================================================================
+function getChatReviewPeriod() {
+    const start = chatReviewDateFilter.start;
+    const end = chatReviewDateFilter.end;
+    return { start: start || null, end: end || null };
+}
+
+async function updateChatReviewTab() {
+    if (currentTab !== 2) return;
+    const tableBody = document.getElementById('chatReviewTableBody');
+    const rawTableBody = document.getElementById('chatReviewRawTableBody');
+    const expandCollapseBar = document.getElementById('chatReviewExpandCollapseBar');
+    if (tableBody) tableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">Loading...</div>';
+    if (rawTableBody) rawTableBody.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8125rem;">Loading...</div>';
+    if (expandCollapseBar) expandCollapseBar.style.display = 'none';
+    const statConv = document.getElementById('chatReviewStatConversations');
+    const statClicks = document.getElementById('chatReviewStatClicks');
+    const statAnalysts = document.getElementById('chatReviewStatAnalysts');
+    if (statConv) statConv.textContent = '-';
+    if (statClicks) statClicks.textContent = '-';
+    if (statAnalysts) statAnalysts.textContent = '-';
+    if (chatReviewChartInstance) {
+        try { chatReviewChartInstance.destroy(); } catch (_) {}
+        chatReviewChartInstance = null;
+    }
+    const client = window.supabaseClient || window.supabase || (window.top && window.top.supabaseClient);
+    if (!client) {
+        if (tableBody) tableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">Supabase client not available.</div>';
+        if (rawTableBody) rawTableBody.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--error-color);">Supabase client not available.</div>';
+        return;
+    }
+    const period = getChatReviewPeriod();
+    let fromTs = null;
+    let toTs = null;
+    if (period.start) {
+        const d = new Date(period.start);
+        d.setHours(0, 0, 0, 0);
+        fromTs = d.toISOString();
+    }
+    if (period.end) {
+        const d = new Date(period.end);
+        d.setHours(23, 59, 59, 999);
+        toTs = d.toISOString();
+    }
+    const [analyticsResult, rawResult] = await Promise.all([
+        client.rpc('get_chat_review_analytics', { p_from_date: fromTs, p_to_date: toTs }),
+        client.rpc('get_chat_review_raw', { p_from_date: fromTs, p_to_date: toTs, p_limit: 500 })
+    ]);
+    const { data: rows, error: analyticsError } = analyticsResult;
+    const { error: rawError } = rawResult;
+    if (currentTab !== 2) return;
+    if (analyticsError) {
+        const msg = 'Analytics: ' + (analyticsError.message || 'Failed to load chat review analytics.');
+        if (tableBody) tableBody.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">${escapeHtml(msg)}</div>`;
+        if (rawTableBody) rawTableBody.innerHTML = `<div style="text-align: center; padding: 1rem; color: var(--error-color);">${escapeHtml(msg)}</div>`;
+        console.error('get_chat_review_analytics error:', analyticsError);
+        return;
+    }
+    if (rawError) {
+        if (rawTableBody) rawTableBody.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--error-color);">Raw data: ${escapeHtml(rawError.message || 'Failed to load raw data')}</div>`;
+        if (expandCollapseBar) expandCollapseBar.style.display = 'none';
+        console.error('get_chat_review_raw error:', rawError);
+    }
+    const list = Array.isArray(rows) ? rows : [];
+    const totalConversations = list.reduce((s, r) => s + Number(r.total_conversations_reviewed || 0), 0);
+    const totalClicks = list.reduce((s, r) => s + Number(r.total_review_clicks || 0), 0);
+    if (statConv) statConv.textContent = totalConversations.toLocaleString();
+    if (statClicks) statClicks.textContent = totalClicks.toLocaleString();
+    if (statAnalysts) statAnalysts.textContent = list.length.toLocaleString();
+    if (tableBody) {
+        if (list.length === 0) {
+            tableBody.innerHTML = '<div style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">No data for the selected period.</div>';
+        } else {
+            const formatReadableDate = (v) => {
+                if (!v) return '-';
+                const d = new Date(v);
+                if (isNaN(d.getTime())) return '-';
+                const day = String(d.getDate()).padStart(2, '0');
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const year = String(d.getFullYear()).slice(-2);
+                return `${day}-${months[d.getMonth()]}-${year}`;
+            };
+            tableBody.innerHTML = list.map(r => `
+                <div style="display: grid; grid-template-columns: minmax(8rem, 2fr) minmax(5rem, 1fr) minmax(5rem, 1fr) minmax(5rem, 1fr) minmax(8rem, 1.5fr); gap: 0.75rem; align-items: center; padding: 0.5rem 0; border-bottom: 0.0469rem solid var(--border-light); font-size: 0.8125rem;">
+                    <div style="color: var(--text-color); font-weight: 500;">${escapeHtml(String(r.reviewer_name || r.reviewer_email || ''))}</div>
+                    <div style="text-align: center;">${Number(r.total_conversations_reviewed || 0).toLocaleString()}</div>
+                    <div style="text-align: center;">${Number(r.total_review_clicks || 0).toLocaleString()}</div>
+                    <div style="text-align: center;">${Number(r.assignments_reviewed || 0).toLocaleString()}</div>
+                    <div style="text-align: center;">${formatReadableDate(r.last_reviewed_at)}</div>
+                </div>
+            `).join('');
+        }
+    }
+    if (list.length > 0 && typeof Chart !== 'undefined') {
+        const canvas = document.getElementById('chatReviewChart');
+        if (canvas) {
+            if (chatReviewChartInstance) {
+                try { chatReviewChartInstance.destroy(); } catch (_) {}
+                chatReviewChartInstance = null;
+            }
+            const labels = list.map(r => r.reviewer_name || r.reviewer_email || '');
+            const values = list.map(r => Number(r.total_review_clicks || 0));
+            const ctx = canvas.getContext('2d');
+            chatReviewChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Review Clicks',
+                        data: values,
+                        backgroundColor: 'rgba(31, 158, 75, 0.7)',
+                        borderColor: 'rgb(31, 158, 75)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } },
+                        x: { ticks: { maxRotation: 45, minRotation: 0 } }
+                    }
+                }
+            });
+        }
+    }
+    // Raw data table (rawError already set above from rawResult)
+    const rawList = Array.isArray(rawResult.data) ? rawResult.data : [];
+    if (rawTableBody) {
+        if (rawError) {
+            rawTableBody.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--error-color);">Raw data: ${escapeHtml(rawError.message || 'Failed to load raw data')}</div>`;
+            if (expandCollapseBar) expandCollapseBar.style.display = 'none';
+        } else if (rawList.length === 0) {
+            rawTableBody.innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.8125rem;">No raw records for the selected period.</div>';
+            if (expandCollapseBar) expandCollapseBar.style.display = 'none';
+        } else {
+            const formatReadableDateWithTime = (v) => {
+                if (!v) return '-';
+                const d = new Date(v);
+                if (isNaN(d.getTime())) return '-';
+                const day = String(d.getDate()).padStart(2, '0');
+                const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                const year = String(d.getFullYear()).slice(-2);
+                const h = String(d.getHours()).padStart(2, '0');
+                const m = String(d.getMinutes()).padStart(2, '0');
+                return `${day}-${months[d.getMonth()]}-${year} ${h}:${m}`;
+            };
+            const workspaceId = window.intercomConfig && window.intercomConfig.appId ? window.intercomConfig.appId : 'aphmhtyj';
+            const buildIntercomUrl = (convId) => convId ? `https://app.intercom.com/a/inbox/${workspaceId}/inbox/conversation/${encodeURIComponent(convId)}?view` : '#';
+            const statusChipStyle = (s) => {
+                const v = (s || '').toLowerCase();
+                if (v === 'pending') return 'background: #fef3c7; color: #92400e; border: 0.0469rem solid #fcd34d;';
+                if (v === 'in_progress') return 'background: #dbeafe; color: #1e40af; border: 0.0469rem solid #93c5fd;';
+                if (v === 'completed') return 'background: #d1fae5; color: #065f46; border: 0.0469rem solid #6ee7b7;';
+                if (v === 'cancelled') return 'background: #fee2e2; color: #991b1b; border: 0.0469rem solid #fca5a5;';
+                return 'background: #f3f4f6; color: #4b5563; border: 0.0469rem solid #e5e7eb;';
+            };
+            const statusLabel = (s) => {
+                const v = (s || '').toLowerCase();
+                if (v === 'in_progress') return 'In Progress';
+                return (v && v.charAt(0).toUpperCase() + v.slice(1)) || '-';
+            };
+            const gridCols = 'minmax(6rem, 1fr) minmax(6rem, 1fr) minmax(5rem, 0.9fr) minmax(8rem, 1.4fr) minmax(4.5rem, 0.8fr) minmax(3.5rem, 0.6fr) minmax(3.5rem, 0.6fr) minmax(3rem, 0.55fr) minmax(7rem, 1.1fr) minmax(5.5rem, 0.9fr)';
+            const byAssignment = new Map();
+            rawList.forEach(r => {
+                const key = r.audit_assignment_id || '';
+                if (!byAssignment.has(key)) {
+                    byAssignment.set(key, {
+                        auditor: r.reviewer_name || r.reviewer_email || '',
+                        assignment_id: r.audit_assignment_id || '',
+                        audit_id: r.assignment_audit_id || '',
+                        status: r.assignment_status || '',
+                        employee_name: r.employee_name || '',
+                        employee_channel: r.employee_channel || '',
+                        average_score: r.average_score != null ? r.average_score : null,
+                        total_errors_count: r.total_errors_count != null ? r.total_errors_count : null,
+                        scorecard_id: r.scorecard_id || '',
+                        scorecard_table_name: r.scorecard_table_name || '',
+                        conversations: []
+                    });
+                }
+                byAssignment.get(key).conversations.push({
+                    conversation_id: r.conversation_id || '',
+                    review_click_count: Number(r.review_click_count || 0),
+                    reviewed_at: r.reviewed_at
+                });
+            });
+            const assignmentGroups = Array.from(byAssignment.entries()).map(([id, g]) => ({ id, ...g }));
+            assignmentGroups.forEach(g => {
+                g.conversations.sort((a, b) => new Date(b.reviewed_at || 0) - new Date(a.reviewed_at || 0));
+            });
+            assignmentGroups.sort((a, b) => {
+                const aLast = a.conversations[0]?.reviewed_at;
+                const bLast = b.conversations[0]?.reviewed_at;
+                return new Date(bLast || 0) - new Date(aLast || 0);
+            });
+            const assignmentIdSafe = (id) => String(id).replace(/[^a-zA-Z0-9-_]/g, '_');
+            rawTableBody.innerHTML = assignmentGroups.map((grp, idx) => {
+                const totalClicks = grp.conversations.reduce((s, c) => s + c.review_click_count, 0);
+                const lastReviewed = grp.conversations[0]?.reviewed_at;
+                const nestId = 'chat-review-nest-' + assignmentIdSafe(grp.assignment_id) + '-' + idx;
+                const convCount = grp.conversations.length;
+                const isCompleted = (grp.status || '').toLowerCase() === 'completed';
+                const viewAuditUrl = isCompleted && grp.audit_id && grp.scorecard_id && grp.scorecard_table_name
+                    ? `/audit-view.html?id=${encodeURIComponent(grp.audit_id)}&scorecard=${encodeURIComponent(grp.scorecard_id)}&table=${encodeURIComponent(grp.scorecard_table_name)}`
+                    : '';
+                const avgScoreStr = grp.average_score != null ? Number(grp.average_score) : '—';
+                const errorsStr = grp.total_errors_count != null ? Number(grp.total_errors_count) : '—';
+                const convRows = grp.conversations.map((c, ci) => {
+                    const convId = String(c.conversation_id || '');
+                    const intercomUrl = buildIntercomUrl(convId);
+                    const isLast = ci === grp.conversations.length - 1;
+                    return `
+                    <div class="chat-review-conv-row" style="display: grid; grid-template-columns: ${gridCols}; gap: 0.5rem; align-items: center; padding: 0.5rem 0; font-size: 0.8125rem; transition: background 0.15s; ${!isLast ? 'border-bottom: 0.0625rem solid rgba(0,0,0,0.06);' : ''}">
+                        <div style="padding-left: 1.5rem; position: relative;">
+                            <span style="position: absolute; left: 0.375rem; top: 50%; transform: translateY(-50%); width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--button-primary); opacity: 0.5;"></span>
+                        </div>
+                        <div></div>
+                        <div></div>
+                        <div style="display: flex; align-items: center; gap: 0.375rem; word-break: break-all;">
+                            <a href="${escapeHtml(intercomUrl)}" target="_blank" rel="noopener noreferrer" title="Open in Intercom (new tab)" class="chat-review-conv-link" style="color: var(--button-primary); text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.125rem 0; border-radius: 0.25rem;">${escapeHtml(convId)}
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; opacity: 0.8;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                            </a>
+                        </div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div style="text-align: center; color: var(--text-color); font-variant-numeric: tabular-nums;">${c.review_click_count}</div>
+                        <div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem;">${formatReadableDateWithTime(c.reviewed_at)}</div>
+                        <div></div>
+                    </div>
+                    `;
+                }).join('');
+                return `
+                <div class="chat-review-assignment-group" style="margin-bottom: 0.75rem; border-radius: 0.5rem; border: 0.0625rem solid var(--border-light); overflow: hidden; background: var(--background-white); box-shadow: 0 1px 2px 0 rgba(0,0,0,0.04);">
+                    <div class="chat-review-assignment-row" role="button" tabindex="0" data-nest-id="${escapeHtml(nestId)}" aria-expanded="false" style="display: grid; grid-template-columns: ${gridCols}; gap: 0.5rem; align-items: center; padding: 0.75rem 0; font-size: 0.8125rem; cursor: pointer; background: var(--background-white); transition: background 0.15s ease; min-height: 2.75rem;">
+                        <div style="color: var(--text-color); font-weight: 600;">${escapeHtml(String(grp.auditor))}</div>
+                        <div style="color: var(--text-color);">${escapeHtml(String(grp.employee_name || '—'))}</div>
+                        <div style="color: var(--text-color); font-size: 0.7812rem;">${escapeHtml(String(grp.employee_channel || '—'))}</div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="display: inline-flex; align-items: center; padding: 0.1875rem 0.5rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 600; background: rgba(31,158,75,0.12); color: var(--button-primary);">${convCount} conversation${convCount !== 1 ? 's' : ''}</span>
+                            <svg class="chat-review-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; color: var(--text-secondary); transition: transform 0.2s ease; transform: rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="display: inline-block; padding: 0.1875rem 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 600; ${statusChipStyle(grp.status)}">${escapeHtml(statusLabel(grp.status))}</span>
+                        </div>
+                        <div style="text-align: center; font-variant-numeric: tabular-nums; color: var(--text-color);">${avgScoreStr}</div>
+                        <div style="text-align: center; font-variant-numeric: tabular-nums; color: var(--text-color);">${errorsStr}</div>
+                        <div style="text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-color);">${totalClicks}</div>
+                        <div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem;">${formatReadableDateWithTime(lastReviewed)}</div>
+                        <div style="text-align: right;">${viewAuditUrl ? `<a href="${escapeHtml(viewAuditUrl)}" target="_blank" rel="noopener noreferrer" class="action-btn" style="padding: 0.25rem 0.5rem; font-size: 0.6875rem; text-decoration: none; display: inline-block;" onclick="event.stopPropagation();">View audit</a>` : '<span style="color: var(--text-secondary); font-size: 0.6875rem;">—</span>'}</div>
+                    </div>
+                    <div id="${escapeHtml(nestId)}" class="chat-review-nested" style="display: none; background: linear-gradient(90deg, rgba(31,158,75,0.06) 0%, rgba(31,158,75,0.02) 100%); border-top: 0.0625rem solid rgba(31,158,75,0.12); padding: 0.5rem 0 0.75rem 1.5rem; border-left: 0.1875rem solid var(--button-primary); margin-left: 0; border-radius: 0 0 0 0.25rem;">${convRows}</div>
+                </div>
+                `;
+            }).join('');
+            const expandBar = document.getElementById('chatReviewExpandCollapseBar');
+            if (expandBar) expandBar.style.display = 'flex';
+            const toggleOne = (row, expand) => {
+                const nestId = row.getAttribute('data-nest-id');
+                const nest = nestId ? document.getElementById(nestId) : null;
+                const chevron = row.querySelector('.chat-review-chevron');
+                if (nest && chevron) {
+                    nest.style.display = expand ? 'block' : 'none';
+                    chevron.style.transform = expand ? 'rotate(0deg)' : 'rotate(-90deg)';
+                    row.setAttribute('aria-expanded', String(expand));
+                }
+            };
+            rawTableBody.querySelectorAll('.chat-review-assignment-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    if (e.target.closest('a')) return;
+                    const expanded = this.getAttribute('aria-expanded') === 'true';
+                    toggleOne(this, !expanded);
+                });
+                row.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const expanded = this.getAttribute('aria-expanded') === 'true';
+                        toggleOne(this, !expanded);
+                    }
+                });
+                row.addEventListener('mouseenter', function() { this.style.background = 'var(--gray-50)'; });
+                row.addEventListener('mouseleave', function() { this.style.background = 'var(--background-white)'; });
+            });
+            document.getElementById('chatReviewExpandAllBtn')?.addEventListener('click', () => {
+                rawTableBody.querySelectorAll('.chat-review-assignment-row').forEach(row => toggleOne(row, true));
+            });
+            document.getElementById('chatReviewCollapseAllBtn')?.addEventListener('click', () => {
+                rawTableBody.querySelectorAll('.chat-review-assignment-row').forEach(row => toggleOne(row, false));
+            });
+            document.querySelectorAll('.chat-review-conv-row').forEach(convRow => {
+                convRow.addEventListener('mouseenter', function() { this.style.background = 'rgba(31,158,75,0.08)'; });
+                convRow.addEventListener('mouseleave', function() { this.style.background = 'transparent'; });
+            });
+        }
+    }
+}
+
 // Render the UI structure immediately (cards, table headers) - no data needed
 function renderStandupViewStructure() {
     console.log('renderStandupViewStructure called, currentTab:', currentTab);
@@ -4676,51 +5118,50 @@ async function fetchAndCacheStandupView(period) {
     console.log('switchTab called with index:', index);
     currentTab = index;
     
-        const tabs = document.querySelectorAll('#teamStatsTabBtn, #standupViewTabBtn');
-        const slider = document.querySelector('div[style*="position: absolute"]');
-        const tabBar = document.querySelector('div[style*="position: relative"]');
+        const tabs = document.querySelectorAll('#teamStatsTabBtn, #standupViewTabBtn, #chatReviewTabBtn');
+        const slider = document.getElementById('dashboardTabSlider');
+        const tabBar = document.getElementById('dashboardTabBar');
         
-        // Remove active class from all tabs
-        tabs.forEach(tab => tab.classList.remove('active'));
-        // Add active class to clicked tab
-        tabElement.classList.add('active');
-        
-        // Calculate position based on tab index and container width
-        const containerPadding = 5; // 0.2344rem = 0.1758rem
-        const tabWidth = (tabBar.offsetWidth - (containerPadding * 2)) / 2; // 2 tabs
-        const sliderLeft = containerPadding + (index * tabWidth);
-        
-        slider.style.left = `${sliderLeft}px`;
-        slider.style.width = `${tabWidth}px`;
-        
-    // Hide hourly breakdown (section is hidden)
-    const hourlyBreakdownTable = document.getElementById('hourlyBreakdownTable');
-    if (hourlyBreakdownTable) {
-        hourlyBreakdownTable.style.display = 'none';
-    }
-    
-    // Show/hide dynamic hourly breakdown based on tab
-    const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
-    if (dynamicHourlyBreakdownTable) {
-        if (index === 0) {
-            // Team Stats - show dynamic hourly breakdown
-            dynamicHourlyBreakdownTable.style.display = 'block';
-        } else {
-            // Standup View - hide dynamic hourly breakdown
-            dynamicHourlyBreakdownTable.style.display = 'none';
+        if (slider && tabBar) {
+            tabs.forEach(tab => tab.classList.remove('active'));
+            tabElement.classList.add('active');
+            const containerPadding = 5;
+            const tabCount = 3;
+            const tabWidth = (tabBar.offsetWidth - (containerPadding * 2)) / tabCount;
+            const sliderLeft = containerPadding + (index * tabWidth);
+            slider.style.left = `${sliderLeft}px`;
+            slider.style.width = `${tabWidth}px`;
         }
-    }
-    
-    // Ensure the main table is visible for both tabs
+        
+    const chatReviewSection = document.getElementById('chatReviewSection');
+    const statsContainer = document.getElementById('statsContainer');
     const performanceTable = document.getElementById('performanceTable');
-    if (performanceTable) {
-        performanceTable.style.display = 'block';
+    const hourlyBreakdownTable = document.getElementById('hourlyBreakdownTable');
+    const dynamicHourlyBreakdownTable = document.getElementById('dynamicHourlyBreakdownTable');
+    
+    const headerActions = document.querySelector('.header-actions');
+    if (index === 2) {
+        // Chat Review tab: show only chat review section, hide main filters
+        if (chatReviewSection) chatReviewSection.style.display = 'block';
+        if (statsContainer) statsContainer.style.display = 'none';
+        if (performanceTable) performanceTable.style.display = 'none';
+        if (hourlyBreakdownTable) hourlyBreakdownTable.style.display = 'none';
+        if (dynamicHourlyBreakdownTable) dynamicHourlyBreakdownTable.style.display = 'none';
+        if (headerActions) headerActions.style.display = 'none';
+    } else {
+        if (chatReviewSection) chatReviewSection.style.display = 'none';
+        if (statsContainer) statsContainer.style.display = 'grid';
+        if (performanceTable) performanceTable.style.display = 'block';
+        if (hourlyBreakdownTable) hourlyBreakdownTable.style.display = 'none';
+        if (dynamicHourlyBreakdownTable) {
+            dynamicHourlyBreakdownTable.style.display = index === 0 ? 'block' : 'none';
+        }
+        if (headerActions) headerActions.style.display = 'flex';
     }
     
     // Show loading state when switching tabs
     showLoadingState();
     
-    // Update dashboard based on tab
     await updateDashboard();
 }
 
@@ -4728,27 +5169,21 @@ async function fetchAndCacheStandupView(period) {
 // Initialize Slider
 // ============================================================================
 function initializeSlider() {
-        const slider = document.querySelector('div[style*="position: absolute"]');
-        const tabBar = document.querySelector('div[style*="position: relative"]');
+        const slider = document.getElementById('dashboardTabSlider');
+        const tabBar = document.getElementById('dashboardTabBar');
         
         if (slider && tabBar) {
-            // Disable transition for initial positioning
             slider.style.transition = 'none';
-            
-            // Calculate position for first tab (index 0)
-            const containerPadding = 5; // 0.2344rem = 0.1758rem
-            const tabWidth = (tabBar.offsetWidth - (containerPadding * 2)) / 2; // 2 tabs
-            const sliderLeft = containerPadding + (0 * tabWidth); // First tab
-            
-            slider.style.left = `${sliderLeft}px`;
+            const containerPadding = 5;
+            const tabCount = 3;
+            const tabWidth = (tabBar.offsetWidth - (containerPadding * 2)) / tabCount;
+            slider.style.left = `${containerPadding}px`;
             slider.style.width = `${tabWidth}px`;
-            
-            // Re-enable transition after positioning
             requestAnimationFrame(() => {
                 slider.style.transition = 'all 0.3s ease';
             });
         }
-}
+    }
 
 // ============================================================================
 // Filter Functions
@@ -5246,6 +5681,108 @@ function setupEventListeners() {
             switchTab(standupViewTabBtn, 1);
         });
     }
+
+    const chatReviewTabBtn = document.getElementById('chatReviewTabBtn');
+    if (chatReviewTabBtn) {
+        chatReviewTabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            switchTab(chatReviewTabBtn, 2);
+        });
+    }
+
+    // Chat Review date filter
+    const chatReviewDateBtn = document.getElementById('chatReviewDateBtn');
+    const chatReviewDateDropdown = document.getElementById('chatReviewDateDropdown');
+    if (chatReviewDateBtn && chatReviewDateDropdown) {
+        chatReviewDateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            chatReviewDateDropdown.classList.toggle('active');
+        });
+    }
+    const chatReviewApplyDateBtn = document.getElementById('chatReviewApplyDateBtn');
+    const chatReviewClearDateBtn = document.getElementById('chatReviewClearDateBtn');
+    const chatReviewStartDate = document.getElementById('chatReviewStartDate');
+    const chatReviewEndDate = document.getElementById('chatReviewEndDate');
+    function formatChatReviewDateLabel(d) {
+        const day = String(d.getDate()).padStart(2, '0');
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const year = String(d.getFullYear()).slice(-2);
+        return `${day}-${months[d.getMonth()]}-${year}`;
+    }
+    if (chatReviewApplyDateBtn && chatReviewStartDate && chatReviewEndDate) {
+        chatReviewApplyDateBtn.addEventListener('click', () => {
+            const start = chatReviewStartDate.value ? new Date(chatReviewStartDate.value) : null;
+            const end = chatReviewEndDate.value ? new Date(chatReviewEndDate.value) : null;
+            chatReviewDateFilter = { start, end };
+            const btnText = document.getElementById('chatReviewDateBtnText');
+            if (btnText) {
+                if (start && end) btnText.textContent = `${formatChatReviewDateLabel(start)} – ${formatChatReviewDateLabel(end)}`;
+                else if (start) btnText.textContent = formatChatReviewDateLabel(start);
+                else btnText.textContent = 'Date Range';
+            }
+            if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
+            if (currentTab === 2) updateChatReviewTab();
+        });
+    }
+    if (chatReviewClearDateBtn) {
+        chatReviewClearDateBtn.addEventListener('click', () => {
+            chatReviewDateFilter = { start: null, end: null };
+            if (chatReviewStartDate) chatReviewStartDate.value = '';
+            if (chatReviewEndDate) chatReviewEndDate.value = '';
+            const btnText = document.getElementById('chatReviewDateBtnText');
+            if (btnText) btnText.textContent = 'Date Range';
+            if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
+            if (currentTab === 2) updateChatReviewTab();
+        });
+    }
+    const chatReviewTodayBtn = document.getElementById('chatReviewTodayBtn');
+    const chatReviewThisMonthBtn = document.getElementById('chatReviewThisMonthBtn');
+    const chatReviewLastMonthBtn = document.getElementById('chatReviewLastMonthBtn');
+    function setChatReviewQuickRange(start, end) {
+        chatReviewDateFilter = { start, end };
+        if (chatReviewStartDate && window.formatDhakaDateForInput) {
+            chatReviewStartDate.value = formatDhakaDateForInput(start);
+        }
+        if (chatReviewEndDate && window.formatDhakaDateForInput) {
+            chatReviewEndDate.value = formatDhakaDateForInput(end);
+        }
+        const btnText = document.getElementById('chatReviewDateBtnText');
+        if (btnText) btnText.textContent = `${formatChatReviewDateLabel(start)} – ${formatChatReviewDateLabel(end)}`;
+        if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
+        if (currentTab === 2) updateChatReviewTab();
+    }
+    if (chatReviewTodayBtn) {
+        chatReviewTodayBtn.addEventListener('click', () => {
+            const d = window.getDhakaNow ? getDhakaNow() : new Date();
+            const start = window.getDhakaStartOfDay ? getDhakaStartOfDay(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const end = window.getDhakaEndOfDay ? getDhakaEndOfDay(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+            setChatReviewQuickRange(start, end);
+        });
+    }
+    if (chatReviewThisMonthBtn) {
+        chatReviewThisMonthBtn.addEventListener('click', () => {
+            const d = window.getDhakaNow ? getDhakaNow() : new Date();
+            const start = window.getDhakaFirstDayOfMonth ? getDhakaFirstDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth(), 1);
+            const end = window.getDhakaLastDayOfMonth ? getDhakaLastDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
+            setChatReviewQuickRange(start, end);
+        });
+    }
+    if (chatReviewLastMonthBtn) {
+        chatReviewLastMonthBtn.addEventListener('click', () => {
+            const d = window.getDhakaNow ? getDhakaNow() : new Date();
+            const y = d.getFullYear(); const m = d.getMonth();
+            const start = new Date(y, m - 1, 1);
+            const end = new Date(y, m, 0, 23, 59, 59, 999);
+            setChatReviewQuickRange(start, end);
+        });
+    }
+    document.addEventListener('click', (e) => {
+        const chatReviewDropdown = document.getElementById('chatReviewDateDropdown');
+        if (chatReviewDropdown && !e.target.closest('#chatReviewDateBtn') && !chatReviewDropdown.contains(e.target)) {
+            chatReviewDropdown.classList.remove('active');
+        }
+    });
 
     // Clear filters button (CSP-safe: no inline onclick)
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');

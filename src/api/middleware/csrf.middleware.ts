@@ -69,6 +69,8 @@ function getSessionId(req: Request): string {
 /**
  * CSRF protection middleware
  * Only applies to state-changing methods (POST, PUT, DELETE, PATCH)
+ * Exempts POST /api/analytics/events when Bearer token is present so keepalive
+ * requests during page unload (after auth refresh) do not get 403.
  */
 export function csrfProtection(
   req: Request,
@@ -78,6 +80,21 @@ export function csrfProtection(
   // Only protect state-changing methods
   const protectedMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
   if (!protectedMethods.includes(req.method)) {
+    return next();
+  }
+
+  // Exempt POST /api/analytics/events when Authorization Bearer is present: verifyAuth will validate the JWT.
+  // Avoids 403 when the session is refreshed and the client's cached CSRF no longer matches.
+  const authHeader = req.headers.authorization;
+  const isAnalyticsEvents =
+    (req.path && req.path.endsWith('analytics/events')) ||
+    (req.originalUrl && String(req.originalUrl).includes('analytics/events'));
+  if (
+    isAnalyticsEvents &&
+    authHeader &&
+    typeof authHeader === 'string' &&
+    authHeader.startsWith('Bearer ')
+  ) {
     return next();
   }
 

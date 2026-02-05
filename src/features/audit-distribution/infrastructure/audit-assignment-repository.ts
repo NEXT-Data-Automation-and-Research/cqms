@@ -251,7 +251,12 @@ export class AuditAssignmentRepository extends BaseRepository {
       `Failed to update assignment ${id}`
     );
     const rows = Array.isArray(result) ? result : [];
-    return rows.length > 0 ? this.mapToAssignments(rows)[0] ?? null : null;
+    if (rows.length === 0) {
+      throw new Error(
+        'Update affected no rows. You may not have permission to reassign this assignment (only the person who created it can reassign).'
+      );
+    }
+    return this.mapToAssignments(rows)[0] ?? null;
   }
 }
 

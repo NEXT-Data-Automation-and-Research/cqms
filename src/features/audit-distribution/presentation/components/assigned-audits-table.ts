@@ -32,7 +32,7 @@ export interface AssignedAuditsTableConfig {
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   onDeleteAssignment?: (id: string) => void;
-  onReassignAssignment?: (id: string, updates: { auditor_email?: string; scorecard_id?: string | null; scheduled_date?: string | null }) => void;
+  onReassignAssignment?: (id: string, updates: { auditor_email?: string; scorecard_id?: string | null; scheduled_date?: string | null }) => void | Promise<void>;
 }
 
 export class AssignedAuditsTable {
@@ -322,7 +322,7 @@ export class AssignedAuditsTable {
     if (modal) modal.classList.add('hidden');
   }
 
-  private saveReassignModal(): void {
+  private async saveReassignModal(): Promise<void> {
     if (!this.reassignTargetId || !this.config.onReassignAssignment) {
       this.closeReassignModal();
       return;
@@ -334,8 +334,15 @@ export class AssignedAuditsTable {
     if (auditorSelect?.value) updates.auditor_email = auditorSelect.value;
     if (scorecardSelect?.value) updates.scorecard_id = scorecardSelect.value;
     if (dateInput?.value) updates.scheduled_date = dateInput.value;
-    this.config.onReassignAssignment(this.reassignTargetId, updates);
-    this.closeReassignModal();
+    const id = this.reassignTargetId;
+    try {
+      const result = this.config.onReassignAssignment(id, updates);
+      if (result && typeof (result as Promise<unknown>).then === 'function') {
+        await (result as Promise<void>);
+      }
+    } finally {
+      this.closeReassignModal();
+    }
   }
 
   private attachEventListeners(): void {

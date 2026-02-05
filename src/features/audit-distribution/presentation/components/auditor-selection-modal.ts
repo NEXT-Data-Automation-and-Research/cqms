@@ -113,10 +113,10 @@ export class AuditorSelectionModal {
           </div>
 
           <!-- Content (compact) -->
-          <div class="flex-1 overflow-y-auto px-3 py-2 min-h-0">
-            <div class="flex flex-col gap-2">
+          <div class="flex-1 overflow-hidden px-3 py-2 min-h-0 flex flex-col">
+            <div class="flex flex-col gap-2 flex-1 min-h-0">
               <!-- Audits + Schedule (compact single card) -->
-              <div class="bg-gray-50 rounded border border-gray-200 p-2">
+              <div class="bg-gray-50 rounded border border-gray-200 p-2 flex-shrink-0">
                 <div class="flex items-center justify-between gap-2 mb-2">
                   <label class="text-[10px] font-semibold text-gray-700 flex items-center gap-1">
                     <span class="text-red-500">*</span> Audits/employee
@@ -135,9 +135,9 @@ export class AuditorSelectionModal {
                 </div>
               </div>
 
-              <!-- Auditors (compact table like people list) -->
-              <div class="bg-gray-50 rounded border border-gray-200 overflow-hidden">
-                <div class="flex items-center justify-between gap-1 px-2 py-1.5 border-b border-gray-200">
+              <!-- Auditors (compact table like people list) - grows to fill space -->
+              <div class="bg-gray-50 rounded border border-gray-200 overflow-hidden flex flex-col min-h-0 flex-1">
+                <div class="flex items-center justify-between gap-1 px-2 py-1.5 border-b border-gray-200 flex-shrink-0">
                   <label class="text-[10px] font-semibold text-gray-700 flex items-center gap-1">
                     <span class="text-red-500">*</span> Auditor(s)
                   </label>
@@ -149,7 +149,7 @@ export class AuditorSelectionModal {
                     ${includeOtherAuditors ? 'Hide Others' : 'Others'}
                   </button>
                 </div>
-                <div class="max-h-48 overflow-auto">
+                <div class="auditor-modal-list-scroll overflow-auto flex-1 min-h-[8rem]">
                   ${auditorsList}
                 </div>
               </div>
