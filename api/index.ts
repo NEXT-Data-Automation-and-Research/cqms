@@ -161,6 +161,7 @@ app.use(helmet({
         "https://fonts.gstatic.com"
       ],
       objectSrc: ["'none'"],
+      scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
     },
   },
@@ -253,6 +254,23 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   };
   
   next();
+});
+
+// Scorecards page: must be served with injectVersionIntoHTML (Supabase config injection)
+// This route MUST be before app.use('/src', ...) so the page is not served as raw static file
+app.get('/src/features/settings/scorecards/presentation/scorecards.html', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/settings/scorecards/presentation/scorecards.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing scorecards.html:', error);
+    const featurePath = path.join(__dirname, '../src/features/settings/scorecards/presentation/scorecards.html');
+    if (fs.existsSync(featurePath)) {
+      res.sendFile(featurePath);
+    } else {
+      res.status(404).send('Scorecards page not found');
+    }
+  }
 });
 
 // Serve static files from the public directory

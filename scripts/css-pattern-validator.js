@@ -279,8 +279,7 @@ if (isMainModule) {
   if (args.length === 0) {
     console.log('Usage: node css-pattern-validator.js <file-or-directory> [reference-file]');
     console.log('\nExamples:');
-    console.log('  node css-pattern-validator.js src/features/settings/scorecards/presentation/scorecards-table.css');
-    console.log('  node css-pattern-validator.js src/features/settings/scorecards/presentation/');
+    console.log('  node css-pattern-validator.js src/features/settings/scorecards/presentation/scorecards.html');
     process.exit(1);
   }
   
