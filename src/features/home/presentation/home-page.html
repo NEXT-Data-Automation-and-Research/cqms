@@ -4759,11 +4759,15 @@ function renderUnifiedAuditView(unifiedData) {
     allActivityItems.push(...filteredUpdates);
   }
   
-  // Sort by timestamp (most recent first)
+  // Sort by timestamp (most recent first). For assignments without created_at, use scheduled_date end-of-day so they don't all sort to end
   allActivityItems.sort((a, b) => {
-    const dateA = new Date(a.timestamp || a.submitted_at || a.created_at || 0);
-    const dateB = new Date(b.timestamp || b.submitted_at || b.created_at || 0);
-    return dateB - dateA;
+    const getSortTime = (item) => {
+      if (item.timestamp) return new Date(item.timestamp).getTime();
+      if (item.submitted_at || item.created_at) return new Date(item.submitted_at || item.created_at).getTime();
+      if (item.type === 'assignment' && item.scheduled_date) return new Date(item.scheduled_date + 'T23:59:59').getTime();
+      return 0;
+    };
+    return getSortTime(b) - getSortTime(a);
   });
   
   renderRecentUpdatesFromData(allActivityItems);
@@ -4817,17 +4821,20 @@ function convertCompletedAuditToUpdate(audit) {
 }
 
 // Convert pending assignment to update format for unified feed (auditors only)
+// Use only created_at for timestamp so we don't show "Today 12:00 AM" when assignment was actually yesterday (scheduled_date at midnight was wrong)
 function convertPendingAssignmentToUpdate(assignment) {
   const employeeEmail = (assignment.employee_email || '').toLowerCase().trim();
   const displayUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === employeeEmail);
   const displayName = assignment.employee_name || displayUser?.name || assignment.employee_email?.split('@')[0] || 'Unknown';
-  const timestamp = assignment.created_at || (assignment.scheduled_date ? new Date(assignment.scheduled_date + 'T00:00:00').toISOString() : null);
+  const timestamp = assignment.created_at || null;
   return {
     id: `assignment-${assignment.id}`,
     type: 'assignment',
     displayName,
     displayEmail: assignment.employee_email || '',
-    timestamp: timestamp || new Date().toISOString(),
+    timestamp: timestamp,
+    created_at: assignment.created_at,
+    scheduled_date: assignment.scheduled_date,
     status: assignment.status || 'pending',
     assignmentId: assignment.id
   };
@@ -4866,7 +4873,9 @@ function renderPendingAudits(pendingAudits) {
       statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-800">Pending</span>';
     }
     
-    const requestDate = formatTimestamp(audit.created_at);
+    const requestDate = (audit._isAssignment && typeof formatAssignmentDate === 'function')
+      ? formatAssignmentDate({ created_at: audit.created_at, scheduled_date: audit.scheduled_date })
+      : formatTimestamp(audit.created_at);
     
     return `
       <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" data-action="create-audit">
@@ -5109,7 +5118,8 @@ function renderRecentUpdatesFromData(allUpdates) {
       }
       
       // Handle regular update types (reversals, assignments, etc.)
-      const timestamp = formatTimestamp(update.timestamp);
+      // For assignments, use formatAssignmentDate so we don't show "Today 12:00 AM" when created_at was null
+      const timestamp = (update.type === 'assignment') ? formatAssignmentDate(update) : formatTimestamp(update.timestamp);
       const initials = getInitials(update.displayName);
       
       let statusText = '';
@@ -5572,7 +5582,9 @@ function renderAssignedAudits() {
         statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-800">Pending</span>';
       }
       
-      const requestDate = formatTimestamp(audit.created_at);
+      const requestDate = (typeof formatAssignmentDate === 'function')
+        ? formatAssignmentDate({ created_at: audit.created_at, scheduled_date: audit.scheduled_date })
+        : formatTimestamp(audit.created_at);
 
       return `
         <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" data-action="create-audit">
@@ -6466,18 +6478,31 @@ function formatTimestamp(timestamp) {
   
   const date = new Date(timestamp);
   const now = new Date();
-  const diffMs = now - date;
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  // Use calendar days in local timezone, not "elapsed 24h periods" (else yesterday 6 PM shows as "Today" when now is today 12 PM)
+  const dateDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const yesterdayStart = todayStart - (24 * 60 * 60 * 1000);
   
-  if (diffDays === 0) {
+  if (dateDay === todayStart) {
     return 'Today ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-  } else if (diffDays === 1) {
-    return 'Yesterday';
-  } else if (diffDays < 7) {
+  } else if (dateDay === yesterdayStart) {
+    return 'Yesterday ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  } else if ((todayStart - dateDay) < 7 * 24 * 60 * 60 * 1000) {
     return date.toLocaleDateString('en-US', { weekday: 'long' });
   } else {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
+}
+
+// For assignments: show real assignment time (created_at), or "Scheduled: [date]" when created_at was missing (avoids "Today 12:00 AM" for yesterday's assignments)
+function formatAssignmentDate(update) {
+  if (!update) return 'N/A';
+  if (update.created_at) return formatTimestamp(update.created_at);
+  if (update.scheduled_date) {
+    const d = new Date(update.scheduled_date + 'T12:00:00');
+    return 'Scheduled ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  return 'N/A';
 }
 
 function getStatusText(status, isAgentView = false) {
@@ -6962,7 +6987,9 @@ async function fetchAndCacheNotifications() {
         type: 'assignment',
         title: `Audit ${assignment.status === 'completed' ? 'completed' : assignment.status === 'in_progress' ? 'started' : 'assigned'}`,
         message,
-        timestamp: assignment.scheduled_date ? new Date(assignment.scheduled_date + 'T00:00:00').toISOString() : assignment.created_at,
+        timestamp: assignment.created_at || null,
+        created_at: assignment.created_at,
+        scheduled_date: assignment.scheduled_date,
         status: assignment.status,
         assignmentId: assignment.id
       });
