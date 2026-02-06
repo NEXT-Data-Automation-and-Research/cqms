@@ -4484,12 +4484,14 @@ async function fetchAndCacheRecentUpdates(period) {
           const employeeEmail = (assignment.employee_email || '').toLowerCase().trim();
           const employeeUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === employeeEmail);
           const employeeName = employeeUser?.name || assignment.employee_name || assignment.employee_email?.split('@')[0] || 'Unknown';
-          
+          // Assignments here are filtered by auditor_email === currentUserEmail, so auditor is always "you"
+          const auditorDisplayName = 'you';
           allUpdates.push({
             id: `assignment-${assignment.id}`,
             type: 'assignment',
             displayName: employeeName,
             displayEmail: assignment.employee_email,
+            auditorDisplayName,
             timestamp: assignment.status === 'completed' && assignment.completed_at 
               ? assignment.completed_at 
               : (assignment.scheduled_date ? new Date(assignment.scheduled_date + 'T00:00:00').toISOString() : assignment.created_at),
@@ -4826,12 +4828,18 @@ function convertPendingAssignmentToUpdate(assignment) {
   const employeeEmail = (assignment.employee_email || '').toLowerCase().trim();
   const displayUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === employeeEmail);
   const displayName = assignment.employee_name || displayUser?.name || assignment.employee_email?.split('@')[0] || 'Unknown';
+  const auditorEmail = (assignment.auditor_email || '').toLowerCase().trim();
+  const auditorUser = allUsers.find(u => (u.email || '').toLowerCase().trim() === auditorEmail);
+  const auditorDisplayName = (currentUserEmail && auditorEmail === currentUserEmail.toLowerCase().trim())
+    ? 'you'
+    : (auditorUser?.name || assignment.auditor_name || assignment.auditor_email?.split('@')[0] || 'Unknown');
   const timestamp = assignment.created_at || null;
   return {
     id: `assignment-${assignment.id}`,
     type: 'assignment',
     displayName,
     displayEmail: assignment.employee_email || '',
+    auditorDisplayName,
     timestamp: timestamp,
     created_at: assignment.created_at,
     scheduled_date: assignment.scheduled_date,
@@ -5134,6 +5142,10 @@ function renderRecentUpdatesFromData(allUpdates) {
           : `Reversal ${statusDisplay} for conversation ${update.interactionId || ''}`;
       } else if (update.type === 'reversal_responded') {
         statusText = isAgent ? 'Reversal response received' : 'Reversal response sent';
+      } else if (update.type === 'assignment') {
+        const agentName = escapeHtml(update.displayName || 'Unknown');
+        const toLabel = (update.auditorDisplayName === 'you') ? 'you' : escapeHtml(update.auditorDisplayName || 'Unknown');
+        statusText = `${agentName}'s audit assigned to ${toLabel}`;
       } else {
         statusText = getStatusText(update.status, isAgent);
       }
@@ -5192,9 +5204,11 @@ function renderRecentUpdatesFromData(allUpdates) {
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs text-gray-900 leading-snug">
-                ${update.displayName && !isAgent
-                  ? `<span class="font-medium">${escapeHtml(update.displayName)}</span> — ${statusText}`
-                  : statusText
+                ${update.type === 'assignment'
+                  ? statusText
+                  : (update.displayName && !isAgent
+                    ? `<span class="font-medium">${escapeHtml(update.displayName)}</span> — ${statusText}`
+                    : statusText)
                 }
               </p>
               <p class="text-[10px] text-gray-500 mt-0.5">${timestamp}</p>
