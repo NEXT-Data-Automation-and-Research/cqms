@@ -129,6 +129,18 @@ router.put('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promi
       return;
     }
 
+    // Sync avatar_url to people table so home/audit views can show agent avatars by email
+    if (data?.email && updates.avatar_url !== undefined) {
+      const { error: peopleError } = await supabase
+        .from('people')
+        .update({ avatar_url: updates.avatar_url || null })
+        .eq('email', data.email);
+      if (peopleError) {
+        logger.warn('Could not sync avatar_url to people table:', peopleError);
+        // Non-fatal: profile update succeeded
+      }
+    }
+
     logger.info(`User ${userId} updated their profile`);
     res.json({ data });
   } catch (error: any) {

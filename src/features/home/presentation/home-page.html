@@ -3354,13 +3354,20 @@ async function initializeDashboard() {
       const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
       const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
       
-      if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
-        allUsers = JSON.parse(cachedUsers);
-      } else if (getCachedSync) {
-        // Fallback to persistent cache
+      let useCachedUsers = false;
+      if (cachedUsers && cacheAge < 120000) {
+        const parsed = JSON.parse(cachedUsers);
+        // Treat cache as stale if it was saved before we added avatar_url (so profile pictures show)
+        if (Array.isArray(parsed) && (parsed.length === 0 || 'avatar_url' in (parsed[0] || {}))) {
+          allUsers = parsed;
+          useCachedUsers = true;
+        }
+      }
+      if (!useCachedUsers && getCachedSync) {
         const cachedUsersData = await getCachedSync('users_all');
-        if (cachedUsersData) {
+        if (cachedUsersData && Array.isArray(cachedUsersData) && (cachedUsersData.length === 0 || 'avatar_url' in (cachedUsersData[0] || {}))) {
           allUsers = cachedUsersData;
+          useCachedUsers = true;
         }
       }
       
@@ -3393,8 +3400,8 @@ async function initializeDashboard() {
         }
       }
       
-      // Load users if not cached (non-blocking, in background)
-      if (!allUsers || allUsers.length === 0) {
+      // Load users if not cached or cache missing avatar_url (non-blocking, in background)
+      if (!allUsers || allUsers.length === 0 || (allUsers.length > 0 && !('avatar_url' in (allUsers[0] || {})))) {
         // Load users using HTML function (home-data-loader.js module removed)
         (async () => {
           try {
@@ -3412,9 +3419,10 @@ async function initializeDashboard() {
       const cachedUsers = sessionStorage.getItem('cachedUsers');
       const cachedUsersTime = sessionStorage.getItem('cachedUsersTime');
       const cacheAge = cachedUsersTime ? Date.now() - parseInt(cachedUsersTime) : Infinity;
-      
-      if (cachedUsers && cacheAge < 120000) { // 2 minutes cache
-        allUsers = JSON.parse(cachedUsers);
+      const parsed = cachedUsers ? JSON.parse(cachedUsers) : null;
+      const cacheHasAvatarUrl = Array.isArray(parsed) && (parsed.length === 0 || 'avatar_url' in (parsed[0] || {}));
+      if (cachedUsers && cacheAge < 120000 && cacheHasAvatarUrl) {
+        allUsers = parsed;
       } else {
         // Load users in background (non-blocking)
         (async () => {
@@ -3863,17 +3871,18 @@ async function loadAllUsers() {
     // Use people table instead of users table
     const { data, error } = await supabase
       .from('people')
-      .select('email, name, role, channel, quality_mentor')
+      .select('email, name, role, channel, quality_mentor, avatar_url')
       .order('name', { ascending: true });
     
     if (error) throw error;
-    // Map people table data (uses 'name' instead of 'full_name')
+    // Map people table data (uses 'name' instead of 'full_name'); avatar_url from Profile Picture URL
     allUsers = (data || []).map(person => ({
       email: person.email,
       name: person.name,
       role: person.role,
       channel: person.channel,
-      quality_mentor: person.quality_mentor
+      quality_mentor: person.quality_mentor,
+      avatar_url: person.avatar_url || null
     }));
   } catch (error) {
     console.error('Error loading users from people table:', error);
@@ -4492,6 +4501,8 @@ async function fetchAndCacheRecentUpdates(period) {
             displayName: employeeName,
             displayEmail: assignment.employee_email,
             auditorDisplayName,
+            avatar_url: employeeUser?.avatar_url || null,
+            channel: assignment.channel || '',
             timestamp: assignment.status === 'completed' && assignment.completed_at 
               ? assignment.completed_at 
               : (assignment.scheduled_date ? new Date(assignment.scheduled_date + 'T00:00:00').toISOString() : assignment.created_at),
@@ -4799,6 +4810,7 @@ function convertCompletedAuditToUpdate(audit) {
   const passingStatus = audit.passing_status || audit.passingStatus || 'Unknown';
   const normalizedStatus = passingStatus === 'Passing' ? 'Passed' : (passingStatus === 'Not Passing' ? 'Not Passed' : passingStatus);
   
+  const avatar_url = !isAgent && displayUser?.avatar_url ? displayUser.avatar_url : null;
   return {
     id: `audit-${audit.id}`,
     type: 'completed_audit',
@@ -4809,6 +4821,7 @@ function convertCompletedAuditToUpdate(audit) {
     displayName: displayName,
     displayEmail: displayEmail,
     auditorDisplayName: auditorDisplayName,
+    avatar_url,
     timestamp: audit.submitted_at || audit.created_at,
     interactionId: interactionId,
     channel: channel,
@@ -4834,12 +4847,16 @@ function convertPendingAssignmentToUpdate(assignment) {
     ? 'you'
     : (auditorUser?.name || assignment.auditor_name || assignment.auditor_email?.split('@')[0] || 'Unknown');
   const timestamp = assignment.created_at || null;
+  const avatar_url = displayUser?.avatar_url || null;
+  const channel = assignment.channel || assignment._scorecard_name || '';
   return {
     id: `assignment-${assignment.id}`,
     type: 'assignment',
     displayName,
     displayEmail: assignment.employee_email || '',
     auditorDisplayName,
+    avatar_url,
+    channel,
     timestamp: timestamp,
     created_at: assignment.created_at,
     scheduled_date: assignment.scheduled_date,
@@ -5191,6 +5208,17 @@ function renderRecentUpdatesFromData(allUpdates) {
           </svg>`
         : `<span class="text-xs font-semibold ${textColor}">${initials}</span>`;
 
+      // Assignment items: show agent avatar (profile picture URL from people.avatar_url, or initials)
+      const isAssignment = update.type === 'assignment';
+      const avatarSizeClass = isAssignment ? 'w-8 h-8 rounded overflow-hidden relative' : 'w-7 h-7 rounded-full';
+      const avatarBgClass = isAssignment ? 'bg-primary text-white' : bgColor;
+      const hasAssignmentAvatar = isAssignment && update.avatar_url && String(update.avatar_url).trim() !== '' && update.avatar_url !== 'null' && update.avatar_url !== 'undefined';
+      const assignmentIconContent = isAssignment
+        ? (hasAssignmentAvatar
+            ? `<img src="${escapeHtml(update.avatar_url)}" alt="${escapeHtml(update.displayName || '')}" class="absolute inset-0 w-full h-full object-cover" referrerPolicy="no-referrer" onerror="this.style.display='none'; var s=this.nextElementSibling; s.style.display='flex'; s.style.alignItems='center'; s.style.justifyContent='center';" /><span class="absolute inset-0 hidden text-xs font-semibold text-white" style="display:none">${initials}</span>`
+            : `<span class="text-xs font-semibold text-white">${initials}</span>`)
+        : iconContent;
+
       // Assignment items (auditors): show Get Started button; others no button
       const viewButton = update.assignmentId
         ? `<button data-action="view-assignment" data-audit-id="${update.assignmentId}" class="px-2.5 py-1 bg-primary text-white text-[10px] font-semibold rounded hover:bg-primary-dark transition-colors flex-shrink-0">Get Started</button>`
@@ -5199,19 +5227,24 @@ function renderRecentUpdatesFromData(allUpdates) {
       return `
         <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors ${onClickAction ? 'cursor-pointer' : ''}" ${dataAttributes}>
           <div class="flex items-start gap-2.5">
-            <div class="w-7 h-7 rounded-full ${bgColor} flex items-center justify-center flex-shrink-0">
-              ${iconContent}
+            <div class="${avatarSizeClass} ${avatarBgClass} flex items-center justify-center flex-shrink-0">
+              ${assignmentIconContent}
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs text-gray-900 leading-snug">
                 ${update.type === 'assignment'
-                  ? statusText
+                  ? `<span class="font-semibold">${statusText}</span>`
                   : (update.displayName && !isAgent
                     ? `<span class="font-medium">${escapeHtml(update.displayName)}</span> — ${statusText}`
                     : statusText)
                 }
               </p>
-              <p class="text-[10px] text-gray-500 mt-0.5">${timestamp}</p>
+              <p class="text-[10px] text-gray-500 mt-0.5">
+                ${update.type === 'assignment' && update.channel
+                  ? `<span>${escapeHtml(update.channel)}</span><span class="text-gray-300"> • </span><span>${timestamp}</span>`
+                  : timestamp
+                }
+              </p>
             </div>
             ${viewButton}
           </div>
@@ -5237,6 +5270,7 @@ function renderCompletedAuditItem(update) {
   
   const scorecardName = update.scorecardName || 'Unknown Scorecard';
   const initials = isAgent ? null : getInitials(displayName);
+  const hasAvatarUrl = !isAgent && update.avatar_url && String(update.avatar_url).trim() !== '' && update.avatar_url !== 'null' && update.avatar_url !== 'undefined';
   
   // Get passing status
   const passingStatus = update.passingStatus || 'Unknown';
@@ -5259,21 +5293,28 @@ function renderCompletedAuditItem(update) {
 
   const dataAttributes = `data-action="view-details" data-audit-id="${update.auditId}" data-scorecard-id="${update.scorecardId || ''}" data-scorecard-table="${update.scorecardTable || ''}"`;
 
+  const completedAuditAvatarHtml = isAgent ? `
+    <div class="w-8 h-8 rounded bg-success/10 flex items-center justify-center flex-shrink-0">
+      <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+    </div>
+  ` : (hasAvatarUrl ? `
+    <div class="w-8 h-8 rounded overflow-hidden relative flex-shrink-0 bg-primary flex items-center justify-center">
+      <img src="${escapeHtml(update.avatar_url)}" alt="${escapeHtml(displayName || '')}" class="absolute inset-0 w-full h-full object-cover" referrerPolicy="no-referrer" onerror="this.style.display='none'; var s=this.nextElementSibling; s.style.display='flex'; s.style.alignItems='center'; s.style.justifyContent='center';" />
+      <span class="absolute inset-0 text-xs font-semibold text-white" style="display:none">${initials}</span>
+    </div>
+  ` : `
+    <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
+      ${initials}
+    </div>
+  `);
+
   return `
     <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-100 last:border-0" ${dataAttributes}>
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2.5 flex-1 min-w-0">
-          ${isAgent ? `
-            <div class="w-8 h-8 rounded bg-success/10 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-          ` : `
-            <div class="w-8 h-8 rounded bg-primary text-white flex items-center justify-center text-xs font-semibold flex-shrink-0">
-              ${initials}
-            </div>
-          `}
+          ${completedAuditAvatarHtml}
           <div class="flex-1 min-w-0">
             ${isAgent ? `
               <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
