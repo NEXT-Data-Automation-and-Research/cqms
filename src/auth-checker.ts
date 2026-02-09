@@ -552,12 +552,27 @@ async function ensureUserInfoSynced(user: UserInfo): Promise<void> {
     const supabase = getSupabase();
     if (!supabase) return;
     
-    // Fetch user profile from people table
-    const { data: peopleData, error: peopleError } = await supabase
+    // Fetch user profile from people table (try lowercase then original case - people.email may differ by case)
+    let peopleData: { name?: string; role?: string; department?: string; designation?: string; team?: string; team_supervisor?: string; avatar_url?: string } | null = null;
+    let peopleError: any = null;
+    const { data: d1, error: e1 } = await supabase
       .from('people')
       .select('name, role, department, designation, team, team_supervisor, avatar_url')
       .eq('email', userEmail)
       .maybeSingle();
+    peopleData = d1;
+    peopleError = e1;
+    if (!peopleData && user.email?.trim() && user.email.trim().toLowerCase() !== userEmail) {
+      const { data: d2, error: e2 } = await supabase
+        .from('people')
+        .select('name, role, department, designation, team, team_supervisor, avatar_url')
+        .eq('email', user.email.trim())
+        .maybeSingle();
+      if (d2) {
+        peopleData = d2;
+        peopleError = e2;
+      }
+    }
     
     if (peopleError) {
       logError('[Auth-Checker] Failed to fetch people data:', peopleError);

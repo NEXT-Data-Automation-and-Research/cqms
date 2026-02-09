@@ -1721,25 +1721,37 @@ function clearCache() {
 // Initialization
 // ============================================================================
 document.addEventListener('DOMContentLoaded', async () => {
-    // Check if user is an agent (Employee role) - set global variables
     const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
-    isAgent = userInfo.role === 'Employee';
     currentUserEmail = (userInfo.email || '').toLowerCase().trim();
     
+    await waitForSupabase();
+    
+    // Resolve role from people table (case-insensitive email) so permission matches DB
+    let roleFromPeople = userInfo.role;
+    if (window.supabaseClient && currentUserEmail) {
+        try {
+            const { data: row1 } = await window.supabaseClient.from('people').select('role').eq('email', currentUserEmail).maybeSingle();
+            if (row1 && row1.role) {
+                roleFromPeople = row1.role;
+            } else if (userInfo.email && userInfo.email.trim() !== currentUserEmail) {
+                const { data: row2 } = await window.supabaseClient.from('people').select('role').eq('email', userInfo.email.trim()).maybeSingle();
+                if (row2 && row2.role) roleFromPeople = row2.role;
+            }
+        } catch (e) {
+            // keep roleFromPeople from userInfo
+        }
+    }
+    isAgent = roleFromPeople === 'Employee';
+    
     if (isAgent) {
-        // Hide dashboard content and show construction notice
         const dashboardContent = document.getElementById('dashboardContent');
         const constructionNotice = document.getElementById('constructionNotice');
-        
         if (dashboardContent) dashboardContent.style.display = 'none';
         if (constructionNotice) constructionNotice.style.display = 'block';
-        
-        // Don't load data or initialize charts for agents
         return;
     }
     
     // For admins and other roles, show full dashboard
-    await waitForSupabase();
     initializeMonthFilter();
     await loadAllData();
     setupEventListeners();

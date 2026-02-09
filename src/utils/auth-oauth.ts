@@ -374,21 +374,37 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
     }
 
     // Fetch role and other profile data from people table (critical for role-based access control)
+    // Try lowercase first, then original case - people.email may be stored with different casing
     let peopleData: { role?: string; department?: string; designation?: string; team?: string; team_supervisor?: string } | null = null;
+    const rawEmail = (fullUserData?.email || user.email || '').trim();
+    const userEmailLower = rawEmail.toLowerCase();
     try {
-      const userEmail = (fullUserData?.email || user.email || '').toLowerCase().trim();
-      const { data: peopleResult, error: peopleError } = await supabase
+      let peopleResult: typeof peopleData = null;
+      let peopleError: any = null;
+      const { data: d1, error: e1 } = await supabase
         .from('people')
         .select('role, department, designation, team, team_supervisor')
-        .eq('email', userEmail)
+        .eq('email', userEmailLower)
         .maybeSingle();
-      
+      peopleResult = d1;
+      peopleError = e1;
+      if (!peopleResult && rawEmail !== userEmailLower) {
+        const { data: d2, error: e2 } = await supabase
+          .from('people')
+          .select('role, department, designation, team, team_supervisor')
+          .eq('email', rawEmail)
+          .maybeSingle();
+        if (d2) {
+          peopleResult = d2;
+          peopleError = e2;
+        }
+      }
       if (!peopleError && peopleResult) {
         peopleData = peopleResult;
-        logInfo('✅ Loaded role and profile data from people table:', { 
-          role: peopleResult.role, 
+        logInfo('✅ Loaded role and profile data from people table:', {
+          role: peopleResult.role,
           department: peopleResult.department,
-          designation: peopleResult.designation 
+          designation: peopleResult.designation,
         });
       } else if (peopleError) {
         logWarn('⚠️ Could not fetch role from people table:', peopleError);
