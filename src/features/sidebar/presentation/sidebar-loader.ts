@@ -20,6 +20,9 @@ type SidebarPagePermissions = Record<string, { hasAccess: boolean; reason?: stri
 /**
  * This class loads the sidebar and makes it work
  */
+/** Same shape as sidebarState.loadUserInfo() for last-known-good fallback */
+type UserInfoFromState = ReturnType<typeof sidebarState.loadUserInfo>
+
 export class SidebarLoader {
   private userProfile: SidebarUserProfile
   private notifications: SidebarNotifications
@@ -28,6 +31,8 @@ export class SidebarLoader {
   private htmlGenerator: SidebarHTMLGenerator
   private latestPagePermissions: SidebarPagePermissions | null = null
   private permissionsFetchInFlight: Promise<SidebarPagePermissions | null> | null = null
+  /** Last userInfo we had with a role; used when a re-render happens with missing/partial userInfo so we don't flip to default routes mid-session */
+  private lastKnownUserInfo: UserInfoFromState = null
 
   constructor() {
     this.userProfile = new SidebarUserProfile()
@@ -116,7 +121,8 @@ export class SidebarLoader {
   private setupUserInfoWatcher(): void {
     document.addEventListener('userInfoUpdated', async (evt) => {
       if (!sidebarState.isSidebarLoaded) return
-      const userInfo = sidebarState.loadUserInfo()
+      const currentUserInfo = sidebarState.loadUserInfo()
+      const userInfo = this.resolveUserInfoForSidebar(currentUserInfo)
       let pagePermissions: SidebarPagePermissions | null = null
 
       // Prefer event-provided permissions to avoid duplicate network calls.
@@ -186,6 +192,26 @@ export class SidebarLoader {
         sidebarOverlay.classList.add('active')
       }
     }
+  }
+
+  /**
+   * Resolve userInfo for sidebar generation. When current has email but no role (e.g. partial state
+   * or temporary clear), use last-known-good role so we don't revert to default routes mid-session.
+   * When current is null (logout), don't use lastKnown so we show default routes until redirect.
+   */
+  private resolveUserInfoForSidebar(current: UserInfoFromState): UserInfoFromState {
+    if (!current?.email) {
+      this.lastKnownUserInfo = null
+      return current
+    }
+    if (current.role) {
+      this.lastKnownUserInfo = current
+      return current
+    }
+    if (this.lastKnownUserInfo?.role) {
+      return { ...current, role: this.lastKnownUserInfo.role }
+    }
+    return current
   }
 
   private async getOrFetchPermissionsForSidebar(): Promise<SidebarPagePermissions | null> {
@@ -326,12 +352,13 @@ export class SidebarLoader {
       }
 
       const userInfo = await this.waitForUserInfoWithTimeout(1200)
+      const resolvedUserInfo = this.resolveUserInfoForSidebar(userInfo)
 
       // IMPORTANT: Do NOT await permissions here - it can hang and block rendering.
       // Render immediately with role-based access, then update asynchronously.
       let pagePermissions: SidebarPagePermissions | null = null
 
-      const sidebarHTML = this.htmlGenerator.generate(userInfo, pagePermissions)
+      const sidebarHTML = this.htmlGenerator.generate(resolvedUserInfo, pagePermissions)
 
       // Kick off permission fetch in background - will trigger userInfoUpdated to refresh sidebar
       this.fetchPermissionsAndRefresh()
