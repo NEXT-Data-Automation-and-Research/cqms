@@ -1791,8 +1791,10 @@ async function waitForSupabase() {
             setTimeout(checkSupabase, 100);
         };
         
-        // Also listen for the supabaseReady event
-        window.addEventListener('supabaseReady', () => resolve(), { once: true });
+        // Only resolve when client is actually set (event can fire before assignment)
+        window.addEventListener('supabaseReady', () => {
+            if (window.supabaseClient) resolve();
+        }, { once: true });
         
         checkSupabase();
     });
@@ -1929,37 +1931,65 @@ async function loadAllData(forceRefresh = false) {
             await loadAllDataFresh(false);
         }
     } catch (error) {
-        console.error('Error loading data:', error);
-        hideLoadingIndicator();
-        document.getElementById('performanceTableBody').innerHTML = 
-            '<tr><td colspan="8" class="loading" style="color: var(--error-color);">Error loading data. Please refresh.</td></tr>';
+        showDataLoadError('data', error, false);
     }
+}
+
+function showDataLoadError(step, err, background) {
+    if (background) return;
+    const msg = (err && err.message) ? err.message : (err ? String(err) : '');
+    console.error('Error loading data (' + step + '):', err);
+    hideLoadingIndicator();
+    const tbody = document.getElementById('performanceTableBody');
+    if (tbody) {
+        tbody.innerHTML = '<tr><td colspan="8" class="loading" style="color: var(--error-color);">Error loading data (' + step + '). ' +
+            (msg ? '<br><small>' + escapeHtml(msg) + '</small>' : '') + ' Please refresh.</td></tr>';
+    }
+}
+function escapeHtml(s) {
+    const div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
 }
 
 async function loadAllDataFresh(background = false) {
     try {
+        if (!window.supabaseClient) {
+            await waitForSupabase();
+        }
+        if (!window.supabaseClient) {
+            showDataLoadError('connection', new Error('Supabase client not ready. Check console and refresh.'), background);
+            return;
+        }
+        const supabase = window.supabaseClient;
         // Load all people for employee info (people table has name and employee_id)
-        const { data: users, error: usersError } = await window.supabaseClient
+        const { data: users, error: usersError } = await supabase
             .from('people')
             .select('email, name, employee_id');
 
-        if (usersError) throw usersError;
+        if (usersError) {
+            showDataLoadError('people', usersError, background);
+            return;
+        }
         allUsers = users || [];
         setCachedData(CACHE_KEYS.USERS, allUsers);
 
         // Load all audit assignments
-        const { data: assignments, error: assignError } = await window.supabaseClient
+        const { data: assignments, error: assignError } = await supabase
             .from('audit_assignments')
             .select('*')
             .order('created_at', { ascending: false });
 
-        if (assignError) throw assignError;
+        if (assignError) {
+            showDataLoadError('audit assignments', assignError, background);
+            return;
+        }
         allAssignments = assignments || [];
         setCachedData(CACHE_KEYS.ASSIGNMENTS, allAssignments);
 
         // If no data and no error, likely not authenticated on this origin (e.g. Vercel vs local)
         if (!background && (!allUsers || allUsers.length === 0) && (!allAssignments || allAssignments.length === 0)) {
-            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
                 hideLoadingIndicator();
                 const tbody = document.getElementById('performanceTableBody');
@@ -2001,18 +2031,13 @@ async function loadAllDataFresh(background = false) {
             console.log('Background data refresh completed');
         }
     } catch (error) {
-        console.error('Error loading fresh data:', error);
-        if (!background) {
-            hideLoadingIndicator();
-            document.getElementById('performanceTableBody').innerHTML = 
-                '<tr><td colspan="8" class="loading" style="color: var(--error-color);">Error loading data. Please refresh.</td></tr>';
-        }
+        showDataLoadError('scorecards or audits', error, background);
     }
 }
 
 async function loadScorecardParameters() {
     try {
-        const { data: scorecards, error: scError } = await window.supabaseClient
+        const { data: scorecards, error: scError } = await supabase
             .from('scorecards')
             .select('id, table_name, name, scoring_type');
 
@@ -2025,7 +2050,7 @@ async function loadScorecardParameters() {
         
         for (const scorecard of scorecards) {
             try {
-                const { data: parameters, error } = await window.supabaseClient
+                const { data: parameters, error } = await supabase
                     .from('scorecard_perameters')
                     .select('field_id, error_name, scorecard_id, parameter_type, field_type, error_category')
                     .eq('scorecard_id', scorecard.id)
