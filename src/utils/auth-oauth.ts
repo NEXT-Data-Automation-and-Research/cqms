@@ -375,11 +375,12 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
 
     // Fetch role and other profile data from people table (critical for role-based access control)
     // Try lowercase first, then original case - people.email may be stored with different casing
-    let peopleData: { role?: string; department?: string; designation?: string; team?: string; team_supervisor?: string } | null = null;
+    type PeopleProfile = { role?: string; department?: string; designation?: string; team?: string; team_supervisor?: string };
+    let peopleData: PeopleProfile | null = null;
     const rawEmail = (fullUserData?.email || user.email || '').trim();
     const userEmailLower = rawEmail.toLowerCase();
     try {
-      let peopleResult: typeof peopleData = null;
+      let peopleResult: PeopleProfile | null = null;
       let peopleError: any = null;
       const { data: d1, error: e1 } = await supabase
         .from('people')
