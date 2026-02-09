@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/console-stub.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Action Center | QMS</title>
+  <meta name="description" content="What needs your action – audits, reversals, announcements">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+      "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+      "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+    }
+  }
+  </script>
+  <style>
+    /* High-contrast palette: dark text on light only. No theme vars for critical UI. */
+    .ac-page { --ac-bg: #ffffff; --ac-card-bg: #f8fafc; --ac-border: #e2e8f0; --ac-text: #1e293b; --ac-text-muted: #475569; --ac-green: #15803d; --ac-green-hover: #166534; --ac-green-bg: #dcfce7; }
+    .ac-hero { margin-bottom: 1.75rem; }
+    .ac-hero h1 { margin: 0 0 0.35rem 0; font-size: 1.625rem; font-weight: 700; color: #1e293b; }
+    .ac-hero p { margin: 0; font-size: 1rem; color: #475569; line-height: 1.45; max-width: 32rem; }
+    .ac-section { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 1rem; overflow: hidden; }
+    .ac-section-header { padding: 1rem 1.25rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .ac-section-icon { width: 2rem; height: 2rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #e2e8f0; border-radius: 0.5rem; color: #1e293b; }
+    .ac-section-icon svg { width: 1.125rem; height: 1.125rem; }
+    .ac-section-title-wrap { flex: 1; min-width: 0; }
+    .ac-section-title { margin: 0; font-size: 1rem; font-weight: 700; color: #1e293b; }
+    .ac-section-desc { margin: 0.2rem 0 0 0; font-size: 0.8125rem; color: #475569; }
+    .ac-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75rem; height: 1.5rem; padding: 0 0.5rem; border-radius: 9999px; background: #15803d; color: #ffffff; font-size: 0.8125rem; font-weight: 700; }
+    .ac-body { padding: 1.25rem; }
+    .ac-primary-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.625rem 1.25rem; background: #15803d; color: #ffffff; font-size: 0.9375rem; font-weight: 600; text-decoration: none; border-radius: 0.5rem; border: none; cursor: pointer; transition: background 0.15s; }
+    .ac-primary-btn:hover { background: #166534; color: #ffffff; }
+    .ac-primary-btn svg { width: 1rem; height: 1rem; }
+    .ac-list { margin-top: 1rem; }
+    .ac-item { display: block; padding: 0.75rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-bottom: 0.5rem; text-decoration: none; color: #1e293b; transition: background 0.15s, border-color 0.15s; }
+    .ac-item:last-child { margin-bottom: 0; }
+    .ac-item:hover { background: #f1f5f9; border-color: #15803d; }
+    .ac-item-title { font-weight: 600; font-size: 0.9375rem; color: #1e293b; margin-bottom: 0.2rem; }
+    .ac-item-meta { font-size: 0.8125rem; color: #475569; }
+    .ac-item-cta { font-size: 0.8125rem; font-weight: 600; color: #15803d; margin-top: 0.35rem; display: inline-flex; align-items: center; gap: 0.25rem; }
+    .ac-item-cta svg { width: 0.875rem; height: 0.875rem; }
+    .ac-pill { display: inline-flex; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; }
+    .ac-pill-pending { background: #fef3c7; color: #92400e; }
+    .ac-pill-progress { background: #dbeafe; color: #1e40af; }
+    .ac-view-all { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; }
+    .ac-view-all a { font-size: 0.9375rem; font-weight: 600; color: #15803d; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; }
+    .ac-view-all a:hover { color: #166534; text-decoration: underline; }
+    .ac-view-all a svg { width: 1rem; height: 1rem; }
+    .ac-summary { padding: 1rem 1.25rem; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-bottom: 1rem; font-size: 0.9375rem; color: #1e293b; line-height: 1.5; }
+    .ac-summary strong { color: #1e293b; }
+    .ac-summary .ac-primary-btn { margin-top: 0.75rem; }
+    #action-center-loading { padding: 2.5rem; text-align: center; color: #475569; font-size: 1rem; font-weight: 500; }
+    #action-center-error { padding: 1rem 1.25rem; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 0.5rem; margin-bottom: 1rem; display: none; font-size: 0.9375rem; font-weight: 500; }
+    #action-center-empty { padding: 2.5rem 1.5rem; text-align: center; font-size: 1rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; }
+    #action-center-empty p { margin: 0; color: #1e293b; }
+    #action-center-empty strong { color: #1e293b; }
+    .ac-beta-tag { display: inline-flex; align-items: center; margin-left: 0.5rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; background: #7c3aed; color: #ffffff; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; vertical-align: middle; }
+  </style>
+</head>
+<body class="home-page">
+  <script type="module" src="/js/auth-checker.js"></script>
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+    (async function initSupabaseFirst() {
+      try {
+        await initSupabase();
+        const secureClient = await getSecureSupabase(false);
+        if (secureClient) {
+          window.supabaseClient = secureClient;
+          window.supabaseReady = true;
+          window.dispatchEvent(new CustomEvent('supabaseReady'));
+        }
+      } catch (e) {
+        console.warn('Action Center: Supabase init failed', e);
+      }
+    })();
+  </script>
+
+  <main class="main-content" role="main">
+    <div id="header-container"></div>
+    <div class="px-4 py-4 max-w-2xl mx-auto w-full ac-page">
+      <div class="ac-hero">
+        <h1 class="page-heading-global">Action Center <span class="ac-beta-tag" aria-label="Beta feature">Beta</span></h1>
+        <p>See what you need to do. One list, clear buttons.</p>
+      </div>
+
+      <div id="action-center-error"></div>
+      <div id="action-center-loading">Loading your tasks…</div>
+      <div id="action-center-content" class="hidden">
+        <!-- Audits to complete -->
+        <section id="section-audits" class="ac-section hidden">
+          <div class="ac-section-header">
+            <span class="ac-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></span>
+            <div class="ac-section-title-wrap">
+              <h2 class="ac-section-title">Audits you need to do</h2>
+              <p class="ac-section-desc">Quality checks assigned to you. Open one and complete it.</p>
+            </div>
+            <span class="ac-count" id="badge-audits">0</span>
+          </div>
+          <div class="ac-body">
+            <a id="btn-audits" href="/src/features/create-audit/presentation/new-create-audit.html" class="ac-primary-btn hidden">Open my audits</a>
+            <div id="list-audits" class="ac-list"></div>
+            <div id="view-all-audits" class="ac-view-all hidden"><a href="/src/features/create-audit/presentation/new-create-audit.html">See all my audits <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></a></div>
+          </div>
+        </section>
+
+        <!-- Reversals to review -->
+        <section id="section-reversals-review" class="ac-section hidden">
+          <div class="ac-section-header">
+            <span class="ac-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></span>
+            <div class="ac-section-title-wrap">
+              <h2 class="ac-section-title">Reversals waiting for your decision</h2>
+              <p class="ac-section-desc">Agents asked for a score change. Approve or reject.</p>
+            </div>
+            <span class="ac-count" id="badge-reversals-review">0</span>
+          </div>
+          <div class="ac-body">
+            <div id="text-reversals-review" class="ac-summary"></div>
+            <a id="btn-reversals-review" href="/reversal" class="ac-primary-btn hidden">Review reversals</a>
+            <div id="view-all-reversals-review" class="ac-view-all hidden"><a href="/reversal">Go to Reversal page <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></a></div>
+          </div>
+        </section>
+
+        <!-- My reversals -->
+        <section id="section-my-reversals" class="ac-section hidden">
+          <div class="ac-section-header">
+            <span class="ac-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></span>
+            <div class="ac-section-title-wrap">
+              <h2 class="ac-section-title">My appeal requests</h2>
+              <p class="ac-section-desc">Reversals you asked for. Check status or add info.</p>
+            </div>
+            <span class="ac-count" id="badge-my-reversals">0</span>
+          </div>
+          <div class="ac-body">
+            <a id="btn-my-reversals" href="/reversal" class="ac-primary-btn hidden">Open my reversals</a>
+            <div id="list-my-reversals" class="ac-list"></div>
+            <div id="view-all-my-reversals" class="ac-view-all hidden"><a href="/reversal">See all my reversals <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></a></div>
+          </div>
+        </section>
+
+        <!-- Unread announcements -->
+        <section id="section-announcements" class="ac-section hidden">
+          <div class="ac-section-header">
+            <span class="ac-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></span>
+            <div class="ac-section-title-wrap">
+              <h2 class="ac-section-title">New announcements</h2>
+              <p class="ac-section-desc">Messages from your team. Read and dismiss.</p>
+            </div>
+            <span class="ac-count" id="badge-announcements">0</span>
+          </div>
+          <div class="ac-body">
+            <div id="text-announcements" class="ac-summary"></div>
+            <a id="btn-announcements" href="/platform-notifications" class="ac-primary-btn hidden">Read announcements</a>
+            <div id="view-all-announcements" class="ac-view-all hidden"><a href="/platform-notifications">See all announcements <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></a></div>
+          </div>
+        </section>
+
+        <div id="action-center-empty" class="hidden">
+          <p><strong>All caught up.</strong> There’s nothing that needs your action right now.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+
+    (async function runActionCenter() {
+      const contentEl = document.getElementById('action-center-content');
+      const loadingEl = document.getElementById('action-center-loading');
+      const errorEl = document.getElementById('action-center-error');
+      const emptyEl = document.getElementById('action-center-empty');
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        loadingEl.classList.add('hidden');
+      }
+
+      function hideLoading() {
+        loadingEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+      }
+
+      // Wait for supabaseReady (with polling in case event already fired)
+      await new Promise(function checkReady(resolve) {
+        if (window.supabaseClient && window.supabaseReady) return resolve();
+        const onReady = function() {
+          if (window.supabaseClient) resolve();
+        };
+        window.addEventListener('supabaseReady', onReady, { once: true });
+        const deadline = Date.now() + 5000;
+        const poll = setInterval(function() {
+          if (window.supabaseClient && window.supabaseReady) {
+            clearInterval(poll);
+            window.removeEventListener('supabaseReady', onReady);
+            return resolve();
+          }
+          if (Date.now() >= deadline) {
+            clearInterval(poll);
+            window.removeEventListener('supabaseReady', onReady);
+            return resolve();
+          }
+        }, 100);
+      });
+
+      let supabase = window.supabaseClient;
+      if (!supabase) {
+        try {
+          await initSupabase();
+          supabase = await getSecureSupabase(false);
+          if (supabase) {
+            window.supabaseClient = supabase;
+            window.supabaseReady = true;
+          }
+        } catch (e) {
+          console.warn('Action Center: retry init failed', e);
+        }
+      }
+      if (!supabase) {
+        showError('Unable to connect. Please refresh the page or try logging in again.');
+        return;
+      }
+
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const userEmail = (userInfo.email || '').toLowerCase().trim();
+      const userRole = userInfo.role || 'General User';
+
+      let session = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        session = data.session;
+      } catch (e) {}
+      const userId = session?.user?.id || null;
+
+      const AUDIT_FORM_URL = '/src/features/audit-form/presentation/new-audit-form.html';
+      const REVERSAL_URL = '/reversal';
+      const ANNOUNCEMENTS_URL = '/platform-notifications';
+
+      const REVIEW_STATES = ['team_lead_review', 'qa_review', 'cqc_review'];
+      const PENDING_REVERSAL_STATES = ['submitted', 'team_lead_review', 'team_lead_approved', 'team_lead_rejected', 'qa_review', 'cqc_review', 'cqc_sent_back', 'agent_re_review'];
+
+      try {
+        // 1) Audits to complete (where I am the auditor, pending or in_progress)
+        let audits = [];
+        if (userEmail) {
+          const { data: auditData, error: auditErr } = await supabase
+            .from('audit_assignments')
+            .select('id, employee_email, status, created_at')
+            .eq('auditor_email', userEmail)
+            .in('status', ['pending', 'in_progress'])
+            .order('created_at', { ascending: true })
+            .limit(20);
+          if (!auditErr && auditData) {
+            audits = auditData;
+          }
+        }
+
+        // 2) Reversals to review (current state in team_lead_review, qa_review, cqc_review)
+        let reversalsToReviewCount = 0;
+        const { data: revRequests } = await supabase.from('reversal_requests').select('id, current_state_id').limit(500);
+        if (revRequests && revRequests.length > 0) {
+          const stateIds = revRequests.map(r => r.current_state_id).filter(Boolean);
+          if (stateIds.length > 0) {
+            const { data: states } = await supabase
+              .from('reversal_workflow_states')
+              .select('id, state')
+              .in('id', stateIds)
+              .in('state', REVIEW_STATES);
+            reversalsToReviewCount = (states || []).length;
+          }
+        }
+
+        // 3) My reversals (requested by me or about my audit, still pending)
+        let myReversals = [];
+        if (userEmail) {
+          const { data: byReq } = await supabase.from('reversal_requests').select('id, requested_at, current_state_id').eq('requested_by_email', userEmail).order('requested_at', { ascending: false }).limit(50);
+          const { data: byEmp } = await supabase.from('reversal_requests').select('id, requested_at, current_state_id').eq('employee_email', userEmail).order('requested_at', { ascending: false }).limit(50);
+          const merged = [];
+          const seen = new Set();
+          (byReq || []).concat(byEmp || []).forEach(r => { if (!seen.has(r.id)) { seen.add(r.id); merged.push(r); } });
+          merged.sort((a, b) => new Date(b.requested_at) - new Date(a.requested_at));
+          const myRev = merged.slice(0, 20);
+          if (myRev.length > 0) {
+            const myStateIds = myRev.map(r => r.current_state_id).filter(Boolean);
+            let stateMap = {};
+            if (myStateIds.length > 0) {
+              const { data: myStates } = await supabase
+                .from('reversal_workflow_states')
+                .select('id, state')
+                .in('id', myStateIds);
+              (myStates || []).forEach(s => { stateMap[s.id] = s.state; });
+            }
+            myReversals = myRev
+              .filter(r => PENDING_REVERSAL_STATES.includes(stateMap[r.current_state_id] || 'submitted'))
+              .map(r => ({ ...r, _state: stateMap[r.current_state_id] || 'submitted' }));
+          }
+        }
+
+        // 4) Unread announcements (active notifications not dismissed by me)
+        let unreadCount = 0;
+        if (userId) {
+          const now = new Date().toISOString();
+          const { data: notifs } = await supabase
+            .from('platform_notifications')
+            .select('id, target_roles')
+            .eq('is_active', true)
+            .lte('starts_at', now)
+            .or('expires_at.is.null,expires_at.gt.' + now);
+          let active = (notifs || []).filter(n => !n.target_roles || n.target_roles.length === 0 || (n.target_roles && n.target_roles.includes(userRole)));
+          const ids = active.map(n => n.id);
+          if (ids.length > 0) {
+            const { data: dismissed } = await supabase
+              .from('platform_notification_dismissals')
+              .select('notification_id')
+              .eq('user_id', userId)
+              .in('notification_id', ids);
+            const dismissedSet = new Set((dismissed || []).map(d => d.notification_id));
+            unreadCount = active.filter(n => !dismissedSet.has(n.id)).length;
+          }
+        }
+
+        hideLoading();
+
+        function formatRelativeTime(dateStr) {
+          if (!dateStr) return '';
+          const d = new Date(dateStr);
+          const now = new Date();
+          const diffMs = now - d;
+          const diffMins = Math.floor(diffMs / 60000);
+          const diffHours = Math.floor(diffMs / 3600000);
+          const diffDays = Math.floor(diffMs / 86400000);
+          if (diffMins < 1) return 'Just now';
+          if (diffMins < 60) return diffMins + ' min ago';
+          if (diffHours < 24) return diffHours + ' hr ago';
+          if (diffDays < 7) return diffDays + ' day' + (diffDays !== 1 ? 's' : '') + ' ago';
+          return d.toLocaleDateString();
+        }
+        function formatReversalState(state) {
+          const labels = { submitted: 'Submitted', team_lead_review: 'Team lead review', team_lead_approved: 'Team lead approved', team_lead_rejected: 'Team lead rejected', qa_review: 'QC review', cqc_review: 'CQC review', cqc_sent_back: 'CQC sent back', agent_re_review: 'Agent re-review', approved: 'Approved', rejected: 'Rejected', acknowledged: 'Acknowledged' };
+          return labels[state] || state || 'Pending';
+        }
+
+        let totalActions = audits.length + reversalsToReviewCount + myReversals.length + unreadCount;
+
+        // Render audits
+        const sectionAudits = document.getElementById('section-audits');
+        const badgeAudits = document.getElementById('badge-audits');
+        const listAudits = document.getElementById('list-audits');
+        const viewAllAudits = document.getElementById('view-all-audits');
+        if (audits.length > 0) {
+          sectionAudits.classList.remove('hidden');
+          badgeAudits.textContent = audits.length;
+          const btnAudits = document.getElementById('btn-audits');
+          if (btnAudits) { btnAudits.classList.remove('hidden'); btnAudits.innerHTML = 'Open my audits <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg>'; }
+          listAudits.innerHTML = audits.slice(0, 5).map(a => {
+            const emp = a.employee_email || '—';
+            const assigned = formatRelativeTime(a.created_at);
+            const statusClass = a.status === 'in_progress' ? 'ac-pill-progress' : 'ac-pill-pending';
+            const statusLabel = a.status === 'in_progress' ? 'In progress' : 'Pending';
+            const url = AUDIT_FORM_URL + '?assignment=' + encodeURIComponent(a.id);
+            return '<a href="' + url + '" class="ac-item">' +
+              '<div class="ac-item-title">Audit for ' + escapeHtml(emp) + '</div>' +
+              '<div class="ac-item-meta">Assigned ' + escapeHtml(assigned) + ' · <span class="ac-pill ' + statusClass + '">' + statusLabel + '</span></div>' +
+              '<span class="ac-item-cta">Open this audit <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></span>' +
+              '</a>';
+          }).join('');
+          if (audits.length > 5) viewAllAudits.classList.remove('hidden');
+        }
+
+        // Reversals to review
+        const sectionRevReview = document.getElementById('section-reversals-review');
+        const badgeRevReview = document.getElementById('badge-reversals-review');
+        const textRevReview = document.getElementById('text-reversals-review');
+        const viewAllRevReview = document.getElementById('view-all-reversals-review');
+        if (reversalsToReviewCount > 0) {
+          sectionRevReview.classList.remove('hidden');
+          badgeRevReview.textContent = reversalsToReviewCount;
+          textRevReview.innerHTML = '<strong>' + reversalsToReviewCount + '</strong> reversal' + (reversalsToReviewCount !== 1 ? 's' : '') + ' waiting for your decision. Click the green button below to review.';
+          const btnRev = document.getElementById('btn-reversals-review');
+          if (btnRev) { btnRev.classList.remove('hidden'); }
+          viewAllRevReview.classList.remove('hidden');
+        }
+
+        // My reversals
+        const sectionMyRev = document.getElementById('section-my-reversals');
+        const badgeMyRev = document.getElementById('badge-my-reversals');
+        const listMyRev = document.getElementById('list-my-reversals');
+        const viewAllMyRev = document.getElementById('view-all-my-reversals');
+        if (myReversals.length > 0) {
+          sectionMyRev.classList.remove('hidden');
+          badgeMyRev.textContent = myReversals.length;
+          const btnMyRev = document.getElementById('btn-my-reversals');
+          if (btnMyRev) { btnMyRev.classList.remove('hidden'); }
+          listMyRev.innerHTML = myReversals.slice(0, 5).map(r => {
+            const stateLabel = formatReversalState(r._state || 'submitted');
+            const requested = formatRelativeTime(r.requested_at);
+            return '<a href="' + REVERSAL_URL + '" class="ac-item">' +
+              '<div class="ac-item-title">Appeal from ' + escapeHtml(requested) + '</div>' +
+              '<div class="ac-item-meta"><span class="ac-pill ac-pill-pending">' + escapeHtml(stateLabel) + '</span></div>' +
+              '<span class="ac-item-cta">View this reversal <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7"/></svg></span>' +
+              '</a>';
+          }).join('');
+          if (myReversals.length > 5) viewAllMyRev.classList.remove('hidden');
+        }
+
+        // Announcements
+        const sectionAnn = document.getElementById('section-announcements');
+        const badgeAnn = document.getElementById('badge-announcements');
+        const textAnn = document.getElementById('text-announcements');
+        const viewAllAnn = document.getElementById('view-all-announcements');
+        if (unreadCount > 0) {
+          sectionAnn.classList.remove('hidden');
+          badgeAnn.textContent = unreadCount;
+          textAnn.innerHTML = '<strong>' + unreadCount + '</strong> new announcement' + (unreadCount !== 1 ? 's' : '') + ' to read. Click the green button below.';
+          const btnAnn = document.getElementById('btn-announcements');
+          if (btnAnn) { btnAnn.classList.remove('hidden'); }
+          viewAllAnn.classList.remove('hidden');
+        }
+
+        if (totalActions === 0) emptyEl.classList.remove('hidden');
+
+        // Update sidebar badge if present
+        const sidebarBadge = document.getElementById('actionCenterNotificationBadge');
+        if (sidebarBadge) {
+          sidebarBadge.textContent = totalActions;
+          sidebarBadge.style.display = totalActions > 0 ? 'inline-flex' : 'none';
+        }
+      } catch (err) {
+        console.error('Action Center load error:', err);
+        showError('Something went wrong loading the Action Center. Please try again.');
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+    })();
+  </script>
+</body>
+</html>

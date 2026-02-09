@@ -168,13 +168,17 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 
-// Rate limiting for API endpoints
+// Rate limiting for API endpoints (skip high-frequency auth'd endpoints to avoid "too many requests")
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    const p = (req.baseUrl || '') + (req.path || '');
+    return p === '/api/permissions/check-batch' || req.path === '/permissions/check-batch';
+  },
 });
 
 app.use('/api/', apiLimiter);

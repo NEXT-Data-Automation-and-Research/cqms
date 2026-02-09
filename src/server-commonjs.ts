@@ -201,7 +201,12 @@ logWithTimestamp('debug', 'Configuring rate limiting...');
 // Endpoints that are called frequently and should be exempt from rate limiting
 // These are lightweight, public endpoints used for app initialization
 // NOTE: This limiter is mounted at `/api/`, so `req.path` here is relative (e.g. `/env`)
-const rateLimitExemptPaths = ['/env', '/version', '/csrf'];
+const rateLimitExemptPaths = [
+  '/env',
+  '/version',
+  '/csrf',
+  '/permissions/check-batch', // sidebar permission check on every load (auth'd); path is relative to /api
+];
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

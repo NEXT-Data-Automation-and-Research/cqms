@@ -21,6 +21,19 @@ export const routes: RouteConfig[] = [
     }
   },
   {
+    path: '/src/features/action-center/presentation/action-center.html',
+    slug: 'action-center',
+    meta: {
+      label: 'Action Center',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z M4 14h5q1 0 1 1v5q0 1-1 1H4q-1 0-1-1v-5q0-1 1-1z M17.5 17.5m-3.5 0a3.5 3.5 0 1 1 7 0a3.5 3.5 0 1 1-7 0"/>',
+      roles: ['all'],
+      sidebar: true,
+      notificationBadgeId: 'actionCenterNotificationBadge',
+      order: 1.5,
+      permissionResource: { name: 'action-center', type: 'page' }
+    }
+  },
+  {
     path: '/src/features/dashboard/presentation/new-auditors-dashboard.html',
     slug: 'dashboard',
     meta: {
@@ -252,7 +265,7 @@ export const routes: RouteConfig[] = [
     slug: 'admin-portal',
     meta: {
       label: 'Admin Portal',
-      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h.01 M15 10h.01 M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z"/>',
       roles: ['Super Admin'],
       sidebar: true,
       order: 10.5,
