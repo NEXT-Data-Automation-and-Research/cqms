@@ -10734,7 +10734,24 @@ window.closeAuditForm = async function() {
         window.pauseTimer();
     }
     
-    // Navigate back to Create Audit page (absolute path works from any route)
+    // If opened in edit mode from audit-view, return to audit-view with same audit
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    const scorecardId = urlParams.get('scorecard');
+    const tableName = urlParams.get('table');
+    if (editId && tableName) {
+        const returnUrl = `/audit-view.html?id=${encodeURIComponent(editId)}&scorecard=${encodeURIComponent(scorecardId || '')}&table=${encodeURIComponent(tableName)}&mode=view`;
+        window.location.href = returnUrl;
+        return;
+    }
+    
+    // If we have history (e.g. user navigated from another page), go back
+    if (window.history.length > 1) {
+        window.history.back();
+        return;
+    }
+    
+    // Default: Create Audit page
     window.location.href = '/create-audit';
 };
 

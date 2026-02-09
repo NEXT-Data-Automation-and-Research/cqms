@@ -48,7 +48,7 @@ export class NavigationHelpers {
   }
 
   /**
-   * Close audit form
+   * Close audit form. When opened in edit mode from audit-view, returns to audit-view; otherwise history.back() or /create-audit.
    */
   async closeAuditForm(): Promise<void> {
     try {
@@ -62,7 +62,19 @@ export class NavigationHelpers {
         (window as any).pauseTimer();
       }
       
-      // Navigate back to Create Audit page (use absolute path so it works from any route)
+      const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+      const editId = params.get('edit');
+      const scorecardId = params.get('scorecard');
+      const tableName = params.get('table');
+      if (editId && tableName) {
+        const returnUrl = `/audit-view.html?id=${encodeURIComponent(editId)}&scorecard=${encodeURIComponent(scorecardId || '')}&table=${encodeURIComponent(tableName)}&mode=view`;
+        window.location.href = returnUrl;
+        return;
+      }
+      if (typeof window !== 'undefined' && window.history.length > 1) {
+        window.history.back();
+        return;
+      }
       window.location.href = '/create-audit';
     } catch (error) {
       logError('Error closing audit form:', error);
