@@ -13,7 +13,6 @@ import { requireAdmin } from '../utils/admin-check.js';
 import { createLogger } from '../../utils/logger.js';
 import { PEOPLE_USER_MANAGEMENT_FIELDS } from '../../core/constants/field-whitelists.js';
 import { sanitizeString, isValidEmail } from '../utils/validation.js';
-import { generateDefaultPasswordHash } from '../../utils/password-utils.js';
 import { validateRequestBody, VALIDATION_RULES, validateRequestSize } from '../middleware/validation.middleware.js';
 
 const router = Router();
@@ -144,7 +143,6 @@ router.post('/',
       intercom_admin_id: userData.intercom_admin_id ? sanitizeString(userData.intercom_admin_id, 50) : null,
       intercom_admin_alias: userData.intercom_admin_alias ? sanitizeString(userData.intercom_admin_alias, 100) : null,
       is_active: userData.is_active ?? true,
-      password_hash: generateDefaultPasswordHash(sanitizedEmail),
       login_count: 0,
       last_login: null
     };

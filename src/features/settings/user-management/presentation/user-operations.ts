@@ -6,7 +6,7 @@
 import { ModalManager } from './modal-manager.js';
 import { UserManagementService } from '../application/user-management-service.js';
 import { userManagementState } from './state.js';
-import { logError, logInfo, logWarn } from '../../../../utils/logging-helper.js';
+import { logError } from '../../../../utils/logging-helper.js';
 import { escapeHtml } from '../../../../utils/html-sanitizer.js';
 import { getUserFriendlyErrorMessage } from '../../../../utils/error-sanitizer.js';
 import type { UpdateUserData, UserRole } from '../domain/types.js';
@@ -204,31 +204,17 @@ export class UserOperationsHandler {
       this.modalManager.closeCreateModal();
       await this.loadInitialData();
 
-      // Show success dialog with credentials
-      const credentials = `Email: ${escapeHtml(createData.email)}\nPassword: ${escapeHtml(createData.email)}`;
-      
+      // Success: no password shown; auth is via OAuth (e.g. Google)
       if (window.confirmationDialog) {
-        const confirmed = await window.confirmationDialog.show({
+        await window.confirmationDialog.show({
           title: 'User Created Successfully',
-          message: `User created successfully!\n\nName: ${escapeHtml(createData.name)}\nEmail: ${escapeHtml(createData.email)}\nRole: ${escapeHtml(createData.role)}\n\nDefault Password: ${escapeHtml(createData.email)}\n\nClick "Copy Credentials" to copy login details to share with the user.`,
-          confirmText: 'Copy Credentials',
+          message: `User created successfully.\n\nName: ${escapeHtml(createData.name)}\nEmail: ${escapeHtml(createData.email)}\nRole: ${escapeHtml(createData.role)}\n\nThey can sign in with their organization Google account.`,
+          confirmText: 'OK',
           cancelText: 'Close',
           type: 'success'
         });
-
-        if (confirmed) {
-          await this.copyCredentials(credentials);
-        }
       } else {
-        // Fallback to alert if confirmationDialog is not available
-        const message = `User created successfully!\n\nName: ${createData.name}\nEmail: ${createData.email}\nRole: ${createData.role}\n\nDefault Password: ${createData.email}`;
-        alert(message);
-        // Try to copy credentials automatically
-        try {
-          await this.copyCredentials(credentials);
-        } catch (err) {
-          logWarn('[UserOperationsHandler] Failed to copy credentials:', err);
-        }
+        alert(`User created successfully.\n\nName: ${createData.name}\nEmail: ${createData.email}\nRole: ${createData.role}\n\nThey can sign in with their organization Google account.`);
       }
     } catch (error) {
       logError('[UserOperationsHandler] Error creating user:', error);
@@ -244,52 +230,6 @@ export class UserOperationsHandler {
       } else {
         alert(errorMessage);
       }
-    }
-  }
-
-  /**
-   * Copy credentials to clipboard
-   */
-  private async copyCredentials(credentials: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(credentials);
-      if (window.confirmationDialog) {
-        await window.confirmationDialog.show({
-          title: 'Credentials Copied',
-          message: 'User credentials have been copied to clipboard!\n\n' + credentials,
-          confirmText: 'OK',
-          cancelText: 'Close',
-          type: 'success'
-        });
-      } else {
-        logInfo('[UserOperationsHandler] Credentials copied to clipboard');
-      }
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = credentials;
-      textArea.style.position = 'fixed';
-      textArea.style.left = '-999999px';
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        if (window.confirmationDialog) {
-          await window.confirmationDialog.show({
-            title: 'Credentials Copied',
-            message: 'User credentials have been copied to clipboard!\n\n' + credentials,
-            confirmText: 'OK',
-            cancelText: 'Close',
-            type: 'success'
-          });
-        } else {
-          logInfo('[UserOperationsHandler] Credentials copied to clipboard (fallback method)');
-        }
-      } catch (fallbackErr) {
-        // If copy fails, just log - don't show alert as it's not critical
-        logWarn('[UserOperationsHandler] Failed to copy credentials:', fallbackErr);
-      }
-      document.body.removeChild(textArea);
     }
   }
 }

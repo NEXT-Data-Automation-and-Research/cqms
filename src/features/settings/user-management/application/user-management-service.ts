@@ -10,7 +10,6 @@ import type { UserStatistics, CreateUserData, UpdateUserData, BulkEditData, CSVU
 import { createValidationError, createBusinessError } from '../../../../core/errors/app-error.js';
 import { logError, logInfo } from '../../../../utils/logging-helper.js';
 import { sanitizeString } from '../../../../api/utils/validation.js';
-import { generateDefaultPasswordHash } from '../../../../utils/password-utils.js';
 import type { UserRole } from '../domain/types.js';
 
 export class UserManagementService extends BaseService {
@@ -136,10 +135,7 @@ export class UserManagementService extends BaseService {
         const sanitizedIntercomAdminAlias = data.intercom_admin_alias ? sanitizeString(data.intercom_admin_alias, 100) : null;
         const sanitizedEmployeeId = data.employee_id ? sanitizeString(data.employee_id, 50) : null;
 
-        // Generate default password hash
-        // SECURITY: Currently uses email as password (for compatibility)
-        // TODO: Implement proper password generation and hashing
-        const passwordHash = generateDefaultPasswordHash(sanitizedEmail);
+        // No password: auth is via OAuth (e.g. Google); people table is for profile/role only.
         const userData: Partial<User> = {
           email: sanitizedEmail,
           name: sanitizedName,
@@ -155,7 +151,6 @@ export class UserManagementService extends BaseService {
           is_active: data.is_active,
           intercom_admin_id: sanitizedIntercomAdminId,
           intercom_admin_alias: sanitizedIntercomAdminAlias,
-          password_hash: passwordHash,
           login_count: 0,
           last_login: null
         };
@@ -356,7 +351,6 @@ export class UserManagementService extends BaseService {
             team_supervisor: sanitizedTeamSupervisor,
             quality_mentor: sanitizedQualityMentor,
             is_active: (row.Status || 'Active').toLowerCase() === 'active',
-            password_hash: generateDefaultPasswordHash(sanitizedEmail),
             login_count: 0,
             last_login: null
           });
