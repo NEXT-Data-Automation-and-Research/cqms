@@ -130,7 +130,25 @@ export const verifyAuth: RequestHandler = async (
 
     // Verify token with Supabase (use admin client for reliable verification)
     const supabaseAdmin = getServerSupabase();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    let user: any;
+    let error: any;
+    try {
+      const result = await supabaseAdmin.auth.getUser(token);
+      user = result.data?.user;
+      error = result.error;
+    } catch (fetchError: any) {
+      const cause = fetchError?.cause || fetchError;
+      const isNetwork = cause?.code === 'ENOTFOUND' || cause?.code === 'ECONNREFUSED' || cause?.code === 'ETIMEDOUT' || cause?.syscall === 'getaddrinfo';
+      if (isNetwork) {
+        logger.warn('Cannot reach Supabase (network/DNS):', cause?.message || fetchError?.message);
+        res.status(503).json({
+          error: 'Service temporarily unavailable',
+          detail: 'Cannot reach Supabase. Check internet connection and that your SUPABASE_URL host is reachable from this network (DNS/firewall).',
+        });
+        return;
+      }
+      throw fetchError;
+    }
 
     if (error || !user) {
       logger.warn('Invalid token:', error?.message);
@@ -175,7 +193,19 @@ export const optionalAuth: RequestHandler = async (
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+      let user: any;
+      let error: any;
+      try {
+        const result = await supabaseAdmin.auth.getUser(token);
+        user = result.data?.user;
+        error = result.error;
+      } catch (fetchErr: any) {
+        const cause = fetchErr?.cause || fetchErr;
+        if (cause?.code === 'ENOTFOUND' || cause?.code === 'ECONNREFUSED' || cause?.code === 'ETIMEDOUT') {
+          logger.warn('OptionalAuth: cannot reach Supabase:', cause?.message);
+        }
+        error = fetchErr;
+      }
 
       if (!error && user) {
         supabaseReq.user = {
