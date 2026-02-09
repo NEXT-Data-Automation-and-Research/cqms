@@ -90,6 +90,7 @@ export class SidebarUserProfile {
       const img = document.createElement('img')
       img.src = profilePicture
       img.alt = user.name || 'Profile Picture'
+      img.referrerPolicy = 'no-referrer'
       img.className = 'profile-picture'
       img.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;'
       

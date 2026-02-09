@@ -1352,7 +1352,7 @@
           </div>
         </div>
         <div class="relative group" id="userProfileContainer">
-          <div id="userAvatar" class="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-white text-xs font-medium cursor-pointer hover:bg-primary-dark transition-colors">
+          <div id="userAvatar" class="w-7 h-7 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white text-xs font-medium cursor-pointer hover:bg-primary-dark transition-colors">
             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 4c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88C7.55 15.8 9.68 15 12 15s4.45.8 6.14 2.12C16.43 19.18 14.03 20 12 20z"/>
             </svg>
@@ -1375,7 +1375,7 @@
             <!-- Profile Header -->
             <div class="p-4 border-b border-gray-200 bg-gradient-to-r from-primary/5 to-primary/10">
               <div class="flex items-center gap-3">
-                <div id="dropdownAvatar" class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white text-base font-semibold flex-shrink-0">
+                <div id="dropdownAvatar" class="w-12 h-12 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white text-base font-semibold flex-shrink-0">
                   <!-- Will be populated by JS -->
                 </div>
                 <div class="flex-1 min-w-0">
@@ -1449,7 +1449,7 @@
         <div class="flex items-center justify-between gap-4 flex-wrap">
           <!-- Left: Avatar + Name + Role + Channel -->
           <div class="flex items-center gap-3">
-            <div id="dashboardAvatar" class="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white text-sm font-bold shadow ring-1 ring-gray-200 flex-shrink-0">
+            <div id="dashboardAvatar" class="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary flex items-center justify-center text-white text-sm font-bold shadow ring-1 ring-gray-200 flex-shrink-0">
               <!-- Avatar -->
             </div>
             <div class="flex flex-col gap-1.5">
@@ -3672,11 +3672,13 @@ function updateUserAvatar(userInfo) {
   const avatarEl = document.getElementById('userAvatar');
   if (!avatarEl) return;
 
+  const initials = userInfo.name ? userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '';
+  avatarEl.dataset.initials = initials;
+
   const safeAvatar = userInfo.avatar && /^(https?:|\/)/.test(String(userInfo.avatar)) ? userInfo.avatar : '';
   if (safeAvatar) {
-    avatarEl.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover">`;
+    avatarEl.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="var p=this.parentElement; var s=document.createElement('span'); s.className='text-xs font-semibold'; s.textContent=p.dataset.initials||''; p.innerHTML=''; p.appendChild(s);">`;
   } else if (userInfo.name) {
-    const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
     avatarEl.innerHTML = `<span class="text-xs font-semibold">${escapeHtml(initials)}</span>`;
   }
   
@@ -3700,11 +3702,12 @@ async function populatePremiumDashboard() {
   
   // Update dashboard avatar (safe URL + escape to prevent XSS)
   if (dashboardAvatar) {
+    const initials = userInfo.name ? userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2) : '';
+    dashboardAvatar.dataset.initials = initials;
     const safeAvatar = userInfo.avatar && /^(https?:|\/)/.test(String(userInfo.avatar)) ? userInfo.avatar : '';
     if (safeAvatar) {
-      dashboardAvatar.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover">`;
+      dashboardAvatar.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover" referrerpolicy="no-referrer" onerror="var p=this.parentElement; var s=document.createElement('span'); s.className='text-sm font-bold'; s.textContent=p.dataset.initials||''; p.innerHTML=''; p.appendChild(s);">`;
     } else if (userInfo.name) {
-      const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
       dashboardAvatar.innerHTML = `<span class="text-sm font-bold">${escapeHtml(initials)}</span>`;
     }
   }

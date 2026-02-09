@@ -44,9 +44,9 @@ export class ProfileRenderer {
         <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
           <div class="flex items-center gap-6">
             <div class="relative">
-              <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white text-2xl font-semibold">
+              <div class="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center text-white text-2xl font-semibold">
                 ${profile.avatar_url 
-                  ? `<img src="${escapeHtml(profile.avatar_url)}" alt="Profile" class="w-24 h-24 rounded-full object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                  ? `<img src="${escapeHtml(profile.avatar_url)}" alt="Profile" class="w-24 h-24 rounded-full object-cover" referrerpolicy="no-referrer" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                      <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-primary-dark hidden items-center justify-center text-white text-2xl font-semibold">${escapeHtml(initials)}</div>`
                   : escapeHtml(initials)
                 }

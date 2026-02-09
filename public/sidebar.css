@@ -1127,6 +1127,7 @@ body {
   flex-shrink: 0;
   border: 0.0625rem solid rgba(255, 255, 255, 0.2);
   transition: all 0.25s ease;
+  overflow: hidden;
 }
 
 .user-avatar svg {
