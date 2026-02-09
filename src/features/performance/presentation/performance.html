@@ -1945,6 +1945,22 @@ async function loadAllDataFresh(background = false) {
         allAssignments = assignments || [];
         setCachedData(CACHE_KEYS.ASSIGNMENTS, allAssignments);
 
+        // If no data and no error, likely not authenticated on this origin (e.g. Vercel vs local)
+        if (!background && (!allUsers || allUsers.length === 0) && (!allAssignments || allAssignments.length === 0)) {
+            const { data: { session } } = await window.supabaseClient.auth.getSession();
+            if (!session) {
+                hideLoadingIndicator();
+                const tbody = document.getElementById('performanceTableBody');
+                if (tbody) {
+                    const authPath = '/src/auth/presentation/auth-page.html';
+                    tbody.innerHTML = '<tr><td colspan="8" class="loading" style="color: var(--text-secondary); padding: 2rem; text-align: center;">' +
+                        'No data loaded. On the hosted site your session is separate from localhost. ' +
+                        '<a href="' + authPath + '" style="color: var(--primary-color); font-weight: 500;">Log in on this site</a>, then refresh this page.</td></tr>';
+                }
+                return;
+            }
+        }
+
         // Load scorecard parameters for error parameter mapping
         await loadScorecardParameters();
 
