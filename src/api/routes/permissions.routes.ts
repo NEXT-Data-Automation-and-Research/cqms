@@ -11,7 +11,8 @@ import { Router } from 'express';
 import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/permission.middleware.js';
 import { permissionService } from '../../core/permissions/permission.service.js';
-import { ALL_RESOURCES_FOR_UI } from '../../core/permissions/permission-resources.js';
+import { ALL_RESOURCES_FOR_UI, RuleType } from '../../core/permissions/permission-resources.js';
+import type { PermissionRuleType } from '../../core/permissions/permission-resources.js';
 import { createLogger } from '../../utils/logger.js';
 import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
 import { logSecurityEvent } from '../utils/audit-logger.js';
@@ -20,6 +21,12 @@ import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js'
 const logger = createLogger('PermissionsAPI');
 const isProduction = () => process.env.NODE_ENV === 'production';
 const router = Router();
+
+/** Narrow request ruleType string to PermissionRuleType; default 'feature' if invalid. */
+function toPermissionRuleType(s: string): PermissionRuleType {
+  const v = s.toLowerCase().trim();
+  return (RuleType as readonly string[]).includes(v) ? (v as PermissionRuleType) : 'feature';
+}
 
 /**
  * POST /api/permissions/check
@@ -65,7 +72,7 @@ router.post('/check', verifyAuth, async (req: SupabaseRequest, res) => {
       userEmail,
       userRole,
       resourceName,
-      ruleType
+      toPermissionRuleType(ruleType)
     );
 
     logger.info(`Permission check result: ${userEmail} -> ${resourceName}/${ruleType} = ${check.hasAccess} (${check.reason})`);
