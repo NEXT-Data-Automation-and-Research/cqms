@@ -8,6 +8,20 @@ import { createLogger } from '../../utils/logger.js';
 
 const logger = createLogger('ErrorHandler');
 
+/** Patterns that indicate DB/schema leakage (table/column names, etc.) */
+const SCHEMA_LEAK_PATTERN = /column|table|relation|constraint|sql|database|connection|password|secret|syntax|duplicate key|violates|foreign key|primary key|unique constraint|does not exist|pg_|public\./i;
+
+/**
+ * Return a client-safe error message (no table/column names or schema details in production).
+ * Non-breaking: response shape unchanged; only the string value is sanitized.
+ */
+export function sanitizeErrorMessage(error: any, isProduction: boolean): string {
+  const msg = error?.message != null ? String(error.message) : 'An error occurred';
+  if (!isProduction) return msg;
+  if (SCHEMA_LEAK_PATTERN.test(msg)) return 'An error occurred';
+  return msg;
+}
+
 /**
  * Sanitize error for client response
  * Prevents information leakage in production
@@ -35,11 +49,12 @@ function sanitizeError(error: any, isDevelopment: boolean): any {
   // Never expose SQL errors, database details, or file paths
   if (error.message) {
     const message = error.message.toLowerCase();
-    if (message.includes('sql') || 
-        message.includes('database') || 
+    if (message.includes('sql') ||
+        message.includes('database') ||
         message.includes('connection') ||
         message.includes('password') ||
-        message.includes('secret')) {
+        message.includes('secret') ||
+        SCHEMA_LEAK_PATTERN.test(error.message)) {
       sanitized.error = 'Database error occurred';
       delete sanitized.stack;
     }

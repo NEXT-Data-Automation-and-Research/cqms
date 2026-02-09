@@ -9272,13 +9272,10 @@ async function displayPullConversationsList(conversations) {
             row.style.cursor = 'grab';
         });
         
-        // Extract subject and strip HTML tags
+        // Extract subject and strip HTML tags (without parsing as HTML to prevent XSS)
         let subject = conversation.source?.subject || (conversation.source?.body ? conversation.source.body.substring(0, 50) : '') || 'No subject';
-        // Strip HTML tags from subject
         if (subject && typeof subject === 'string') {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = subject;
-            subject = tempDiv.textContent || tempDiv.innerText || subject;
+            subject = subject.replace(/<[^>]*>/g, '').trim() || subject;
         }
         const rating = conversation.conversation_rating?.rating || '-';
         const state = conversation.state || 'unknown';
@@ -15328,7 +15325,7 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${currentScorecard.name}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(currentScorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
     }
     
     currentParameters.forEach(param => {

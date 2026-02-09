@@ -11,6 +11,7 @@ import { Router, Response } from 'express';
 import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { NOTIFICATION_FIELDS } from '../../core/constants/field-whitelists.js';
+import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
 
 const router = Router();
 const logger = createLogger('NotificationsAPI');
@@ -63,7 +64,15 @@ router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promis
     const supabase = req.supabase!;
     const userId = req.user!.id;
 
-    const { title, body, icon_url, image_url, action_url, type, category, metadata } = req.body;
+    const raw = req.body as { title?: string; body?: string; icon_url?: string; image_url?: string; action_url?: string; type?: string; category?: string; metadata?: object };
+    const title = raw.title ? sanitizeString(String(raw.title).trim(), INPUT_LIMITS.TITLE) : '';
+    const body = raw.body ? sanitizeString(String(raw.body).trim(), INPUT_LIMITS.BODY_LONG) : '';
+    const icon_url = raw.icon_url ? sanitizeString(String(raw.icon_url).trim(), INPUT_LIMITS.URL) : null;
+    const image_url = raw.image_url ? sanitizeString(String(raw.image_url).trim(), INPUT_LIMITS.URL) : null;
+    const action_url = raw.action_url ? sanitizeString(String(raw.action_url).trim(), INPUT_LIMITS.URL) : null;
+    const type = raw.type ? sanitizeString(String(raw.type).trim(), INPUT_LIMITS.TYPE) : 'info';
+    const category = raw.category ? sanitizeString(String(raw.category).trim(), INPUT_LIMITS.CATEGORY) : null;
+    const metadata = raw.metadata && typeof raw.metadata === 'object' ? raw.metadata : {};
 
     // Validate required fields
     if (!title || !body) {
@@ -77,12 +86,12 @@ router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promis
         user_id: userId,
         title,
         body,
-        icon_url: icon_url || null,
-        image_url: image_url || null,
-        action_url: action_url || null,
-        type: type || 'info',
-        category: category || null,
-        metadata: metadata || {},
+        icon_url,
+        image_url,
+        action_url,
+        type,
+        category,
+        metadata,
         status: 'pending',
       })
       .select()

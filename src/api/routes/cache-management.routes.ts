@@ -10,6 +10,7 @@ import { Router, Response } from 'express';
 import { SupabaseRequest, verifyAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/permission.middleware.js';
 import { createLogger } from '../../utils/logger.js';
+import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
 
 const router = Router();
 const logger = createLogger('CacheManagementRoutes');
@@ -31,7 +32,9 @@ router.post(
   async (req: SupabaseRequest, res: Response): Promise<void> => {
     try {
       const user = req.user;
-      const { reason, clearType = 'full' } = req.body;
+      const rawReason = req.body?.reason;
+      const reason = rawReason !== undefined ? sanitizeString(String(rawReason).trim(), INPUT_LIMITS.REASON) : undefined;
+      const clearType = req.body?.clearType ?? 'full';
 
       if (!user?.email || !user?.id) {
         res.status(401).json({ error: 'Authentication required' });

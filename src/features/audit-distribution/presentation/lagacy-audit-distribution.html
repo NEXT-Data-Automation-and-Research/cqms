@@ -1777,7 +1777,7 @@ async function loadAssignedAudits() {
     } catch (error) {
         console.error('Error loading assigned audits:', error);
         const tbody = document.getElementById('assignedAuditsTableBody');
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading assignments: ${error.message || 'Unknown error'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading assignments: ${escapeHtml((error && error.message) ? error.message : 'Unknown error')}</td></tr>`;
     }
 }
 
@@ -2003,7 +2003,7 @@ async function loadAgentWiseSummary() {
         console.error('Error loading agent-wise summary:', error);
         const tbody = document.getElementById('agentWiseSummaryTableBody');
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading summary: ${error.message || 'Unknown error'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading summary: ${escapeHtml((error && error.message) ? error.message : 'Unknown error')}</td></tr>`;
         }
     }
 }

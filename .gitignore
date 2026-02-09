@@ -18,6 +18,8 @@ pnpm-lock.yaml
 .env.production
 .env.test
 .env.staging
+cqms.env
+env-config.js
 
 # OS files
 .DS_Store

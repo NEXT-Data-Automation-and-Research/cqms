@@ -1262,7 +1262,7 @@ async function loadMetricsData() {
         
     } catch (error) {
         console.error('Error loading metrics:', error);
-        loadingIndicator.innerHTML = `<p style="color: #ef4444;">Error loading metrics: ${error.message}</p>`;
+        loadingIndicator.innerHTML = `<p style="color: #ef4444;">Error loading metrics: ${escapeHtml((error && error.message) ? error.message : 'Unknown error')}</p>`;
     }
 }
 

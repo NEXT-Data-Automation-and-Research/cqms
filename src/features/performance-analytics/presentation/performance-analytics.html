@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/console-stub.js"></script>
+  <meta charset="UTF-8">
+  <title>Performance Analytics | CQMS</title>
+  <meta name="description" content="Performance analytics by individual, team, role, designation, and more">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <script type="importmap">
+  {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
+  </script>
+  <script type="module" src="/js/auth-checker.js"></script>
+  <script type="module">
+    import { initSupabase } from '/js/utils/supabase-init.js';
+    import { getSecureSupabase } from '/js/utils/secure-supabase.js';
+    (async function () {
+      try {
+        await initSupabase();
+        const secureClient = await getSecureSupabase(false);
+        window.supabaseClient = secureClient;
+        window.supabaseReady = true;
+        window.dispatchEvent(new CustomEvent('supabaseReady'));
+      } catch (e) {
+        console.error('Supabase init error:', e);
+      }
+    })();
+  </script>
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    .main-content { overflow-x: hidden; max-width: calc(100vw - var(--sidebar-collapsed)) !important; box-sizing: border-box; width: 100%; }
+    .sidebar:not(.collapsed) ~ .main-content { max-width: calc(100vw - var(--sidebar-width)) !important; }
+    .pa-page-heading { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--text-color); margin: 1.5rem 0 1rem; }
+    .pa-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .pa-toolbar label { font-size: 0.875rem; color: var(--text-secondary); }
+    .pa-toolbar input[type="date"] { padding: 0.4rem 0.5rem; border: 1px solid var(--border-light); border-radius: 0.375rem; background: var(--background-white); color: var(--text-color); }
+    .pa-toolbar button { padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer; font-size: 0.875rem; }
+    .pa-toolbar button.secondary { background: var(--background-white); color: var(--text-color); border: 1px solid var(--border-light); }
+    .pa-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-light); }
+    .pa-tab { padding: 0.5rem 1rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem; font-weight: 500; }
+    .pa-tab:hover { color: var(--text-color); }
+    .pa-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+    .pa-panel { display: none; }
+    .pa-panel.active { display: block; }
+    .pa-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .pa-card { background: var(--background-white); border: 1px solid var(--border-light); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .pa-card .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
+    .pa-card .value { font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
+    .pa-chart-wrap { max-width: 100%; height: 280px; margin-bottom: 1.5rem; }
+    .pa-chart-wrap.wide { height: 320px; }
+    .pa-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+    .pa-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .pa-table th, .pa-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border-light); }
+    .pa-table th { background: var(--background-secondary); font-weight: 600; color: var(--text-color); }
+    .pa-table tr:hover { background: var(--background-secondary); }
+    .pa-loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); }
+    .pa-loading.spinner { flex-direction: column; gap: 0.5rem; }
+    .pa-loading .spinner { width: 2rem; height: 2rem; border: 2px solid var(--border-light); border-top-color: var(--primary-color); border-radius: 50%; animation: pa-spin 0.8s linear infinite; }
+    @keyframes pa-spin { to { transform: rotate(360deg); } }
+    .pa-empty { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem; }
+    .pa-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; background: rgba(26,115,62,0.15); color: var(--primary-color); }
+    [data-theme="dark"] .pa-card { background: var(--background-secondary); border-color: rgba(255,255,255,0.1); }
+    [data-theme="dark"] .pa-table th { background: rgba(255,255,255,0.06); }
+  </style>
+</head>
+<body>
+  <main class="main-content" role="main">
+    <div style="max-width: 100%; box-sizing: border-box; padding: 0 1rem 2rem;">
+      <h1 class="pa-page-heading">Performance Analytics</h1>
+
+      <div id="paLoading" class="pa-loading spinner">
+        <div class="spinner"></div>
+        <span>Loading analytics…</span>
+      </div>
+
+      <div id="paContent" style="display: none;">
+        <div class="pa-toolbar">
+          <label>From</label>
+          <input type="date" id="paStartDate">
+          <label>To</label>
+          <input type="date" id="paEndDate">
+          <button type="button" id="paApply">Apply</button>
+          <button type="button" id="paReset" class="secondary">Reset</button>
+          <span id="paScopeBadge" class="pa-badge" style="margin-left: auto;"></span>
+        </div>
+
+        <div class="pa-tabs" id="paTabs"></div>
+
+        <div id="paOverview" class="pa-panel active">
+          <div class="pa-cards" id="paKpiCards"></div>
+          <div class="pa-chart-wrap wide"><canvas id="paChartTrend"></canvas></div>
+          <div class="pa-chart-wrap"><canvas id="paChartErrors"></canvas></div>
+        </div>
+
+        <div id="paIndividual" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartIndividual"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableIndividual"><thead><tr><th>Name / Email</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paTeam" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartTeam"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableTeam"><thead><tr><th>Team</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paRole" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartRole"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableRole"><thead><tr><th>Role</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paDesignation" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartDesignation"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableDesignation"><thead><tr><th>Designation</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paSupervisor" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartSupervisor"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableSupervisor"><thead><tr><th>Supervisor</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paQualityMentor" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartQualityMentor"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableQualityMentor"><thead><tr><th>Quality Mentor</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="paErrors" class="pa-panel">
+          <div class="pa-chart-wrap"><canvas id="paChartErrorBreakdown"></canvas></div>
+          <div class="pa-table-wrap"><table class="pa-table" id="paTableErrors"><thead><tr><th>Error type</th><th>Count</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div id="paError" class="pa-empty" style="display: none;"></div>
+    </div>
+  </main>
+
+  <script type="module">
+    (async function () {
+      await new Promise((r) => { if (window.supabaseReady) r(); else window.addEventListener('supabaseReady', r, { once: true }); });
+
+      const startEl = document.getElementById('paStartDate');
+      const endEl = document.getElementById('paEndDate');
+      const applyBtn = document.getElementById('paApply');
+      const resetBtn = document.getElementById('paReset');
+      const loadingEl = document.getElementById('paLoading');
+      const contentEl = document.getElementById('paContent');
+      const errorEl = document.getElementById('paError');
+      const scopeBadge = document.getElementById('paScopeBadge');
+
+      function setDefaultDates() {
+        const end = new Date();
+        const start = new Date();
+        start.setMonth(start.getMonth() - 1);
+        startEl.value = start.toISOString().slice(0, 10);
+        endEl.value = end.toISOString().slice(0, 10);
+      }
+
+      function getFilters() {
+        return {
+          startDate: startEl.value ? new Date(startEl.value).toISOString() : undefined,
+          endDate: endEl.value ? new Date(endEl.value + 'T23:59:59.999Z').toISOString() : undefined
+        };
+      }
+
+      let currentData = null;
+      const chartInstances = [];
+
+      function destroyCharts() {
+        chartInstances.forEach((c) => { if (c) c.destroy(); });
+        chartInstances.length = 0;
+      }
+
+      function getUserEmail() {
+        try {
+          return window.supabaseClient?.auth?.getUser?.().then((r) => r?.data?.user?.email) ?? null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function renderKpiCards(data) {
+        const container = document.getElementById('paKpiCards');
+        const audits = data.rawAudits || [];
+        const total = audits.length;
+        const avgScore = total ? audits.reduce((s, r) => s + (Number(r.average_score) || 0), 0) / total : 0;
+        const passCount = audits.filter((r) => (r.passing_status || '').toLowerCase().includes('pass')).length;
+        const passRate = total ? (passCount / total) * 100 : 0;
+        const totalErrors = audits.reduce((s, r) => s + (Number(r.total_errors_count) || 0), 0);
+        container.innerHTML = `
+          <div class="pa-card"><div class="label">Total Audits</div><div class="value">${total}</div></div>
+          <div class="pa-card"><div class="label">Avg Score</div><div class="value">${avgScore.toFixed(1)}</div></div>
+          <div class="pa-card"><div class="label">Pass Rate</div><div class="value">${passRate.toFixed(1)}%</div></div>
+          <div class="pa-card"><div class="label">Total Errors</div><div class="value">${totalErrors}</div></div>
+        `;
+      }
+
+      function fillTable(tbodyId, rows, cols) {
+        const tbody = document.querySelector(`#${tbodyId} tbody`);
+        if (!tbody) return;
+        tbody.innerHTML = rows.map((r) => '<tr>' + cols.map((c) => `<td>${c(r)}</td>`).join('') + '</tr>').join('');
+      }
+
+      function renderBucketTable(tbodyId, buckets) {
+        const list = Array.isArray(buckets) ? buckets : [];
+        fillTable(tbodyId, list, [
+          (r) => r.label || r.key,
+          (r) => r.totalCount,
+          (r) => r.avgScore.toFixed(1),
+          (r) => r.passRate.toFixed(1) + '%',
+          (r) => r.totalErrors
+        ]);
+        if (list.length === 0) {
+          const tbody = document.querySelector(`#${tbodyId} tbody`);
+          if (tbody) {
+            const table = tbody.closest('table');
+            const colCount = table && table.querySelector('thead tr') ? table.querySelector('thead tr').cells.length : 5;
+            tbody.innerHTML = `<tr><td colspan="${colCount}" class="pa-empty">No data for this view.</td></tr>`;
+          }
+        }
+      }
+
+      function renderCharts(data) {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const textColor = isDark ? '#e5e7eb' : '#374151';
+        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+
+        if (data.scoreTrend && data.scoreTrend.length) {
+          const ctx = document.getElementById('paChartTrend').getContext('2d');
+          const c = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: data.scoreTrend.map((x) => x.period),
+              datasets: [
+                { label: 'Avg score', data: data.scoreTrend.map((x) => x.avgScore), borderColor: '#1A733E', backgroundColor: 'rgba(26,115,62,0.1)', fill: true, tension: 0.2 },
+                { label: 'Pass rate %', data: data.scoreTrend.map((x) => x.passRate), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.2, yAxisID: 'y1' }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'top' } },
+              scales: {
+                y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
+                y1: { beginAtZero: true, max: 100, position: 'right', ticks: { color: textColor }, grid: { drawOnChartArea: false } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
+              }
+            }
+          });
+          chartInstances.push(c);
+        }
+
+        if (data.errorBreakdown && data.errorBreakdown.length) {
+          const ctx = document.getElementById('paChartErrors').getContext('2d');
+          const c = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+              labels: data.errorBreakdown.map((x) => x.name),
+              datasets: [{ data: data.errorBreakdown.map((x) => x.count), backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#10b981'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+          });
+          chartInstances.push(c);
+        }
+
+        function barChart(canvasId, buckets, labelKey) {
+          if (!buckets.length) return;
+          const ctx = document.getElementById(canvasId).getContext('2d');
+          const c = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: buckets.map((b) => (b.label || b.key).slice(0, 20)),
+              datasets: [
+                { label: 'Avg score', data: buckets.map((b) => b.avgScore), backgroundColor: 'rgba(26,115,62,0.7)' },
+                { label: 'Pass rate %', data: buckets.map((b) => b.passRate), backgroundColor: 'rgba(37,99,235,0.7)', yAxisID: 'y1' }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { position: 'top' } },
+              scales: {
+                y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
+                y1: { beginAtZero: true, max: 100, position: 'right', ticks: { color: textColor }, grid: { drawOnChartArea: false } },
+                x: { ticks: { color: textColor, maxRotation: 45 }, grid: { color: gridColor } }
+              }
+            }
+          });
+          chartInstances.push(c);
+        }
+
+        barChart('paChartIndividual', (data.byIndividual || []).slice(0, 15));
+        barChart('paChartTeam', data.byTeam || []);
+        barChart('paChartRole', data.byRole || []);
+        barChart('paChartDesignation', data.byDesignation || []);
+        barChart('paChartSupervisor', data.bySupervisor || []);
+        barChart('paChartQualityMentor', data.byQualityMentor || []);
+
+        if (data.errorBreakdown && data.errorBreakdown.length) {
+          const ctx = document.getElementById('paChartErrorBreakdown').getContext('2d');
+          const c = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels: data.errorBreakdown.map((x) => x.name),
+              datasets: [{ label: 'Count', data: data.errorBreakdown.map((x) => x.count), backgroundColor: '#ef4444' }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+          });
+          chartInstances.push(c);
+        }
+      }
+
+      function renderTabs(data) {
+        const escapeHtml = (text) => {
+          const d = document.createElement('div');
+          d.textContent = text == null ? '' : text;
+          return d.innerHTML;
+        };
+        const tabsEl = document.getElementById('paTabs');
+        const panels = [
+          { id: 'paOverview', label: 'Overview' },
+          { id: 'paIndividual', label: data.isSuperAdmin ? 'By Individual' : 'My performance' },
+          { id: 'paErrors', label: 'Error analysis' }
+        ];
+        if (data.isSuperAdmin) {
+          panels.push(
+            { id: 'paTeam', label: 'By Team' },
+            { id: 'paRole', label: 'By Role' },
+            { id: 'paDesignation', label: 'By Designation' },
+            { id: 'paSupervisor', label: 'Same supervisor' },
+            { id: 'paQualityMentor', label: 'Quality mentor' }
+          );
+        }
+        tabsEl.innerHTML = panels.map((p) => `<button type="button" class="pa-tab ${p.id === 'paOverview' ? 'active' : ''}" data-panel="${escapeHtml(p.id)}">${escapeHtml(p.label)}</button>`).join('');
+        tabsEl.querySelectorAll('.pa-tab').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            tabsEl.querySelectorAll('.pa-tab').forEach((b) => b.classList.remove('active'));
+            document.querySelectorAll('.pa-panel').forEach((p) => p.classList.remove('active'));
+            btn.classList.add('active');
+            const panel = document.getElementById(btn.getAttribute('data-panel'));
+            if (panel) panel.classList.add('active');
+          });
+        });
+      }
+
+      function render(data) {
+        currentData = data;
+        destroyCharts();
+        renderKpiCards(data);
+        renderBucketTable('paTableIndividual', data.byIndividual || []);
+        renderBucketTable('paTableTeam', data.byTeam || []);
+        renderBucketTable('paTableRole', data.byRole || []);
+        renderBucketTable('paTableDesignation', data.byDesignation || []);
+        renderBucketTable('paTableSupervisor', data.bySupervisor || []);
+        renderBucketTable('paTableQualityMentor', data.byQualityMentor || []);
+        fillTable('paTableErrors', data.errorBreakdown || [], [(r) => r.name, (r) => r.count]);
+        renderCharts(data);
+        renderTabs(data);
+        scopeBadge.textContent = data.isSuperAdmin ? 'Viewing all' : 'Your performance only';
+      }
+
+      async function load() {
+        loadingEl.style.display = 'flex';
+        contentEl.style.display = 'none';
+        errorEl.style.display = 'none';
+        try {
+          const email = await getUserEmail();
+          const { PerformanceAnalyticsService } = await import('/js/features/performance-analytics/application/performance-analytics-service.js');
+          const service = new PerformanceAnalyticsService();
+          const filters = getFilters();
+          const data = await service.loadAnalytics(email, filters);
+          loadingEl.style.display = 'none';
+          contentEl.style.display = 'block';
+          render(data);
+        } catch (err) {
+          loadingEl.style.display = 'none';
+          errorEl.style.display = 'block';
+          errorEl.textContent = err && err.message ? err.message : 'Failed to load analytics.';
+        }
+      }
+
+      setDefaultDates();
+      applyBtn.addEventListener('click', load);
+      resetBtn.addEventListener('click', () => { setDefaultDates(); load(); });
+      load();
+    })();
+  </script>
+</body>
+</html>

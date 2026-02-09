@@ -190,10 +190,20 @@ app.use(helmet({
       objectSrc: ["'none'"],
       scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
+      frameAncestors: ["'self'"], // Clickjacking: allow embedding only in same origin
+      formAction: ["'self'"], // Forms may only submit to same origin (and API is same origin)
     },
   },
   crossOriginEmbedderPolicy: false, // Allow Supabase iframe embeds if needed
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  hsts: (process.env.NODE_ENV || 'development') === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
 }));
+
+// Permissions-Policy: disable unused browser features (non-breaking)
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  next();
+});
 
 // ✅ SECURITY: Rate limiting for API endpoints
 logWithTimestamp('debug', 'Configuring rate limiting...');
@@ -498,6 +508,22 @@ app.get('/admin-portal/dashboard', (req: express.Request, res: express.Response)
 
 logWithTimestamp('debug', 'Admin portal route registered: /admin-portal');
 
+// Performance Analytics - explicit route so page loads from sidebar even if clean-URL list is stale
+app.get('/performance-analytics', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/performance-analytics/presentation/performance-analytics.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing performance-analytics.html:', error);
+    const filePath = path.join(__dirname, '../src/features/performance-analytics/presentation/performance-analytics.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
 // ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
 // These routes are checked BEFORE the regex fallback for better performance
 // Backward compatibility: Old URLs still work via the regex route below
@@ -595,8 +621,12 @@ app.get('/api/csrf', (_req: express.Request, res: express.Response): void => {
   res.status(204).end();
 });
 
+import { apiAccessAudit } from './api/middleware/audit-access.middleware.js';
+app.use('/api', apiAccessAudit);
+
 // API Routes
 logWithTimestamp('debug', 'Loading API routes...');
+import authRouter from './api/routes/auth.routes.js';
 import usersRouter from './api/routes/users.routes.js';
 import notificationsRouter from './api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from './api/routes/notification-subscriptions.routes.js';
@@ -610,6 +640,7 @@ import activeUsersRouter from './api/routes/active-users.routes.js';
 import auditWebhookRouter from './api/routes/audit-webhook.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);

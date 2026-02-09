@@ -14,6 +14,7 @@ import { createLogger } from '../../utils/logger.js';
 import { PEOPLE_USER_MANAGEMENT_FIELDS } from '../../core/constants/field-whitelists.js';
 import { sanitizeString, isValidEmail } from '../utils/validation.js';
 import { validateRequestBody, VALIDATION_RULES, validateRequestSize } from '../middleware/validation.middleware.js';
+import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 
 const router = Router();
 const logger = createLogger('PeopleAPI');
@@ -351,7 +352,7 @@ router.post('/bulk-update', verifyAuth, requireAdmin, async (req: SupabaseReques
         .single();
 
       if (error) {
-        errors.push({ email, error: error.message });
+        errors.push({ email, error: sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') });
       } else {
         results.push(data);
       }

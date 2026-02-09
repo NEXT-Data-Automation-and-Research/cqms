@@ -11,6 +11,7 @@ import { Router, Response } from 'express';
 import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
 import { USER_PRIVATE_FIELDS } from '../../core/constants/field-whitelists.js';
+import { sanitizeString, isValidEmail, INPUT_LIMITS } from '../utils/validation.js';
 
 const router = Router();
 const logger = createLogger('UsersAPI');
@@ -103,13 +104,13 @@ router.put('/me', verifyAuth, async (req: SupabaseRequest, res: Response): Promi
     const supabase = req.supabase!;
     const userId = req.user!.id;
 
-    // Validate input
+    // Validate input (length limits to prevent DoS and overflow)
     const { full_name, avatar_url, notification_preferences, device_info } = req.body;
 
-    // Build update object (only allow specific fields)
+    // Build update object (only allow specific fields, sanitized with length limits)
     const updates: any = {};
-    if (full_name !== undefined) updates.full_name = full_name;
-    if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+    if (full_name !== undefined) updates.full_name = sanitizeString(String(full_name).trim(), INPUT_LIMITS.NAME);
+    if (avatar_url !== undefined) updates.avatar_url = sanitizeString(String(avatar_url).trim(), INPUT_LIMITS.AVATAR_URL);
     if (notification_preferences !== undefined) {
       updates.notification_preferences = notification_preferences;
     }
@@ -159,11 +160,20 @@ router.post('/', verifyAuth, async (req: SupabaseRequest, res: Response): Promis
     const supabase = req.supabaseAdmin!;
     const userId = req.user!.id;
 
-    const { email, full_name, avatar_url, provider, device_info } = req.body;
+    const rawEmail = req.body.email;
+    const email = rawEmail ? sanitizeString(String(rawEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+    const full_name = req.body.full_name !== undefined ? sanitizeString(String(req.body.full_name).trim(), INPUT_LIMITS.NAME) : undefined;
+    const avatar_url = req.body.avatar_url !== undefined ? sanitizeString(String(req.body.avatar_url).trim(), INPUT_LIMITS.AVATAR_URL) : undefined;
+    const provider = req.body.provider !== undefined ? sanitizeString(String(req.body.provider).trim(), INPUT_LIMITS.TYPE) : undefined;
+    const device_info = req.body.device_info;
 
     // Validate required fields
     if (!email) {
       res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+    if (!isValidEmail(email)) {
+      res.status(400).json({ error: 'Invalid email format' });
       return;
     }
 

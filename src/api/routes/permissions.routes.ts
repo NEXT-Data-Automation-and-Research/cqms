@@ -13,8 +13,12 @@ import { requirePermission } from '../middleware/permission.middleware.js';
 import { permissionService } from '../../core/permissions/permission.service.js';
 import { ALL_RESOURCES_FOR_UI } from '../../core/permissions/permission-resources.js';
 import { createLogger } from '../../utils/logger.js';
+import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
+import { logSecurityEvent } from '../utils/audit-logger.js';
+import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 
 const logger = createLogger('PermissionsAPI');
+const isProduction = () => process.env.NODE_ENV === 'production';
 const router = Router();
 
 /**
@@ -23,7 +27,9 @@ const router = Router();
  */
 router.post('/check', verifyAuth, async (req: SupabaseRequest, res) => {
   try {
-    const { resourceName, ruleType = 'feature' } = req.body;
+    const raw = req.body as { resourceName?: string; ruleType?: string };
+    const resourceName = raw.resourceName ? sanitizeString(String(raw.resourceName).trim(), INPUT_LIMITS.RESOURCE_NAME) : '';
+    const ruleType = raw.ruleType ? sanitizeString(String(raw.ruleType).trim(), INPUT_LIMITS.RULE_TYPE) : 'feature';
 
     if (!resourceName) {
       return res.status(400).json({
@@ -77,7 +83,7 @@ router.post('/check', verifyAuth, async (req: SupabaseRequest, res) => {
     logger.error('Error checking permission:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -92,7 +98,7 @@ router.get('/resources', (_req, res) => {
     res.json({ resources: ALL_RESOURCES_FOR_UI });
   } catch (error: any) {
     logger.error('Error returning resources:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res.status(500).json({ error: 'Internal server error', message: sanitizeErrorMessage(error, isProduction()) });
   }
 });
 
@@ -110,6 +116,11 @@ router.post('/check-batch', verifyAuth, async (req: SupabaseRequest, res) => {
     if (!Array.isArray(checks) || checks.length === 0) {
       return res.status(400).json({ error: 'Bad Request', message: 'checks array is required' });
     }
+    // Sanitize and length-limit each check (max 100 items to prevent DoS)
+    const sanitizedChecks = checks.slice(0, 100).map((c) => ({
+      resourceName: sanitizeString(String(c.resourceName || '').trim(), INPUT_LIMITS.RESOURCE_NAME),
+      ruleType: sanitizeString(String(c.ruleType || 'feature').trim(), INPUT_LIMITS.RULE_TYPE),
+    }));
     const userEmail = req.user?.email?.toLowerCase().trim();
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized', message: 'User email not found' });
@@ -123,7 +134,7 @@ router.post('/check-batch', verifyAuth, async (req: SupabaseRequest, res) => {
     const userRole = peopleData?.role || null;
     const results: Record<string, boolean> = {};
     const details: Record<string, { hasAccess: boolean; reason: string }> = {};
-    for (const { resourceName, ruleType } of checks) {
+    for (const { resourceName, ruleType } of sanitizedChecks) {
       const key = `${resourceName}:${ruleType}`;
       const check = await permissionService.checkPermission(
         userEmail,
@@ -137,7 +148,7 @@ router.post('/check-batch', verifyAuth, async (req: SupabaseRequest, res) => {
     res.json({ results, details, userRole, userEmail });
   } catch (error: any) {
     logger.error('Error in check-batch:', error);
-    res.status(500).json({ error: 'Internal server error', message: error.message });
+    res.status(500).json({ error: 'Internal server error', message: sanitizeErrorMessage(error, isProduction()) });
   }
 });
 
@@ -173,7 +184,7 @@ router.get('/user', verifyAuth, async (req: SupabaseRequest, res) => {
     logger.error('Error getting user permissions:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -184,7 +195,9 @@ router.get('/user', verifyAuth, async (req: SupabaseRequest, res) => {
  */
 router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const { ruleType, resourceName, isActive } = req.query;
+    const ruleType = req.query.ruleType ? sanitizeString(String(req.query.ruleType), INPUT_LIMITS.RULE_TYPE) : undefined;
+    const resourceName = req.query.resourceName ? sanitizeString(String(req.query.resourceName), INPUT_LIMITS.RESOURCE_NAME) : undefined;
+    const isActive = req.query.isActive;
 
     const supabase = req.supabaseAdmin!;
     let query = supabase.from('access_control_rules').select('*');
@@ -210,7 +223,7 @@ router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page
     logger.error('Error listing rules:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -221,14 +234,13 @@ router.get('/rules', verifyAuth, requirePermission('settings/permissions', 'page
  */
 router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const {
-      ruleType,
-      resourceName,
-      allowedRoles,
-      minRoleLevel,
-      customCheckFunction,
-      isActive = true,
-    } = req.body;
+    const body = req.body as { ruleType?: string; resourceName?: string; allowedRoles?: string[]; minRoleLevel?: number; customCheckFunction?: string; isActive?: boolean };
+    const ruleType = body.ruleType ? sanitizeString(String(body.ruleType).trim(), INPUT_LIMITS.RULE_TYPE) : '';
+    const resourceName = body.resourceName ? sanitizeString(String(body.resourceName).trim(), INPUT_LIMITS.RESOURCE_NAME) : '';
+    const allowedRoles = body.allowedRoles;
+    const minRoleLevel = body.minRoleLevel;
+    const customCheckFunction = body.customCheckFunction ? sanitizeString(String(body.customCheckFunction).trim(), 500) : null;
+    const isActive = body.isActive !== false;
 
     if (!ruleType || !resourceName) {
       return res.status(400).json({
@@ -244,8 +256,8 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
         rule_type: ruleType,
         resource_name: resourceName,
         allowed_roles: allowedRoles || null,
-        min_role_level: minRoleLevel || null,
-        custom_check_function: customCheckFunction || null,
+        min_role_level: minRoleLevel ?? null,
+        custom_check_function: customCheckFunction,
         is_active: isActive,
         created_by: req.user?.email || null,
         updated_by: req.user?.email || null,
@@ -259,6 +271,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
 
     // Clear cache
     permissionService.clearCache();
+    logSecurityEvent('permission_change', req, { action: 'create', resource: resourceName, ruleType, target: 'access_control_rules' });
 
     logger.info(`Permission rule created: ${resourceName} by ${req.user?.email}`);
     res.status(201).json({ rule: data });
@@ -266,7 +279,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
     logger.error('Error creating rule:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -278,14 +291,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
 router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
     const { id } = req.params;
-    const {
-      ruleType,
-      resourceName,
-      allowedRoles,
-      minRoleLevel,
-      customCheckFunction,
-      isActive,
-    } = req.body;
+    const body = req.body as { ruleType?: string; resourceName?: string; allowedRoles?: string[]; minRoleLevel?: number; customCheckFunction?: string; isActive?: boolean };
 
     const supabase = req.supabaseAdmin!;
     const updateData: any = {
@@ -293,12 +299,12 @@ router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', '
       updated_at: new Date().toISOString(),
     };
 
-    if (ruleType !== undefined) updateData.rule_type = ruleType;
-    if (resourceName !== undefined) updateData.resource_name = resourceName;
-    if (allowedRoles !== undefined) updateData.allowed_roles = allowedRoles;
-    if (minRoleLevel !== undefined) updateData.min_role_level = minRoleLevel;
-    if (customCheckFunction !== undefined) updateData.custom_check_function = customCheckFunction;
-    if (isActive !== undefined) updateData.is_active = isActive;
+    if (body.ruleType !== undefined) updateData.rule_type = sanitizeString(String(body.ruleType).trim(), INPUT_LIMITS.RULE_TYPE);
+    if (body.resourceName !== undefined) updateData.resource_name = sanitizeString(String(body.resourceName).trim(), INPUT_LIMITS.RESOURCE_NAME);
+    if (body.allowedRoles !== undefined) updateData.allowed_roles = body.allowedRoles;
+    if (body.minRoleLevel !== undefined) updateData.min_role_level = body.minRoleLevel;
+    if (body.customCheckFunction !== undefined) updateData.custom_check_function = body.customCheckFunction ? sanitizeString(String(body.customCheckFunction).trim(), 500) : null;
+    if (body.isActive !== undefined) updateData.is_active = body.isActive;
 
     const { data, error } = await supabase
       .from('access_control_rules')
@@ -313,6 +319,7 @@ router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', '
 
     // Clear cache
     permissionService.clearCache();
+    logSecurityEvent('permission_change', req, { action: 'update', resource: id, ruleType: body.ruleType, resourceName: body.resourceName, target: 'access_control_rules' });
 
     logger.info(`Permission rule updated: ${id} by ${req.user?.email}`);
     res.json({ rule: data });
@@ -320,7 +327,7 @@ router.put('/rules/:id', verifyAuth, requirePermission('settings/permissions', '
     logger.error('Error updating rule:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -345,6 +352,7 @@ router.delete('/rules/:id', verifyAuth, requirePermission('settings/permissions'
 
     // Clear cache
     permissionService.clearCache();
+    logSecurityEvent('permission_change', req, { action: 'delete', resource: id, target: 'access_control_rules' });
 
     logger.info(`Permission rule deleted: ${id} by ${req.user?.email}`);
     res.json({ message: 'Rule deleted successfully' });
@@ -352,7 +360,7 @@ router.delete('/rules/:id', verifyAuth, requirePermission('settings/permissions'
     logger.error('Error deleting rule:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -390,7 +398,7 @@ router.get('/user-rules', verifyAuth, requirePermission('settings/permissions', 
     logger.error('Error getting user rules:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -401,13 +409,13 @@ router.get('/user-rules', verifyAuth, requirePermission('settings/permissions', 
  */
 router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const { email } = req.params;
+    const email = sanitizeString(String(req.params.email || '').toLowerCase().trim(), INPUT_LIMITS.EMAIL);
 
     const supabase = req.supabaseAdmin!;
     const { data, error } = await supabase
       .from('user_access_rule')
       .select('*')
-      .eq('user_email', email.toLowerCase().trim())
+      .eq('user_email', email)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -419,7 +427,7 @@ router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permiss
     logger.error('Error getting user rules:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -430,13 +438,12 @@ router.get('/user-rules/:email', verifyAuth, requirePermission('settings/permiss
  */
 router.post('/user-rules', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const {
-      userEmail,
-      ruleType,
-      resourceName,
-      accessType = 'allow',
-      isActive = true,
-    } = req.body;
+    const body = req.body as { userEmail?: string; ruleType?: string; resourceName?: string; accessType?: string; isActive?: boolean };
+    const userEmail = body.userEmail ? sanitizeString(String(body.userEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+    const ruleType = body.ruleType ? sanitizeString(String(body.ruleType).trim(), INPUT_LIMITS.RULE_TYPE) : '';
+    const resourceName = body.resourceName ? sanitizeString(String(body.resourceName).trim(), INPUT_LIMITS.RESOURCE_NAME) : '';
+    const accessType = body.accessType === 'deny' ? 'deny' : 'allow';
+    const isActive = body.isActive !== false;
 
     if (!userEmail || !ruleType || !resourceName) {
       return res.status(400).json({
@@ -452,19 +459,15 @@ router.post('/user-rules', verifyAuth, requirePermission('settings/permissions',
       });
     }
 
-    const normalizedEmail = String(userEmail).toLowerCase().trim();
-    const normalizedRuleType = String(ruleType).toLowerCase().trim();
-    const normalizedResourceName = String(resourceName).trim();
-    
     const supabase = req.supabaseAdmin!;
-    
+
     // Check for existing duplicate rule
     const { data: existingRule } = await supabase
       .from('user_access_rule')
       .select('id, access_type')
-      .eq('user_email', normalizedEmail)
-      .eq('rule_type', normalizedRuleType)
-      .eq('resource_name', normalizedResourceName)
+      .eq('user_email', userEmail)
+      .eq('rule_type', ruleType)
+      .eq('resource_name', resourceName)
       .eq('is_active', true)
       .maybeSingle();
 
@@ -489,20 +492,21 @@ router.post('/user-rules', verifyAuth, requirePermission('settings/permissions',
         logger.error('User rule update during conflict resolution failed:', updateError);
         return res.status(400).json({
           error: 'Failed to update existing rule',
-          message: updateError.message,
+          message: sanitizeErrorMessage(updateError, isProduction()),
         });
       }
 
       permissionService.clearCache();
-      logger.info(`User permission updated (conflict resolution): ${normalizedEmail} -> ${normalizedResourceName} by ${req.user?.email}`);
+      logSecurityEvent('permission_change', req, { action: 'update', resource: resourceName, ruleType, userEmail, target: 'user_access_rule' });
+      logger.info(`User permission updated (conflict resolution): ${userEmail} -> ${resourceName} by ${req.user?.email}`);
       return res.json({ rule: updatedRule, updated: true });
     }
 
     const insertPayload: Record<string, unknown> = {
       id: randomUUID(),
-      user_email: normalizedEmail,
-      rule_type: normalizedRuleType,
-      resource_name: normalizedResourceName,
+      user_email: userEmail,
+      rule_type: ruleType,
+      resource_name: resourceName,
       access_type: accessType,
       is_active: Boolean(isActive),
     };
@@ -515,23 +519,23 @@ router.post('/user-rules', verifyAuth, requirePermission('settings/permissions',
 
     if (error) {
       const errMsg = error.message || String(error.details) || 'Database error';
-      logger.error('User rule insert failed:', { message: error.message, details: error.details, code: error.code });
+      logger.error('User rule insert failed:', { message: sanitizeErrorMessage(error, isProduction()), details: error.details, code: error.code });
       return res.status(400).json({
         error: 'Failed to create permission',
-        message: errMsg,
+        message: sanitizeErrorMessage(error, isProduction()),
       });
     }
 
     // Clear ALL cache to ensure permission changes take effect immediately
     permissionService.clearCache();
-    logger.info(`User permission created: ${normalizedEmail} -> ${resourceName} by ${req.user?.email}`);
+    logSecurityEvent('permission_change', req, { action: 'create', resource: resourceName, ruleType, userEmail, target: 'user_access_rule' });
+    logger.info(`User permission created: ${userEmail} -> ${resourceName} by ${req.user?.email}`);
     res.status(201).json({ rule: data });
   } catch (error: any) {
-    const msg = error?.message || 'An unexpected error occurred';
-    logger.error('Error creating user rule:', { message: msg, stack: error?.stack });
+    logger.error('Error creating user rule:', { message: error?.message, stack: error?.stack });
     res.status(500).json({
-      error: msg,
-      message: msg,
+      error: sanitizeErrorMessage(error, isProduction()),
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -582,12 +586,13 @@ router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permission
       logger.error('User rule update failed:', error.message, error.details);
       return res.status(400).json({
         error: 'Failed to update permission',
-        message: error.message || 'Database error',
+        message: sanitizeErrorMessage(error, isProduction()) || 'Database error',
       });
     }
 
     // Clear ALL cache to ensure permission changes take effect immediately
     permissionService.clearCache();
+    logSecurityEvent('permission_change', req, { action: 'update', resource: idTrimmed, target: 'user_access_rule' });
 
     logger.info(`User permission updated: ${id} by ${req.user?.email}`);
     res.json({ rule: data });
@@ -595,7 +600,7 @@ router.put('/user-rules/:id', verifyAuth, requirePermission('settings/permission
     logger.error('Error updating user rule:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -628,6 +633,7 @@ router.delete('/user-rules/:id', verifyAuth, requirePermission('settings/permiss
 
     // Clear ALL cache to ensure permission changes take effect immediately
     permissionService.clearCache();
+    logSecurityEvent('permission_change', req, { action: 'delete', resource: id, target: 'user_access_rule', userEmail: rule?.user_email });
 
     logger.info(`User permission deleted: ${id} by ${req.user?.email}`);
     res.json({ message: 'User permission deleted successfully' });
@@ -635,7 +641,7 @@ router.delete('/user-rules/:id', verifyAuth, requirePermission('settings/permiss
     logger.error('Error deleting user rule:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -688,7 +694,7 @@ router.get('/debug', verifyAuth, async (req: SupabaseRequest, res) => {
     logger.error('Debug endpoint error:', error);
     res.status(500).json({
       error: 'Error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -700,16 +706,17 @@ router.get('/debug', verifyAuth, async (req: SupabaseRequest, res) => {
  */
 router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const { userEmail, resourceName, ruleType = 'page' } = req.body;
+    const body = req.body as { userEmail?: string; resourceName?: string; ruleType?: string };
+    const normalizedEmail = body.userEmail ? sanitizeString(String(body.userEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+    const resourceName = body.resourceName ? sanitizeString(String(body.resourceName).trim(), INPUT_LIMITS.RESOURCE_NAME) : '';
+    const ruleType = body.ruleType ? sanitizeString(String(body.ruleType).trim(), INPUT_LIMITS.RULE_TYPE) : 'page';
 
-    if (!userEmail || !resourceName) {
+    if (!normalizedEmail || !resourceName) {
       return res.status(400).json({
         error: 'Bad Request',
         message: 'userEmail and resourceName are required',
       });
     }
-
-    const normalizedEmail = String(userEmail).toLowerCase().trim();
 
     // Get user role from people table
     const supabase = req.supabaseAdmin!;
@@ -748,7 +755,7 @@ router.post('/test', verifyAuth, requirePermission('settings/permissions', 'page
     logger.error('Error testing permission:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -765,7 +772,7 @@ router.post('/clear-cache', verifyAuth, requirePermission('settings/permissions'
     logger.error('Error clearing cache:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });
@@ -777,8 +784,7 @@ router.post('/clear-cache', verifyAuth, requirePermission('settings/permissions'
  */
 router.get('/user-access/:email', verifyAuth, requirePermission('settings/permissions', 'page'), async (req: SupabaseRequest, res) => {
   try {
-    const { email } = req.params;
-    const normalizedEmail = String(email).toLowerCase().trim();
+    const normalizedEmail = sanitizeString(String(req.params.email || '').toLowerCase().trim(), INPUT_LIMITS.EMAIL);
 
     const supabase = req.supabaseAdmin!;
 
@@ -908,7 +914,7 @@ router.get('/user-access/:email', verifyAuth, requirePermission('settings/permis
     logger.error('Error getting user access:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message: sanitizeErrorMessage(error, isProduction()),
     });
   }
 });

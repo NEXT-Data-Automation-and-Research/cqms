@@ -300,12 +300,9 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       return;
     }
     
-    console.log('✅✅✅ SESSION ESTABLISHED - User ID:', session.user.id, 'Email:', session.user.email);
     logInfo('✅ Session established after OAuth callback');
     logInfo('User ID:', session.user.id);
     logInfo('User Email:', session.user.email);
-
-    const user = session.user;
     
     // ✅ CRITICAL: Set login flag IMMEDIATELY to prevent auth-checker from interfering
     // Set multiple flags to ensure auth-checker doesn't block us
@@ -319,7 +316,21 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       delete (window as any).__oauthRedirectInProgress;
     }, 10000); // Extended to 10 seconds for safety
     
-    console.log('✅ Login flags set to prevent auth-checker interference');
+    // Session/token regeneration: Supabase establishes a new session from the OAuth callback
+    // (detectSessionInUrl). No pre-login session is reused (no session fixation). Optionally
+    // refresh once so the stored token pair is freshly issued post-login.
+    let sessionToUse = session;
+    try {
+      const { data: { session: refreshed }, error: refreshErr } = await supabase.auth.refreshSession();
+      if (!refreshErr && refreshed?.user) {
+        sessionToUse = refreshed;
+        logInfo('Session refreshed after login (token regeneration confirmed).');
+      }
+    } catch (e) {
+      // Non-fatal: we already have a valid session from the callback
+      logWarn('Post-login refreshSession failed (using callback session):', (e as Error)?.message);
+    }
+    const user = sessionToUse!.user;
     
     // Clear auth cache to ensure fresh verification
     clearAuthCache();
@@ -457,6 +468,25 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
 
+    // Record login for security audit (fire-and-forget; do not block redirect)
+    const token = sessionToUse?.access_token;
+    if (token) {
+      fetch('/api/csrf', { method: 'GET', headers: { Authorization: `Bearer ${token}` } })
+        .then((r) => {
+          const csrf = r.headers.get('X-CSRF-Token') || r.headers.get('x-csrf-token');
+          return fetch('/api/auth/login-event', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+            },
+            body: '{}',
+          });
+        })
+        .catch(() => {});
+    }
+
     // Clear any OAuth parameters from URL
     if (window.location.search || window.location.hash) {
       const cleanUrl = window.location.origin + window.location.pathname;
@@ -487,9 +517,6 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
         redirectPath = '/home';
       }
       
-      console.log('🔄🔄🔄 REDIRECTING TO:', redirectPath);
-      console.log('Session established, user authenticated, proceeding with redirect...');
-      console.log('Current URL before redirect:', window.location.href);
       logInfo(`🔄 Redirecting to: ${redirectPath}`);
       logInfo('Session established, user authenticated, proceeding with redirect...');
       logInfo('Current URL before redirect:', window.location.href);
@@ -515,16 +542,12 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       };
       
       // Try immediate redirect first
-      console.log('🚀 ABOUT TO REDIRECT TO:', redirectPath);
-      console.log('Current location:', window.location.href);
       performRedirect();
       
       // Backup: also schedule redirect in case immediate one was blocked
       setTimeout(() => {
         const currentPath = window.location.pathname;
-        console.log('Backup redirect check - current path:', currentPath);
         if (currentPath.includes('auth-page') || currentPath.includes('auth-page.html')) {
-          console.log('Still on auth page after 500ms, forcing redirect...');
           logInfo('Still on auth page, forcing redirect...');
           performRedirect();
         }
@@ -534,7 +557,7 @@ export async function handleGoogleOAuthCallback(): Promise<void> {
       setTimeout(() => {
         const currentPath = window.location.pathname;
         if (currentPath.includes('auth-page') || currentPath.includes('auth-page.html')) {
-          console.error('CRITICAL: Still on auth page after 1 second, forcing redirect with window.location.href');
+          logError('Still on auth page after 1s, forcing redirect');
           window.location.href = redirectPath;
         }
       }, 1000);

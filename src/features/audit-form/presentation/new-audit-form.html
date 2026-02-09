@@ -6604,13 +6604,10 @@ function filterPullConversations() {
     if (pullConversationsFilters.productType) {
         const beforeCount = filtered.length;
         filtered = filtered.filter(conv => {
-            // Extract subject from conversation source (remove HTML tags if present)
+            // Extract subject from conversation source (strip HTML tags without parsing to prevent XSS)
             let subject = conv.source?.subject || conv.source?.body?.substring(0, 50) || '';
-            // Remove HTML tags if present
-            if (subject.includes('<')) {
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = subject;
-                subject = tempDiv.textContent || tempDiv.innerText || subject;
+            if (subject && typeof subject === 'string') {
+                subject = subject.replace(/<[^>]*>/g, '').trim() || subject;
             }
             const subjectLower = subject.toLowerCase().trim();
             const filterLower = pullConversationsFilters.productType.toLowerCase().trim();
@@ -9197,7 +9194,7 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${scorecard.name}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(scorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
     }
     
     console.log('[renderErrorParameters] About to iterate over', params.length, 'parameters');
@@ -10546,7 +10543,7 @@ async function loadEmployees() {
         console.error('Error stack:', error.stack);
         const employeeSelect = document.getElementById('employeeName');
         if (employeeSelect) {
-            employeeSelect.innerHTML = `<option value="">Error: ${error.message || 'Failed to load employees'}</option>`;
+            employeeSelect.innerHTML = `<option value="">Error: ${escapeHtml((error && error.message) ? error.message : 'Failed to load employees')}</option>`;
         }
     }
 }
@@ -17414,10 +17411,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (formattedText && formattedText.trim() !== '' && formattedText.trim() !== '{}') {
                     commentContent = formattedText;
                 } else if (part.body && String(part.body).trim() !== '') {
-                    // Fallback: strip HTML tags from body and get plain text
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = String(part.body);
-                    commentContent = tempDiv.textContent || tempDiv.innerText || '';
+                    // Fallback: strip HTML tags from body without parsing (prevent XSS)
+                    commentContent = String(part.body).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
                 }
                 
                 // Escape HTML for safe display

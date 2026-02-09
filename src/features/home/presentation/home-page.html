@@ -3395,7 +3395,8 @@ async function initializeDashboard() {
             renderAssignedAudits();
           }
         }
-        if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function') {
+        // For Admin/Super Admin, skip painting cached "recent updates" so we don't show "mine only" before loadUnifiedAuditData runs
+        if (cachedUpdates && typeof renderRecentUpdatesFromData === 'function' && currentUserRole !== 'Admin' && currentUserRole !== 'Super Admin') {
           renderRecentUpdatesFromData(cachedUpdates);
         }
       }
@@ -3671,11 +3672,12 @@ function updateUserAvatar(userInfo) {
   const avatarEl = document.getElementById('userAvatar');
   if (!avatarEl) return;
 
-  if (userInfo.avatar) {
-    avatarEl.innerHTML = `<img src="${userInfo.avatar}" alt="${userInfo.name || 'User'}" class="w-full h-full rounded-full object-cover">`;
+  const safeAvatar = userInfo.avatar && /^(https?:|\/)/.test(String(userInfo.avatar)) ? userInfo.avatar : '';
+  if (safeAvatar) {
+    avatarEl.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover">`;
   } else if (userInfo.name) {
     const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
-    avatarEl.innerHTML = `<span class="text-xs font-semibold">${initials}</span>`;
+    avatarEl.innerHTML = `<span class="text-xs font-semibold">${escapeHtml(initials)}</span>`;
   }
   
   // Populate the premium dashboard
@@ -3696,13 +3698,14 @@ async function populatePremiumDashboard() {
   if (dashboardUserEmail) dashboardUserEmail.textContent = userInfo.email || '';
   if (dashboardUserRole) dashboardUserRole.textContent = userInfo.role || 'User';
   
-  // Update dashboard avatar
+  // Update dashboard avatar (safe URL + escape to prevent XSS)
   if (dashboardAvatar) {
-    if (userInfo.avatar) {
-      dashboardAvatar.innerHTML = `<img src="${userInfo.avatar}" class="w-full h-full rounded-full object-cover">`;
+    const safeAvatar = userInfo.avatar && /^(https?:|\/)/.test(String(userInfo.avatar)) ? userInfo.avatar : '';
+    if (safeAvatar) {
+      dashboardAvatar.innerHTML = `<img src="${escapeHtml(safeAvatar)}" alt="${escapeHtml(userInfo.name || 'User')}" class="w-full h-full rounded-full object-cover">`;
     } else if (userInfo.name) {
       const initials = userInfo.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2);
-      dashboardAvatar.innerHTML = `<span class="text-sm font-bold">${initials}</span>`;
+      dashboardAvatar.innerHTML = `<span class="text-sm font-bold">${escapeHtml(initials)}</span>`;
     }
   }
   
@@ -3891,6 +3894,11 @@ async function loadAllUsers() {
 }
 
 async function loadRecentUpdates() {
+  // Admin/Super Admin: Recents must show everything; use unified loader so refresh never overwrites with "mine only"
+  if (currentUserRole === 'Admin' || currentUserRole === 'Super Admin') {
+    return loadUnifiedAuditData();
+  }
+
   // Use request deduplication to prevent multiple simultaneous calls
   // Define period at function scope to ensure it's accessible in catch blocks
   let period;

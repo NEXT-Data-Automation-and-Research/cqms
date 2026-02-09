@@ -7,7 +7,7 @@ import { BaseService } from '../../../core/service/base-service.js';
 import { AuditFormRepository } from '../infrastructure/audit-form-repository.js';
 import type { AuditFormData, Scorecard, ScorecardParameter } from '../domain/entities.js';
 import { createValidationError, createBusinessError } from '../../../core/errors/app-error.js';
-import { sanitizeString } from '../../../api/utils/validation.js';
+import { sanitizeString, INPUT_LIMITS } from '../../../api/utils/validation.js';
 
 export class AuditFormService extends BaseService {
   constructor(private repository: AuditFormRepository) {
@@ -59,7 +59,7 @@ export class AuditFormService extends BaseService {
   async loadScorecards(channelFilter?: string): Promise<Scorecard[]> {
     return this.executeBusinessLogic(
       async () => {
-        const channel = channelFilter ? sanitizeString(channelFilter) : undefined;
+        const channel = channelFilter ? sanitizeString(channelFilter.trim(), INPUT_LIMITS.CHANNEL) : undefined;
         return await this.repository.findActiveScorecards(channel);
       },
       'Failed to load scorecards'

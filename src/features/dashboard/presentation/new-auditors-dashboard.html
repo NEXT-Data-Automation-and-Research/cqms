@@ -3860,7 +3860,7 @@ async function renderDynamicHourlyBreakdown(period, auditorStats, totalAssigned 
         }
         const dynamicHourlyTableBody = document.getElementById('dynamicHourlyTableBody');
         if (dynamicHourlyTableBody) {
-            dynamicHourlyTableBody.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">Error loading dynamic hourly breakdown: ${error.message || 'Unknown error'}</div>`;
+            dynamicHourlyTableBody.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--error-color);">Error loading dynamic hourly breakdown: ${escapeHtml((error && error.message) ? error.message : 'Unknown error')}</div>`;
         }
         // Clear chart on error
         if (dynamicHourlyChartInstance) {

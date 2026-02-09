@@ -3,6 +3,25 @@
  * Common validation functions for API endpoints
  */
 
+/** Max lengths for input fields (single place for consistency and DoS prevention) */
+export const INPUT_LIMITS = {
+  EMAIL: 255,
+  NAME: 100,
+  TITLE: 200,
+  BODY_SHORT: 500,
+  BODY_LONG: 5000,
+  URL: 500,
+  URL_LONG: 2000,
+  REASON: 500,
+  RESOURCE_NAME: 255,
+  RULE_TYPE: 50,
+  CHANNEL: 200,
+  CATEGORY: 100,
+  TYPE: 50,
+  AVATAR_URL: 500,
+  DESCRIPTION: 2000,
+} as const;
+
 /**
  * Validate email format
  */

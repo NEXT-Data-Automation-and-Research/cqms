@@ -5,9 +5,10 @@
 
 import { Router } from 'express';
 import { verifyAuth, AuthenticatedRequest } from '../middleware/auth.middleware.js';
-import { handleApiError } from '../middleware/error-handler.middleware.js';
+import { handleApiError, sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 import { googleCalendarService } from '../../infrastructure/google-calendar-service.js';
 import { logError, logInfo } from '../../utils/logging-helper.js';
+import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.get('/test', verifyAuth, async (req: AuthenticatedRequest, res) => {
     } catch (initError: any) {
       return res.status(500).json({
         success: false,
-        error: initError.message || 'Initialization failed',
+        error: sanitizeErrorMessage(initError, process.env.NODE_ENV === 'production') || 'Initialization failed',
         config: configStatus,
       });
     }
@@ -86,18 +87,24 @@ router.post('/generate', verifyAuth, async (req: AuthenticatedRequest, res) => {
         response: initError.response?.data,
       });
       console.error('[GoogleMeetAPI] Full initialization error:', initError);
+      const isProd = process.env.NODE_ENV === 'production';
       return res.status(500).json({
         success: false,
-        error: initError.message || 'Failed to initialize Google Calendar service',
+        error: sanitizeErrorMessage(initError, isProd) || 'Failed to initialize Google Calendar service',
         details: {
-          message: initError.message,
-          stack: initError.stack,
+          message: sanitizeErrorMessage(initError, isProd),
+          ...(isProd ? {} : { stack: initError.stack }),
           code: initError.code,
         },
       });
     }
 
-    const { title, startTime, endTime, description, attendees } = req.body;
+    const raw = req.body as { title?: string; startTime?: string; endTime?: string; description?: string; attendees?: string[] };
+    const title = raw.title ? sanitizeString(String(raw.title).trim(), INPUT_LIMITS.TITLE) : 'Meeting';
+    const startTime = raw.startTime;
+    const endTime = raw.endTime;
+    const description = raw.description ? sanitizeString(String(raw.description).trim(), INPUT_LIMITS.DESCRIPTION) : undefined;
+    const attendees = Array.isArray(raw.attendees) ? raw.attendees.map((a) => sanitizeString(String(a).trim(), INPUT_LIMITS.EMAIL)).filter(Boolean) : undefined;
 
     // If startTime and endTime are provided, create a scheduled event
     if (startTime && endTime) {
@@ -208,9 +215,15 @@ router.post('/generate', verifyAuth, async (req: AuthenticatedRequest, res) => {
       // Log full error details server-side
       logError('[GoogleMeetAPI] Error generating Meet link:', errorDetails);
       
-      // Return detailed error - ALWAYS return details, don't rely on NODE_ENV
-      const errorMessage = error?.message || 'Failed to generate Google Meet link';
-      
+      const isProd = process.env.NODE_ENV === 'production';
+      const errorMessage = sanitizeErrorMessage(error, isProd) || 'Failed to generate Google Meet link';
+      if (isProd) {
+        errorDetails.message = errorMessage;
+        delete errorDetails.stack;
+        delete errorDetails.response;
+        delete errorDetails.fullError;
+        if (errorDetails.googleApiError) errorDetails.googleApiError.message = sanitizeErrorMessage({ message: errorDetails.googleApiError.message }, true);
+      }
       return res.status(error?.status || 500).json({
         success: false,
         error: errorMessage,

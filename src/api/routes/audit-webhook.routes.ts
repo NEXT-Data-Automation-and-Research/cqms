@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { verifyAuth } from '../middleware/auth.middleware.js';
 import { createLogger } from '../../utils/logger.js';
+import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 
 const router = Router();
 const logger = createLogger('AuditWebhook');
@@ -87,7 +88,7 @@ router.post('/audit-submission', verifyAuth, async (req: Request, res: Response)
     logger.error('audit-submission proxy error', error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : 'Proxy error',
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Proxy error',
     });
   }
 });

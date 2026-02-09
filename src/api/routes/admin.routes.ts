@@ -10,7 +10,9 @@
 import { Router, Response } from 'express';
 import { SupabaseRequest, verifyAuth } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/permission.middleware.js';
+import { sanitizeString, INPUT_LIMITS } from '../utils/validation.js';
 import { createLogger } from '../../utils/logger.js';
+import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 
 const router = Router();
 const logger = createLogger('AdminRoutes');
@@ -26,7 +28,8 @@ router.post(
   requirePermission('settings/impersonation', 'api_endpoint'),
   async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const { targetEmail, reason } = req.body;
+    const targetEmail = req.body.targetEmail ? sanitizeString(String(req.body.targetEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+    const reason = req.body.reason ? sanitizeString(String(req.body.reason).trim(), INPUT_LIMITS.REASON) : undefined;
     const adminUser = req.user;
 
     if (!adminUser?.email) {
@@ -39,7 +42,7 @@ router.post(
       return;
     }
 
-    const normalizedTargetEmail = targetEmail.toLowerCase().trim();
+    const normalizedTargetEmail = targetEmail;
     const adminEmail = adminUser.email.toLowerCase().trim();
 
     if (normalizedTargetEmail === adminEmail) {
@@ -103,7 +106,7 @@ router.post(
       
       if (listError) {
         logger.error('Failed to list users:', listError.message);
-        res.status(500).json({ error: 'Failed to find target user', details: listError.message });
+        res.status(500).json({ error: 'Failed to find target user', details: sanitizeErrorMessage(listError, process.env.NODE_ENV === 'production') });
         return;
       }
       
@@ -238,8 +241,9 @@ router.get(
  */
 router.post('/end-impersonation', verifyAuth, async (req: SupabaseRequest, res: Response): Promise<void> => {
   try {
-    const { adminEmail, targetEmail } = req.body;
-    
+    const adminEmail = req.body.adminEmail ? sanitizeString(String(req.body.adminEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+    const targetEmail = req.body.targetEmail ? sanitizeString(String(req.body.targetEmail).toLowerCase().trim(), INPUT_LIMITS.EMAIL) : '';
+
     if (!adminEmail || !targetEmail) {
       res.status(400).json({ error: 'Admin email and target email required' });
       return;
@@ -252,8 +256,8 @@ router.post('/end-impersonation', verifyAuth, async (req: SupabaseRequest, res: 
     const { error } = await supabase
       .from('impersonation_log')
       .update({ ended_at: new Date().toISOString() })
-      .eq('admin_email', adminEmail.toLowerCase())
-      .eq('target_email', targetEmail.toLowerCase())
+      .eq('admin_email', adminEmail)
+      .eq('target_email', targetEmail)
       .is('ended_at', null)
       .order('started_at', { ascending: false })
       .limit(1);

@@ -16,6 +16,7 @@ import { Router, Response } from 'express';
 import { verifyAuth, SupabaseRequest } from '../middleware/auth.middleware.js';
 import { requirePermissionOrRole } from '../middleware/permission.middleware.js';
 import { createLogger } from '../../utils/logger.js';
+import { sanitizeErrorMessage } from '../middleware/error-handler.middleware.js';
 
 const logger = createLogger('ActiveUsersAPI');
 const router = Router();
@@ -165,7 +166,7 @@ router.get(
           anyError?.message ||
           'Failed to load active user data';
         logger.error('Active users query error', { message: msg });
-        res.status(500).json({ error: 'Internal Server Error', message: msg });
+        res.status(500).json({ error: 'Internal Server Error', message: sanitizeErrorMessage(anyError, process.env.NODE_ENV === 'production') });
         return;
       }
 
@@ -407,7 +408,7 @@ router.get(
       if (anyError) {
         const msg = anyError?.message || 'Failed to load date activity';
         logger.error('Date activity query error', { message: msg, date });
-        res.status(500).json({ error: 'Internal Server Error', message: msg });
+        res.status(500).json({ error: 'Internal Server Error', message: sanitizeErrorMessage(anyError, process.env.NODE_ENV === 'production') });
         return;
       }
 

@@ -123,7 +123,7 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-// Security headers middleware (helmet)
+// Security headers middleware (helmet) – safe additions only (no CSP script changes)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -163,10 +163,20 @@ app.use(helmet({
       objectSrc: ["'none'"],
       scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
+      frameAncestors: ["'self'"], // Clickjacking: allow embedding only in same origin
+      formAction: ["'self'"], // Forms may only submit to same origin (and API is same origin)
     },
   },
   crossOriginEmbedderPolicy: false,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true, preload: true } : false,
 }));
+
+// Permissions-Policy: disable unused browser features (non-breaking)
+app.use((_req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  next();
+});
 
 // Rate limiting for API endpoints (skip high-frequency auth'd endpoints to avoid "too many requests")
 const apiLimiter = rateLimit({
@@ -483,7 +493,11 @@ app.get('/api/csrf', (_req: express.Request, res: express.Response): void => {
   res.status(204).end();
 });
 
+import { apiAccessAudit } from '../src/api/middleware/audit-access.middleware.js';
+app.use('/api', apiAccessAudit);
+
 // API Routes
+import authRouter from '../src/api/routes/auth.routes.js';
 import usersRouter from '../src/api/routes/users.routes.js';
 import notificationsRouter from '../src/api/routes/notifications.routes.js';
 import notificationSubscriptionsRouter from '../src/api/routes/notification-subscriptions.routes.js';
@@ -497,6 +511,7 @@ import activeUsersRouter from '../src/api/routes/active-users.routes.js';
 import auditWebhookRouter from '../src/api/routes/audit-webhook.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/people', peopleRouter);

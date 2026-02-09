@@ -23,7 +23,7 @@ export interface User {
   avatar_url: string | null;
   created_at: string;
   updated_at: string;
-  password_hash?: string | null; // Optional - used for creation but not always present
+  password_hash?: string | null; // Unused: auth is Google OAuth only; kept for legacy schema compatibility
 }
 
 export interface Channel {

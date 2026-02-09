@@ -845,7 +845,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     } catch (e) {
         console.error('[Scorecards] Init failed:', e);
         if (main) {
-            main.innerHTML = '<div style="padding:2rem;max-width:32rem;margin:0 auto;"><h2 style="color:#b91c1c;">Could not connect to the database</h2><p>1. Run the app with the server (e.g. <code>npm run dev</code>), not by opening the HTML file directly.</p><p>2. Copy env.template to .env and set SUPABASE_ANON_KEY from Supabase Dashboard → Project (cqms-staging) → Settings → API.</p><p>3. Restart the server and refresh this page.</p><p style="margin-top:1rem;font-size:0.875rem;color:#6b7280;">Error: ' + (e && e.message ? e.message : String(e)) + '</p></div>';
+            main.innerHTML = '<div style="padding:2rem;max-width:32rem;margin:0 auto;"><h2 style="color:#b91c1c;">Could not connect to the database</h2><p>1. Run the app with the server (e.g. <code>npm run dev</code>), not by opening the HTML file directly.</p><p>2. Copy env.template to .env and set SUPABASE_ANON_KEY from Supabase Dashboard → Project (cqms-staging) → Settings → API.</p><p>3. Restart the server and refresh this page.</p><p style="margin-top:1rem;font-size:0.875rem;color:#6b7280;">Error: ' + escapeHtml((e && e.message) ? e.message : String(e)) + '</p></div>';
         }
         return;
     }
@@ -1101,7 +1101,7 @@ async function loadScorecards() {
         filterScorecards();
     } catch (error) {
         console.error('Error loading scorecards:', error);
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading scorecards: ' + (error && error.message ? error.message : String(error)) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 1.5rem; color: #ef4444;">Error loading scorecards: ' + escapeHtml((error && error.message) ? error.message : String(error)) + '</td></tr>';
     }
 }
 
