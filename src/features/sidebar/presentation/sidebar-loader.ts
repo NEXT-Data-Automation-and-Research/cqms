@@ -294,12 +294,30 @@ export class SidebarLoader {
   }
 
   /**
+   * Wait briefly for userInfo (with role) to be available so first sidebar paint shows role-specific items.
+   * Prevents "sidebar loads with only Home, then items appear after reload" when auth-checker runs after sidebar init.
+   * Max wait 1.2s so we don't block rendering on slow auth.
+   */
+  private async waitForUserInfoWithTimeout(maxWaitMs: number = 1200): Promise<ReturnType<typeof sidebarState.loadUserInfo>> {
+    const pollInterval = 80
+    const start = Date.now()
+    while (Date.now() - start < maxWaitMs) {
+      const userInfo = sidebarState.loadUserInfo()
+      if (userInfo?.email) {
+        return userInfo
+      }
+      await new Promise(r => setTimeout(r, pollInterval))
+    }
+    return sidebarState.loadUserInfo()
+  }
+
+  /**
    * Load the sidebar HTML into the page
    *
    * CRITICAL: Render sidebar immediately without waiting for permission API.
    * After first login the Supabase client or API may not be ready yet, and
    * awaiting permissions can hang forever, causing the sidebar to never appear.
-   * We render with role-based permissions first, then refresh when permissions load.
+   * We briefly wait for userInfo (with timeout) so role-specific options show on first paint when possible.
    */
   private async loadSidebarHTML(): Promise<void> {
     try {
@@ -307,7 +325,7 @@ export class SidebarLoader {
         return
       }
 
-      const userInfo = sidebarState.loadUserInfo()
+      const userInfo = await this.waitForUserInfoWithTimeout(1200)
 
       // IMPORTANT: Do NOT await permissions here - it can hang and block rendering.
       // Render immediately with role-based access, then update asynchronously.

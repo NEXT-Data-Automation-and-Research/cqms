@@ -72,13 +72,20 @@ async function getCSRFToken(authToken: string): Promise<string | null> {
   return null;
 }
 
+/** Options for apiRequest that are not part of RequestInit (stripped before fetch) */
+export interface ApiRequestOptions {
+  /** When true, do not redirect to login on 401. Caller handles retry/redirect. Used for permission checks. */
+  skipRedirectOn401?: boolean;
+}
+
 /**
  * Make an authenticated API request
  */
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit & ApiRequestOptions = {}
 ): Promise<{ data: T | null; error: any }> {
+  const { skipRedirectOn401, ...fetchInit } = options;
   try {
     const token = await getAuthToken();
     
@@ -90,14 +97,14 @@ async function apiRequest<T>(
     }
 
     // Get CSRF token for state-changing requests
-    const method = options.method || 'GET';
+    const method = fetchInit.method || 'GET';
     const needsCSRF = ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase());
     
     // Build headers as a Record to allow dynamic property assignment
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      ...(options.headers as Record<string, string>),
+      ...(fetchInit.headers as Record<string, string>),
     };
 
     // Fetch fresh CSRF token for state-changing requests
@@ -119,15 +126,15 @@ async function apiRequest<T>(
     }
 
     const response = await fetch(endpoint, {
-      ...options,
+      ...fetchInit,
       headers,
     });
 
     const json = await response.json();
 
     if (!response.ok) {
-      // Handle 401 errors with automatic token refresh
-      if (response.status === 401 && !isHandling401) {
+      // Handle 401 errors with automatic token refresh (unless skipRedirectOn401 for permission checks)
+      if (response.status === 401 && !isHandling401 && !skipRedirectOn401) {
         logger.warn('401 error - attempting token refresh');
         isHandling401 = true;
         
@@ -162,6 +169,7 @@ async function apiRequest<T>(
           isHandling401 = false;
         }
       }
+      // When skipRedirectOn401 is true, fall through and return error to caller (no redirect)
       
       // Extract error message from various response formats
       let errorMessage = 'Request failed';
@@ -531,10 +539,11 @@ export const apiClient = {
     return result.data as T;
   },
 
-  async post<T = any>(endpoint: string, data?: any): Promise<T> {
+  async post<T = any>(endpoint: string, data?: any, requestOptions?: ApiRequestOptions): Promise<T> {
     const result = await apiRequest<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
+      ...requestOptions,
     });
     if (result.error) {
       const error: any = new Error(result.error.message || 'Request failed');
@@ -545,6 +554,22 @@ export const apiClient = {
       throw error;
     }
     return result.data as T;
+  },
+
+  /**
+   * POST that returns { data, error } without throwing. Use for permission checks so callers can
+   * handle 401 (retry) vs 403 (access denied) without triggering global redirect on first 401.
+   */
+  async postWithResult<T = any>(
+    endpoint: string,
+    data?: any,
+    requestOptions?: ApiRequestOptions
+  ): Promise<{ data: T | null; error: any }> {
+    return apiRequest<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      ...requestOptions,
+    });
   },
 
   async put<T = any>(endpoint: string, data?: any): Promise<T> {
