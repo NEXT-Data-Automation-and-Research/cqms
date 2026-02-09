@@ -1557,21 +1557,27 @@ async function fetchAndCacheTeamStats(period) {
                                     }
                                     return result;
                                 } catch (err) {
+                                    // Table may not have reversal_requested_at (e.g. older schema) - return empty instead of retry
+                                    const isBadRequest = (err?.status === 400 || err?.code === 'PGRST204');
+                                    if (isBadRequest) return { data: [] };
                                     // If server-side date filter fails, try without date filter and filter client-side
-                                    const retryResult = await window.supabaseClient
-                                        .from(tableName)
-                                        .select('id, submitted_at')
-                                        .not('reversal_requested_at', 'is', null);
-                                    
-                                    if (retryResult.data && period.start) {
-                                        retryResult.data = retryResult.data.filter(audit => {
-                                            if (!audit.submitted_at) return false;
-                                            const auditDate = toDhakaTime(audit.submitted_at);
-                                            return (!period.start || auditDate >= period.start) && 
-                                                   (!period.end || auditDate <= period.end);
-                                        });
+                                    try {
+                                        const retryResult = await window.supabaseClient
+                                            .from(tableName)
+                                            .select('id, submitted_at')
+                                            .not('reversal_requested_at', 'is', null);
+                                        if (retryResult.data && period.start) {
+                                            retryResult.data = retryResult.data.filter(audit => {
+                                                if (!audit.submitted_at) return false;
+                                                const auditDate = toDhakaTime(audit.submitted_at);
+                                                return (!period.start || auditDate >= period.start) && 
+                                                       (!period.end || auditDate <= period.end);
+                                            });
+                                        }
+                                        return retryResult;
+                                    } catch (retryErr) {
+                                        return { data: [] };
                                     }
-                                    return retryResult;
                                 }
                             })(),
                             (async () => {
@@ -1588,20 +1594,26 @@ async function fetchAndCacheTeamStats(period) {
                                     }
                                     return result;
                                 } catch (err) {
+                                    // Table may not have passing_status (e.g. older schema) - return empty instead of retry
+                                    const isBadRequest = (err?.status === 400 || err?.code === 'PGRST204');
+                                    if (isBadRequest) return { data: [] };
                                     // If server-side date filter fails, try without date filter and filter client-side
-                                    const retryResult = await window.supabaseClient
-                                        .from(tableName)
-                                        .select('passing_status, submitted_at');
-                                    
-                                    if (retryResult.data && period.start) {
-                                        retryResult.data = retryResult.data.filter(audit => {
-                                            if (!audit.submitted_at) return false;
-                                            const auditDate = toDhakaTime(audit.submitted_at);
-                                            return (!period.start || auditDate >= period.start) && 
-                                                   (!period.end || auditDate <= period.end);
-                                        });
+                                    try {
+                                        const retryResult = await window.supabaseClient
+                                            .from(tableName)
+                                            .select('passing_status, submitted_at');
+                                        if (retryResult.data && period.start) {
+                                            retryResult.data = retryResult.data.filter(audit => {
+                                                if (!audit.submitted_at) return false;
+                                                const auditDate = toDhakaTime(audit.submitted_at);
+                                                return (!period.start || auditDate >= period.start) && 
+                                                       (!period.end || auditDate <= period.end);
+                                            });
+                                        }
+                                        return retryResult;
+                                    } catch (retryErr) {
+                                        return { data: [] };
                                     }
-                                    return retryResult;
                                 }
                             })()
                         ]);
@@ -4625,20 +4637,25 @@ async function fetchAndCacheStandupView(period) {
                                     }
                                     return result;
                                 } catch (err) {
-                                    // If server-side date filter fails, try without date filter and filter client-side
-                                    const retryResult = await window.supabaseClient
-                                        .from(tableName)
-                                        .select('passing_status, submitted_at');
-                                    
-                                    if (retryResult.data && period.start) {
-                                        retryResult.data = retryResult.data.filter(audit => {
-                                            if (!audit.submitted_at) return false;
-                                            const auditDate = toDhakaTime(audit.submitted_at);
-                                            return (!period.start || auditDate >= period.start) && 
-                                                   (!period.end || auditDate <= period.end);
-                                        });
+                                    // Table may not have passing_status (e.g. older schema) - return empty instead of retry
+                                    const isBadRequest = (err?.status === 400 || err?.code === 'PGRST204');
+                                    if (isBadRequest) return { data: [] };
+                                    try {
+                                        const retryResult = await window.supabaseClient
+                                            .from(tableName)
+                                            .select('passing_status, submitted_at');
+                                        if (retryResult.data && period.start) {
+                                            retryResult.data = retryResult.data.filter(audit => {
+                                                if (!audit.submitted_at) return false;
+                                                const auditDate = toDhakaTime(audit.submitted_at);
+                                                return (!period.start || auditDate >= period.start) && 
+                                                       (!period.end || auditDate <= period.end);
+                                            });
+                                        }
+                                        return retryResult;
+                                    } catch (retryErr) {
+                                        return { data: [] };
                                     }
-                                    return retryResult;
                                 }
                             })(),
                             (async () => {
@@ -4655,21 +4672,26 @@ async function fetchAndCacheStandupView(period) {
                                     }
                                     return result;
                                 } catch (err) {
-                                    // If server-side date filter fails, try without date filter and filter client-side
-                                    const retryResult = await window.supabaseClient
-                                        .from(tableName)
-                                        .select('id, submitted_at')
-                                        .not('reversal_requested_at', 'is', null);
-                                    
-                                    if (retryResult.data && period.start) {
-                                        retryResult.data = retryResult.data.filter(audit => {
-                                            if (!audit.submitted_at) return false;
-                                            const auditDate = toDhakaTime(audit.submitted_at);
-                                            return (!period.start || auditDate >= period.start) && 
-                                                   (!period.end || auditDate <= period.end);
-                                        });
+                                    // Table may not have reversal_requested_at (e.g. older schema) - return empty instead of retry
+                                    const isBadRequest = (err?.status === 400 || err?.code === 'PGRST204');
+                                    if (isBadRequest) return { data: [] };
+                                    try {
+                                        const retryResult = await window.supabaseClient
+                                            .from(tableName)
+                                            .select('id, submitted_at')
+                                            .not('reversal_requested_at', 'is', null);
+                                        if (retryResult.data && period.start) {
+                                            retryResult.data = retryResult.data.filter(audit => {
+                                                if (!audit.submitted_at) return false;
+                                                const auditDate = toDhakaTime(audit.submitted_at);
+                                                return (!period.start || auditDate >= period.start) && 
+                                                       (!period.end || auditDate <= period.end);
+                                            });
+                                        }
+                                        return retryResult;
+                                    } catch (retryErr) {
+                                        return { data: [] };
                                     }
-                                    return retryResult;
                                 }
                             })(),
                             (async () => {

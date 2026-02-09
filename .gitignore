@@ -67,6 +67,8 @@ out/
 # They should NOT be committed to version control
 public/js/**/*.js
 public/js/**/*.js.map
+# Exception: console-stub.js is source (not compiled), needed for production
+!public/js/console-stub.js
 
 # TypeScript source maps (server builds)
 *.map
