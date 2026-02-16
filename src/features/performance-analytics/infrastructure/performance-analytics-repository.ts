@@ -147,6 +147,72 @@ export class PerformanceAnalyticsRepository {
   }
 
   /**
+   * Fetch error counts by scorecard parameter name (parameter name = error_name from scorecard_perameters).
+   * Counts audits in the filter period where feedback_<field_id> is non-null for each error parameter.
+   */
+  async fetchParameterErrorBreakdown(filters: PerformanceFilters): Promise<ErrorBucket[]> {
+    const supabase = await getAuthenticatedSupabase();
+    if (!filters.startDate || !filters.endDate) return [];
+
+    const [scorecardsRes, paramsRes, tableNames] = await Promise.all([
+      supabase.from('scorecards').select('id, table_name').not('table_name', 'is', null),
+      supabase.from('scorecard_perameters').select('scorecard_id, field_id, error_name').eq('parameter_type', 'error').eq('is_active', true),
+      this.getAuditTableNames()
+    ]);
+
+    const scorecards = (scorecardsRes.data ?? []) as { id: string; table_name: string }[];
+    const params = (paramsRes.data ?? []) as { scorecard_id: string; field_id: string; error_name: string }[];
+    const tableToScorecard = new Map(scorecards.map((s) => [s.table_name, s.id]));
+    const paramsByScorecard = new Map<string, { field_id: string; error_name: string }[]>();
+    for (const p of params) {
+      const list = paramsByScorecard.get(p.scorecard_id) ?? [];
+      list.push({ field_id: p.field_id, error_name: p.error_name || p.field_id });
+      paramsByScorecard.set(p.scorecard_id, list);
+    }
+
+    const nameToCount = new Map<string, number>();
+
+    for (const tableName of tableNames) {
+      const scorecardId = tableToScorecard.get(tableName);
+      if (!scorecardId) continue;
+      const tableParams = paramsByScorecard.get(scorecardId);
+      if (!tableParams || tableParams.length === 0) continue;
+
+      const feedbackCols = tableParams.map((p) => `feedback_${p.field_id}`).join(', ');
+      const selectStr = `submitted_at, ${feedbackCols}`;
+
+      const { data: rows, error } = await supabase
+        .from(tableName)
+        .select(selectStr)
+        .gte('submitted_at', filters.startDate)
+        .lte('submitted_at', filters.endDate)
+        .limit(10000);
+
+      if (error) continue;
+
+      const list = (rows ?? []) as Record<string, unknown>[];
+      for (const p of tableParams) {
+        const col = `feedback_${p.field_id}`;
+        const count = list.filter((row) => {
+          const v = row[col];
+          if (v == null) return false;
+          if (typeof v === 'string') return v.trim() !== '';
+          if (Array.isArray(v)) return v.length > 0;
+          return true;
+        }).length;
+        if (count > 0) {
+          const name = p.error_name.trim() || p.field_id;
+          nameToCount.set(name, (nameToCount.get(name) ?? 0) + count);
+        }
+      }
+    }
+
+    return Array.from(nameToCount.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  /**
    * Build full analytics data: aggregate by individual, team, role, designation, supervisor, quality mentor; error breakdown; score trend
    */
   async getAnalytics(
@@ -171,6 +237,7 @@ export class PerformanceAnalyticsRepository {
     const byQualityMentor = this.aggregateByKey(rawAudits, people, 'quality_mentor', 'Quality Mentor');
 
     const errorBreakdown = this.buildErrorBreakdown(rawAudits);
+    const parameterErrorBreakdown = await this.fetchParameterErrorBreakdown(filters);
     const scoreTrend = this.buildScoreTrend(rawAudits);
     const byChannel = this.buildChannelAggregates(rawAudits);
     const auditFrequencyByDay = this.buildAuditFrequencyByDay(rawAudits);
@@ -196,6 +263,7 @@ export class PerformanceAnalyticsRepository {
       bySupervisor,
       byQualityMentor,
       errorBreakdown,
+      parameterErrorBreakdown: parameterErrorBreakdown.length > 0 ? parameterErrorBreakdown : undefined,
       scoreTrend,
       rawAudits,
       people,

@@ -87,6 +87,8 @@ export interface PerformanceAnalyticsData {
   bySupervisor: AggregationBucket[];
   byQualityMentor: AggregationBucket[];
   errorBreakdown: ErrorBucket[];
+  /** Error counts by scorecard parameter name (when available) */
+  parameterErrorBreakdown?: ErrorBucket[];
   scoreTrend: { period: string; avgScore: number; count: number; passRate: number }[];
   rawAudits: AuditRow[];
   people: PersonRow[];

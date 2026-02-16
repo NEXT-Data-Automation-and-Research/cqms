@@ -60,23 +60,29 @@
 }
 
 .qms-dashboard .qms-main {
-  grid-column: 1 / 9;
+  grid-column: 1 / 11;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
 
 .qms-dashboard .qms-right {
-  grid-column: 9 / -1;
+  grid-column: 11 / -1;
+  min-width: 0;
+  max-width: 280px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 }
 
 @media (max-width: 968px) {
   .qms-dashboard .qms-main,
   .qms-dashboard .qms-right {
     grid-column: 1 / -1;
+  }
+  .qms-dashboard .qms-right {
+    max-width: none;
   }
 }
 
@@ -1014,38 +1020,43 @@
   text-align: right;
 }
 
-/* Compact: Performance by channel */
+/* Compact: Performance by channel (shrunk for more table width) */
 .qms-right > .qms-panel {
-  padding: 12px 16px;
+  padding: 10px 12px;
 }
 
 .qms-right > .qms-panel .qms-section-title {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  font-size: 11px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  font-size: 10px;
 }
 
 .qms-right > .qms-panel .qms-channel-bars {
-  gap: 6px;
+  gap: 4px;
 }
 
 .qms-right > .qms-panel .qms-channel-bar-row {
-  padding: 5px 0;
-  gap: 10px;
+  padding: 4px 0;
+  gap: 6px;
 }
 
 .qms-right > .qms-panel .qms-channel-bar-row .label {
-  font-size: 12px;
-  min-width: 80px;
+  font-size: 11px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .qms-right > .qms-panel .qms-channel-bar-track {
-  height: 6px;
+  height: 5px;
+  min-width: 40px;
 }
 
 .qms-right > .qms-panel .qms-channel-bar-meta {
-  font-size: 11px;
-  min-width: 56px;
+  font-size: 10px;
+  min-width: 44px;
 }
 
 /* --------------------------------------------------------------------------- */
@@ -1129,151 +1140,122 @@
   transition: color 0.15s;
 }
 
-/* Compact: Recent audits */
+/* Compact: Recent audits (shrunk) */
 .qms-right > .qms-live-feed {
-  padding: 12px 16px;
+  padding: 10px 12px;
 }
 
 .qms-right > .qms-live-feed .qms-section-title {
-  margin-bottom: 8px;
-  padding-bottom: 8px;
-  font-size: 11px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  font-size: 10px;
 }
 
 .qms-right > .qms-live-feed .qms-live-feed-item {
-  padding: 6px 0;
-  font-size: 12px;
-}
-
-.qms-right > .qms-live-feed .qms-live-feed-dot {
-  width: 6px;
-  height: 6px;
-}
-
-.qms-right > .qms-live-feed .qms-live-feed-time {
+  padding: 4px 0;
   font-size: 11px;
 }
 
+.qms-right > .qms-live-feed .qms-live-feed-dot {
+  width: 5px;
+  height: 5px;
+}
+
+.qms-right > .qms-live-feed .qms-live-feed-time {
+  font-size: 10px;
+}
+
 .qms-right > .qms-live-feed .qms-view-all {
-  margin-top: 8px;
+  margin-top: 6px;
+  font-size: 11px;
 }
 
 .qms-view-all:hover {
   color: var(--accent-green);
 }
 
+.qms-right .qms-panel .qms-section-title {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  font-size: 10px;
+}
+
 /* --------------------------------------------------------------------------- */
-/* ERROR SECTION                                                               */
+/* ERRORS AT A GLANCE — Simplified, easy to understand                         */
 /* --------------------------------------------------------------------------- */
-.qms-error-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-top: 12px;
+.qms-errors-simple {
+  margin-top: 0;
 }
 
-@media (max-width: 768px) {
-  .qms-error-section {
-    grid-template-columns: 1fr;
-  }
+.qms-errors-intro {
+  font-size: 12px;
+  color: var(--text-secondary, #4b5563);
+  margin: 0 0 10px 0;
+  line-height: 1.4;
 }
 
-.qms-error-stacked-bar {
-  height: 10px;
-  background: var(--border-subtle);
-  border-radius: 5px;
-  overflow: hidden;
-  display: flex;
-  margin-bottom: 16px;
-}
-
-.qms-error-stacked-segment {
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.qms-error-list {
+.qms-errors-simple-list {
   list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.qms-error-list li {
+.qms-errors-simple-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 8px 10px;
   font-size: 13px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 2px;
+  border-radius: var(--radius-sm, 6px);
+  margin-bottom: 4px;
+  background: var(--bg-elevated, #fafafa);
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
 }
 
-.qms-error-list li:hover {
-  background: var(--bg-elevated);
+.qms-errors-simple-item:last-child {
+  margin-bottom: 0;
 }
 
-.qms-error-list li.highlight {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.qms-error-calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-
-.qms-error-calendar-cell {
-  aspect-ratio: 1;
-  border-radius: var(--radius-sm);
-  background: var(--border-subtle);
-  font-size: 10px;
+.qms-errors-simple-label {
+  color: var(--text-primary, #111827);
   font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
 }
 
-.qms-error-cards {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 12px;
-  margin-top: 16px;
+.qms-errors-simple-count {
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  min-width: 2.5em;
+  text-align: right;
 }
 
-.qms-error-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+.qms-errors-simple-item.qms-err-critical {
+  border-left: 3px solid var(--accent-red, #ef4444);
+  background: rgba(239, 68, 68, 0.06);
 }
 
-.qms-error-card:hover {
-  border-color: var(--border);
-  box-shadow: var(--shadow-card);
+.qms-errors-simple-item.qms-err-significant {
+  border-left: 3px solid var(--accent-amber, #f59e0b);
+  background: rgba(245, 158, 11, 0.06);
 }
 
-.qms-error-card-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 6px;
-}
-
-.qms-error-card-meta {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.qms-error-card-trend {
+/* Compact in sidebar */
+.qms-right .qms-errors-simple .qms-errors-intro {
   font-size: 11px;
-  font-weight: 500;
-  margin-top: 6px;
+  margin-bottom: 8px;
 }
 
-.qms-error-card-trend.up { color: var(--accent-red); }
-.qms-error-card-trend.down { color: var(--accent-green); }
+.qms-right .qms-errors-simple-item {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.qms-right .qms-errors-simple-label {
+  font-size: 11px;
+}
+
+.qms-right .qms-errors-simple-count {
+  font-size: 11px;
+}
 
 /* --------------------------------------------------------------------------- */
 /* AGENT MODAL — Center modal for agent performance detail                    */

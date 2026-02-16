@@ -114,6 +114,8 @@
                     <th>Not passing</th>
                     <th>Pass rate</th>
                     <th>Avg score</th>
+                    <th>Total Chats Reviewed</th>
+                    <th>Total Audits</th>
                   </tr>
                 </thead>
                 <tbody id="qmsCombinedTableBody"></tbody>
@@ -140,19 +142,11 @@
             <a href="#" class="qms-view-all" id="qmsViewAllAudits">View All</a>
           </section>
 
-          <!-- Top error categories (below Recent audits) -->
-          <section class="qms-panel">
-            <h2 class="qms-section-title">Top error categories</h2>
-            <div class="qms-error-section">
-              <div>
-                <div class="qms-error-stacked-bar" id="qmsErrorStackedBar"></div>
-                <ul class="qms-error-list" id="qmsErrorList"></ul>
-              </div>
-              <div>
-                <div class="qms-error-calendar" id="qmsErrorCalendar"></div>
-              </div>
-              <div class="qms-error-cards" id="qmsErrorCards"></div>
-            </div>
+          <!-- Errors at a glance — parameter name counts -->
+          <section class="qms-panel qms-errors-simple">
+            <h2 class="qms-section-title">Errors at a glance</h2>
+            <p class="qms-errors-intro" id="qmsErrorsIntro">Error counts this period.</p>
+            <ul class="qms-errors-simple-list" id="qmsErrorsSimpleList"></ul>
           </section>
         </div>
       </div>
@@ -271,6 +265,7 @@
       }
 
       let currentData = null;
+      let chatsReviewedTotal = null;
       let activeQuickRange = 'thisMonth';
 
       function getStartEndForRange(range) {
@@ -579,6 +574,8 @@
         const start = (currentPage - 1) * pageSize;
         const page = filtered.slice(start, start + pageSize);
         const audits = data.rawAudits || [];
+        const totalAudits = audits.length;
+        const chatsReviewedLabel = chatsReviewedTotal != null ? Number(chatsReviewedTotal).toLocaleString() : '—';
 
         const tbody = document.getElementById('qmsCombinedTableBody');
         tbody.innerHTML = page.map((a) => {
@@ -598,6 +595,8 @@
                 <span class="qms-pass-pct">${a.passRate.toFixed(0)}%</span>
               </td>
               <td class="qms-cell-score"><span class="qms-score-pill ${scorePillClass(a.avgScore)}">${a.avgScore.toFixed(0)}%</span></td>
+              <td class="qms-cell-num qms-cell-chats-reviewed">${chatsReviewedLabel}</td>
+              <td class="qms-cell-num qms-cell-total-audits">${totalAudits.toLocaleString()}</td>
             </tr>
           `;
         }).join('');
@@ -689,47 +688,40 @@
         container.innerHTML = html || '<div class="qms-empty">No recent audits</div>';
       }
 
+      function parameterDisplayName(name) {
+        if (!name || !String(name).trim()) return 'Other';
+        return String(name).trim().replace(/_/g, ' ');
+      }
+
       function renderErrorSection(data) {
-        let errors = data.errorBreakdown || [];
+        const listEl = document.getElementById('qmsErrorsSimpleList');
+        const introEl = document.getElementById('qmsErrorsIntro');
+        if (!listEl) return;
+        const useParameterBreakdown = data.parameterErrorBreakdown && data.parameterErrorBreakdown.length > 0;
+        if (introEl) {
+          introEl.textContent = useParameterBreakdown
+            ? 'Error count by parameter (audits with that parameter flagged this period).'
+            : 'Error counts this period.';
+        }
+        let errors = useParameterBreakdown ? data.parameterErrorBreakdown : (data.errorBreakdown || []);
         if (errors.length === 0) {
           errors = [
-            { name: 'Total errors (audits with ≥1)', count: 0 },
+            { name: 'Audits with at least one error', count: 0 },
             { name: 'Critical errors', count: 0 },
             { name: 'Significant errors', count: 0 }
           ];
         }
-        const total = errors.reduce((s, e) => s + e.count, 0) || 1;
-        const stacked = document.getElementById('qmsErrorStackedBar');
-        stacked.innerHTML = errors.map((e) => `<div class="qms-error-stacked-segment" style="width: ${(e.count / total) * 100}%; background: var(--accent-amber);"></div>`).join('');
-        const list = document.getElementById('qmsErrorList');
-        list.innerHTML = errors.map((e, i) => `<li class="${i === 0 ? 'highlight' : ''}"><span>${e.name}</span><span>${e.count} (${((e.count / total) * 100).toFixed(0)}%)</span></li>`).join('');
-
-        const byDay = data.errorCountByDay || [];
-        const dayMap = new Map(byDay.map((d) => [d.date, d.count]));
-        const calContainer = document.getElementById('qmsErrorCalendar');
-        const maxErr = Math.max(...byDay.map((d) => d.count), 1);
-        const start = new Date();
-        start.setDate(start.getDate() - 30);
-        const cells = [];
-        for (let i = 0; i < 35; i++) {
-          const d = new Date(start);
-          d.setDate(d.getDate() + i);
-          const date = d.toISOString().slice(0, 10);
-          const c = dayMap.get(date) || 0;
-          const intensity = c / maxErr;
-          const bg = intensity === 0 ? 'var(--border-subtle)' : intensity < 0.5 ? 'var(--accent-amber)' : 'var(--accent-red)';
-          cells.push(`<div class="qms-error-calendar-cell" style="background: ${bg}; opacity: ${0.3 + intensity * 0.7}" title="${date}: ${c}">${c || ''}</div>`);
-        }
-        calContainer.innerHTML = cells.join('');
-
-        const cards = document.getElementById('qmsErrorCards');
-        cards.innerHTML = errors.slice(0, 5).map((e, i) => `
-          <div class="qms-error-card">
-            <div class="qms-error-card-name">${e.name}</div>
-            <div class="qms-error-card-meta">${e.count} occurrences</div>
-            <div class="qms-error-card-trend ${i % 2 ? 'up' : 'down'}">${i % 2 ? '↑ Worsening' : '↓ Improving'}</div>
-          </div>
-        `).join('');
+        listEl.innerHTML = errors.map((e) => {
+          const label = useParameterBreakdown ? parameterDisplayName(e.name) : (e.name || '').trim();
+          const count = Number(e.count) || 0;
+          const isCritical = (e.name || '').toLowerCase().includes('critical');
+          const isSignificant = (e.name || '').toLowerCase().includes('significant');
+          const rowClass = isCritical ? 'qms-err-critical' : isSignificant ? 'qms-err-significant' : '';
+          return `<li class="qms-errors-simple-item ${rowClass}">
+            <span class="qms-errors-simple-label">${escapeHtml(label)}</span>
+            <span class="qms-errors-simple-count">${count.toLocaleString()}</span>
+          </li>`;
+        }).join('');
       }
 
       function getAgentErrorTrend(audits) {
@@ -1000,6 +992,19 @@
           const service = new PerformanceAnalyticsService();
           const filters = getFilters();
           const data = await service.loadAnalytics(email, filters);
+          chatsReviewedTotal = null;
+          const client = window.supabaseClient || window.supabase || (window.top && window.top.supabaseClient);
+          if (client && filters.startDate && filters.endDate) {
+            try {
+              const { data: chatRows, error } = await client.rpc('get_chat_review_analytics', {
+                p_from_date: filters.startDate,
+                p_to_date: filters.endDate
+              });
+              if (!error && Array.isArray(chatRows)) {
+                chatsReviewedTotal = chatRows.reduce((s, r) => s + Number(r.total_conversations_reviewed || 0), 0);
+              }
+            } catch (_) {}
+          }
           if (isRefetch) {
             showInlineLoading(false);
           } else {
