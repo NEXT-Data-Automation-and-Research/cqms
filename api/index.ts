@@ -163,6 +163,7 @@ app.use(helmet({
       objectSrc: ["'none'"],
       scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"], // Allow YouTube embeds (e.g. auth page Easter egg)
       frameAncestors: ["'self'"], // Clickjacking: allow embedding only in same origin
       formAction: ["'self'"], // Forms may only submit to same origin (and API is same origin)
     },
@@ -182,12 +183,13 @@ app.use((_req, res, next) => {
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: 'Too many requests from this IP, please try again later.',
+  message: { success: false, error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
     const p = (req.baseUrl || '') + (req.path || '');
-    return p === '/api/permissions/check-batch' || req.path === '/permissions/check-batch';
+    return p === '/api/permissions/check-batch' || req.path === '/permissions/check-batch'
+      || p.startsWith('/api/massive-ai-audit') || req.path.startsWith('/massive-ai-audit');
   },
 });
 
@@ -509,6 +511,7 @@ import platformNotificationsRouter from '../src/api/routes/platform-notification
 import cacheManagementRouter from '../src/api/routes/cache-management.routes.js';
 import activeUsersRouter from '../src/api/routes/active-users.routes.js';
 import auditWebhookRouter from '../src/api/routes/audit-webhook.routes.js';
+import massiveAiAuditRouter from '../src/api/routes/massive-ai-audit.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -523,6 +526,7 @@ app.use('/api/platform-notifications', platformNotificationsRouter);
 app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
+app.use('/api/massive-ai-audit', massiveAiAuditRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);

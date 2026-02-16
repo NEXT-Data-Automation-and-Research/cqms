@@ -301,10 +301,53 @@
             content: "";
         }
 
-        /* Fix dropdown option colors - ensure options are visible */
-        #employeeName option {
-            background-color: #ffffff !important;
-            color: #374151 !important;
+        /* Searchable employee dropdown styles */
+        #employeeSearchDropdown .employee-search-item {
+            padding: 0.3234rem 0.4852rem;
+            cursor: pointer;
+            font-size: 0.4852rem;
+            font-family: 'Poppins', sans-serif;
+            color: #374151;
+            display: flex;
+            flex-direction: column;
+            gap: 0.0808rem;
+            transition: background 0.15s;
+        }
+        #employeeSearchDropdown .employee-search-item:hover,
+        #employeeSearchDropdown .employee-search-item.highlighted {
+            background-color: #f0fdf4;
+        }
+        #employeeSearchDropdown .employee-search-item.selected {
+            background-color: #dcfce7;
+        }
+        #employeeSearchDropdown .employee-search-item .employee-name {
+            font-weight: 500;
+            color: #111827;
+        }
+        #employeeSearchDropdown .employee-search-item .employee-meta {
+            font-size: 0.3839rem;
+            color: #6b7280;
+        }
+        #employeeSearchDropdown .employee-search-empty {
+            padding: 0.6469rem 0.4852rem;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.4852rem;
+            font-family: 'Poppins', sans-serif;
+        }
+        #employeeSearchInput:focus {
+            border-color: #22c55e;
+            box-shadow: 0 0 0 0.0608rem rgba(34, 197, 94, 0.2);
+        }
+        #employeeSearchList::-webkit-scrollbar {
+            width: 0.2425rem;
+        }
+        #employeeSearchList::-webkit-scrollbar-track {
+            background: #f9fafb;
+        }
+        #employeeSearchList::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 0.1213rem;
         }
 
         /* Timer status indicator pulse animation */
@@ -399,7 +442,40 @@
 
         [data-theme="dark"] #employeeName option {
             background-color: var(--background-white) !important;
-            color: #ffffff !important; /* Pure white text for maximum contrast */
+            color: #ffffff !important;
+        }
+
+        [data-theme="dark"] #employeeSearchDropdown {
+            background: var(--background-white, #1f2937) !important;
+            border-color: var(--border-light, #374151) !important;
+        }
+        [data-theme="dark"] #employeeSearchInput {
+            background: var(--background-secondary, #111827) !important;
+            color: #ffffff !important;
+            border-color: var(--border-light, #374151) !important;
+        }
+        [data-theme="dark"] .employee-search-item {
+            color: #e5e7eb !important;
+        }
+        [data-theme="dark"] .employee-search-item .employee-name {
+            color: #f9fafb !important;
+        }
+        [data-theme="dark"] .employee-search-item .employee-meta {
+            color: #9ca3af !important;
+        }
+        [data-theme="dark"] .employee-search-item:hover,
+        [data-theme="dark"] .employee-search-item.highlighted {
+            background-color: rgba(34, 197, 94, 0.1) !important;
+        }
+        [data-theme="dark"] .employee-search-item.selected {
+            background-color: rgba(34, 197, 94, 0.15) !important;
+        }
+        [data-theme="dark"] .employee-search-empty {
+            color: #6b7280 !important;
+        }
+        [data-theme="dark"] #employeeSearchDropdown > div:first-child {
+            border-bottom-color: var(--border-light, #374151) !important;
+            background: var(--background-white, #1f2937) !important;
         }
 
         /* Error Details Header and containers - Make dark */
@@ -1016,10 +1092,18 @@
                 <div style="display: flex; gap: 0.3234rem; flex-wrap: wrap; margin-bottom: 0.4852rem;">
                     <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem); position: relative; overflow: visible;">
                         <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Employee *</p>
-                        <select id="employeeName" name="employeeName" required style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; width: 100%; min-height: 1.2em; appearance: none; -webkit-appearance: none; -moz-appearance: none; background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23ffffff\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e'); background-repeat: no-repeat; background-position: right center; background-size: 0.5659rem; padding-right: 1.2937rem; line-height: 1.2; position: relative; z-index: 10;">
-                        <option value="" style="background-color: #ffffff; color: #374151;">Select Employee...</option>
-                    </select>
-                </div>
+                        <!-- Hidden native select for form data and backward compatibility -->
+                        <select id="employeeName" name="employeeName" required style="display:none;">
+                            <option value="">Select Employee...</option>
+                        </select>
+                        <!-- Searchable employee dropdown -->
+                        <div id="employeeSearchWrapper" style="position: relative; min-width: 7rem;">
+                            <div id="employeeSearchDisplay" style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; width: 100%; min-height: 1.2em; line-height: 1.2; display: flex; align-items: center; gap: 0.2rem; user-select: none;" tabindex="0">
+                                <span id="employeeSearchDisplayText" style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Select Employee...</span>
+                                <svg style="width: 0.5659rem; height: 0.5659rem; flex-shrink: 0; transition: transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"></polyline></svg>
+                            </div>
+                        </div>
+                    </div>
                     <div style="background: rgba(0,0,0,0.15); border-radius: 0.2425rem; padding: 0.3234rem 0.4852rem; backdrop-filter: blur(0.3516rem);">
                         <p style="font-size: 0.4043rem; color: rgba(255,255,255,0.8); margin: 0 0 0.0808rem 0; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0122rem; line-height: 1;">Email *</p>
                         <input type="email" id="employeeEmail" name="employeeEmail" required readonly style="padding: 0; border: none; background-color: transparent; color: white; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; font-weight: 600; width: 100%; word-break: break-all; line-height: 1.2;">
@@ -1463,6 +1547,13 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
             });
         }
         
+        // If no channel selected and no specific scorecard requested, show prompt and don't populate
+        if (!channelFilter && !preselectedScorecardId) {
+            scorecardSelect.innerHTML = '<option value="">Select a channel first...</option>';
+            showSelectChannelMessage();
+            return;
+        }
+        
         scorecardSelect.innerHTML = '<option value="">Select a scorecard...</option>';
         
         if (filteredScorecards && filteredScorecards.length > 0) {
@@ -1515,17 +1606,17 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
                             }
                         }
                     }
-                } else {
-                    // No preselected scorecard ID - auto-select the first scorecard
+                } else if (channelFilter) {
+                    // No preselected scorecard ID but channel is selected - auto-select the default/first
                     const firstScorecard = filteredScorecards[0];
                     if (firstScorecard) {
-                        console.log('✅ [loadScorecards] Auto-selecting first scorecard:', firstScorecard.name, 'ID:', firstScorecard.id);
+                        console.log('✅ [loadScorecards] Auto-selecting default scorecard for channel:', firstScorecard.name, 'ID:', firstScorecard.id);
                         scorecardSelect.value = firstScorecard.id;
-                        // Load parameters for the first scorecard
                         await loadScorecardParameters(firstScorecard.id);
-                        console.log('✅ [loadScorecards] First scorecard parameters loaded');
+                        console.log('✅ [loadScorecards] Default scorecard parameters loaded');
                     }
                 }
+                // If no channel selected and no preselected ID, don't auto-select any scorecard
             }
             
             // Show message if no scorecard is selected
@@ -1539,8 +1630,8 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
         } else {
             if (channelFilter) {
                 scorecardSelect.innerHTML = '<option value="">No scorecard available for selected channel</option>';
-        } else {
-            scorecardSelect.innerHTML = '<option value="">No scorecards available</option>';
+            } else {
+                scorecardSelect.innerHTML = '<option value="">No scorecards available</option>';
             }
         }
     } catch (error) {
@@ -1551,25 +1642,38 @@ async function loadScorecards(channelFilter = null, preselectedScorecardId = nul
     
     // Show message if no scorecard is selected after loading
     if (!scorecardSelect.value || scorecardSelect.value === '') {
-        showNoScorecardMessage();
+        if (!channelFilter && !preselectedScorecardId) {
+            showSelectChannelMessage();
+        } else {
+            showNoScorecardMessage();
+        }
     }
 }
 
 // Auto-select scorecard based on selected channel
-async function autoSelectScorecardByChannel(channelName) {
-    if (!channelName || !channelName.trim()) {
+async function autoSelectScorecardByChannel(channelValue) {
+    if (!channelValue || !channelValue.trim()) {
         // If channel is cleared, reload all scorecards without auto-selecting
-        await loadScorecards(null, null, true); // skipAutoSelect = true
+        await loadScorecards(null, null, true);
         return;
     }
     
-    // Ensure scorecards are loaded first
-    if (allAvailableScorecards.length === 0) {
-        await loadScorecards(null, null, true); // skipAutoSelect = true
+    // Resolve channel ID to channel name for scorecard filtering
+    // The channel dropdown stores IDs as values but scorecards use channel names
+    let channelName = channelValue.trim();
+    const channelSelect = document.getElementById('channel');
+    if (channelSelect) {
+        const selectedOption = channelSelect.options[channelSelect.selectedIndex];
+        if (selectedOption && selectedOption.textContent && selectedOption.value === channelValue) {
+            channelName = selectedOption.textContent.trim();
+        }
     }
     
-    // Reload scorecards filtered by channel (without auto-selecting)
-    await loadScorecards(channelName.trim(), null, true); // skipAutoSelect = true
+    console.log('🔄 [autoSelectScorecardByChannel] Channel value:', channelValue, '→ Channel name:', channelName);
+    
+    // Load scorecards filtered by channel WITH auto-select enabled
+    // Default scorecard for the channel will be auto-selected (defaults are sorted first)
+    await loadScorecards(channelName, null, false);
 }
 
 
@@ -8159,16 +8263,16 @@ window.startAssignedAudit = async function(assignmentId, employeeEmail, scorecar
         // Auto-select the scorecard from assignment
         const scorecardSelect = document.getElementById('scorecardSelect');
         if (scorecardSelect && scorecardId) {
-            // First, ensure scorecards are loaded
-            await loadScorecards();
-            // Then select the assigned scorecard
-            scorecardSelect.value = scorecardId;
-            // Load the scorecard parameters
-            await loadScorecardParameters(scorecardId);
+            // Load scorecards with preselected scorecard from assignment
+            await loadScorecards(null, scorecardId);
+            // Ensure the assigned scorecard is selected
+            if (scorecardSelect.value !== scorecardId) {
+                scorecardSelect.value = scorecardId;
+                await loadScorecardParameters(scorecardId);
+            }
         } else if (scorecardSelect) {
-            // If no scorecard ID provided, auto-select first available
+            // If no scorecard ID provided, prompt user to select a channel
             await loadScorecards();
-            // The loadScorecards function will auto-select the first one
         }
         
         // Pre-fill employee information
@@ -8460,11 +8564,15 @@ window.startAuditFromConversation = async function(conversation) {
             }
         }
         
-        // Auto-select first scorecard if available
+        // Auto-select scorecard based on channel if available, otherwise prompt for channel
         const scorecardSelect = document.getElementById('scorecardSelect');
         if (scorecardSelect) {
-            await loadScorecards();
-            // The loadScorecards function will auto-select the first one
+            const channelSelect = document.getElementById('channel');
+            if (channelSelect && channelSelect.value) {
+                await autoSelectScorecardByChannel(channelSelect.value);
+            } else {
+                await loadScorecards();
+            }
         }
         
         // Scroll to top to show form
@@ -9087,6 +9195,24 @@ function setupFeedbackTextareaAutoExpand(fieldId, textareaElement = null) {
     setTimeout(autoExpand, 0);
 }
 
+// Show message prompting user to select a channel first
+function showSelectChannelMessage() {
+    const container = document.getElementById('errorParametersContainer');
+    if (container) {
+        container.innerHTML = `
+            <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
+                <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">Please select a channel first.</p>
+                <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">Select an employee or choose a channel from the dropdown above. The matching scorecard will be loaded automatically.</p>
+            </div>
+        `;
+    }
+    // Also update scorecard display in header
+    const scorecardDisplay = document.getElementById('formScorecardDisplay');
+    if (scorecardDisplay) {
+        scorecardDisplay.innerHTML = '<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Select a channel';
+    }
+}
+
 // Show/hide no scorecard message
 function showNoScorecardMessage() {
     const container = document.getElementById('errorParametersContainer');
@@ -9094,7 +9220,7 @@ function showNoScorecardMessage() {
         container.innerHTML = `
             <div id="noScorecardMessage" style="padding: 1.2937rem; text-align: center; color: #000000; font-size: 0.5659rem;">
                 <p style="margin: 0 0 0.3234rem 0; font-weight: 500;">Select a scorecard first so we can load the criteria for this audit.</p>
-                <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">💡 Tip: Select an employee first to filter scorecards by channel, or choose any scorecard from the list.</p>
+                <p style="margin: 0; color: #6b7280; font-size: 0.4852rem;">Choose a scorecard from the dropdown above, or select an employee to auto-load the matching scorecard.</p>
             </div>
         `;
     }
@@ -10538,6 +10664,11 @@ async function loadEmployees() {
             }
         }
         
+        // Refresh the searchable dropdown display
+        if (typeof window._refreshEmployeeSearchDropdown === 'function') {
+            window._refreshEmployeeSearchDropdown();
+        }
+        
     } catch (error) {
         console.error('Error loading employees:', error);
         console.error('Error stack:', error.stack);
@@ -10545,11 +10676,245 @@ async function loadEmployees() {
         if (employeeSelect) {
             employeeSelect.innerHTML = `<option value="">Error: ${escapeHtml((error && error.message) ? error.message : 'Failed to load employees')}</option>`;
         }
+        if (typeof window._refreshEmployeeSearchDropdown === 'function') {
+            window._refreshEmployeeSearchDropdown();
+        }
     }
 }
 
 // Expose loadEmployees globally
 window.loadEmployees = loadEmployees;
+
+// ============================================================================
+// Searchable Employee Dropdown
+// ============================================================================
+function initSearchableEmployeeDropdown() {
+    const nativeSelect = document.getElementById('employeeName');
+    const wrapper = document.getElementById('employeeSearchWrapper');
+    const display = document.getElementById('employeeSearchDisplay');
+    const displayText = document.getElementById('employeeSearchDisplayText');
+    const dropdown = document.getElementById('employeeSearchDropdown');
+    const searchInput = document.getElementById('employeeSearchInput');
+    const searchList = document.getElementById('employeeSearchList');
+
+    if (!nativeSelect || !wrapper || !dropdown || !searchInput || !searchList) {
+        // Retry after DOM is fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSearchableEmployeeDropdown);
+        } else {
+            setTimeout(initSearchableEmployeeDropdown, 200);
+        }
+        return;
+    }
+
+    let isOpen = false;
+    let highlightedIndex = -1;
+    let filteredItems = [];
+
+    function getEmployeeOptions() {
+        return Array.from(nativeSelect.options).filter((opt, i) => i > 0 && opt.value);
+    }
+
+    function syncDisplayText() {
+        const selectedOption = nativeSelect.options[nativeSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            displayText.textContent = selectedOption.textContent || selectedOption.value;
+            displayText.style.opacity = '1';
+        } else {
+            displayText.textContent = 'Select Employee...';
+            displayText.style.opacity = '0.8';
+        }
+    }
+
+    function renderList(filter) {
+        const options = getEmployeeOptions();
+        const term = (filter || '').toLowerCase().trim();
+
+        filteredItems = options.filter(opt => {
+            if (!term) return true;
+            const name = (opt.dataset.name || opt.textContent || '').toLowerCase();
+            const email = (opt.dataset.email || opt.value || '').toLowerCase();
+            const dept = (opt.dataset.department || '').toLowerCase();
+            const channel = (opt.dataset.channel || '').toLowerCase();
+            return name.includes(term) || email.includes(term) || dept.includes(term) || channel.includes(term);
+        });
+
+        if (filteredItems.length === 0) {
+            searchList.innerHTML = '<div class="employee-search-empty">No employees found</div>';
+            highlightedIndex = -1;
+            return;
+        }
+
+        const currentValue = nativeSelect.value;
+        searchList.innerHTML = filteredItems.map((opt, idx) => {
+            const name = opt.dataset.name || opt.textContent || '';
+            const email = opt.dataset.email || opt.value || '';
+            const channel = opt.dataset.channel || '';
+            const dept = opt.dataset.department || '';
+            const meta = [channel, dept].filter(Boolean).join(' · ');
+            const isSelected = opt.value === currentValue;
+            return `<div class="employee-search-item${isSelected ? ' selected' : ''}" data-index="${idx}" data-value="${opt.value}">
+                <span class="employee-name">${escapeHtml(name)}</span>
+                ${meta ? `<span class="employee-meta">${escapeHtml(email)}${meta ? ' · ' + escapeHtml(meta) : ''}</span>` : `<span class="employee-meta">${escapeHtml(email)}</span>`}
+            </div>`;
+        }).join('');
+
+        highlightedIndex = -1;
+    }
+
+    function selectItem(value) {
+        nativeSelect.value = value;
+        syncDisplayText();
+        closeDropdown();
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function positionDropdown() {
+        const rect = display.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const dropdownHeight = 320; // approximate max height in px
+        
+        // Position below the display element
+        let top = rect.bottom + 4;
+        let left = rect.left;
+        
+        // If dropdown would overflow bottom of viewport, position above
+        if (top + dropdownHeight > viewportHeight && rect.top > dropdownHeight) {
+            top = rect.top - dropdownHeight - 4;
+        }
+        
+        // Ensure left doesn't go off screen
+        const dropdownWidth = Math.max(288, rect.width); // min 18rem ~= 288px
+        if (left + dropdownWidth > window.innerWidth) {
+            left = window.innerWidth - dropdownWidth - 8;
+        }
+        
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = left + 'px';
+        dropdown.style.minWidth = Math.max(dropdownWidth, 288) + 'px';
+    }
+
+    function openDropdown() {
+        if (isOpen) return;
+        isOpen = true;
+        dropdown.style.display = 'block';
+        positionDropdown();
+        searchInput.value = '';
+        renderList('');
+        setTimeout(() => searchInput.focus(), 10);
+    }
+
+    function closeDropdown() {
+        if (!isOpen) return;
+        isOpen = false;
+        dropdown.style.display = 'none';
+        highlightedIndex = -1;
+    }
+
+    function setHighlight(index) {
+        const items = searchList.querySelectorAll('.employee-search-item');
+        items.forEach(el => el.classList.remove('highlighted'));
+        if (index >= 0 && index < items.length) {
+            highlightedIndex = index;
+            items[index].classList.add('highlighted');
+            items[index].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    // Click on display to open
+    display.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isOpen) { closeDropdown(); } else { openDropdown(); }
+    });
+    display.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            openDropdown();
+        }
+    });
+
+    // Search input filtering
+    searchInput.addEventListener('input', () => {
+        renderList(searchInput.value);
+    });
+
+    // Keyboard navigation in search
+    searchInput.addEventListener('keydown', (e) => {
+        const items = searchList.querySelectorAll('.employee-search-item');
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setHighlight(Math.min(highlightedIndex + 1, items.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setHighlight(Math.max(highlightedIndex - 1, 0));
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIndex >= 0 && highlightedIndex < filteredItems.length) {
+                selectItem(filteredItems[highlightedIndex].value);
+            }
+        } else if (e.key === 'Escape') {
+            closeDropdown();
+            display.focus();
+        }
+    });
+
+    // Click on list item
+    searchList.addEventListener('click', (e) => {
+        const item = e.target.closest('.employee-search-item');
+        if (item && item.dataset.value) {
+            selectItem(item.dataset.value);
+        }
+    });
+
+    // Click outside to close (check both wrapper and dropdown since dropdown is portaled)
+    document.addEventListener('click', (e) => {
+        if (isOpen && !wrapper.contains(e.target) && !dropdown.contains(e.target)) {
+            closeDropdown();
+        }
+    });
+
+    // Reposition on scroll/resize while open
+    let repositionRAF = null;
+    function handleReposition() {
+        if (!isOpen) return;
+        if (repositionRAF) cancelAnimationFrame(repositionRAF);
+        repositionRAF = requestAnimationFrame(positionDropdown);
+    }
+    window.addEventListener('scroll', handleReposition, true);
+    window.addEventListener('resize', handleReposition);
+
+    // Watch for DOM changes (options being added/removed by loadEmployees)
+    const observer = new MutationObserver(() => {
+        syncDisplayText();
+    });
+    observer.observe(nativeSelect, { childList: true, attributes: true, subtree: true });
+
+    // Sync when native select fires change event
+    nativeSelect.addEventListener('change', syncDisplayText);
+
+    // Sync initial state
+    syncDisplayText();
+
+    // Expose refresh function for programmatic updates
+    window._refreshEmployeeSearchDropdown = function() {
+        syncDisplayText();
+        if (isOpen) {
+            renderList(searchInput.value);
+        }
+    };
+
+    // Poll periodically to catch programmatic value changes (selectedIndex = X)
+    let lastValue = nativeSelect.value;
+    setInterval(() => {
+        if (nativeSelect.value !== lastValue) {
+            lastValue = nativeSelect.value;
+            syncDisplayText();
+        }
+    }, 300);
+}
+
+// Initialize searchable dropdown (will retry if DOM not ready)
+initSearchableEmployeeDropdown();
 
 // Expose renderErrorParameters globally (ensure it's defined first)
 if (typeof renderErrorParameters === 'function') {
@@ -10818,13 +11183,17 @@ async function autoSelectScorecardFromURL() {
     // Priority 1: Explicit scorecard ID
     if (scorecardId && scorecardId !== 'null' && scorecardId !== '') {
         console.log('🎯 Loading scorecard by ID:', scorecardId);
-        await loadScorecards();
-        scorecardSelect.value = scorecardId;
+        await loadScorecards(null, scorecardId);
         if (scorecardSelect.value === scorecardId) {
             console.log('✅ Scorecard selected from URL:', scorecardId);
-            await loadScorecardParameters(scorecardId);
             return true;
         } else {
+            // Manually try to select if not auto-selected
+            scorecardSelect.value = scorecardId;
+            if (scorecardSelect.value === scorecardId) {
+                await loadScorecardParameters(scorecardId);
+                return true;
+            }
             console.warn('❌ Scorecard ID not found in dropdown:', scorecardId);
         }
     }
@@ -12780,13 +13149,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 
-                // Don't filter if scorecard is already selected (e.g., from AI audit)
-                const scorecardSelect = document.getElementById('scorecardSelect');
-                if (scorecardSelect && scorecardSelect.value && scorecardSelect.value !== '') {
-                    console.log('⏸️ Scorecard already selected, skipping channel filter:', scorecardSelect.value);
-                    return;
-                }
-                
                 const selectedChannel = this.value;
                 if (selectedChannel) {
                     await autoSelectScorecardByChannel(selectedChannel);
@@ -14577,13 +14939,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Auto-fill scorecard if provided
             if (scorecardId) {
-                await loadScorecards(); // Ensure scorecards are loaded
+                await loadScorecards(null, scorecardId); // Load with preselected scorecard
                 const scorecardSelect = document.getElementById('scorecardSelect');
                 if (scorecardSelect) {
-                    // Wait a bit for dropdown to populate
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    scorecardSelect.value = scorecardId;
-                    scorecardSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Ensure the scorecard is selected
+                    if (scorecardSelect.value !== scorecardId) {
+                        scorecardSelect.value = scorecardId;
+                        scorecardSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
                     console.log('✅ Auto-filled scorecard:', scorecardId);
                 }
             }
@@ -19509,8 +19872,8 @@ async function loadConversationDataIntoForm(conversationData) {
             data_keys: aiAuditData.ai_scorecard_data ? Object.keys(aiAuditData.ai_scorecard_data) : []
         });
         
-        // Load scorecards first
-        await loadScorecards();
+        // Load scorecards with preselected scorecard from AI audit
+        await loadScorecards(null, aiAuditData.scorecard_id || null);
         
         // Select the scorecard from AI audit
         const scorecardSelect = document.getElementById('scorecardSelect');
@@ -20015,6 +20378,14 @@ async function loadConversationDataIntoForm(conversationData) {
       subtree: true
     });
   </script>
+
+<!-- Employee search dropdown portal (rendered outside all stacking contexts) -->
+<div id="employeeSearchDropdown" style="display: none; position: fixed; min-width: 18rem; max-height: 20rem; background: #ffffff; border-radius: 0.3234rem; box-shadow: 0 0.4rem 1.5rem rgba(0,0,0,0.3); z-index: 99999; overflow: hidden; border: 0.0304rem solid #e5e7eb;">
+    <div style="padding: 0.3234rem; border-bottom: 0.0304rem solid #e5e7eb; position: sticky; top: 0; background: #ffffff; z-index: 1;">
+        <input id="employeeSearchInput" type="text" placeholder="Search employee by name, email, channel..." autocomplete="off" style="width: 100%; padding: 0.3234rem 0.4852rem; border: 0.0304rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; outline: none; box-sizing: border-box; color: #374151; background: #f9fafb;" />
+    </div>
+    <div id="employeeSearchList" style="max-height: 16rem; overflow-y: auto; padding: 0.1617rem 0;"></div>
+</div>
 
 </body>
 </html>

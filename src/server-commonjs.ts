@@ -190,6 +190,7 @@ app.use(helmet({
       objectSrc: ["'none'"],
       scriptSrcAttr: ["'unsafe-inline'"], // Allow inline event handlers (e.g. onclick) on scorecards and similar pages
       upgradeInsecureRequests: [],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"], // Allow YouTube embeds (e.g. auth page Easter egg)
       frameAncestors: ["'self'"], // Clickjacking: allow embedding only in same origin
       formAction: ["'self'"], // Forms may only submit to same origin (and API is same origin)
     },
@@ -654,6 +655,7 @@ import platformNotificationsRouter from './api/routes/platform-notifications.rou
 import cacheManagementRouter from './api/routes/cache-management.routes.js';
 import activeUsersRouter from './api/routes/active-users.routes.js';
 import auditWebhookRouter from './api/routes/audit-webhook.routes.js';
+import massiveAiAuditRouter from './api/routes/massive-ai-audit.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -668,11 +670,17 @@ app.use('/api/platform-notifications', platformNotificationsRouter);
 app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks');
+app.use('/api/massive-ai-audit', massiveAiAuditRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks, /api/massive-ai-audit');
 if (process.env.N8N_WEBHOOK_URL) {
   logWithTimestamp('info', 'n8n audit-submission webhook: configured');
 } else {
   logWithTimestamp('warn', 'n8n audit-submission webhook: N8N_WEBHOOK_URL not set; POST /api/webhooks/audit-submission will return 503');
+}
+if (process.env.SUPABASE_URL) {
+  logWithTimestamp('info', 'massive-ai-audit: triggers via edge function massive-ai-audit-trigger');
+} else {
+  logWithTimestamp('warn', 'massive-ai-audit: SUPABASE_URL not set; triggers skipped');
 }
 
 // Error handler (must be last)

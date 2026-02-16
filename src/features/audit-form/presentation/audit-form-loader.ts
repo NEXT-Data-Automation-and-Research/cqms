@@ -195,7 +195,15 @@ export class AuditFormLoader {
       channelSelect.addEventListener('change', async () => {
         const selectedChannel = channelSelect.value;
         if (this.scorecardController) {
-          await this.scorecardController.loadScorecards(selectedChannel || null, null, true);
+          if (!selectedChannel) {
+            await this.scorecardController.loadScorecards(null, null, true);
+            return;
+          }
+          // Resolve channel ID to name from selected option text
+          const selectedOption = channelSelect.options[channelSelect.selectedIndex];
+          const channelName = selectedOption?.textContent?.trim() || selectedChannel;
+          // Enable auto-select so default scorecard for the channel is loaded
+          await this.scorecardController.loadScorecards(channelName, null, false);
         }
       });
     }

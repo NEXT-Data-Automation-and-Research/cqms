@@ -41,19 +41,6 @@
 <body>
 <!-- Sidebar will be loaded dynamically -->
 <main class="main-content" role="main">
-    <div class="page-header">
-        <h1 class="page-heading-global">View as User</h1>
-        <p class="page-description">Open the app as another user to see their view. All sessions are logged for audit.</p>
-    </div>
-
-    <!-- Compact notice bar -->
-    <div class="notice-bar" role="status">
-        <span class="notice-icon" aria-hidden="true">
-            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        </span>
-        <span class="notice-text">All view-as-user sessions are logged with your identity and reason. Use only for support or approved purposes.</span>
-    </div>
-
     <!-- Access Check Container -->
     <div id="accessCheck" class="access-check">
         <div class="loading-spinner"></div>
@@ -62,23 +49,48 @@
 
     <!-- Main Content (hidden until access verified) -->
     <div id="mainContent" class="main-container" style="display: none;">
-        <!-- Statistics strip -->
-        <div class="stats-strip">
-            <div class="stat-item">
-                <span class="stat-value" id="statUserCount">—</span>
-                <span class="stat-label">Active users</span>
+
+        <!-- Page Header -->
+        <div class="page-header">
+            <div class="page-header-text">
+                <h1 class="page-heading-global">View as User</h1>
+                <p class="page-description">Open the app as another user to see their view. All sessions are logged.</p>
             </div>
-            <div class="stat-item">
-                <span class="stat-value" id="statSessionCount">—</span>
-                <span class="stat-label">Recent sessions</span>
+            <div class="stats-strip">
+                <div class="stat-chip">
+                    <span class="stat-value" id="statUserCount">&mdash;</span>
+                    <span class="stat-label">Active users</span>
+                </div>
+                <div class="stat-chip">
+                    <span class="stat-value" id="statSessionCount">&mdash;</span>
+                    <span class="stat-label">Sessions</span>
+                </div>
             </div>
         </div>
 
-        <div class="content-grid">
-            <!-- People section -->
-            <section class="section-card section-people" aria-labelledby="people-heading">
-                <h2 id="people-heading" class="section-card-title">People</h2>
-                <p class="section-card-desc">Find a user and open a view-as-user session.</p>
+        <!-- Notice Bar -->
+        <div class="notice-bar" role="status">
+            <svg class="notice-icon" width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="notice-text">All sessions are logged with your identity and reason. Use only for support or approved purposes.</span>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-bar" role="tablist">
+            <button class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-people" id="tab-people" data-tab="people">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                People
+            </button>
+            <button class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-sessions" id="tab-sessions" data-tab="sessions">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                Recent Sessions
+            </button>
+        </div>
+
+        <!-- Tab Panels -->
+        <div class="tab-panels">
+
+            <!-- People Panel -->
+            <div class="tab-panel active" id="panel-people" role="tabpanel" aria-labelledby="tab-people">
                 <div class="search-section">
                     <div class="search-box">
                         <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,20 +98,18 @@
                         </svg>
                         <input type="text" id="userSearch" placeholder="Search by name or email..." class="search-input">
                     </div>
-                    <div class="filter-section">
-                        <select id="roleFilter" class="filter-select">
-                            <option value="">All Roles</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Manager">Manager</option>
-                            <option value="Quality Supervisor">Quality Supervisor</option>
-                            <option value="Quality Analyst">Quality Analyst</option>
-                            <option value="Employee">Employee</option>
-                            <option value="General User">General User</option>
-                        </select>
-                        <select id="departmentFilter" class="filter-select">
-                            <option value="">All Departments</option>
-                        </select>
-                    </div>
+                    <select id="roleFilter" class="filter-select">
+                        <option value="">All Roles</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Quality Supervisor">Quality Supervisor</option>
+                        <option value="Quality Analyst">Quality Analyst</option>
+                        <option value="Employee">Employee</option>
+                        <option value="General User">General User</option>
+                    </select>
+                    <select id="departmentFilter" class="filter-select">
+                        <option value="">All Departments</option>
+                    </select>
                 </div>
                 <div class="users-container">
                     <div id="usersList" class="users-list">
@@ -109,25 +119,24 @@
                         </div>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- Activity section -->
-            <section class="section-card section-activity" aria-labelledby="activity-heading">
-                <h2 id="activity-heading" class="section-card-title">Recent sessions</h2>
-                <p class="section-card-desc">View-as-user sessions started from this page.</p>
+            <!-- Sessions Panel -->
+            <div class="tab-panel" id="panel-sessions" role="tabpanel" aria-labelledby="tab-sessions">
                 <div id="impersonationLogs" class="logs-container">
                     <div class="loading-state">
                         <div class="loading-spinner"></div>
                         <p>Loading sessions...</p>
                     </div>
                 </div>
-            </section>
+            </div>
+
         </div>
     </div>
 
     <!-- Access Denied Message -->
     <div id="accessDenied" class="access-denied" style="display: none;">
-        <div class="denied-icon">🚫</div>
+        <div class="denied-icon">&#128683;</div>
         <h2>Access Denied</h2>
         <p>You don't have permission to access View as User. Access is controlled by role-based and individual permissions.</p>
         <p id="accessDeniedReason" class="access-denied-reason" style="display: none;"></p>
@@ -177,6 +186,28 @@
         </div>
     </div>
 </div>
+
+<!-- Tab Switching (no business logic, only visibility toggle) -->
+<script>
+(function() {
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var target = btn.getAttribute('data-tab');
+            document.querySelectorAll('.tab-btn').forEach(function(b) {
+                b.classList.remove('active');
+                b.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            document.querySelectorAll('.tab-panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            var panel = document.getElementById('panel-' + target);
+            if (panel) panel.classList.add('active');
+        });
+    });
+})();
+</script>
 
 <!-- Page Controller -->
 <script type="module" src="/js/features/settings/impersonation/presentation/impersonation-controller.js"></script>

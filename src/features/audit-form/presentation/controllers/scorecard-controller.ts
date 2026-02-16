@@ -89,8 +89,14 @@ export class ScorecardController {
         });
       }
 
-      // Use safeSetHTML instead of innerHTML for XSS prevention
-      safeSetHTML(scorecardSelect, '<option value="">Select a scorecard...</option>');
+      // Show appropriate placeholder based on whether a channel is selected
+      if (channelFilter) {
+        safeSetHTML(scorecardSelect, '<option value="">Select a scorecard...</option>');
+      } else if (!preselectedScorecardId) {
+        safeSetHTML(scorecardSelect, '<option value="">Select a channel first...</option>');
+      } else {
+        safeSetHTML(scorecardSelect, '<option value="">Select a scorecard...</option>');
+      }
 
       // #region agent log
       if (typeof window !== 'undefined' && (window as any).fetch) {
@@ -148,38 +154,52 @@ export class ScorecardController {
           };
         }
 
-        // Auto-select scorecard if preselected
-        if (filteredScorecards.length > 0 && !skipAutoSelect && preselectedScorecardId) {
-          const preselectedExists = filteredScorecards.some(sc => sc.id === preselectedScorecardId);
-          if (preselectedExists) {
-            scorecardSelect.value = preselectedScorecardId;
-            await this.loadScorecardParameters(preselectedScorecardId);
-          } else {
-            // Check if it exists in all scorecards (for AI audit)
-            const preselectedInAll = this.allAvailableScorecards.some(sc => sc.id === preselectedScorecardId);
-            if (preselectedInAll && channelFilter) {
-              logWarn('Preselected scorecard does not match channel filter, but adding it for AI audit:', preselectedScorecardId);
-              const preselectedScorecard = this.allAvailableScorecards.find(sc => sc.id === preselectedScorecardId);
-              if (preselectedScorecard) {
-                const option = document.createElement('option');
-                option.value = preselectedScorecard.id;
-                option.textContent = preselectedScorecard.name + ' (AI Audit)';
-                if (preselectedScorecard.passingThreshold) {
-                  option.dataset.threshold = preselectedScorecard.passingThreshold.toString();
+        // Auto-select scorecard
+        if (filteredScorecards.length > 0 && !skipAutoSelect) {
+          if (preselectedScorecardId) {
+            const preselectedExists = filteredScorecards.some(sc => sc.id === preselectedScorecardId);
+            if (preselectedExists) {
+              scorecardSelect.value = preselectedScorecardId;
+              await this.loadScorecardParameters(preselectedScorecardId);
+            } else {
+              // Check if it exists in all scorecards (for AI audit)
+              const preselectedInAll = this.allAvailableScorecards.some(sc => sc.id === preselectedScorecardId);
+              if (preselectedInAll && channelFilter) {
+                logWarn('Preselected scorecard does not match channel filter, but adding it for AI audit:', preselectedScorecardId);
+                const preselectedScorecard = this.allAvailableScorecards.find(sc => sc.id === preselectedScorecardId);
+                if (preselectedScorecard) {
+                  const option = document.createElement('option');
+                  option.value = preselectedScorecard.id;
+                  option.textContent = preselectedScorecard.name + ' (AI Audit)';
+                  if (preselectedScorecard.passingThreshold) {
+                    option.dataset.threshold = preselectedScorecard.passingThreshold.toString();
+                  }
+                  option.dataset.tableName = preselectedScorecard.tableName;
+                  option.dataset.channels = preselectedScorecard.channels || '';
+                  scorecardSelect.appendChild(option);
+                  scorecardSelect.value = preselectedScorecardId;
+                  await this.loadScorecardParameters(preselectedScorecardId);
                 }
-                option.dataset.tableName = preselectedScorecard.tableName;
-                option.dataset.channels = preselectedScorecard.channels || '';
-                scorecardSelect.appendChild(option);
-                scorecardSelect.value = preselectedScorecardId;
-                await this.loadScorecardParameters(preselectedScorecardId);
               }
+            }
+          } else if (channelFilter) {
+            // No preselected scorecard but channel is selected - auto-select the default/first
+            const firstScorecard = filteredScorecards[0];
+            if (firstScorecard) {
+              logInfo('Auto-selecting default scorecard for channel:', firstScorecard.name, firstScorecard.id);
+              scorecardSelect.value = firstScorecard.id;
+              await this.loadScorecardParameters(firstScorecard.id);
             }
           }
         }
 
         // Show message if no scorecard is selected
         if (!scorecardSelect.value || scorecardSelect.value === '') {
-          this.showNoScorecardMessage();
+          if (!channelFilter && !preselectedScorecardId) {
+            this.showSelectChannelMessage();
+          } else {
+            this.showNoScorecardMessage();
+          }
         } else if (channelFilter && filteredScorecards.length === 0) {
           safeSetHTML(scorecardSelect, '<option value="">No scorecards available for this channel</option>');
         }
@@ -273,6 +293,16 @@ export class ScorecardController {
   private updateHeaderMetadata(): void {
     // Implementation for updating header metadata
     // This would update the form header with scorecard information
+  }
+
+  /**
+   * Show select channel message
+   */
+  private showSelectChannelMessage(): void {
+    const scorecardDisplay = document.getElementById('scorecardDisplay');
+    if (scorecardDisplay) {
+      safeSetHTML(scorecardDisplay, '<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> Select a channel');
+    }
   }
 
   /**

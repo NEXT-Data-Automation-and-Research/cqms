@@ -1081,7 +1081,9 @@ body.audit-distribution-page .sidebar .search-input:focus {
   align-items: center !important;
   padding: 0 0.5rem 0 0.75rem !important;
 }
-.audit-distribution-page .people-search-cell input,
+.audit-distribution-page .people-search-cell input {
+  padding: 0 0.5rem 0 2rem !important; /* leave room for search icon (left-2.5 + 12px icon + gap) */
+}
 .audit-distribution-page .people-status-cell select {
   padding: 0 0.5rem 0 0.75rem !important;
 }
