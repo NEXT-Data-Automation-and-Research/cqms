@@ -257,8 +257,40 @@ async function triggerMassiveAuditLoop(
 }
 
 /**
+ * GET /api/massive-ai-audit/creators
+ * Returns distinct created_by (who ran the audit) for visible jobs, for filter dropdowns.
+ */
+router.get('/creators', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const { data: rows, error } = await supabase
+      .from('massive_ai_audit_jobs')
+      .select('created_by')
+      .limit(500);
+    if (error) {
+      logger.error('Failed to list creators', { error });
+      res.status(500).json({ error: error.message });
+      return;
+    }
+    const creators = [...new Set((rows ?? []).map((r: { created_by: string }) => r.created_by).filter(Boolean))].sort();
+    res.status(200).json({ creators });
+  } catch (error: unknown) {
+    logger.error('massive-ai-audit creators error', error);
+    res.status(500).json({
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
+    });
+  }
+});
+
+/**
  * GET /api/massive-ai-audit/jobs
- * Lists all massive AI audit jobs for the current user (most recent first).
+ * Lists massive AI audit jobs visible to the current user (RLS: own jobs, or all for Admin/Super Admin/Quality Analyst).
+ * Query params: created_by, status, scorecard_id, from_date, to_date (filter by job created_at range, ISO date).
  */
 router.get('/jobs', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -269,11 +301,31 @@ router.get('/jobs', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Reque
       return;
     }
 
-    const { data: jobs, error } = await supabase
+    const createdBy = typeof req.query.created_by === 'string' ? req.query.created_by.trim() : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status.trim() : undefined;
+    const scorecardId = typeof req.query.scorecard_id === 'string' ? req.query.scorecard_id.trim() : undefined;
+    const fromDate = typeof req.query.from_date === 'string' ? req.query.from_date.trim() : undefined;
+    const toDate = typeof req.query.to_date === 'string' ? req.query.to_date.trim() : undefined;
+
+    let query = supabase
       .from('massive_ai_audit_jobs')
       .select('id, created_at, created_by, scorecard_id, start_date, end_date, status, total_agents, total_conversations, completed_agents, completed_conversations, error_message, completed_at')
       .order('created_at', { ascending: false })
       .limit(100);
+
+    if (createdBy) query = query.eq('created_by', createdBy);
+    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled'].includes(status)) {
+      query = query.eq('status', status);
+    }
+    if (scorecardId) query = query.eq('scorecard_id', scorecardId);
+    if (fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+      query = query.gte('created_at', fromDate + 'T00:00:00.000Z');
+    }
+    if (toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+      query = query.lte('created_at', toDate + 'T23:59:59.999Z');
+    }
+
+    const { data: jobs, error } = await query;
 
     if (error) {
       logger.error('Failed to list jobs', { error });
@@ -292,7 +344,8 @@ router.get('/jobs', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Reque
 
 /**
  * GET /api/massive-ai-audit/results
- * Lists all massive AI audit results for the current user's jobs (most recent first).
+ * Lists massive AI audit results for jobs visible to the current user.
+ * Query params: created_by, status, scorecard_id, from_date, to_date (same as GET /jobs).
  */
 router.get('/results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -303,10 +356,28 @@ router.get('/results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Re
       return;
     }
 
-    // Get all jobs that belong to the user (RLS handles this), include payload_snapshot for agent name fallback
-    const { data: jobs, error: jobsError } = await supabase
+    const createdBy = typeof req.query.created_by === 'string' ? req.query.created_by.trim() : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status.trim() : undefined;
+    const scorecardId = typeof req.query.scorecard_id === 'string' ? req.query.scorecard_id.trim() : undefined;
+    const fromDate = typeof req.query.from_date === 'string' ? req.query.from_date.trim() : undefined;
+    const toDate = typeof req.query.to_date === 'string' ? req.query.to_date.trim() : undefined;
+
+    let jobsQuery = supabase
       .from('massive_ai_audit_jobs')
       .select('id, payload_snapshot');
+    if (createdBy) jobsQuery = jobsQuery.eq('created_by', createdBy);
+    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled'].includes(status)) {
+      jobsQuery = jobsQuery.eq('status', status);
+    }
+    if (scorecardId) jobsQuery = jobsQuery.eq('scorecard_id', scorecardId);
+    if (fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+      jobsQuery = jobsQuery.gte('created_at', fromDate + 'T00:00:00.000Z');
+    }
+    if (toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+      jobsQuery = jobsQuery.lte('created_at', toDate + 'T23:59:59.999Z');
+    }
+
+    const { data: jobs, error: jobsError } = await jobsQuery;
 
     if (jobsError) {
       logger.error('Failed to fetch user jobs for results', { error: jobsError });
@@ -377,7 +448,7 @@ router.get('/results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Re
 
 /**
  * GET /api/massive-ai-audit/jobs/:id
- * Returns job row for progress page (RLS: user sees own jobs only).
+ * Returns job row for progress page (RLS: user sees own jobs or all if elevated role).
  */
 router.get('/jobs/:id', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -418,7 +489,7 @@ router.get('/jobs/:id', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: R
 
 /**
  * GET /api/massive-ai-audit/jobs/:id/assignments
- * Returns audit assignments for this job (only if job belongs to current user).
+ * Returns audit assignments for this job. Access: owner or elevated role (RLS enforced via user client).
  */
 router.get('/jobs/:id/assignments', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -428,19 +499,26 @@ router.get('/jobs/:id/assignments', verifyAuth, requireRole(...ALLOWED_ROLES), a
       return;
     }
 
-    // Use admin client to bypass PostgREST max-rows limit (default 1000)
-    const admin = getServerSupabase();
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
 
-    const { data: job, error: jobError } = await admin
+    // Verify user can see this job (RLS: own job or elevated role)
+    const { data: job, error: jobAccessError } = await supabase
       .from('massive_ai_audit_jobs')
       .select('id')
       .eq('id', id)
       .single();
 
-    if (jobError || !job) {
+    if (jobAccessError || !job) {
       res.status(404).json({ error: 'Job not found' });
       return;
     }
+
+    const admin = getServerSupabase();
 
     // Paginate through all results — PostgREST max-rows is 1000
     const PAGE_SIZE = 1000;

@@ -783,6 +783,23 @@
       transition: border-color 0.15s;
     }
     .maar-select:focus { border-color: var(--color-primary-500, #645CFE); }
+    .maar-filters-bar { margin-bottom: 1rem; }
+    .maar-filter-lbl { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-secondary, #6b7280); white-space: nowrap; }
+    .maar-input-date { min-width: 10rem; }
+    .maar-filter-btn {
+      padding: 0.55rem 1rem;
+      border-radius: var(--radius-lg, 0.5rem);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      background: var(--color-primary-500, #645CFE);
+      color: #fff;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .maar-filter-btn:hover { background: var(--color-primary-600, #4d42d1); }
+    .maar-filter-btn-secondary { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-primary, #1f2937); border: 1px solid var(--color-border-light, #e5e7eb); }
+    .maar-filter-btn-secondary:hover { background: var(--color-border-light, #e5e7eb); }
 
     .maar-table-card {
       background: var(--color-background, #ffffff);
@@ -1150,6 +1167,27 @@
           <p class="maar-empty-title">No audit batches yet</p>
           <p>Start a massive AI audit from Audit Distribution to see batches here.</p>
         </div>
+        <div class="maar-toolbar maar-filters-bar" id="batches-filters" style="display:none;">
+          <label class="maar-filter-lbl">Run by</label>
+          <select class="maar-select" id="filter-created-by">
+            <option value="">All</option>
+          </select>
+          <label class="maar-filter-lbl">Status</label>
+          <select class="maar-select" id="filter-status">
+            <option value="">All</option>
+            <option value="queued">Queued</option>
+            <option value="running">Running</option>
+            <option value="completed">Completed</option>
+            <option value="failed">Failed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <label class="maar-filter-lbl">From</label>
+          <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
+          <label class="maar-filter-lbl">To</label>
+          <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
+          <button type="button" class="maar-filter-btn" id="filter-apply">Apply</button>
+          <button type="button" class="maar-filter-btn maar-filter-btn-secondary" id="filter-clear">Clear</button>
+        </div>
         <div id="page-summary" class="maar-page-summary" style="display:none;"></div>
         <div id="batches-list" class="maar-batch-list" style="display:none;"></div>
       </div>
@@ -1384,7 +1422,7 @@
         const lbl = 'Batch ' + (job ? job.id.slice(0, 8) : jobId.slice(0, 8)) + '\u2026';
         setBreadcrumb([{ label: 'All Batches', fn: () => goToBatches() }, { label: lbl }]);
         $('maar-title').textContent = lbl;
-        $('maar-desc').textContent = job ? 'Audit period: ' + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) : 'Batch audit details.';
+        $('maar-desc').textContent = job ? 'Run by ' + (job.created_by || '') + ' \u00b7 Audit period: ' + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) : 'Batch audit details.';
         updateBackBtn();
         scrollTop();
         if (!skipHistory) pushState({ view: 'batch', jobId });
@@ -1627,6 +1665,7 @@
 
           // Meta
           h += '<div class="maar-batch-meta">';
+          h += '  <span class="maar-batch-meta-item">' + icons.users + 'Run by ' + esc(job.created_by || '') + '</span>';
           h += '  <span class="maar-batch-meta-item">' + icons.calendar + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) + '</span>';
           h += '  <span class="maar-batch-meta-item">' + icons.clock + 'Created ' + fmtDateTime(job.created_at) + '</span>';
           if (job.completed_at) h += '  <span class="maar-batch-meta-item">' + icons.done + 'Completed ' + fmtDateTime(job.completed_at) + '</span>';
@@ -2133,16 +2172,54 @@
         resultCountsByJob = buildResultCounts(allFlat);
       }
 
+      function getFilterParams() {
+        const createdBy = ($('filter-created-by') && $('filter-created-by').value) ? $('filter-created-by').value.trim() : '';
+        const status = ($('filter-status') && $('filter-status').value) ? $('filter-status').value.trim() : '';
+        const fromDate = ($('filter-from-date') && $('filter-from-date').value) ? $('filter-from-date').value.trim() : '';
+        const toDate = ($('filter-to-date') && $('filter-to-date').value) ? $('filter-to-date').value.trim() : '';
+        return { createdBy, status, fromDate, toDate };
+      }
+
+      function buildJobsUrl() {
+        const p = getFilterParams();
+        const params = new URLSearchParams();
+        if (p.createdBy) params.set('created_by', p.createdBy);
+        if (p.status) params.set('status', p.status);
+        if (p.fromDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(p.fromDate)) params.set('from_date', p.fromDate);
+        if (p.toDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(p.toDate)) params.set('to_date', p.toDate);
+        const q = params.toString();
+        return '/api/massive-ai-audit/jobs' + (q ? '?' + q : '');
+      }
+
+      async function loadBatchesWithFilters() {
+        const path = buildJobsUrl();
+        const jobs = await api(path);
+        allJobs = jobs || [];
+        await fetchAllJobResults(allJobs);
+        renderBatches(allJobs);
+        $('batches-filters').style.display = 'flex';
+      }
+
       const errEl = $('maar-error');
       try {
-        // 1. Fetch jobs list
-        const jobs = await api('/api/massive-ai-audit/jobs');
-        allJobs = jobs || [];
+        // 0. Fetch creators for "Run by" filter
+        try {
+          const { creators } = await api('/api/massive-ai-audit/creators');
+          const sel = $('filter-created-by');
+          if (sel && Array.isArray(creators)) {
+            creators.forEach(email => {
+              const opt = document.createElement('option');
+              opt.value = email;
+              opt.textContent = email;
+              sel.appendChild(opt);
+            });
+          }
+        } catch (e) { console.warn('[MassiveAI] Creators fetch failed', e); }
 
-        // 2. Fetch results per-job in parallel (no row limit, complete data)
-        await fetchAllJobResults(allJobs);
+        // 1. Fetch jobs list (with optional filters from URL or defaults)
+        await loadBatchesWithFilters();
 
-        renderBatches(allJobs);
+        $('batches-loading').style.display = 'none';
         setBreadcrumb([{ label: 'All Batches' }]);
         updateBackBtn();
 
@@ -2154,7 +2231,41 @@
         const jid = urlParams.get('id');
         if (jid) await goToBatch(jid);
 
-        // Poll running jobs — use derived status to detect truly active jobs
+        // Filter Apply / Clear
+        if ($('filter-apply')) {
+          $('filter-apply').addEventListener('click', async () => {
+            $('batches-loading').style.display = 'block';
+            $('batches-list').style.display = 'none';
+            $('page-summary').style.display = 'none';
+            try {
+              await loadBatchesWithFilters();
+            } catch (e) {
+              errEl.textContent = e?.message || 'Filter failed';
+              errEl.style.display = 'block';
+            }
+            $('batches-loading').style.display = 'none';
+          });
+        }
+        if ($('filter-clear')) {
+          $('filter-clear').addEventListener('click', async () => {
+            if ($('filter-created-by')) $('filter-created-by').value = '';
+            if ($('filter-status')) $('filter-status').value = '';
+            if ($('filter-from-date')) $('filter-from-date').value = '';
+            if ($('filter-to-date')) $('filter-to-date').value = '';
+            $('batches-loading').style.display = 'block';
+            $('batches-list').style.display = 'none';
+            $('page-summary').style.display = 'none';
+            try {
+              await loadBatchesWithFilters();
+            } catch (e) {
+              errEl.textContent = e?.message || 'Failed to load';
+              errEl.style.display = 'block';
+            }
+            $('batches-loading').style.display = 'none';
+          });
+        }
+
+        // Poll running jobs — use derived status to detect truly active jobs; refetch with current filters
         const hasActive = allJobs.some(j => {
           const rc = resultCountsByJob[j.id];
           return deriveStatus(j, rc ? rc.count : null) === 'running' || deriveStatus(j, rc ? rc.count : null) === 'queued';
@@ -2162,7 +2273,8 @@
         if (hasActive) {
           let timer = setInterval(async () => {
             try {
-              const fresh = await api('/api/massive-ai-audit/jobs');
+              const path = buildJobsUrl();
+              const fresh = await api(path);
               allJobs = fresh || [];
               await fetchAllJobResults(allJobs);
 
