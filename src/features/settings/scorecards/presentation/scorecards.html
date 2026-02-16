@@ -20,411 +20,14 @@
     <script type="module" src="/js/auth-checker.js"></script>
     <script src="/confirmation-dialog.js"></script>
     <script type="module" src="/js/load-sidebar.js"></script>
-    <style>
-        /* Scorecards Specific Styles */
-        .scorecards-container {
-            display: flex;
-            flex-direction: column;
-            gap: 1.125rem;
-            padding: 0;
-            width: 100%;
-            margin: 0;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.75rem;
-            margin-bottom: 1.125rem;
-            width: 100%;
-        }
-
-        .stat-card {
-            background: #ffffff;
-            border-radius: 0.375rem;
-            padding: 0.75rem;
-            border: 0.0469rem solid #e5e7eb;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .stat-card:hover {
-            box-shadow: 0 0.1875rem 0.2812rem -0.0469rem rgba(0, 0, 0, 0.1);
-            transform: translateY(-0.0938rem);
-        }
-
-        .stat-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.375rem;
-        }
-
-        .stat-title {
-            font-size: 0.5625rem;
-            font-weight: 600;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .stat-icon {
-            width: 0.9375rem;
-            height: 0.9375rem;
-            color: #1A733E;
-        }
-
-        .stat-value {
-            font-size: 1.125rem;
-            font-weight: 700;
-            color: #111827;
-            margin-bottom: 0.1875rem;
-        }
-
-        .stat-change {
-            font-size: 0.5625rem;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 0.1875rem;
-        }
-
-        .stat-change.positive {
-            color: #10b981;
-        }
-
-        .stat-change.negative {
-            color: #ef4444;
-        }
-
-        .controls-section {
-            background: #ffffff;
-            border-radius: 0.375rem;
-            padding: 0.75rem;
-            border: 0.0469rem solid #e5e7eb;
-            margin-bottom: 0.1875rem;
-            width: 100%;
-            align-self: center;
-        }
-
-        .controls-header {
-            font-size: 0.6562rem;
-            font-weight: 600;
-            color: #1A733E;
-            margin-bottom: 0.5625rem;
-            padding-bottom: 0.1875rem;
-            border-bottom: 0.0469rem solid #1A733E;
-            text-transform: uppercase;
-            letter-spacing: 0.0141rem;
-        }
-
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(7.0312rem, 1fr));
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .control-label {
-            font-size: 0.5625rem;
-            font-weight: 500;
-            color: #374151;
-            margin-bottom: 0.1875rem;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .control-select {
-            padding: 0.2812rem 0.375rem;
-            border: 0.0469rem solid #d1d5db;
-            border-radius: 0.1875rem;
-            font-size: 0.5625rem;
-            font-family: 'Poppins', sans-serif;
-            transition: all 0.2s ease;
-            background-color: #ffffff;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23374151\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6,9 12,15 18,9\'%3e%3c/polyline%3e%3c/svg%3e');
-            background-repeat: no-repeat;
-            background-position: right 0.5625rem center;
-            background-size: 0.75rem;
-            padding-right: 1.875rem;
-            cursor: pointer;
-        }
-
-        .control-select:focus {
-            outline: none;
-            border-color: #1A733E;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 0.375rem;
-            flex-wrap: wrap;
-        }
-
-        .btn-create {
-            background-color: #1A733E;
-            color: #ffffff;
-            border: none;
-            border-radius: 0.1875rem;
-            padding: 0.375rem 0.75rem;
-            font-size: 0.5625rem;
-            font-weight: 600;
-            font-family: 'Poppins', sans-serif;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.1875rem;
-        }
-
-        .btn-create:hover {
-            background-color: #145a30;
-        }
-
-        .btn-secondary {
-            background-color: #f9fafb;
-            color: #374151;
-            border: 0.0469rem solid #d1d5db;
-            border-radius: 0.1875rem;
-            padding: 0.375rem 0.75rem;
-            font-size: 0.5625rem;
-            font-weight: 600;
-            font-family: 'Poppins', sans-serif;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.1875rem;
-        }
-
-        .btn-secondary:hover {
-            background-color: #f3f4f6;
-        }
-
-        .scorecards-table-section {
-            background: #ffffff;
-            border-radius: 0.375rem;
-            padding: 0.75rem;
-            border: 0.0469rem solid #e5e7eb;
-            width: 100%;
-        }
-
-        .table-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.75rem;
-        }
-
-        .table-title {
-            font-size: 0.6562rem;
-            font-weight: 600;
-            color: #1A733E;
-            text-transform: uppercase;
-            letter-spacing: 0.0141rem;
-        }
-
-        /* Count badge: force visible green pill + white text (override theme inheritance) */
-        .scorecards-table-section .table-count,
-        .table-count {
-            background-color: #1A733E !important;
-            color: #ffffff !important;
-            padding: 0.1875rem 0.375rem;
-            border-radius: 0.1875rem;
-            font-size: 0.5625rem;
-            font-weight: 600;
-        }
-
-        .scorecards-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.5625rem;
-            table-layout: auto;
-        }
-
-        .scorecards-table th,
-        .scorecards-table td {
-            padding: 0.5625rem;
-            text-align: left;
-            border-bottom: 0.0469rem solid #e5e7eb;
-        }
-
-        .scorecards-table th {
-            background-color: #f9fafb;
-            font-weight: 600;
-            color: #374151;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-size: 0.4688rem;
-        }
-
-        .scorecards-table tr:hover {
-            background-color: #f9fafb;
-        }
-
-        .status-badge {
-            padding: 0.1875rem 0.375rem;
-            border-radius: 0.1875rem;
-            font-size: 0.4688rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .status-active {
-            background-color: #d1fae5;
-            color: #065f46;
-        }
-
-        .status-inactive {
-            background-color: #e5e7eb;
-            color: #6b7280;
-        }
-
-        .version-badge {
-            padding: 0.1125rem 0.3rem;
-            border-radius: 0.1875rem;
-            font-size: 0.4688rem;
-            font-weight: 600;
-            background-color: #dbeafe;
-            color: #1e40af;
-        }
-
-        .version-badge-v1 {
-            background-color: #f3f4f6;
-            color: #6b7280;
-        }
-
-        .btn-action {
-            background-color: #f3f4f6;
-            color: #374151;
-            border: 0.0469rem solid #d1d5db;
-            border-radius: 0.1875rem;
-            padding: 0.2812rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 1.3125rem;
-            height: 1.3125rem;
-        }
-
-        .btn-action:hover {
-            background-color: #e5e7eb;
-            color: #111827;
-        }
-
-        .btn-action-primary {
-            background-color: #1A733E;
-            color: #ffffff;
-            border: none;
-        }
-
-        .btn-action-primary:hover {
-            background-color: #145a30;
-            color: #ffffff;
-        }
-
-        .btn-action-danger {
-            background-color: #fee2e2;
-            color: #dc2626;
-            border: 0.0469rem solid #fca5a5;
-        }
-
-        .btn-action-danger:hover {
-            background-color: #fecaca;
-        }
-
-        .btn-action-warning {
-            background-color: #fef3c7;
-            color: #92400e;
-            border: 0.0469rem solid #fcd34d;
-        }
-
-        .btn-action-warning:hover {
-            background-color: #fde68a;
-        }
-
-        .btn-action-success {
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 0.0469rem solid #6ee7b7;
-        }
-
-        .btn-action-success:hover {
-            background-color: #a7f3d0;
-        }
-
-        .parameter-row {
-            display: grid;
-            grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr 1.2fr 2fr 0.6fr 0.6fr 0.4fr;
-            gap: 0.2812rem;
-            align-items: start;
-            padding: 0.2812rem;
-            background: white;
-            border: 0.0469rem solid #e5e7eb;
-            border-radius: 0.1875rem;
-            margin-bottom: 0.2812rem;
-        }
-        
-        .parameter-row.with-ai-prompt {
-            grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr 1.2fr 2fr 0.6fr 2fr 0.6fr 0.4fr;
-        }
-        
-        .parameter-headers.with-ai-prompt {
-            grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr 1.2fr 2fr 0.6fr 2fr 0.6fr 0.4fr !important;
-        }
-
-        .parameter-row:hover {
-            background: #f9fafb;
-            border-color: #d1d5db;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 0.375rem;
-            max-width: 45rem;
-            width: 90%;
-            max-height: 90vh;
-            overflow: hidden;
-        }
-
-    </style>
+    <link rel="stylesheet" href="/src/features/settings/scorecards/presentation/scorecards.css">
 </head>
 
-<body>
+<body class="scorecards-page">
 <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
 <main class="main-content" role="main">
-    <p class="page-heading">Scorecards Management</p>
-    <div style="margin-bottom: 1.125rem; width: 100%;"></div>
-
-    <div class="scorecards-container" style="margin-top: 2rem;">
+    <h1 class="page-heading">Scorecards Management</h1>
+    <div class="scorecards-container">
         <!-- Statistics Overview -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -517,175 +120,142 @@
 
 <!-- View Scorecard Modal -->
 <div id="viewScorecardModal" class="modal">
-    <div class="modal-content" style="max-width: 28.125rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border-bottom: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <h2 id="viewModalTitle" style="font-size: 0.8438rem; font-weight: 600; color: #1A733E; margin: 0;">Scorecard Details</h2>
-            <button onclick="closeViewModal()" style="background: none; border: none; font-size: 1.125rem; cursor: pointer; color: #6b7280; padding: 0; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center;">&times;</button>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="viewModalTitle" class="modal-title">Scorecard Details</h2>
+            <button type="button" onclick="closeViewModal()" class="modal-close" aria-label="Close">&times;</button>
         </div>
-        <div id="viewModalBody" style="padding: 0.75rem; max-height: 70vh; overflow-y: auto;">
-            <!-- Content will be populated dynamically -->
+        <div id="viewModalBody" class="modal-body">
+            <!-- Content populated dynamically -->
         </div>
     </div>
 </div>
 
 <!-- Create/Edit Scorecard Modal -->
 <div id="scorecardModal" class="modal">
-    <div class="modal-content" style="max-width: 95vw; width: 95vw;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.375rem 0.5625rem; border-bottom: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <h2 id="modalTitle" style="font-size: 0.7031rem; font-weight: 600; color: #1A733E; margin: 0;">Create New Scorecard</h2>
-            <button onclick="closeScorecardModal()" style="background: none; border: none; font-size: 0.9375rem; cursor: pointer; color: #6b7280; padding: 0; width: 1.125rem; height: 1.125rem; display: flex; align-items: center; justify-content: center;">&times;</button>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle" class="modal-title">Create New Scorecard</h2>
+            <button type="button" onclick="closeScorecardModal()" class="modal-close" aria-label="Close">&times;</button>
         </div>
-        <div style="padding: 0.5625rem; max-height: calc(90vh - 3.5156rem); overflow-y: auto;">
+        <div class="modal-body">
             <form id="scorecardForm">
                 <input type="hidden" id="scorecardId">
                 <input type="hidden" id="parentScorecardId">
-                
+
                 <!-- Basic Information -->
-                <div style="background: #f9fafb; border-radius: 0.2812rem; padding: 0.375rem; margin-bottom: 0.5625rem;">
-                    <h3 style="font-size: 0.5625rem; font-weight: 600; color: #374151; margin-bottom: 0.375rem;">Basic Information</h3>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5625rem;">
-                        <div>
-                            <label for="scorecardName" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Scorecard Name <span style="color: #ef4444;">*</span></label>
-                            <input type="text" id="scorecardName" required style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif;">
+                <div class="form-section">
+                    <h3 class="form-section-title">Basic Information</h3>
+                    <div class="form-grid">
+                        <div class="form-field">
+                            <label for="scorecardName">Scorecard Name <span class="required">*</span></label>
+                            <input type="text" id="scorecardName" required placeholder="e.g. Case Resolution v1">
                         </div>
-                        
-                        <div style="grid-column: 1 / -1;">
-                            <label for="scorecardDescription" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Description</label>
-                            <textarea id="scorecardDescription" placeholder="Brief description... (supports multiple paragraphs)" rows="3" style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif; resize: vertical; min-height: 3rem;"></textarea>
+                        <div class="form-field form-grid-full">
+                            <label for="scorecardDescription">Description</label>
+                            <textarea id="scorecardDescription" placeholder="Brief description of this scorecard (supports multiple paragraphs)" rows="3"></textarea>
                         </div>
-                        
-                        <div>
-                            <label for="scoringType" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Scoring Type <span style="color: #ef4444;">*</span></label>
-                            <select id="scoringType" required style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif; cursor: pointer;">
+                        <div class="form-field">
+                            <label for="scoringType">Scoring Type <span class="required">*</span></label>
+                            <select id="scoringType" required>
                                 <option value="deductive">Deductive (100% - errors)</option>
                                 <option value="additive">Additive (0% + achievements)</option>
                                 <option value="hybrid">Hybrid (both)</option>
                             </select>
-                            <small style="font-size: 0.4219rem; color: #6b7280; display: block; margin-top: 0.0938rem;" id="scoringTypeHelp">
-                                <strong>Deductive:</strong> Start perfect, lose points for mistakes.
-                            </small>
+                            <p class="form-hint" id="scoringTypeHelp"><strong>Deductive:</strong> Start perfect, lose points for mistakes.</p>
                         </div>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem;">
-                            <div>
-                                <label for="passingThreshold" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Passing Threshold (%) <span style="color: #ef4444;">*</span></label>
-                                    <input type="number" id="passingThreshold" value="90" min="0" max="100" step="0.01" required style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif;">
-                            </div>
-                            
-                            <div>
-                                <label for="tableName" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Table Name <span style="color: #ef4444;">*</span></label>
-                                <input type="text" id="tableName" required placeholder="audit_reports_example" style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif;">
-                            </div>
+                        <div class="form-field">
+                            <label for="passingThreshold">Passing Threshold (%) <span class="required">*</span></label>
+                            <input type="number" id="passingThreshold" value="90" min="0" max="100" step="0.01" required>
                         </div>
-                        
-                        <!-- Hybrid-specific options -->
-                        <div id="hybridOptions" style="display: none; grid-column: 1 / -1;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem;">
-                                <div>
-                                    <label for="maxBonusPoints" style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Max Bonus Points</label>
-                                    <input type="number" id="maxBonusPoints" value="20" min="0" max="100" step="1" style="width: 100%; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-family: 'Poppins', sans-serif;">
+                        <div class="form-field">
+                            <label for="tableName">Table Name <span class="required">*</span></label>
+                            <input type="text" id="tableName" required placeholder="e.g. case_resolution_v1">
+                        </div>
+                        <div id="hybridOptions" class="form-grid-full" style="display: none;">
+                            <div class="form-grid">
+                                <div class="form-field">
+                                    <label for="maxBonusPoints">Max Bonus Points</label>
+                                    <input type="number" id="maxBonusPoints" value="20" min="0" max="100" step="1">
                                 </div>
-                                <div>
-                                    <label style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin-bottom: 0.0938rem; display: block;">Allow Over 100%</label>
-                                    <label style="display: flex; align-items: center; gap: 0.2812rem; padding: 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; cursor: pointer; background: white;">
-                                        <input type="checkbox" id="allowOver100" style="width: 0.6562rem; height: 0.6562rem; cursor: pointer;">
-                                        <span style="font-size: 0.5156rem; color: #374151;">Allow scores above 100%</span>
+                                <div class="form-field" style="display: flex; align-items: flex-end; padding-bottom: 0.5rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; margin: 0;">
+                                        <input type="checkbox" id="allowOver100">
+                                        <span>Allow scores above 100%</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Applicable Channels -->
-                        <div style="grid-column: 1 / -1;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.2812rem;">
-                                <label style="font-size: 0.5156rem; font-weight: 500; color: #374151; margin: 0;">Applicable Channels <span style="color: #ef4444;">*</span></label>
-                                <div style="display: flex; gap: 0.2812rem;">
-                                    <button type="button" onclick="loadDeductiveScorecardTemplate()" style="padding: 0.1875rem 0.375rem; background: #1A733E; color: white; border: none; border-radius: 0.1875rem; font-size: 0.4688rem; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 0.1875rem;">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                            <polyline points="14 2 14 8 20 8"/>
-                                            <line x1="16" y1="13" x2="8" y2="13"/>
-                                            <line x1="16" y1="17" x2="8" y2="17"/>
-                                            <polyline points="10 9 9 9 8 9"/>
-                                        </svg>
+                        <div class="form-grid-full">
+                            <div class="channels-actions">
+                                <label style="margin: 0;">Applicable Channels <span class="required">*</span></label>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" onclick="loadDeductiveScorecardTemplate()" class="btn-create" style="padding: 0.5rem 0.75rem; font-size: 0.8125rem;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                                         Load Template
                                     </button>
-                                <button type="button" onclick="openChannelManagementModal()" style="padding: 0.1875rem 0.375rem; background: transparent; color: #1A733E; border: 0.0469rem solid #1A733E; border-radius: 0.1875rem; font-size: 0.4688rem; cursor: pointer; font-weight: 500;">+ Manage Channels</button>
+                                    <button type="button" onclick="openChannelManagementModal()" class="btn-secondary">+ Manage Channels</button>
                                 </div>
                             </div>
-                            <div id="channelsContainer" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.375rem; padding: 0.5625rem; background: white; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem;">
-                                <!-- Channel checkboxes will be dynamically generated here -->
+                            <div id="channelsContainer">
+                                <!-- Channel checkboxes generated by JS -->
                             </div>
-                            <small style="font-size: 0.4219rem; color: #6b7280; display: block; margin-top: 0.1875rem;">Select at least one channel where this scorecard will be used.</small>
-                            
-                            <!-- Default Scorecard Selection -->
-                            <div id="defaultChannelsContainer" style="display: none; margin-top: 0.5625rem; padding: 0.5625rem; background: #f0fdf4; border: 0.0469rem solid #86efac; border-radius: 0.1875rem;">
-                                <label style="font-size: 0.5156rem; font-weight: 600; color: #166534; margin-bottom: 0.375rem; display: block;">Set as Default Scorecard for Channels</label>
-                                <div id="defaultChannelsCheckboxes" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.375rem;">
-                                    <!-- Default channel checkboxes will be dynamically generated here -->
-                                </div>
-                                <small style="font-size: 0.4219rem; color: #166534; display: block; margin-top: 0.1875rem;">When multiple scorecards are active for a channel, the default one will be selected automatically.</small>
+                            <p class="form-hint" style="margin-top: 0.5rem;">Select at least one channel where this scorecard will be used.</p>
+                            <div id="defaultChannelsContainer" class="default-channels-card" style="display: none;">
+                                <label>Set as Default Scorecard for Channels</label>
+                                <div id="defaultChannelsCheckboxes"></div>
+                                <p class="form-hint" style="margin-top: 0.5rem; color: #166534;">When multiple scorecards are active for a channel, the default one will be selected automatically.</p>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Parameters -->
-                <div style="background: #f9fafb; border-radius: 0.2812rem; padding: 0.375rem; margin-bottom: 0.5625rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.375rem;">
-                        <h3 style="font-size: 0.5625rem; font-weight: 600; color: #374151;" id="parametersHeader">Parameters</h3>
-                        <div style="display: flex; gap: 0.2812rem;">
-                            <button type="button" onclick="openBulkImportModal()" class="btn-secondary" style="padding: 0.1875rem 0.4688rem; font-size: 0.4688rem; display: flex; align-items: center; gap: 0.1875rem;">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
+
+                <!-- Error / Achievement Parameters -->
+                <div class="form-section">
+                    <div class="parameters-toolbar">
+                        <h3 class="form-section-title" id="parametersHeader" style="margin: 0; border: none; padding: 0;">Error Parameters</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" onclick="openBulkImportModal()" class="btn-secondary">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 Bulk Import
                             </button>
-                            <button type="button" id="addParameterBtn" class="btn-secondary" style="padding: 0.1875rem 0.4688rem; font-size: 0.4688rem;">+ Add One</button>
+                            <button type="button" id="addParameterBtn" class="btn-secondary">+ Add One</button>
                         </div>
                     </div>
-                    
-                    <!-- Parameter Headers -->
-                    <div class="parameter-headers" style="display: grid; grid-template-columns: 2fr 0.8fr 1.2fr 1fr 1fr 1.2fr 2fr 0.6fr 0.6fr 0.4fr; gap: 0.2812rem; padding: 0.1875rem 0.2812rem; margin-bottom: 0.1875rem; font-size: 0.4688rem; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.025em;">
-                        <div>Name</div>
-                        <div>Points</div>
-                        <div>Type</div>
-                        <div>Category <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(Severity)</span></div>
-                        <div>Field Type</div>
-                        <div>Field ID <span style="font-size: 0.375rem; font-weight: 400; color: #9ca3af;">(auto)</span></div>
-                        <div>Description</div>
-                        <div style="text-align: center;">AI Audit</div>
-                        <div id="aiPromptHeader" style="display: none;">AI Prompt</div>
-                        <div style="text-align: center;">Fatal Error</div>
-                        <div></div>
-                    </div>
-                    
-                    <div id="parametersContainer">
-                        <!-- Parameters will be added here -->
+                    <div class="parameters-table-wrap">
+                        <div class="parameter-headers">
+                            <div>Name</div>
+                            <div>Points</div>
+                            <div>Type</div>
+                            <div>Category <span style="font-weight: 400; color: var(--gray-400);">(Severity)</span></div>
+                            <div>Field Type</div>
+                            <div>Field ID <span style="font-weight: 400; color: var(--gray-400);">(auto)</span></div>
+                            <div>Description</div>
+                            <div style="text-align: center;">AI Audit</div>
+                            <div id="aiPromptHeader" style="display: none;">AI Prompt</div>
+                            <div style="text-align: center;">Fatal</div>
+                            <div></div>
+                        </div>
+                        <div id="parametersContainer"></div>
                     </div>
                 </div>
             </form>
         </div>
-        
-        <!-- Form Actions -->
-        <div style="display: flex; justify-content: flex-end; gap: 0.2812rem; padding: 0.375rem 0.5625rem; border-top: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <button type="button" id="cancelModalBtn" class="btn-secondary" style="font-size: 0.5156rem; padding: 0.2812rem 0.5625rem;">Cancel</button>
-            <button type="button" onclick="document.getElementById('scorecardForm').requestSubmit()" class="btn-create" style="font-size: 0.5156rem; padding: 0.2812rem 0.5625rem;">Save Scorecard</button>
+        <div class="modal-footer">
+            <button type="button" id="cancelModalBtn" class="btn-secondary">Cancel</button>
+            <button type="button" onclick="document.getElementById('scorecardForm').requestSubmit()" class="btn-create">Save Scorecard</button>
         </div>
     </div>
 </div>
 
 <!-- Channel Management Modal -->
 <div id="channelManagementModal" class="modal">
-    <div class="modal-content" style="max-width: 21.0938rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5625rem; border-bottom: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <h2 style="font-size: 0.75rem; font-weight: 600; color: #1A733E; margin: 0;">Manage Channels</h2>
-            <button onclick="closeChannelManagementModal()" style="background: none; border: none; font-size: 1.125rem; cursor: pointer; color: #6b7280; padding: 0; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center;">&times;</button>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Manage Channels</h2>
+            <button type="button" onclick="closeChannelManagementModal()" class="modal-close" aria-label="Close">&times;</button>
         </div>
-        <div style="padding: 0.5625rem; max-height: 60vh; overflow-y: auto;">
+        <div class="modal-body" style="max-height: 60vh;">
             <!-- Add New Channel Section -->
             <div style="background: #f0fdf4; border: 0.0469rem solid #86efac; border-radius: 0.2812rem; padding: 0.5625rem; margin-bottom: 0.5625rem;">
                 <h3 style="font-size: 0.5625rem; font-weight: 600; color: #166534; margin: 0 0 0.375rem 0;">Add New Channel</h3>
@@ -701,20 +271,20 @@
                 <!-- Channels will be listed here -->
             </div>
         </div>
-        <div style="display: flex; justify-content: flex-end; padding: 0.5625rem; border-top: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <button onclick="closeChannelManagementModal()" style="padding: 0.375rem 0.75rem; background: #1A733E; color: white; border: none; border-radius: 0.1875rem; font-size: 0.5625rem; font-weight: 600; cursor: pointer;">Done</button>
+        <div class="modal-footer">
+            <button type="button" onclick="closeChannelManagementModal()" class="btn-create">Done</button>
         </div>
     </div>
 </div>
 
 <!-- Bulk Import Modal -->
 <div id="bulkImportModal" class="modal">
-    <div class="modal-content" style="max-width: 31.6406rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5625rem; border-bottom: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <h2 style="font-size: 0.75rem; font-weight: 600; color: #1A733E; margin: 0;">📋 Bulk Import Parameters</h2>
-            <button onclick="closeBulkImportModal()" style="background: none; border: none; font-size: 1.125rem; cursor: pointer; color: #6b7280; padding: 0; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center;">&times;</button>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 class="modal-title">Bulk Import Parameters</h2>
+            <button type="button" onclick="closeBulkImportModal()" class="modal-close" aria-label="Close">&times;</button>
         </div>
-        <div style="padding: 0.75rem; max-height: 70vh; overflow-y: auto;">
+        <div class="modal-body" style="max-height: 70vh;">
             <!-- Instructions -->
             <div style="background: #eff6ff; border: 0.0469rem solid #60a5fa; border-radius: 0.2812rem; padding: 0.5625rem; margin-bottom: 0.75rem;">
                 <h3 style="font-size: 0.6094rem; font-weight: 600; color: #1e40af; margin: 0 0 0.375rem 0;">How to Import</h3>
@@ -781,12 +351,9 @@ Good Empathy	5	achievement	Major	radio	good_empathy	Demonstrating understanding 
             </div>
         </div>
         
-        <!-- Footer Actions -->
-        <div style="display: flex; justify-content: space-between; gap: 0.375rem; padding: 0.5625rem; border-top: 0.0469rem solid #e5e7eb; background: #f9fafb;">
-            <button onclick="closeBulkImportModal()" style="padding: 0.375rem 0.75rem; background: #f3f4f6; color: #374151; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5625rem; font-weight: 600; cursor: pointer;">Cancel</button>
-            <button id="confirmImportBtn" onclick="confirmBulkImport()" style="padding: 0.375rem 0.75rem; background: #1A733E; color: white; border: none; border-radius: 0.1875rem; font-size: 0.5625rem; font-weight: 600; cursor: pointer; display: none;">
-                ✅ Import Parameters
-            </button>
+        <div class="modal-footer" style="justify-content: space-between;">
+            <button type="button" onclick="closeBulkImportModal()" class="btn-secondary">Cancel</button>
+            <button type="button" id="confirmImportBtn" onclick="confirmBulkImport()" class="btn-create" style="display: none;">Import Parameters</button>
         </div>
     </div>
 </div>
@@ -1684,7 +1251,7 @@ function addParameterRow(param = null) {
         <label style="display: flex; align-items: center; justify-content: center; cursor: pointer;" title="Causes automatic fail regardless of score">
             <input type="checkbox" class="is-fail-all-checkbox" ${isFailAll ? 'checked' : ''} style="width: 0.75rem; height: 0.75rem; cursor: pointer; accent-color: #ef4444;">
         </label>
-        <button type="button" onclick="this.parentElement.remove()" style="padding: 0.1875rem; background: #ef4444; color: white; border: none; border-radius: 0.1875rem; cursor: pointer; font-size: 0.6562rem; line-height: 1; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">×</button>
+        <button type="button" class="param-delete" onclick="this.parentElement.remove()" title="Remove parameter">×</button>
     `;
     
     container.appendChild(row);

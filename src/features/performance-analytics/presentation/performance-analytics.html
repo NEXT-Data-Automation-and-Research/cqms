@@ -111,11 +111,11 @@
                     <th>Country</th>
                     <th>Audits</th>
                     <th>Pass</th>
-                    <th>Not passing</th>
-                    <th>Pass rate</th>
-                    <th>Avg score</th>
-                    <th>Total Chats Reviewed</th>
-                    <th>Total Audits</th>
+                    <th>Not<br>passing</th>
+                    <th>Pass<br>rate</th>
+                    <th>Avg<br>score</th>
+                    <th>Total Chats<br>Reviewed</th>
+                    <th>Total<br>Audits</th>
                   </tr>
                 </thead>
                 <tbody id="qmsCombinedTableBody"></tbody>
@@ -193,11 +193,18 @@
         };
       }
 
+      /** Format date as 10-Feb-2026 across the performance page */
+      function formatDateDDMMMYYYY(dateOrIso) {
+        const d = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
+        if (isNaN(d.getTime())) return '';
+        const day = d.getDate();
+        const month = d.toLocaleString('en', { month: 'short' });
+        const year = d.getFullYear();
+        return `${day}-${month}-${year}`;
+      }
+
       function formatDateRange(start, end) {
-        const a = new Date(start);
-        const b = new Date(end);
-        const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        return `${fmt(a)} → ${fmt(b)}`;
+        return `${formatDateDDMMMYYYY(start)} → ${formatDateDDMMMYYYY(end)}`;
       }
 
       function thresholdColor(pct) {
@@ -249,7 +256,7 @@
         if (s < 3600) return Math.floor(s / 60) + ' min ago';
         if (s < 86400) return Math.floor(s / 3600) + ' hr ago';
         if (s < 604800) return Math.floor(s / 86400) + ' days ago';
-        return d.toLocaleDateString();
+        return formatDateDDMMMYYYY(d);
       }
 
       function animateValue(el, from, to, duration, suffix = '') {
@@ -265,8 +272,11 @@
       }
 
       let currentData = null;
-      let chatsReviewedTotal = null;
+      /** Per-agent chats reviewed: lowercase email -> total_conversations_reviewed */
+      let chatsReviewedByAgent = {};
       let activeQuickRange = 'thisMonth';
+      /** Service instance for modal parameter breakdown fetch */
+      let qmsService = null;
 
       function getStartEndForRange(range) {
         const end = new Date();
@@ -573,14 +583,17 @@
         const filtered = applyAgentFilters(agents);
         const start = (currentPage - 1) * pageSize;
         const page = filtered.slice(start, start + pageSize);
-        const audits = data.rawAudits || [];
-        const totalAudits = audits.length;
-        const chatsReviewedLabel = chatsReviewedTotal != null ? Number(chatsReviewedTotal).toLocaleString() : '—';
 
         const tbody = document.getElementById('qmsCombinedTableBody');
         tbody.innerHTML = page.map((a) => {
-          const passColor = thresholdColor(a.passRate);
           const failCount = a.totalCount - a.passCount;
+          const totalForBar = a.totalCount || 1;
+          const passPct = totalForBar ? (a.passCount / totalForBar) * 100 : 0;
+          const failPct = totalForBar ? (failCount / totalForBar) * 100 : 0;
+          const agentEmail = (a.key || '').toLowerCase();
+          const chatsReviewed = chatsReviewedByAgent[agentEmail];
+          const chatsReviewedLabel = chatsReviewed != null ? Number(chatsReviewed).toLocaleString() : '—';
+          const totalAuditsLabel = (a.totalCount != null ? a.totalCount : 0).toLocaleString();
           return `
             <tr class="qms-combined-row" data-key="${(a.key || '').replace(/"/g, '&quot;')}" tabindex="0" role="button">
               <td class="qms-cell-avatar"><div class="qms-avatar-wrap">${avatarHtml(a)}</div></td>
@@ -591,12 +604,15 @@
               <td class="qms-cell-num">${a.passCount}</td>
               <td class="qms-cell-num">${failCount}</td>
               <td class="qms-cell-passrate">
-                <div class="qms-pass-bar-wrap"><div class="qms-pass-bar-fill ${passColor}" style="width: ${Math.min(100, a.passRate)}%"></div></div>
+                <div class="qms-pass-bar-wrap">
+                  <div class="qms-pass-bar-fill qms-pass-bar-pass" style="width: ${passPct}%" title="Pass: ${a.passCount}"></div>
+                  <div class="qms-pass-bar-fill qms-pass-bar-fail" style="width: ${failPct}%" title="Not passing: ${failCount}"></div>
+                </div>
                 <span class="qms-pass-pct">${a.passRate.toFixed(0)}%</span>
               </td>
               <td class="qms-cell-score"><span class="qms-score-pill ${scorePillClass(a.avgScore)}">${a.avgScore.toFixed(0)}%</span></td>
               <td class="qms-cell-num qms-cell-chats-reviewed">${chatsReviewedLabel}</td>
-              <td class="qms-cell-num qms-cell-total-audits">${totalAudits.toLocaleString()}</td>
+              <td class="qms-cell-num qms-cell-total-audits">${totalAuditsLabel}</td>
             </tr>
           `;
         }).join('');
@@ -681,7 +697,7 @@
             <div class="qms-live-feed-item">
               <span class="qms-live-feed-dot ${isNew ? 'pulse' : ''}" style="background: ${color}"></span>
               <span class="qms-live-feed-channel">${(r.channel || 'Unknown').trim()} <span class="qms-live-feed-score" style="color: ${color}">${score.toFixed(0)}%</span></span>
-              <span class="qms-live-feed-time">${relativeTime(r.submitted_at)}</span>
+              <span class="qms-live-feed-time">${formatDateDDMMMYYYY(r.submitted_at)}</span>
             </div>
           `;
         }).join('');
@@ -724,18 +740,13 @@
         }).join('');
       }
 
-      function getAgentErrorTrend(audits) {
-        const now = new Date();
-        const out = [];
-        for (let i = 6; i >= 0; i--) {
-          const d = new Date(now);
-          d.setDate(d.getDate() - i);
-          const date = d.toISOString().slice(0, 10);
-          const dayAudits = (audits || []).filter((r) => (r.submitted_at || '').slice(0, 10) === date);
-          const count = dayAudits.reduce((s, r) => s + (Number(r.total_errors_count) || 0), 0);
-          out.push({ date, count });
-        }
-        return out;
+      /** Last 10 audits (newest first in list); returns points oldest→newest for chart (Audit 1 = oldest of 10). */
+      function getAgentErrorTrendLast10Audits(audits) {
+        const last10 = (audits || []).slice(0, 10).reverse();
+        return last10.map((r, i) => ({
+          label: `Audit ${i + 1}`,
+          count: Number(r.total_errors_count) || 0
+        }));
       }
 
       function getAgentTopErrors(audits) {
@@ -748,26 +759,40 @@
         return { critical, significant };
       }
 
-      function openAgentModal(email) {
+      async function openAgentModal(email) {
         if (!currentData) return;
         const agents = getAgentsWithChannel(currentData);
         const agent = agents.find((a) => (a.key || '').toLowerCase() === (email || '').toLowerCase());
         if (!agent) return;
         const audits = (currentData.rawAudits || []).filter((r) => (r.employee_email || '').toLowerCase() === (email || '').toLowerCase());
         const recentAudits = audits.slice(0, 15);
-        const errorTrend = getAgentErrorTrend(audits);
+        const errorTrend = getAgentErrorTrendLast10Audits(audits);
         const topErrors = getAgentTopErrors(audits);
         const trendMax = Math.max(...errorTrend.map((d) => d.count), 1);
-        const sparkW = 140;
-        const sparkH = 28;
-        const sparkPoints = errorTrend.map((d, i) => `${(i / (errorTrend.length - 1 || 1)) * sparkW},${sparkH - (d.count / trendMax) * sparkH}`).join(' ');
+        const sparkW = 120;
+        const sparkH = 24;
+        const sparkPoints = errorTrend.length ? errorTrend.map((d, i) => `${(i / (errorTrend.length - 1 || 1)) * sparkW},${sparkH - (d.count / trendMax) * sparkH}`).join(' ') : '';
 
+        let parameterErrors = [];
+        if (qmsService && (email || '').trim()) {
+          try {
+            parameterErrors = await qmsService.getParameterErrorBreakdownForAgent(getFilters(), email);
+          } catch (_) {}
+        }
+
+        const statusLevel = agent.passRate >= 80 && agent.avgScore >= 80 ? 'on-track' : (agent.passRate >= 60 || agent.avgScore >= 60) ? 'needs-attention' : 'needs-focus';
+        const statusLabel = statusLevel === 'on-track' ? 'On track' : statusLevel === 'needs-attention' ? 'Needs attention' : 'Needs focus';
         const profileEl = document.getElementById('qmsAgentModalProfile');
         profileEl.innerHTML = `
           <div class="qms-agent-modal-avatar">${drawerAvatarHtml(agent)}</div>
           <div class="qms-agent-modal-meta">
-            <h2 class="qms-agent-modal-title" id="qmsAgentModalTitle">${escapeHtml((agent.label || 'Unknown').trim())}</h2>
-            <span class="qms-agent-modal-channel">${escapeHtml((agent.channel || 'Unknown').trim())}</span>
+            <div class="qms-agent-modal-title-row">
+              <h2 class="qms-agent-modal-title" id="qmsAgentModalTitle">${escapeHtml((agent.label || 'Unknown').trim())}</h2>
+              <div class="qms-agent-modal-badges">
+                <span class="qms-agent-modal-channel">${escapeHtml((agent.channel || 'Unknown').trim())}</span>
+                <span class="qms-agent-modal-status qms-agent-status-${statusLevel}">${escapeHtml(statusLabel)}</span>
+              </div>
+            </div>
           </div>
         `;
 
@@ -792,40 +817,54 @@
             </div>
           </div>
 
-          <section class="qms-agent-section" aria-labelledby="qms-agent-error-trend-head">
-            <h3 id="qms-agent-error-trend-head" class="qms-agent-section-title">Error count trend (last 7 days)</h3>
-            <div class="qms-agent-trend-card">
-              <svg class="qms-agent-trend-sparkline" width="${sparkW}" height="${sparkH}" viewBox="0 0 ${sparkW} ${sparkH}" aria-hidden="true">
-                <defs><linearGradient id="qmsAgentTrendGrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="var(--accent-amber, #f59e0b)"/><stop offset="100%" stop-color="var(--accent-amber, #f59e0b)" stop-opacity="0.2"/></linearGradient></defs>
-                <polyline fill="none" stroke="var(--accent-amber, #f59e0b)" stroke-width="2" points="${sparkPoints}"/>
-                <polygon fill="url(#qmsAgentTrendGrad)" points="${sparkPoints} ${sparkW},${sparkH} 0,${sparkH}"/>
-              </svg>
-              <div class="qms-agent-trend-legend">
-                ${errorTrend.map((d) => `<span class="qms-agent-trend-day" title="${d.date}: ${d.count} errors">${d.count}</span>`).join('')}
+          <div class="qms-agent-section-row">
+            <section class="qms-agent-section" aria-labelledby="qms-agent-error-trend-head">
+              <h3 id="qms-agent-error-trend-head" class="qms-agent-section-title">Errors per audit (last 10 audits)</h3>
+              <div class="qms-agent-trend-card">
+                <p class="qms-agent-trend-chart-label">Errors per audit</p>
+                ${sparkPoints ? `<svg class="qms-agent-trend-sparkline" width="${sparkW}" height="${sparkH}" viewBox="0 0 ${sparkW} ${sparkH}" aria-hidden="true">
+                  <defs><linearGradient id="qmsAgentTrendGrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#dc2626"/><stop offset="100%" stop-color="#dc2626" stop-opacity="0.15"/></linearGradient></defs>
+                  <polyline fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="${sparkPoints}"/>
+                  <polygon fill="url(#qmsAgentTrendGrad)" points="${sparkPoints} ${sparkW},${sparkH} 0,${sparkH}"/>
+                </svg>` : '<p class="qms-agent-trend-empty">No audit data for trend.</p>'}
+                <div class="qms-agent-trend-legend">
+                  ${errorTrend.map((d) => `<span class="qms-agent-trend-day" title="${d.label}: ${d.count} errors"><span class="qms-agent-trend-day-label">${escapeHtml(d.label)}</span><span class="qms-agent-trend-day-value">${d.count}</span></span>`).join('')}
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+            <section class="qms-agent-section" aria-labelledby="qms-agent-top-errors-head">
+              <h3 id="qms-agent-top-errors-head" class="qms-agent-section-title">Top errors (this period)</h3>
+              <div class="qms-agent-errors-grid">
+                <div class="qms-agent-error-card critical">
+                  <span class="qms-agent-error-value">${topErrors.critical}</span>
+                  <span class="qms-agent-error-label">Critical</span>
+                </div>
+                <div class="qms-agent-error-card significant">
+                  <span class="qms-agent-error-value">${topErrors.significant}</span>
+                  <span class="qms-agent-error-label">Significant</span>
+                </div>
+              </div>
+            </section>
+          </div>
 
-          <section class="qms-agent-section" aria-labelledby="qms-agent-top-errors-head">
-            <h3 id="qms-agent-top-errors-head" class="qms-agent-section-title">Top errors (this period)</h3>
-            <div class="qms-agent-errors-grid">
-              <div class="qms-agent-error-card critical">
-                <span class="qms-agent-error-value">${topErrors.critical}</span>
-                <span class="qms-agent-error-label">Critical</span>
-              </div>
-              <div class="qms-agent-error-card significant">
-                <span class="qms-agent-error-value">${topErrors.significant}</span>
-                <span class="qms-agent-error-label">Significant</span>
-              </div>
+          ${parameterErrors.length ? `<section class="qms-agent-section qms-agent-param-errors-section" aria-labelledby="qms-agent-param-errors-head">
+            <h3 id="qms-agent-param-errors-head" class="qms-agent-section-title">Errors by parameter</h3>
+            <div class="qms-agent-audit-table-wrap">
+              <table class="qms-agent-audit-table">
+                <thead><tr><th>Parameter</th><th>Count</th></tr></thead>
+                <tbody>
+                  ${parameterErrors.map((e) => `<tr><td>${escapeHtml(e.name)}</td><td class="qms-agent-err-count">${Number(e.count).toLocaleString()}</td></tr>`).join('')}
+                </tbody>
+              </table>
             </div>
-          </section>
+          </section>` : ''}
 
           <section class="qms-agent-section" aria-labelledby="qms-agent-audits-head">
             <h3 id="qms-agent-audits-head" class="qms-agent-section-title">Recent audits — score & error count</h3>
             ${recentAudits.length ? `
               <div class="qms-agent-audit-table-wrap">
                 <table class="qms-agent-audit-table">
-                  <thead><tr><th>When</th><th>Audit ID</th><th>Score</th><th>Result</th><th>Errors</th><th>View</th></tr></thead>
+                  <thead><tr><th>Date</th><th>Audit<br>ID</th><th>Score</th><th>Result</th><th>Errors</th><th>View</th></tr></thead>
                   <tbody>
                     ${recentAudits.map((r) => {
                       const score = Number(r.average_score) || 0;
@@ -836,7 +875,7 @@
                       const tableName = (r.table_name != null && r.table_name !== '') ? String(r.table_name) : '';
                       const viewUrl = (auditId && tableName) ? `/audit-view.html?id=${encodeURIComponent(auditId)}&scorecard=&table=${encodeURIComponent(tableName)}` : '';
                       return `<tr>
-                        <td>${relativeTime(r.submitted_at)}</td>
+                        <td>${formatDateDDMMMYYYY(r.submitted_at)}</td>
                         <td class="qms-agent-audit-id">${auditId ? escapeHtml(auditId) : '—'}</td>
                         <td><span class="qms-score-pill ${sc}">${score.toFixed(0)}%</span></td>
                         <td><span class="qms-agent-result ${pass ? 'pass' : 'fail'}">${pass ? 'Pass' : 'Not passing'}</span></td>
@@ -989,19 +1028,22 @@
         try {
           const email = await (window.supabaseClient?.auth?.getUser?.().then((r) => r?.data?.user?.email) ?? null);
           const { PerformanceAnalyticsService } = await import('/js/features/performance-analytics/application/performance-analytics-service.js');
-          const service = new PerformanceAnalyticsService();
+          qmsService = new PerformanceAnalyticsService();
           const filters = getFilters();
-          const data = await service.loadAnalytics(email, filters);
-          chatsReviewedTotal = null;
+          const data = await qmsService.loadAnalytics(email, filters);
+          chatsReviewedByAgent = {};
           const client = window.supabaseClient || window.supabase || (window.top && window.top.supabaseClient);
           if (client && filters.startDate && filters.endDate) {
             try {
-              const { data: chatRows, error } = await client.rpc('get_chat_review_analytics', {
+              const { data: byAgentRows, error } = await client.rpc('get_chat_review_analytics_by_agent', {
                 p_from_date: filters.startDate,
                 p_to_date: filters.endDate
               });
-              if (!error && Array.isArray(chatRows)) {
-                chatsReviewedTotal = chatRows.reduce((s, r) => s + Number(r.total_conversations_reviewed || 0), 0);
+              if (!error && Array.isArray(byAgentRows)) {
+                byAgentRows.forEach((r) => {
+                  const email = (r.employee_email || '').toLowerCase();
+                  if (email) chatsReviewedByAgent[email] = Number(r.total_conversations_reviewed || 0);
+                });
               }
             } catch (_) {}
           }

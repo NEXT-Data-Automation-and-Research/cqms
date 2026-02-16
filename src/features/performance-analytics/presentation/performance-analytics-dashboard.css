@@ -515,7 +515,7 @@
 
 .qms-main > .qms-panel:first-of-type .qms-pass-bar-wrap {
   min-width: 64px;
-  height: 5px;
+  height: 10px;
 }
 
 .qms-main > .qms-panel:first-of-type .qms-pass-pct {
@@ -604,7 +604,7 @@
 }
 
 .qms-combined-table th {
-  text-align: left;
+  text-align: center;
   padding: 12px 14px;
   font-size: 11px;
   font-weight: 600;
@@ -613,7 +613,8 @@
   color: var(--text-primary);
   border-bottom: 1px solid var(--border);
   background: rgba(13, 94, 58, 0.1);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.3;
 }
 
 .qms-combined-table td {
@@ -622,6 +623,7 @@
   color: var(--text-primary);
   vertical-align: middle;
   transition: background 0.12s;
+  text-align: center;
 }
 
 .qms-combined-table tbody tr:last-child td {
@@ -636,9 +638,20 @@
   background: var(--bg-elevated);
 }
 
+.qms-combined-table td:first-child {
+  text-align: center;
+}
+
+/* Name column — left aligned */
+.qms-combined-table th:nth-child(2),
+.qms-combined-table td:nth-child(2) {
+  text-align: left;
+}
+
 .qms-cell-avatar {
   width: 48px;
   padding-right: 8px;
+  text-align: center;
 }
 
 .qms-cell-avatar .qms-avatar-wrap {
@@ -712,9 +725,9 @@
 }
 
 .qms-cell-passrate .qms-pass-bar-wrap {
-  display: inline-block;
+  display: inline-flex;
   min-width: 72px;
-  height: 6px;
+  height: 12px;
   margin-right: 8px;
   vertical-align: middle;
 }
@@ -787,19 +800,32 @@
 }
 
 .qms-pass-bar-wrap {
+  display: flex;
   min-width: 90px;
-  height: 6px;
+  height: 12px;
   background: var(--border-subtle);
-  border-radius: 3px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .qms-pass-bar-fill {
   height: 100%;
-  border-radius: 3px;
+  min-width: 0;
   transition: width 0.35s ease;
 }
 
+.qms-pass-bar-fill:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.qms-pass-bar-fill:last-child {
+  border-radius: 0 6px 6px 0;
+}
+
+.qms-pass-bar-fill.qms-pass-bar-pass { background: var(--accent-green); }
+.qms-pass-bar-fill.qms-pass-bar-fail { background: var(--accent-red); }
+
+/* Legacy single-segment (e.g. channel bars) */
 .qms-pass-bar-fill.green { background: var(--accent-green); }
 .qms-pass-bar-fill.amber { background: var(--accent-amber); }
 .qms-pass-bar-fill.red { background: var(--accent-red); }
@@ -1258,8 +1284,31 @@
 }
 
 /* --------------------------------------------------------------------------- */
-/* AGENT MODAL — Center modal for agent performance detail                    */
+/* AGENT MODAL — Modern design system (typography, color, spacing)             */
 /* --------------------------------------------------------------------------- */
+.qms-agent-modal-box {
+  --agent-font: var(--font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  --font-family-mono: ui-monospace, 'SF Mono', Monaco, monospace;
+  --agent-surface: #ffffff;
+  --agent-surface-alt: #f8fafc;
+  --agent-border: #e2e8f0;
+  --agent-border-light: #f1f5f9;
+  --agent-text: #0f172a;
+  --agent-text-secondary: #475569;
+  --agent-text-muted: #64748b;
+  --agent-success: #059669;
+  --agent-success-bg: #ecfdf5;
+  --agent-warning: #d97706;
+  --agent-warning-bg: #fffbeb;
+  --agent-danger: #dc2626;
+  --agent-danger-bg: #fef2f2;
+  --agent-chart: #0d9488;
+  --agent-radius: 12px;
+  --agent-radius-lg: 16px;
+  --agent-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  --agent-shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1275,13 +1324,13 @@
 .qms-agent-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 100;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .qms-agent-modal-overlay.open {
@@ -1296,11 +1345,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
 
 .qms-agent-modal.open {
@@ -1311,46 +1360,46 @@
 
 .qms-agent-modal-box {
   width: 100%;
-  max-width: 640px;
-  max-height: calc(100vh - 48px);
-  background: var(--bg-surface, #ffffff);
-  background-color: var(--bg-surface, #ffffff);
-  border-radius: 16px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  max-width: 720px;
+  max-height: calc(100vh - 32px);
+  background: var(--agent-surface);
+  border-radius: var(--agent-radius);
+  box-shadow: var(--agent-shadow-lg);
+  border: 1px solid var(--agent-border-light);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   pointer-events: auto;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
-  background: var(--bg-surface, #ffffff);
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--agent-border-light);
+  background: var(--agent-surface);
   flex-shrink: 0;
 }
 
 .qms-agent-modal-profile {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   min-width: 0;
 }
 
 .qms-agent-modal-avatar {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--bg-elevated, #fafafa);
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text-primary, #111827);
+  background: var(--agent-surface-alt);
+  border: 1px solid var(--agent-border);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--agent-text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1379,87 +1428,144 @@
 
 .qms-agent-modal-meta {
   min-width: 0;
+  flex: 1;
+}
+
+.qms-agent-modal-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
 }
 
 .qms-agent-modal-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-primary, #111827);
-  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--agent-text);
+  margin: 0;
   letter-spacing: -0.02em;
   line-height: 1.3;
+  font-family: var(--agent-font);
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.qms-agent-modal-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .qms-agent-modal-channel {
-  font-size: 13px;
+  display: inline-block;
+  font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-secondary, #4b5563);
+  color: var(--agent-text-secondary);
+  padding: 4px 10px;
+  background: var(--agent-surface-alt);
+  border: 1px solid var(--agent-border-light);
+  border-radius: 9999px;
+  font-family: var(--agent-font);
+}
+
+.qms-agent-modal-status {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  font-family: var(--agent-font);
+}
+
+.qms-agent-status-on-track {
+  color: var(--agent-success);
+  background: var(--agent-success-bg);
+}
+
+.qms-agent-status-needs-attention {
+  color: var(--agent-warning);
+  background: var(--agent-warning-bg);
+}
+
+.qms-agent-status-needs-focus {
+  color: var(--agent-danger);
+  background: var(--agent-danger-bg);
 }
 
 .qms-agent-modal-close {
   width: 40px;
   height: 40px;
   border: none;
-  background: var(--bg-elevated, #fafafa);
-  border-radius: 10px;
-  color: var(--text-secondary, #4b5563);
+  background: var(--agent-surface-alt);
+  border-radius: var(--agent-radius);
+  color: var(--agent-text-secondary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.2s, color 0.2s;
   flex-shrink: 0;
 }
 
 .qms-agent-modal-close:hover {
-  background: var(--border-subtle, rgba(0, 0, 0, 0.06));
-  color: var(--text-primary, #111827);
+  background: var(--agent-border-light);
+  color: var(--agent-text);
 }
 
 .qms-agent-modal-close:focus {
   outline: none;
-  box-shadow: 0 0 0 2px var(--accent-green, #0d5e3a);
+  box-shadow: 0 0 0 2px var(--agent-success);
 }
 
 .qms-agent-modal-body {
   overflow-y: auto;
-  padding: 20px 24px 28px;
-  background: var(--bg-surface, #ffffff);
+  padding: 14px 18px 20px;
+  background: var(--agent-surface);
+  font-family: var(--agent-font);
 }
 
+/* KPIs — compact cards */
 .qms-agent-kpis {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 8px;
+  margin-bottom: 14px;
 }
 
 .qms-agent-kpi {
   text-align: center;
-  padding: 14px 10px;
-  background: var(--bg-elevated, #fafafa);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+  padding: 10px 8px;
+  background: var(--agent-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--agent-border-light);
 }
 
 .qms-agent-kpi-value {
   display: block;
-  font-size: 22px;
+  font-size: 1.125rem;
   font-weight: 700;
-  color: var(--text-primary, #111827);
-  margin-bottom: 2px;
+  color: var(--agent-text);
+  margin-bottom: 1px;
+  letter-spacing: -0.02em;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-kpi-label {
-  font-size: 11px;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted, #9ca3af);
+  letter-spacing: 0.06em;
+  color: var(--agent-text-muted);
+  font-family: var(--agent-font);
 }
 
+/* Sections — compact, template-style spacing */
 .qms-agent-section {
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
 .qms-agent-section:first-of-type {
@@ -1467,178 +1573,279 @@
 }
 
 .qms-agent-section-title {
-  font-size: 12px;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted, #9ca3af);
-  margin: 0 0 12px 0;
+  letter-spacing: 0.08em;
+  color: var(--agent-text-muted);
+  margin: 0 0 8px 0;
+  font-family: var(--agent-font);
 }
 
+.qms-agent-section-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.qms-agent-section-row .qms-agent-section {
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .qms-agent-section-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chart block — compact, readable template */
 .qms-agent-trend-card {
-  padding: 16px;
-  background: var(--bg-elevated, #fafafa);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+  padding: 10px 12px;
+  background: var(--agent-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--agent-border-light);
+}
+
+.qms-agent-trend-chart-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--agent-text-muted);
+  margin: 0 0 8px 0;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-trend-sparkline {
   display: block;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.qms-agent-trend-empty {
+  font-size: 0.75rem;
+  color: var(--agent-text-muted);
+  margin: 0 0 8px 0;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-trend-legend {
   display: flex;
   justify-content: space-between;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted, #9ca3af);
+  gap: 2px;
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--agent-text-muted);
+  font-family: var(--agent-font);
 }
 
 .qms-agent-trend-day {
   flex: 1;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
+.qms-agent-trend-day-label {
+  color: var(--agent-text-muted);
+  font-size: 0.5625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-family: var(--agent-font);
+}
+
+.qms-agent-trend-day-value {
+  color: var(--agent-text);
+  font-weight: 600;
+  font-size: 0.6875rem;
+  font-family: var(--agent-font);
+}
+
+/* Error cards — compact */
 .qms-agent-errors-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .qms-agent-error-card {
-  padding: 16px;
-  border-radius: 12px;
+  padding: 10px 8px;
+  border-radius: 8px;
   text-align: center;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid transparent;
 }
 
 .qms-agent-error-card.critical {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: var(--agent-danger-bg);
+  border-color: rgba(220, 38, 38, 0.2);
 }
 
 .qms-agent-error-card.significant {
-  background: rgba(245, 158, 11, 0.08);
-  border-color: rgba(245, 158, 11, 0.2);
+  background: var(--agent-warning-bg);
+  border-color: rgba(217, 119, 6, 0.2);
 }
 
 .qms-agent-error-value {
   display: block;
-  font-size: 24px;
+  font-size: 1.125rem;
   font-weight: 700;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
+  font-family: var(--agent-font);
 }
 
-.qms-agent-error-card.critical .qms-agent-error-value { color: var(--accent-red, #ef4444); }
-.qms-agent-error-card.significant .qms-agent-error-value { color: var(--accent-amber, #f59e0b); }
+.qms-agent-error-card.critical .qms-agent-error-value {
+  color: var(--agent-danger);
+}
+
+.qms-agent-error-card.significant .qms-agent-error-value {
+  color: var(--agent-warning);
+}
 
 .qms-agent-error-label {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted, #9ca3af);
+  letter-spacing: 0.06em;
+  color: var(--agent-text-muted);
+  font-family: var(--agent-font);
 }
 
+/* Table */
 .qms-agent-audit-table-wrap {
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
-  border-radius: 12px;
+  border: 1px solid var(--agent-border-light);
+  border-radius: var(--agent-radius);
   overflow: hidden;
 }
 
 .qms-agent-audit-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 0.75rem;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-audit-table th,
 .qms-agent-audit-table td {
-  padding: 12px 14px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--agent-border-light);
 }
 
 .qms-agent-audit-table th {
   font-weight: 600;
-  color: var(--text-muted, #9ca3af);
-  font-size: 11px;
+  color: var(--agent-text-muted);
+  font-size: 0.625rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  background: var(--bg-elevated, #fafafa);
+  letter-spacing: 0.06em;
+  background: var(--agent-surface-alt);
+  font-family: var(--agent-font);
+  white-space: normal;
+  line-height: 1.3;
 }
 
-.qms-agent-audit-table tr:last-child td {
+.qms-agent-audit-table tbody tr:hover {
+  background: var(--agent-surface-alt);
+}
+
+.qms-agent-audit-table tbody tr:last-child td {
   border-bottom: none;
 }
 
 .qms-agent-result.pass {
   font-weight: 600;
-  color: var(--accent-green, #0d5e3a);
-  font-size: 12px;
+  color: var(--agent-success);
+  font-size: 0.8125rem;
 }
 
 .qms-agent-result.fail {
   font-weight: 600;
-  color: var(--accent-red, #ef4444);
-  font-size: 12px;
+  color: var(--agent-danger);
+  font-size: 0.8125rem;
 }
 
 .qms-agent-err-count {
   font-weight: 600;
-  color: var(--text-primary, #111827);
+  color: var(--agent-text);
 }
 
 .qms-agent-audit-id {
-  font-size: 12px;
-  color: var(--text-secondary, #4b5563);
-  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+  color: var(--agent-text-secondary);
+  font-family: var(--font-family-mono, ui-monospace, 'SF Mono', Monaco, 'Cascadia Mono', monospace);
 }
 
 .qms-agent-view-audit {
   display: inline-block;
   padding: 6px 12px;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: var(--accent-green, #0d5e3a);
-  background: rgba(13, 94, 58, 0.08);
+  color: var(--agent-success);
+  background: var(--agent-success-bg);
   border-radius: 8px;
   text-decoration: none;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.2s, color 0.2s;
+  font-family: var(--agent-font);
 }
 
 .qms-agent-view-audit:hover {
-  background: rgba(13, 94, 58, 0.14);
-  color: var(--accent-green, #0d5e3a);
+  background: #d1fae5;
+  color: var(--agent-success);
 }
 
 .qms-agent-no-view {
-  color: var(--text-muted, #9ca3af);
-  font-size: 13px;
+  color: var(--agent-text-muted);
+  font-size: 0.8125rem;
 }
 
 .qms-agent-empty {
-  font-size: 13px;
-  color: var(--text-muted, #9ca3af);
+  font-size: 0.8125rem;
+  color: var(--agent-text-muted);
   margin: 0;
-  padding: 12px 0;
+  padding: 16px 0;
+  font-family: var(--agent-font);
+}
+
+/* Errors by parameter — table style, gap above */
+.qms-agent-param-errors-section {
+  margin-top: 20px;
 }
 
 .qms-agent-feedback-note {
-  padding: 14px 16px;
-  background: var(--bg-elevated, #fafafa);
-  border-radius: 12px;
-  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.05));
+  padding: 10px 12px;
+  background: var(--agent-surface-alt);
+  border-radius: 8px;
+  border: 1px solid var(--agent-border-light);
+  margin-top: 14px;
 }
 
 .qms-agent-feedback-text {
-  font-size: 13px;
-  color: var(--text-secondary, #4b5563);
+  font-size: 0.75rem;
+  color: var(--agent-text-secondary);
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.45;
+  font-family: var(--agent-font);
+}
+
+/* Score pills inside modal — use modal design tokens */
+.qms-agent-modal .qms-score-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--agent-font);
+}
+
+.qms-agent-modal .qms-score-pill.high {
+  background: var(--agent-success-bg);
+  color: var(--agent-success);
+}
+
+.qms-agent-modal .qms-score-pill.mid {
+  background: var(--agent-warning-bg);
+  color: var(--agent-warning);
+}
+
+.qms-agent-modal .qms-score-pill.low {
+  background: var(--agent-danger-bg);
+  color: var(--agent-danger);
 }
 
 /* --------------------------------------------------------------------------- */
