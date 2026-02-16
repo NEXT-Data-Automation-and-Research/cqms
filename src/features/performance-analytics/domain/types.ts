@@ -3,6 +3,7 @@
  */
 
 export interface AuditRow {
+  id?: string | number | null;
   employee_email: string | null;
   employee_name: string | null;
   average_score: number | null;
@@ -13,6 +14,9 @@ export interface AuditRow {
   submitted_at: string | null;
   week: number | null;
   channel: string | null;
+  country_of_employee?: string | null;
+  /** Table name (set when merging from multiple audit tables) for building audit-view URL */
+  table_name?: string | null;
   [key: string]: unknown;
 }
 
@@ -26,7 +30,9 @@ export interface PersonRow {
   team_supervisor: string | null;
   quality_mentor: string | null;
   channel: string | null;
+  country: string | null;
   is_active: boolean | null;
+  avatar_url: string | null;
 }
 
 export interface AggregationBucket {
@@ -53,6 +59,23 @@ export interface PerformanceFilters {
   scorecardTable?: string;
 }
 
+export interface ChannelAggregate {
+  channel: string;
+  totalAudits: number;
+  passCount: number;
+  passRate: number;
+}
+
+export interface AuditFrequencyDay {
+  date: string;
+  count: number;
+}
+
+export interface ErrorCountByDay {
+  date: string;
+  count: number;
+}
+
 export interface PerformanceAnalyticsData {
   isSuperAdmin: boolean;
   userEmail: string | null;
@@ -67,4 +90,9 @@ export interface PerformanceAnalyticsData {
   scoreTrend: { period: string; avgScore: number; count: number; passRate: number }[];
   rawAudits: AuditRow[];
   people: PersonRow[];
+  /** Avatar URL by lowercase email (for agents in table; case-insensitive lookup) */
+  peopleAvatarByEmail?: Record<string, string | null>;
+  byChannel: ChannelAggregate[];
+  auditFrequencyByDay: AuditFrequencyDay[];
+  errorCountByDay: ErrorCountByDay[];
 }

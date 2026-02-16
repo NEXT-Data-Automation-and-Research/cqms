@@ -508,6 +508,22 @@ app.get('/admin-portal/dashboard', (req: express.Request, res: express.Response)
 
 logWithTimestamp('debug', 'Admin portal route registered: /admin-portal');
 
+// Performance (QMS dashboard) - serve redesigned performance-analytics page at /performance
+app.get('/performance', (req: express.Request, res: express.Response): void => {
+  try {
+    const html = injectVersionIntoHTML('src/features/performance-analytics/presentation/performance-analytics.html', appVersion);
+    res.send(html);
+  } catch (error) {
+    logWithTimestamp('error', 'Error processing /performance (performance-analytics.html):', error);
+    const filePath = path.join(__dirname, '../src/features/performance-analytics/presentation/performance-analytics.html');
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  }
+});
+
 // Performance Analytics - explicit route so page loads from sidebar even if clean-URL list is stale
 app.get('/performance-analytics', (req: express.Request, res: express.Response): void => {
   try {

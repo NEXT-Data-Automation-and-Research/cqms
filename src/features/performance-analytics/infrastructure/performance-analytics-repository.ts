@@ -10,11 +10,20 @@ import type {
   AggregationBucket,
   ErrorBucket,
   PerformanceFilters,
-  PerformanceAnalyticsData
+  PerformanceAnalyticsData,
+  ChannelAggregate,
+  AuditFrequencyDay,
+  ErrorCountByDay
 } from '../domain/types.js';
 
 const AUDIT_SELECT =
-  'employee_email, employee_name, average_score, passing_status, total_errors_count, critical_errors, significant_error, submitted_at, week, channel';
+  'id, employee_email, employee_name, average_score, passing_status, total_errors_count, critical_errors, significant_error, submitted_at, week, channel, country_of_employee';
+
+/** Count as pass only if status contains "pass" and does NOT contain "not" (e.g. "Not Pass" is fail). */
+function isPassingStatus(status: string | null | undefined): boolean {
+  const s = (status || '').toLowerCase();
+  return s.includes('pass') && !s.includes('not');
+}
 
 export class PerformanceAnalyticsRepository {
   /**
@@ -72,7 +81,8 @@ export class PerformanceAnalyticsRepository {
 
     const { data, error } = await query;
     if (error) return [];
-    return (data ?? []) as AuditRow[];
+    const rows = (data ?? []) as AuditRow[];
+    return rows.map((r) => ({ ...r, table_name: tableName }));
   }
 
   /**
@@ -95,7 +105,7 @@ export class PerformanceAnalyticsRepository {
   async fetchPeople(isSuperAdmin: boolean, userEmail: string | null): Promise<PersonRow[]> {
     const supabase = await getAuthenticatedSupabase();
     const select =
-      'email, name, role, department, designation, team, team_supervisor, quality_mentor, channel, is_active';
+      'email, name, role, department, designation, team, team_supervisor, quality_mentor, channel, country, is_active, avatar_url';
     if (isSuperAdmin) {
       const { data } = await supabase
         .from('people')
@@ -111,6 +121,29 @@ export class PerformanceAnalyticsRepository {
       .ilike('email', userEmail)
       .maybeSingle();
     return data ? [data as PersonRow] : [];
+  }
+
+  /**
+   * Fetch avatar_url for all distinct emails that appear in audits (case-insensitive).
+   * Returns a map of lowercase email -> avatar_url so the UI can show avatars for every agent.
+   */
+  async fetchAvatarByEmails(emails: string[]): Promise<Record<string, string | null>> {
+    if (emails.length === 0) return {};
+    const supabase = await getAuthenticatedSupabase();
+    // Include both original and lowercase so .in('email', ...) matches DB regardless of casing
+    const toFetch = Array.from(new Set(emails.flatMap((e) => (e ? [e, e.toLowerCase().trim()] : [])))).filter(Boolean);
+    if (toFetch.length === 0) return {};
+    const { data } = await supabase
+      .from('people')
+      .select('email, avatar_url')
+      .in('email', toFetch.slice(0, 500));
+    const out: Record<string, string | null> = {};
+    for (const row of data ?? []) {
+      const email = (row as { email?: string; avatar_url?: string | null }).email;
+      const url = (row as { email?: string; avatar_url?: string | null }).avatar_url ?? null;
+      if (email != null) out[email.toLowerCase()] = url;
+    }
+    return out;
   }
 
   /**
@@ -139,6 +172,18 @@ export class PerformanceAnalyticsRepository {
 
     const errorBreakdown = this.buildErrorBreakdown(rawAudits);
     const scoreTrend = this.buildScoreTrend(rawAudits);
+    const byChannel = this.buildChannelAggregates(rawAudits);
+    const auditFrequencyByDay = this.buildAuditFrequencyByDay(rawAudits);
+    const errorCountByDay = this.buildErrorCountByDay(rawAudits);
+
+    const agentEmails = Array.from(
+      new Set(
+        (rawAudits || [])
+          .map((r) => (r.employee_email || '').trim())
+          .filter(Boolean)
+      )
+    );
+    const peopleAvatarByEmail = await this.fetchAvatarByEmails(agentEmails);
 
     return {
       isSuperAdmin,
@@ -153,8 +198,55 @@ export class PerformanceAnalyticsRepository {
       errorBreakdown,
       scoreTrend,
       rawAudits,
-      people
+      people,
+      peopleAvatarByEmail,
+      byChannel,
+      auditFrequencyByDay,
+      errorCountByDay
     };
+  }
+
+  private buildChannelAggregates(audits: AuditRow[]): ChannelAggregate[] {
+    const map = new Map<string, { total: number; pass: number }>();
+    for (const r of audits) {
+      const ch = (r.channel || '').trim() || 'Unknown';
+      const pass = isPassingStatus(r.passing_status) ? 1 : 0;
+      const entry = map.get(ch) ?? { total: 0, pass: 0 };
+      entry.total += 1;
+      entry.pass += pass;
+      map.set(ch, entry);
+    }
+    return Array.from(map.entries()).map(([channel, v]) => ({
+      channel,
+      totalAudits: v.total,
+      passCount: v.pass,
+      passRate: v.total ? (v.pass / v.total) * 100 : 0
+    }));
+  }
+
+  private buildAuditFrequencyByDay(audits: AuditRow[]): AuditFrequencyDay[] {
+    const map = new Map<string, number>();
+    for (const r of audits) {
+      if (!r.submitted_at) continue;
+      const date = String(r.submitted_at).slice(0, 10);
+      map.set(date, (map.get(date) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }
+
+  private buildErrorCountByDay(audits: AuditRow[]): ErrorCountByDay[] {
+    const map = new Map<string, number>();
+    for (const r of audits) {
+      if (!r.submitted_at) continue;
+      const date = String(r.submitted_at).slice(0, 10);
+      const n = typeof r.total_errors_count === 'number' ? r.total_errors_count : parseInt(String(r.total_errors_count ?? 0), 10) || 0;
+      map.set(date, (map.get(date) ?? 0) + n);
+    }
+    return Array.from(map.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   private aggregateBy(
@@ -168,7 +260,7 @@ export class PerformanceAnalyticsRepository {
       if (!k) continue;
       const label = labelFn(r);
       const score = typeof r.average_score === 'number' ? r.average_score : parseFloat(String(r.average_score ?? 0)) || 0;
-      const pass = (r.passing_status || '').toLowerCase().includes('pass') ? 1 : 0;
+      const pass = isPassingStatus(r.passing_status) ? 1 : 0;
       const errors = typeof r.total_errors_count === 'number' ? r.total_errors_count : parseInt(String(r.total_errors_count ?? 0), 10) || 0;
       let entry = map.get(k);
       if (!entry) {
@@ -214,7 +306,7 @@ export class PerformanceAnalyticsRepository {
       const k = email ? emailToKey.get(email) ?? 'Unknown' : 'Unknown';
       const label = email ? emailToLabel.get(email) ?? k : 'Unknown';
       const score = typeof r.average_score === 'number' ? r.average_score : parseFloat(String(r.average_score ?? 0)) || 0;
-      const pass = (r.passing_status || '').toLowerCase().includes('pass') ? 1 : 0;
+      const pass = isPassingStatus(r.passing_status) ? 1 : 0;
       const errors = typeof r.total_errors_count === 'number' ? r.total_errors_count : parseInt(String(r.total_errors_count ?? 0), 10) || 0;
       let entry = bucketMap.get(k);
       if (!entry) {
@@ -262,7 +354,7 @@ export class PerformanceAnalyticsRepository {
     for (const r of audits) {
       const week = r.week ?? 0;
       const score = typeof r.average_score === 'number' ? r.average_score : parseFloat(String(r.average_score ?? 0)) || 0;
-      const pass = (r.passing_status || '').toLowerCase().includes('pass') ? 1 : 0;
+      const pass = isPassingStatus(r.passing_status) ? 1 : 0;
       let entry = byWeek.get(week);
       if (!entry) {
         entry = { scores: [], pass: 0 };

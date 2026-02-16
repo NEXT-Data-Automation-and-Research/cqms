@@ -4,14 +4,14 @@
   <script src="/js/console-stub.js"></script>
   <meta charset="UTF-8">
   <title>Performance Analytics | CQMS</title>
-  <meta name="description" content="Performance analytics by individual, team, role, designation, and more">
+  <meta name="description" content="QMS Performance Report — Ops Intelligence Terminal">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/src/features/performance-analytics/presentation/performance-analytics-dashboard.css">
   <script type="importmap">
   {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
   </script>
@@ -32,359 +32,993 @@
     })();
   </script>
   <script type="module" src="/js/load-sidebar.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    .main-content { overflow-x: hidden; max-width: calc(100vw - var(--sidebar-collapsed)) !important; box-sizing: border-box; width: 100%; }
-    .sidebar:not(.collapsed) ~ .main-content { max-width: calc(100vw - var(--sidebar-width)) !important; }
-    .pa-page-heading { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 600; color: var(--text-color); margin: 1.5rem 0 1rem; }
-    .pa-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
-    .pa-toolbar label { font-size: 0.875rem; color: var(--text-secondary); }
-    .pa-toolbar input[type="date"] { padding: 0.4rem 0.5rem; border: 1px solid var(--border-light); border-radius: 0.375rem; background: var(--background-white); color: var(--text-color); }
-    .pa-toolbar button { padding: 0.5rem 1rem; background: var(--primary-color); color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer; font-size: 0.875rem; }
-    .pa-toolbar button.secondary { background: var(--background-white); color: var(--text-color); border: 1px solid var(--border-light); }
-    .pa-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-light); }
-    .pa-tab { padding: 0.5rem 1rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-secondary); cursor: pointer; font-size: 0.875rem; font-weight: 500; }
-    .pa-tab:hover { color: var(--text-color); }
-    .pa-tab.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
-    .pa-panel { display: none; }
-    .pa-panel.active { display: block; }
-    .pa-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
-    .pa-card { background: var(--background-white); border: 1px solid var(--border-light); border-radius: 0.5rem; padding: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-    .pa-card .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
-    .pa-card .value { font-size: 1.5rem; font-weight: 700; color: var(--text-color); }
-    .pa-chart-wrap { max-width: 100%; height: 280px; margin-bottom: 1.5rem; }
-    .pa-chart-wrap.wide { height: 320px; }
-    .pa-table-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
-    .pa-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .pa-table th, .pa-table td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border-light); }
-    .pa-table th { background: var(--background-secondary); font-weight: 600; color: var(--text-color); }
-    .pa-table tr:hover { background: var(--background-secondary); }
-    .pa-loading { display: flex; align-items: center; justify-content: center; padding: 3rem; color: var(--text-muted); }
-    .pa-loading.spinner { flex-direction: column; gap: 0.5rem; }
-    .pa-loading .spinner { width: 2rem; height: 2rem; border: 2px solid var(--border-light); border-top-color: var(--primary-color); border-radius: 50%; animation: pa-spin 0.8s linear infinite; }
-    @keyframes pa-spin { to { transform: rotate(360deg); } }
-    .pa-empty { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.875rem; }
-    .pa-badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; background: rgba(26,115,62,0.15); color: var(--primary-color); }
-    [data-theme="dark"] .pa-card { background: var(--background-secondary); border-color: rgba(255,255,255,0.1); }
-    [data-theme="dark"] .pa-table th { background: rgba(255,255,255,0.06); }
+    .main-content { overflow-x: hidden; max-width: calc(100vw - var(--sidebar-collapsed, 56px)) !important; box-sizing: border-box; width: 100%; }
+    .sidebar:not(.collapsed) ~ .main-content { max-width: calc(100vw - var(--sidebar-width, 240px)) !important; }
   </style>
 </head>
 <body>
   <main class="main-content" role="main">
-    <div style="max-width: 100%; box-sizing: border-box; padding: 0 1rem 2rem;">
-      <h1 class="pa-page-heading">Performance Analytics</h1>
-
-      <div id="paLoading" class="pa-loading spinner">
-        <div class="spinner"></div>
-        <span>Loading analytics…</span>
+    <div id="qmsDashboard" class="qms-dashboard" style="display: none;">
+      <h1 class="page-heading-global">Performance Dashboard</h1>
+      <!-- Filter bar (same style as Audit Reports) -->
+      <div class="header-actions qms-header-actions" id="qmsHeaderActions">
+        <div class="date-picker-dropdown">
+          <button type="button" class="action-btn" id="qmsDateBtn" aria-label="Date range">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span id="qmsDateBtnText">Date Range</span>
+            <svg style="width: 9px; height: 9px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <div class="date-dropdown-menu" id="qmsDateDropdown">
+            <div class="filter-group">
+              <label class="filter-label">Start Date</label>
+              <input type="date" class="filter-input" id="qmsStartDate">
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">End Date</label>
+              <input type="date" class="filter-input" id="qmsEndDate">
+            </div>
+            <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
+              <button type="button" class="action-btn" style="flex: 1;" id="qmsApplyDate">Apply</button>
+              <button type="button" class="action-btn" style="flex: 1;" id="qmsClearDate">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div class="quick-date-buttons-container">
+          <button type="button" class="action-btn quick-date-btn" id="qmsTodayBtn">Today</button>
+          <button type="button" class="action-btn quick-date-btn" id="qmsYesterdayBtn">Yesterday</button>
+          <button type="button" class="action-btn quick-date-btn" id="qmsThisWeekBtn">This Week</button>
+          <button type="button" class="action-btn quick-date-btn" id="qmsLastWeekBtn">Last Week</button>
+          <button type="button" class="action-btn quick-date-btn active" id="qmsThisMonthBtn">This Month</button>
+          <button type="button" class="action-btn quick-date-btn" id="qmsLastMonthBtn">Last Month</button>
+        </div>
+        <button type="button" class="action-btn" id="qmsExport" title="Export" aria-label="Export report">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Export</span>
+        </button>
+        <span id="qmsHeaderUpdating" class="qms-header-updating" style="display: none;" aria-live="polite">
+          <span class="qms-header-updating-spinner"></span>
+          <span>Updating…</span>
+        </span>
+        <div id="qmsHeaderError" class="qms-header-error" style="display: none;" role="alert"></div>
       </div>
 
-      <div id="paContent" style="display: none;">
-        <div class="pa-toolbar">
-          <label>From</label>
-          <input type="date" id="paStartDate">
-          <label>To</label>
-          <input type="date" id="paEndDate">
-          <button type="button" id="paApply">Apply</button>
-          <button type="button" id="paReset" class="secondary">Reset</button>
-          <span id="paScopeBadge" class="pa-badge" style="margin-left: auto;"></span>
+      <div class="qms-layout" id="qmsLayout">
+        <div class="qms-main">
+          <!-- KPI Hero Row -->
+          <div class="qms-kpi-row" id="qmsKpiRow"></div>
+
+          <!-- Agent performance at a glance (combined channel-wise + agent metrics) -->
+          <section class="qms-panel">
+            <div class="qms-at-glance-header">
+              <h2 class="qms-section-title">Agent performance at a glance</h2>
+              <div class="qms-at-glance-right">
+                <div class="qms-search-filter-bar">
+                  <input type="search" id="qmsSearchAgent" placeholder="Search by name" aria-label="Search agents">
+                  <select id="qmsFilterChannel" aria-label="Filter by channel"><option value="">All channels</option></select>
+                  <select id="qmsFilterCountry" aria-label="Filter by country"><option value="">All countries</option></select>
+                </div>
+                <div class="qms-stat-pills" id="qmsStatPills"></div>
+              </div>
+            </div>
+            <div class="qms-combined-table-wrap">
+              <table class="qms-combined-table" id="qmsCombinedTable">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Name</th>
+                    <th>Channel</th>
+                    <th>Country</th>
+                    <th>Audits</th>
+                    <th>Pass</th>
+                    <th>Not passing</th>
+                    <th>Pass rate</th>
+                    <th>Avg score</th>
+                  </tr>
+                </thead>
+                <tbody id="qmsCombinedTableBody"></tbody>
+              </table>
+            </div>
+            <div class="qms-pagination">
+              <div class="qms-pagination-btns" id="qmsPaginationBtns"></div>
+              <div class="qms-page-size">Show <select id="qmsPageSize"><option value="25">25</option><option value="50">50</option><option value="9999">All</option></select></div>
+            </div>
+          </section>
         </div>
 
-        <div class="pa-tabs" id="paTabs"></div>
+        <div class="qms-right">
+          <!-- Performance by Channel -->
+          <section class="qms-panel">
+            <h2 class="qms-section-title">Performance by channel</h2>
+            <div class="qms-channel-bars" id="qmsChannelBars"></div>
+          </section>
 
-        <div id="paOverview" class="pa-panel active">
-          <div class="pa-cards" id="paKpiCards"></div>
-          <div class="pa-chart-wrap wide"><canvas id="paChartTrend"></canvas></div>
-          <div class="pa-chart-wrap"><canvas id="paChartErrors"></canvas></div>
-        </div>
+          <!-- Recent audits -->
+          <section class="qms-live-feed">
+            <h2 class="qms-section-title">Recent audits</h2>
+            <div id="qmsRecentAudits"></div>
+            <a href="#" class="qms-view-all" id="qmsViewAllAudits">View All</a>
+          </section>
 
-        <div id="paIndividual" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartIndividual"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableIndividual"><thead><tr><th>Name / Email</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paTeam" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartTeam"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableTeam"><thead><tr><th>Team</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paRole" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartRole"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableRole"><thead><tr><th>Role</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paDesignation" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartDesignation"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableDesignation"><thead><tr><th>Designation</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paSupervisor" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartSupervisor"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableSupervisor"><thead><tr><th>Supervisor</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paQualityMentor" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartQualityMentor"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableQualityMentor"><thead><tr><th>Quality Mentor</th><th>Audits</th><th>Avg score</th><th>Pass rate</th><th>Total errors</th></tr></thead><tbody></tbody></table></div>
-        </div>
-
-        <div id="paErrors" class="pa-panel">
-          <div class="pa-chart-wrap"><canvas id="paChartErrorBreakdown"></canvas></div>
-          <div class="pa-table-wrap"><table class="pa-table" id="paTableErrors"><thead><tr><th>Error type</th><th>Count</th></tr></thead><tbody></tbody></table></div>
+          <!-- Top error categories (below Recent audits) -->
+          <section class="qms-panel">
+            <h2 class="qms-section-title">Top error categories</h2>
+            <div class="qms-error-section">
+              <div>
+                <div class="qms-error-stacked-bar" id="qmsErrorStackedBar"></div>
+                <ul class="qms-error-list" id="qmsErrorList"></ul>
+              </div>
+              <div>
+                <div class="qms-error-calendar" id="qmsErrorCalendar"></div>
+              </div>
+              <div class="qms-error-cards" id="qmsErrorCards"></div>
+            </div>
+          </section>
         </div>
       </div>
-
-      <div id="paError" class="pa-empty" style="display: none;"></div>
     </div>
+
+    <!-- Agent performance modal (center) -->
+    <div class="qms-agent-modal-overlay" id="qmsAgentModalOverlay" aria-hidden="true"></div>
+    <div class="qms-agent-modal" id="qmsAgentModal" role="dialog" aria-modal="true" aria-labelledby="qmsAgentModalTitle" aria-describedby="qmsAgentModalDesc">
+      <div class="qms-agent-modal-box">
+        <header class="qms-agent-modal-header">
+          <div class="qms-agent-modal-profile" id="qmsAgentModalProfile"></div>
+          <button type="button" class="qms-agent-modal-close" id="qmsAgentModalClose" aria-label="Close">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </header>
+        <div class="qms-agent-modal-body" id="qmsAgentModalBody">
+          <p id="qmsAgentModalDesc" class="sr-only">Agent performance summary, error trend, and recent audits.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="qmsLoading" class="qms-loading spinner">
+      <div class="qms-spinner"></div>
+      <span>Loading analytics…</span>
+    </div>
+    <div id="qmsError" class="qms-empty" style="display: none;"></div>
   </main>
 
   <script type="module">
     (async function () {
       await new Promise((r) => { if (window.supabaseReady) r(); else window.addEventListener('supabaseReady', r, { once: true }); });
 
-      const startEl = document.getElementById('paStartDate');
-      const endEl = document.getElementById('paEndDate');
-      const applyBtn = document.getElementById('paApply');
-      const resetBtn = document.getElementById('paReset');
-      const loadingEl = document.getElementById('paLoading');
-      const contentEl = document.getElementById('paContent');
-      const errorEl = document.getElementById('paError');
-      const scopeBadge = document.getElementById('paScopeBadge');
-
-      function setDefaultDates() {
-        const end = new Date();
-        const start = new Date();
-        start.setMonth(start.getMonth() - 1);
-        startEl.value = start.toISOString().slice(0, 10);
-        endEl.value = end.toISOString().slice(0, 10);
-      }
+      const loadingEl = document.getElementById('qmsLoading');
+      const dashboardEl = document.getElementById('qmsDashboard');
+      const errorEl = document.getElementById('qmsError');
 
       function getFilters() {
+        const start = window.__qmsStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const end = window.__qmsEndDate || new Date();
         return {
-          startDate: startEl.value ? new Date(startEl.value).toISOString() : undefined,
-          endDate: endEl.value ? new Date(endEl.value + 'T23:59:59.999Z').toISOString() : undefined
+          startDate: start.toISOString().split('T')[0] + 'T00:00:00.000Z',
+          endDate: end.toISOString().split('T')[0] + 'T23:59:59.999Z',
+          channel: window.__qmsChannel || undefined
         };
+      }
+
+      function formatDateRange(start, end) {
+        const a = new Date(start);
+        const b = new Date(end);
+        const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return `${fmt(a)} → ${fmt(b)}`;
+      }
+
+      function thresholdColor(pct) {
+        if (pct >= 80) return 'green';
+        if (pct >= 60) return 'amber';
+        return 'red';
+      }
+
+      function statusLabel(pct) {
+        if (pct >= 80) return 'Target Met';
+        if (pct >= 60) return 'Below Target';
+        return 'Needs Improvement';
+      }
+
+      function statusClass(pct) {
+        if (pct >= 80) return 'met';
+        if (pct >= 60) return 'below';
+        return 'improve';
+      }
+
+      function scorePillClass(score) {
+        if (score >= 80) return 'high';
+        if (score >= 60) return 'mid';
+        return 'low';
+      }
+
+      function statusPillLabel(score, passRate) {
+        if (passRate >= 80 && score >= 90) return 'Exemplary';
+        if (passRate >= 60 || score >= 60) return 'At Risk';
+        return 'Critical';
+      }
+
+      function statusPillClass(score, passRate) {
+        if (passRate >= 80 && score >= 90) return 'exemplary';
+        if (passRate >= 60 || score >= 60) return 'at-risk';
+        return 'critical';
+      }
+
+      function initials(name) {
+        if (!name || !name.trim()) return '?';
+        return name.trim().split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase();
+      }
+
+      function relativeTime(iso) {
+        const d = new Date(iso);
+        const n = Date.now();
+        const s = Math.floor((n - d) / 1000);
+        if (s < 60) return 'just now';
+        if (s < 3600) return Math.floor(s / 60) + ' min ago';
+        if (s < 86400) return Math.floor(s / 3600) + ' hr ago';
+        if (s < 604800) return Math.floor(s / 86400) + ' days ago';
+        return d.toLocaleDateString();
+      }
+
+      function animateValue(el, from, to, duration, suffix = '') {
+        if (!el || typeof to !== 'number') return;
+        const start = performance.now();
+        function step(now) {
+          const t = Math.min((now - start) / duration, 1);
+          const v = Math.round(from + (to - from) * t);
+          el.textContent = v + suffix;
+          if (t < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
       }
 
       let currentData = null;
-      const chartInstances = [];
+      let activeQuickRange = 'thisMonth';
 
-      function destroyCharts() {
-        chartInstances.forEach((c) => { if (c) c.destroy(); });
-        chartInstances.length = 0;
-      }
-
-      function getUserEmail() {
-        try {
-          return window.supabaseClient?.auth?.getUser?.().then((r) => r?.data?.user?.email) ?? null;
-        } catch (e) {
-          return null;
+      function getStartEndForRange(range) {
+        const end = new Date();
+        let start = new Date();
+        if (range === 'today') {
+          start.setHours(0, 0, 0, 0);
+          return { start, end: new Date() };
         }
+        if (range === 'yesterday') {
+          start.setDate(start.getDate() - 1);
+          start.setHours(0, 0, 0, 0);
+          end.setDate(end.getDate() - 1);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        if (range === 'thisWeek') {
+          const day = start.getDay();
+          const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+          start.setDate(diff);
+          start.setHours(0, 0, 0, 0);
+          return { start, end: new Date() };
+        }
+        if (range === 'lastWeek') {
+          const day = start.getDay();
+          const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+          start.setDate(diff - 7);
+          start.setHours(0, 0, 0, 0);
+          end.setDate(diff - 1);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        if (range === 'thisMonth') {
+          start.setDate(1);
+          start.setHours(0, 0, 0, 0);
+          return { start, end: new Date() };
+        }
+        if (range === 'lastMonth') {
+          start.setMonth(start.getMonth() - 1);
+          start.setDate(1);
+          start.setHours(0, 0, 0, 0);
+          end.setDate(0);
+          end.setHours(23, 59, 59, 999);
+          return { start, end };
+        }
+        start.setMonth(start.getMonth() - 1);
+        return { start, end: new Date() };
       }
 
-      function renderKpiCards(data) {
-        const container = document.getElementById('paKpiCards');
+      function setQuickRange(range) {
+        activeQuickRange = range;
+        const { start, end } = getStartEndForRange(range);
+        window.__qmsStartDate = start;
+        window.__qmsEndDate = end;
+        document.querySelectorAll('.qms-header-actions .quick-date-btn').forEach((b) => b.classList.remove('active'));
+        const id = {
+          today: 'qmsTodayBtn',
+          yesterday: 'qmsYesterdayBtn',
+          thisWeek: 'qmsThisWeekBtn',
+          lastWeek: 'qmsLastWeekBtn',
+          thisMonth: 'qmsThisMonthBtn',
+          lastMonth: 'qmsLastMonthBtn'
+        }[range];
+        if (id) document.getElementById(id)?.classList.add('active');
+        renderDateBtnText();
+        load();
+      }
+
+      function renderDateBtnText() {
+        const start = window.__qmsStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const end = window.__qmsEndDate || new Date();
+        const el = document.getElementById('qmsDateBtnText');
+        if (el) el.textContent = formatDateRange(start, end);
+      }
+
+      function openDateDropdown() {
+        const start = window.__qmsStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const end = window.__qmsEndDate || new Date();
+        const startEl = document.getElementById('qmsStartDate');
+        const endEl = document.getElementById('qmsEndDate');
+        if (startEl) startEl.value = start.toISOString().slice(0, 10);
+        if (endEl) endEl.value = end.toISOString().slice(0, 10);
+        document.getElementById('qmsDateDropdown')?.classList.add('active');
+      }
+
+      function closeDateDropdown() {
+        document.getElementById('qmsDateDropdown')?.classList.remove('active');
+      }
+
+      document.getElementById('qmsDateBtn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById('qmsDateDropdown');
+        if (menu?.classList.contains('active')) closeDateDropdown();
+        else openDateDropdown();
+      });
+
+      document.getElementById('qmsApplyDate')?.addEventListener('click', () => {
+        const startEl = document.getElementById('qmsStartDate');
+        const endEl = document.getElementById('qmsEndDate');
+        if (startEl?.value) window.__qmsStartDate = new Date(startEl.value + 'T00:00:00');
+        if (endEl?.value) window.__qmsEndDate = new Date(endEl.value + 'T23:59:59');
+        document.querySelectorAll('.qms-header-actions .quick-date-btn').forEach((b) => b.classList.remove('active'));
+        activeQuickRange = null;
+        closeDateDropdown();
+        renderDateBtnText();
+        load();
+      });
+
+      document.getElementById('qmsClearDate')?.addEventListener('click', () => {
+        setQuickRange('thisMonth');
+        closeDateDropdown();
+      });
+
+      ['qmsTodayBtn', 'qmsYesterdayBtn', 'qmsThisWeekBtn', 'qmsLastWeekBtn', 'qmsThisMonthBtn', 'qmsLastMonthBtn'].forEach((id, i) => {
+        const range = ['today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth'][i];
+        document.getElementById(id)?.addEventListener('click', () => setQuickRange(range));
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!document.getElementById('qmsHeaderActions')?.contains(e.target)) closeDateDropdown();
+      });
+
+      (function initDateRange() {
+        const { start, end } = getStartEndForRange('thisMonth');
+        window.__qmsStartDate = start;
+        window.__qmsEndDate = end;
+      })();
+
+      document.getElementById('qmsExport').addEventListener('click', () => {
+        if (!currentData) return;
+        const csv = ['Name,Channel,Country,Audits,Pass,Not passing,Pass %'];
+        const agents = getAgentsWithChannel(currentData);
+        agents.forEach((a) => {
+          csv.push([a.label, a.channel, a.country || '', a.totalCount, a.passCount, a.totalCount - a.passCount, a.passRate.toFixed(1)].join(','));
+        });
+        const blob = new Blob([csv.join('\n')], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'qms-performance.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      function getAgentsWithChannel(data) {
+        const peopleMap = new Map((data.people || []).map((p) => [(p.email || '').toLowerCase(), p]));
+        const avatarByEmail = data.peopleAvatarByEmail || {};
+        return (data.byIndividual || []).map((b) => {
+          const keyLower = (b.key || '').toLowerCase();
+          const p = peopleMap.get(keyLower);
+          const avatarUrl = (p && p.avatar_url) || avatarByEmail[keyLower] || null;
+          return {
+            ...b,
+            channel: (p && p.channel) || (data.rawAudits && data.rawAudits.find((r) => (r.employee_email || '').toLowerCase() === keyLower)?.channel) || 'Unknown',
+            country: (p && p.country) || (() => { const r = data.rawAudits && data.rawAudits.find((x) => (x.employee_email || '').toLowerCase() === keyLower); return (r && (r.country_of_employee ?? r.country)) || null; })(),
+            avatar_url: avatarUrl && String(avatarUrl).trim() !== '' ? avatarUrl : null
+          };
+        });
+      }
+
+      function escapeAttr(s) {
+        if (s == null || s === '') return '';
+        const t = String(s);
+        return t.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function escapeHtml(s) {
+        if (s == null || s === '') return '';
+        const t = String(s);
+        return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function avatarHtml(agent) {
+        const raw = (agent.avatar_url && String(agent.avatar_url).trim()) || '';
+        const url = raw && (/^https?:\/\//i.test(raw) || /^\/\//.test(raw)) ? raw : null;
+        const init = initials(agent.label);
+        if (url) {
+          return `<img class="qms-avatar-img" src="${escapeAttr(url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='flex';"><div class="qms-avatar-initials qms-avatar-fallback" style="display:none">${init}</div>`;
+        }
+        return `<div class="qms-avatar-initials">${init}</div>`;
+      }
+
+      function drawerAvatarHtml(agent) {
+        const raw = (agent.avatar_url && String(agent.avatar_url).trim()) || '';
+        const url = raw && (/^https?:\/\//i.test(raw) || /^\/\//.test(raw)) ? raw : null;
+        const init = initials(agent.label);
+        if (url) {
+          return `<img class="qms-drawer-avatar-img" src="${escapeAttr(url)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none';var n=this.nextElementSibling;if(n)n.style.display='flex';"><span class="qms-drawer-avatar-fallback" style="display:none">${init}</span>`;
+        }
+        return init;
+      }
+
+      function isPassingStatus(status) {
+        const s = (status || '').toLowerCase();
+        return s.includes('pass') && !s.includes('not');
+      }
+
+      function getPassTrend7(audits) {
+        const byDay = new Map();
+        const now = new Date();
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          byDay.set(d.toISOString().slice(0, 10), { pass: 0, total: 0 });
+        }
+        (audits || []).forEach((r) => {
+          const date = (r.submitted_at || '').slice(0, 10);
+          if (byDay.has(date)) {
+            const e = byDay.get(date);
+            e.total += 1;
+            if (isPassingStatus(r.passing_status)) e.pass += 1;
+          }
+        });
+        return Array.from(byDay.values()).map((e) => e.total ? (e.pass / e.total) * 100 : 0);
+      }
+
+      function renderKpiRow(data) {
         const audits = data.rawAudits || [];
         const total = audits.length;
         const avgScore = total ? audits.reduce((s, r) => s + (Number(r.average_score) || 0), 0) / total : 0;
-        const passCount = audits.filter((r) => (r.passing_status || '').toLowerCase().includes('pass')).length;
+        const passCount = audits.filter((r) => isPassingStatus(r.passing_status)).length;
         const passRate = total ? (passCount / total) * 100 : 0;
         const totalErrors = audits.reduce((s, r) => s + (Number(r.total_errors_count) || 0), 0);
+
+        const prevStart = window.__qmsStartDate ? new Date(window.__qmsStartDate) : new Date();
+        const prevEnd = window.__qmsEndDate ? new Date(window.__qmsEndDate) : new Date();
+        const days = Math.round((prevEnd - prevStart) / (24 * 60 * 60 * 1000)) || 30;
+        prevStart.setDate(prevStart.getDate() - days);
+        prevEnd.setDate(prevEnd.getDate() - days);
+        const prevAudits = (data.rawAudits || []).filter((r) => {
+          const t = new Date(r.submitted_at).getTime();
+          return t >= prevStart.getTime() && t <= prevEnd.getTime();
+        });
+        const prevTotal = prevAudits.length;
+        const prevPass = prevAudits.filter((r) => isPassingStatus(r.passing_status)).length;
+        const prevRate = prevTotal ? (prevPass / prevTotal) * 100 : 0;
+        const deltaAudits = prevTotal ? ((total - prevTotal) / prevTotal) * 100 : 0;
+        const deltaRate = passRate - prevRate;
+
+        const passTrend = getPassTrend7(audits);
+        const sparklineW = 120;
+        const sparklineH = 20;
+        const maxT = Math.max(...passTrend, 1);
+        const sparkPath = passTrend.map((v, i) => `${(i / (passTrend.length - 1 || 1)) * sparklineW},${sparklineH - (v / maxT) * sparklineH}`).join(' ');
+
+        const container = document.getElementById('qmsKpiRow');
         container.innerHTML = `
-          <div class="pa-card"><div class="label">Total Audits</div><div class="value">${total}</div></div>
-          <div class="pa-card"><div class="label">Avg Score</div><div class="value">${avgScore.toFixed(1)}</div></div>
-          <div class="pa-card"><div class="label">Pass Rate</div><div class="value">${passRate.toFixed(1)}%</div></div>
-          <div class="pa-card"><div class="label">Total Errors</div><div class="value">${totalErrors}</div></div>
+          <div class="qms-stat-block accent-green">
+            <div class="qms-stat-label">Completed audits</div>
+            <div class="qms-stat-value qms-count-up" data-count="${total}">0</div>
+            <div class="qms-stat-delta ${deltaAudits >= 0 ? 'positive' : 'negative'}">${deltaAudits >= 0 ? '↑' : '↓'} ${Math.abs(deltaAudits).toFixed(0)}% vs prev period</div>
+            <svg class="qms-stat-sparkline" width="${sparklineW}" height="${sparklineH}" viewBox="0 0 ${sparklineW} ${sparklineH}"><rect width="100%" height="100%" fill="var(--border-subtle)" opacity="0.3"/><polyline fill="none" stroke="var(--accent-green)" stroke-width="1.5" points="${passTrend.map((v, i) => (i / (passTrend.length - 1 || 1)) * sparklineW + ',' + (sparklineH - (v / maxT) * sparklineH)).join(' ')}"/></svg>
+          </div>
+          <div class="qms-stat-block accent-amber">
+            <div class="qms-stat-label">Error count</div>
+            <div class="qms-stat-value qms-count-up" data-count="${totalErrors}">0</div>
+            <div class="qms-stat-delta">Total errors in period</div>
+            <svg class="qms-stat-sparkline" width="${sparklineW}" height="${sparklineH}" viewBox="0 0 ${sparklineW} ${sparklineH}"><rect width="100%" height="100%" fill="var(--border-subtle)" opacity="0.3"/><polyline fill="none" stroke="var(--accent-amber)" stroke-width="1.5" points="${sparkPath}"/></svg>
+          </div>
+          <div class="qms-stat-block accent-blue">
+            <div class="qms-stat-label">Avg quality score</div>
+            <svg class="qms-stat-donut" viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="var(--border-subtle)" stroke-width="4"/><circle cx="24" cy="24" r="20" fill="none" stroke="var(--accent-blue)" stroke-width="4" stroke-dasharray="${(avgScore / 100) * 126} 126" transform="rotate(-90 24 24)"/></svg>
+            <div class="qms-stat-value" style="font-size: 24px; margin-top: -8px;">${avgScore.toFixed(0)}%</div>
+          </div>
+          <div class="qms-stat-block accent-${thresholdColor(passRate)}">
+            <div class="qms-stat-label">Passing rate</div>
+            <div class="qms-stat-value">${passRate.toFixed(0)}%</div>
+            <div class="qms-stat-delta ${deltaRate >= 0 ? 'positive' : 'negative'}">${deltaRate >= 0 ? '↑' : '↓'} ${Math.abs(deltaRate).toFixed(1)}% vs prev</div>
+            <svg class="qms-stat-sparkline" width="${sparklineW}" height="${sparklineH}" viewBox="0 0 ${sparklineW} ${sparklineH}"><rect width="100%" height="100%" fill="var(--border-subtle)" opacity="0.3"/><polyline fill="none" stroke="var(--accent-${thresholdColor(passRate)})" stroke-width="1.5" points="${passTrend.map((v, i) => (i / (passTrend.length - 1 || 1)) * sparklineW + ',' + (sparklineH - (v / maxT) * sparklineH)).join(' ')}"/></svg>
+          </div>
         `;
-      }
-
-      function fillTable(tbodyId, rows, cols) {
-        const tbody = document.querySelector(`#${tbodyId} tbody`);
-        if (!tbody) return;
-        tbody.innerHTML = rows.map((r) => '<tr>' + cols.map((c) => `<td>${c(r)}</td>`).join('') + '</tr>').join('');
-      }
-
-      function renderBucketTable(tbodyId, buckets) {
-        const list = Array.isArray(buckets) ? buckets : [];
-        fillTable(tbodyId, list, [
-          (r) => r.label || r.key,
-          (r) => r.totalCount,
-          (r) => r.avgScore.toFixed(1),
-          (r) => r.passRate.toFixed(1) + '%',
-          (r) => r.totalErrors
-        ]);
-        if (list.length === 0) {
-          const tbody = document.querySelector(`#${tbodyId} tbody`);
-          if (tbody) {
-            const table = tbody.closest('table');
-            const colCount = table && table.querySelector('thead tr') ? table.querySelector('thead tr').cells.length : 5;
-            tbody.innerHTML = `<tr><td colspan="${colCount}" class="pa-empty">No data for this view.</td></tr>`;
-          }
-        }
-      }
-
-      function renderCharts(data) {
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const textColor = isDark ? '#e5e7eb' : '#374151';
-        const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
-
-        if (data.scoreTrend && data.scoreTrend.length) {
-          const ctx = document.getElementById('paChartTrend').getContext('2d');
-          const c = new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels: data.scoreTrend.map((x) => x.period),
-              datasets: [
-                { label: 'Avg score', data: data.scoreTrend.map((x) => x.avgScore), borderColor: '#1A733E', backgroundColor: 'rgba(26,115,62,0.1)', fill: true, tension: 0.2 },
-                { label: 'Pass rate %', data: data.scoreTrend.map((x) => x.passRate), borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.1)', fill: true, tension: 0.2, yAxisID: 'y1' }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'top' } },
-              scales: {
-                y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
-                y1: { beginAtZero: true, max: 100, position: 'right', ticks: { color: textColor }, grid: { drawOnChartArea: false } },
-                x: { ticks: { color: textColor }, grid: { color: gridColor } }
-              }
-            }
-          });
-          chartInstances.push(c);
-        }
-
-        if (data.errorBreakdown && data.errorBreakdown.length) {
-          const ctx = document.getElementById('paChartErrors').getContext('2d');
-          const c = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-              labels: data.errorBreakdown.map((x) => x.name),
-              datasets: [{ data: data.errorBreakdown.map((x) => x.count), backgroundColor: ['#ef4444', '#f59e0b', '#8b5cf6', '#06b6d4', '#10b981'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-          });
-          chartInstances.push(c);
-        }
-
-        function barChart(canvasId, buckets, labelKey) {
-          if (!buckets.length) return;
-          const ctx = document.getElementById(canvasId).getContext('2d');
-          const c = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: buckets.map((b) => (b.label || b.key).slice(0, 20)),
-              datasets: [
-                { label: 'Avg score', data: buckets.map((b) => b.avgScore), backgroundColor: 'rgba(26,115,62,0.7)' },
-                { label: 'Pass rate %', data: buckets.map((b) => b.passRate), backgroundColor: 'rgba(37,99,235,0.7)', yAxisID: 'y1' }
-              ]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: { legend: { position: 'top' } },
-              scales: {
-                y: { beginAtZero: true, max: 100, ticks: { color: textColor }, grid: { color: gridColor } },
-                y1: { beginAtZero: true, max: 100, position: 'right', ticks: { color: textColor }, grid: { drawOnChartArea: false } },
-                x: { ticks: { color: textColor, maxRotation: 45 }, grid: { color: gridColor } }
-              }
-            }
-          });
-          chartInstances.push(c);
-        }
-
-        barChart('paChartIndividual', (data.byIndividual || []).slice(0, 15));
-        barChart('paChartTeam', data.byTeam || []);
-        barChart('paChartRole', data.byRole || []);
-        barChart('paChartDesignation', data.byDesignation || []);
-        barChart('paChartSupervisor', data.bySupervisor || []);
-        barChart('paChartQualityMentor', data.byQualityMentor || []);
-
-        if (data.errorBreakdown && data.errorBreakdown.length) {
-          const ctx = document.getElementById('paChartErrorBreakdown').getContext('2d');
-          const c = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: data.errorBreakdown.map((x) => x.name),
-              datasets: [{ label: 'Count', data: data.errorBreakdown.map((x) => x.count), backgroundColor: '#ef4444' }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-          });
-          chartInstances.push(c);
-        }
-      }
-
-      function renderTabs(data) {
-        const escapeHtml = (text) => {
-          const d = document.createElement('div');
-          d.textContent = text == null ? '' : text;
-          return d.innerHTML;
-        };
-        const tabsEl = document.getElementById('paTabs');
-        const panels = [
-          { id: 'paOverview', label: 'Overview' },
-          { id: 'paIndividual', label: data.isSuperAdmin ? 'By Individual' : 'My performance' },
-          { id: 'paErrors', label: 'Error analysis' }
-        ];
-        if (data.isSuperAdmin) {
-          panels.push(
-            { id: 'paTeam', label: 'By Team' },
-            { id: 'paRole', label: 'By Role' },
-            { id: 'paDesignation', label: 'By Designation' },
-            { id: 'paSupervisor', label: 'Same supervisor' },
-            { id: 'paQualityMentor', label: 'Quality mentor' }
-          );
-        }
-        tabsEl.innerHTML = panels.map((p) => `<button type="button" class="pa-tab ${p.id === 'paOverview' ? 'active' : ''}" data-panel="${escapeHtml(p.id)}">${escapeHtml(p.label)}</button>`).join('');
-        tabsEl.querySelectorAll('.pa-tab').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            tabsEl.querySelectorAll('.pa-tab').forEach((b) => b.classList.remove('active'));
-            document.querySelectorAll('.pa-panel').forEach((p) => p.classList.remove('active'));
-            btn.classList.add('active');
-            const panel = document.getElementById(btn.getAttribute('data-panel'));
-            if (panel) panel.classList.add('active');
+        requestAnimationFrame(() => {
+          container.querySelectorAll('.qms-count-up').forEach((el) => {
+            const target = parseInt(el.getAttribute('data-count'), 10);
+            if (!isNaN(target)) animateValue(el, 0, target, 400);
           });
         });
       }
 
+      function renderStatPills(data) {
+        const agents = getAgentsWithChannel(data);
+        const filtered = applyAgentFilters(agents);
+        const container = document.getElementById('qmsStatPills');
+        container.innerHTML = `<span class="qms-stat-pill">${filtered.length} Total Individuals</span>`;
+      }
+
+      function applyAgentFilters(agents) {
+        const search = (document.getElementById('qmsSearchAgent') || {}).value || '';
+        const channel = (document.getElementById('qmsFilterChannel') || {}).value || '';
+        const country = (document.getElementById('qmsFilterCountry') || {}).value || '';
+        return agents.filter((a) => {
+          if (search && !(a.label || '').toLowerCase().includes(search.toLowerCase())) return false;
+          if (channel && a.channel !== channel) return false;
+          const agentCountry = (a.country != null && a.country !== '') ? String(a.country).trim() : null;
+          const displayCountry = agentCountry || '—';
+          if (country && displayCountry !== country) return false;
+          return true;
+        });
+      }
+
+      let currentPage = 1;
+      let pageSize = 25;
+
+      function renderCombinedTable(data) {
+        const agents = getAgentsWithChannel(data);
+        const filtered = applyAgentFilters(agents);
+        const start = (currentPage - 1) * pageSize;
+        const page = filtered.slice(start, start + pageSize);
+        const audits = data.rawAudits || [];
+
+        const tbody = document.getElementById('qmsCombinedTableBody');
+        tbody.innerHTML = page.map((a) => {
+          const passColor = thresholdColor(a.passRate);
+          const failCount = a.totalCount - a.passCount;
+          return `
+            <tr class="qms-combined-row" data-key="${(a.key || '').replace(/"/g, '&quot;')}" tabindex="0" role="button">
+              <td class="qms-cell-avatar"><div class="qms-avatar-wrap">${avatarHtml(a)}</div></td>
+              <td class="qms-cell-name">${(a.label || 'Unknown').trim()}</td>
+              <td class="qms-cell-channel">${(a.channel || 'Unknown').trim()}</td>
+              <td class="qms-cell-country">${(a.country || '—').trim()}</td>
+              <td class="qms-cell-num">${a.totalCount}</td>
+              <td class="qms-cell-num">${a.passCount}</td>
+              <td class="qms-cell-num">${failCount}</td>
+              <td class="qms-cell-passrate">
+                <div class="qms-pass-bar-wrap"><div class="qms-pass-bar-fill ${passColor}" style="width: ${Math.min(100, a.passRate)}%"></div></div>
+                <span class="qms-pass-pct">${a.passRate.toFixed(0)}%</span>
+              </td>
+              <td class="qms-cell-score"><span class="qms-score-pill ${scorePillClass(a.avgScore)}">${a.avgScore.toFixed(0)}%</span></td>
+            </tr>
+          `;
+        }).join('');
+
+        tbody.querySelectorAll('.qms-combined-row').forEach((row) => {
+          row.addEventListener('click', () => openAgentModal(row.dataset.key));
+          row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openAgentModal(row.dataset.key); } });
+        });
+
+        renderPagination(filtered.length);
+      }
+
+      function renderPagination(total) {
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        const container = document.getElementById('qmsPaginationBtns');
+        let html = '<button type="button" data-page="prev"' + (currentPage <= 1 ? ' disabled' : '') + '>←</button>';
+        for (let i = 1; i <= Math.min(pages, 5); i++) {
+          html += `<button type="button" class="${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+        }
+        html += '<button type="button" data-page="next"' + (currentPage >= pages ? ' disabled' : '') + '>→</button>';
+        container.innerHTML = html;
+        container.querySelectorAll('button').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            if (btn.dataset.page === 'prev') currentPage = Math.max(1, currentPage - 1);
+            else if (btn.dataset.page === 'next') currentPage = Math.min(pages, currentPage + 1);
+            else currentPage = parseInt(btn.dataset.page, 10);
+            renderCombinedTable(currentData);
+          });
+        });
+      }
+
+      document.getElementById('qmsPageSize').addEventListener('change', (e) => {
+        pageSize = parseInt(e.target.value, 10) || 25;
+        currentPage = 1;
+        renderCombinedTable(currentData);
+      });
+
+      function getAuditHeatmap(audits, email) {
+        const now = new Date();
+        const out = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          const date = d.toISOString().slice(0, 10);
+          const count = (audits || []).filter((r) => (r.employee_email || '').toLowerCase() === (email || '').toLowerCase() && (r.submitted_at || '').slice(0, 10) === date).length;
+          out.push(count > 0);
+        }
+        return out;
+      }
+
+      function renderChannelBars(data) {
+        const channels = (data.byChannel || []).slice(0, 10);
+        const maxAudits = Math.max(...channels.map((c) => c.totalAudits), 1);
+        const container = document.getElementById('qmsChannelBars');
+        container.innerHTML = channels.map((c) => {
+          const fillColor = c.passRate >= 80 ? 'var(--accent-green)' : c.passRate >= 60 ? 'var(--accent-amber)' : 'var(--accent-red)';
+          return `
+            <div class="qms-channel-bar-row" data-channel="${(c.channel || '').replace(/"/g, '&quot;')}" tabindex="0" role="button">
+              <span class="label">${(c.channel || 'Unknown').trim()}</span>
+              <div class="qms-channel-bar-track"><div class="qms-channel-bar-fill" style="width: ${(c.totalAudits / maxAudits) * 100}%; background: ${fillColor}"></div></div>
+              <span class="qms-channel-bar-meta">${c.totalAudits} · ${c.passRate.toFixed(0)}%</span>
+            </div>
+          `;
+        }).join('');
+        container.querySelectorAll('.qms-channel-bar-row').forEach((row) => {
+          row.addEventListener('click', () => {
+            window.__qmsChannel = row.dataset.channel || '';
+            load();
+          });
+          row.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.__qmsChannel = row.dataset.channel || ''; load(); } });
+        });
+      }
+
+      function renderRecentAudits(data) {
+        const list = (data.rawAudits || []).slice(0, 10);
+        const container = document.getElementById('qmsRecentAudits');
+        const html = list.map((r, i) => {
+          const score = Number(r.average_score) || 0;
+          const color = score >= 80 ? 'var(--accent-green)' : score >= 60 ? 'var(--accent-amber)' : 'var(--accent-red)';
+          const isNew = i === 0;
+          return `
+            <div class="qms-live-feed-item">
+              <span class="qms-live-feed-dot ${isNew ? 'pulse' : ''}" style="background: ${color}"></span>
+              <span class="qms-live-feed-channel">${(r.channel || 'Unknown').trim()} <span class="qms-live-feed-score" style="color: ${color}">${score.toFixed(0)}%</span></span>
+              <span class="qms-live-feed-time">${relativeTime(r.submitted_at)}</span>
+            </div>
+          `;
+        }).join('');
+        container.innerHTML = html || '<div class="qms-empty">No recent audits</div>';
+      }
+
+      function renderErrorSection(data) {
+        let errors = data.errorBreakdown || [];
+        if (errors.length === 0) {
+          errors = [
+            { name: 'Total errors (audits with ≥1)', count: 0 },
+            { name: 'Critical errors', count: 0 },
+            { name: 'Significant errors', count: 0 }
+          ];
+        }
+        const total = errors.reduce((s, e) => s + e.count, 0) || 1;
+        const stacked = document.getElementById('qmsErrorStackedBar');
+        stacked.innerHTML = errors.map((e) => `<div class="qms-error-stacked-segment" style="width: ${(e.count / total) * 100}%; background: var(--accent-amber);"></div>`).join('');
+        const list = document.getElementById('qmsErrorList');
+        list.innerHTML = errors.map((e, i) => `<li class="${i === 0 ? 'highlight' : ''}"><span>${e.name}</span><span>${e.count} (${((e.count / total) * 100).toFixed(0)}%)</span></li>`).join('');
+
+        const byDay = data.errorCountByDay || [];
+        const dayMap = new Map(byDay.map((d) => [d.date, d.count]));
+        const calContainer = document.getElementById('qmsErrorCalendar');
+        const maxErr = Math.max(...byDay.map((d) => d.count), 1);
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        const cells = [];
+        for (let i = 0; i < 35; i++) {
+          const d = new Date(start);
+          d.setDate(d.getDate() + i);
+          const date = d.toISOString().slice(0, 10);
+          const c = dayMap.get(date) || 0;
+          const intensity = c / maxErr;
+          const bg = intensity === 0 ? 'var(--border-subtle)' : intensity < 0.5 ? 'var(--accent-amber)' : 'var(--accent-red)';
+          cells.push(`<div class="qms-error-calendar-cell" style="background: ${bg}; opacity: ${0.3 + intensity * 0.7}" title="${date}: ${c}">${c || ''}</div>`);
+        }
+        calContainer.innerHTML = cells.join('');
+
+        const cards = document.getElementById('qmsErrorCards');
+        cards.innerHTML = errors.slice(0, 5).map((e, i) => `
+          <div class="qms-error-card">
+            <div class="qms-error-card-name">${e.name}</div>
+            <div class="qms-error-card-meta">${e.count} occurrences</div>
+            <div class="qms-error-card-trend ${i % 2 ? 'up' : 'down'}">${i % 2 ? '↑ Worsening' : '↓ Improving'}</div>
+          </div>
+        `).join('');
+      }
+
+      function getAgentErrorTrend(audits) {
+        const now = new Date();
+        const out = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          const date = d.toISOString().slice(0, 10);
+          const dayAudits = (audits || []).filter((r) => (r.submitted_at || '').slice(0, 10) === date);
+          const count = dayAudits.reduce((s, r) => s + (Number(r.total_errors_count) || 0), 0);
+          out.push({ date, count });
+        }
+        return out;
+      }
+
+      function getAgentTopErrors(audits) {
+        let critical = 0;
+        let significant = 0;
+        (audits || []).forEach((r) => {
+          critical += typeof r.critical_errors === 'number' ? r.critical_errors : parseInt(String(r.critical_errors ?? 0), 10) || 0;
+          significant += typeof r.significant_error === 'number' ? r.significant_error : parseInt(String(r.significant_error ?? 0), 10) || 0;
+        });
+        return { critical, significant };
+      }
+
+      function openAgentModal(email) {
+        if (!currentData) return;
+        const agents = getAgentsWithChannel(currentData);
+        const agent = agents.find((a) => (a.key || '').toLowerCase() === (email || '').toLowerCase());
+        if (!agent) return;
+        const audits = (currentData.rawAudits || []).filter((r) => (r.employee_email || '').toLowerCase() === (email || '').toLowerCase());
+        const recentAudits = audits.slice(0, 15);
+        const errorTrend = getAgentErrorTrend(audits);
+        const topErrors = getAgentTopErrors(audits);
+        const trendMax = Math.max(...errorTrend.map((d) => d.count), 1);
+        const sparkW = 140;
+        const sparkH = 28;
+        const sparkPoints = errorTrend.map((d, i) => `${(i / (errorTrend.length - 1 || 1)) * sparkW},${sparkH - (d.count / trendMax) * sparkH}`).join(' ');
+
+        const profileEl = document.getElementById('qmsAgentModalProfile');
+        profileEl.innerHTML = `
+          <div class="qms-agent-modal-avatar">${drawerAvatarHtml(agent)}</div>
+          <div class="qms-agent-modal-meta">
+            <h2 class="qms-agent-modal-title" id="qmsAgentModalTitle">${escapeHtml((agent.label || 'Unknown').trim())}</h2>
+            <span class="qms-agent-modal-channel">${escapeHtml((agent.channel || 'Unknown').trim())}</span>
+          </div>
+        `;
+
+        const bodyEl = document.getElementById('qmsAgentModalBody');
+        bodyEl.innerHTML = `
+          <div class="qms-agent-kpis">
+            <div class="qms-agent-kpi">
+              <span class="qms-agent-kpi-value">${agent.totalCount}</span>
+              <span class="qms-agent-kpi-label">Audits</span>
+            </div>
+            <div class="qms-agent-kpi">
+              <span class="qms-agent-kpi-value">${agent.passRate.toFixed(0)}%</span>
+              <span class="qms-agent-kpi-label">Pass rate</span>
+            </div>
+            <div class="qms-agent-kpi">
+              <span class="qms-agent-kpi-value">${agent.avgScore.toFixed(0)}%</span>
+              <span class="qms-agent-kpi-label">Avg score</span>
+            </div>
+            <div class="qms-agent-kpi">
+              <span class="qms-agent-kpi-value">${agent.totalErrors}</span>
+              <span class="qms-agent-kpi-label">Total errors</span>
+            </div>
+          </div>
+
+          <section class="qms-agent-section" aria-labelledby="qms-agent-error-trend-head">
+            <h3 id="qms-agent-error-trend-head" class="qms-agent-section-title">Error count trend (last 7 days)</h3>
+            <div class="qms-agent-trend-card">
+              <svg class="qms-agent-trend-sparkline" width="${sparkW}" height="${sparkH}" viewBox="0 0 ${sparkW} ${sparkH}" aria-hidden="true">
+                <defs><linearGradient id="qmsAgentTrendGrad" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="var(--accent-amber, #f59e0b)"/><stop offset="100%" stop-color="var(--accent-amber, #f59e0b)" stop-opacity="0.2"/></linearGradient></defs>
+                <polyline fill="none" stroke="var(--accent-amber, #f59e0b)" stroke-width="2" points="${sparkPoints}"/>
+                <polygon fill="url(#qmsAgentTrendGrad)" points="${sparkPoints} ${sparkW},${sparkH} 0,${sparkH}"/>
+              </svg>
+              <div class="qms-agent-trend-legend">
+                ${errorTrend.map((d) => `<span class="qms-agent-trend-day" title="${d.date}: ${d.count} errors">${d.count}</span>`).join('')}
+              </div>
+            </div>
+          </section>
+
+          <section class="qms-agent-section" aria-labelledby="qms-agent-top-errors-head">
+            <h3 id="qms-agent-top-errors-head" class="qms-agent-section-title">Top errors (this period)</h3>
+            <div class="qms-agent-errors-grid">
+              <div class="qms-agent-error-card critical">
+                <span class="qms-agent-error-value">${topErrors.critical}</span>
+                <span class="qms-agent-error-label">Critical</span>
+              </div>
+              <div class="qms-agent-error-card significant">
+                <span class="qms-agent-error-value">${topErrors.significant}</span>
+                <span class="qms-agent-error-label">Significant</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="qms-agent-section" aria-labelledby="qms-agent-audits-head">
+            <h3 id="qms-agent-audits-head" class="qms-agent-section-title">Recent audits — score & error count</h3>
+            ${recentAudits.length ? `
+              <div class="qms-agent-audit-table-wrap">
+                <table class="qms-agent-audit-table">
+                  <thead><tr><th>When</th><th>Audit ID</th><th>Score</th><th>Result</th><th>Errors</th><th>View</th></tr></thead>
+                  <tbody>
+                    ${recentAudits.map((r) => {
+                      const score = Number(r.average_score) || 0;
+                      const pass = isPassingStatus(r.passing_status);
+                      const err = Number(r.total_errors_count) || 0;
+                      const sc = score >= 80 ? 'high' : score >= 60 ? 'mid' : 'low';
+                      const auditId = r.id != null ? String(r.id) : '';
+                      const tableName = (r.table_name != null && r.table_name !== '') ? String(r.table_name) : '';
+                      const viewUrl = (auditId && tableName) ? `/audit-view.html?id=${encodeURIComponent(auditId)}&scorecard=&table=${encodeURIComponent(tableName)}` : '';
+                      return `<tr>
+                        <td>${relativeTime(r.submitted_at)}</td>
+                        <td class="qms-agent-audit-id">${auditId ? escapeHtml(auditId) : '—'}</td>
+                        <td><span class="qms-score-pill ${sc}">${score.toFixed(0)}%</span></td>
+                        <td><span class="qms-agent-result ${pass ? 'pass' : 'fail'}">${pass ? 'Pass' : 'Not passing'}</span></td>
+                        <td><span class="qms-agent-err-count">${err}</span></td>
+                        <td>${viewUrl ? `<a href="${escapeAttr(viewUrl)}" target="_blank" rel="noopener noreferrer" class="qms-agent-view-audit">View audit</a>` : '<span class="qms-agent-no-view">—</span>'}</td>
+                      </tr>`;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : '<p class="qms-agent-empty">No audits in this period.</p>'}
+          </section>
+
+          <section class="qms-agent-section qms-agent-feedback-note" aria-labelledby="qms-agent-feedback-head">
+            <h3 id="qms-agent-feedback-head" class="qms-agent-section-title">Parameter feedback</h3>
+            <p class="qms-agent-feedback-text">Detailed feedback per audit parameter (comments and ratings) is available when you open an individual audit in Audit View.</p>
+          </section>
+        `;
+
+        document.getElementById('qmsAgentModal').classList.add('open');
+        document.getElementById('qmsAgentModalOverlay').classList.add('open');
+        document.getElementById('qmsAgentModalOverlay').setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        const closeBtn = document.getElementById('qmsAgentModalClose');
+        if (closeBtn) closeBtn.focus();
+      }
+
+      function closeAgentModal() {
+        document.getElementById('qmsAgentModal').classList.remove('open');
+        document.getElementById('qmsAgentModalOverlay').classList.remove('open');
+        document.getElementById('qmsAgentModalOverlay').setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById('qmsAgentModal').classList.contains('open')) closeAgentModal();
+      });
+
+      document.getElementById('qmsAgentModalOverlay').addEventListener('click', closeAgentModal);
+      document.getElementById('qmsAgentModalClose').addEventListener('click', closeAgentModal);
+      document.getElementById('qmsAgentModal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('qmsAgentModal')) closeAgentModal();
+      });
+
+      function fillChannelFilter(data) {
+        const channels = [...new Set(getAgentsWithChannel(data).map((a) => a.channel).filter(Boolean))].sort();
+        const sel = document.getElementById('qmsFilterChannel');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">All channels</option>' + channels.map((ch) => `<option value="${escapeAttr(ch)}" ${ch === cur ? 'selected' : ''}>${escapeHtml(ch)}</option>`).join('');
+      }
+
+      function fillCountryFilter(data) {
+        const agents = getAgentsWithChannel(data);
+        const countrySet = new Set();
+        agents.forEach((a) => {
+          const c = (a.country != null && a.country !== '') ? String(a.country).trim() : '—';
+          countrySet.add(c);
+        });
+        const countries = [...countrySet].filter((c) => c !== '').sort((a, b) => (a === '—' ? 1 : b === '—' ? -1 : a.localeCompare(b)));
+        const sel = document.getElementById('qmsFilterCountry');
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">All countries</option>' + countries.map((c) => `<option value="${escapeAttr(c)}" ${c === cur ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+      }
+
+      function ensureDerivedData(data) {
+        if (!data) return data;
+        if (!data.byChannel && data.rawAudits) {
+          const map = new Map();
+          data.rawAudits.forEach((r) => {
+            const ch = (r.channel || '').trim() || 'Unknown';
+            const entry = map.get(ch) || { total: 0, pass: 0 };
+            entry.total += 1;
+            if (isPassingStatus(r.passing_status)) entry.pass += 1;
+            map.set(ch, entry);
+          });
+          data.byChannel = Array.from(map.entries()).map(([channel, v]) => ({
+            channel,
+            totalAudits: v.total,
+            passCount: v.pass,
+            passRate: v.total ? (v.pass / v.total) * 100 : 0
+          }));
+        }
+        if (!data.auditFrequencyByDay && data.rawAudits) {
+          const map = new Map();
+          data.rawAudits.forEach((r) => {
+            const date = (r.submitted_at || '').slice(0, 10);
+            if (date) map.set(date, (map.get(date) || 0) + 1);
+          });
+          data.auditFrequencyByDay = Array.from(map.entries()).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+        }
+        if (!data.errorCountByDay && data.rawAudits) {
+          const map = new Map();
+          data.rawAudits.forEach((r) => {
+            const date = (r.submitted_at || '').slice(0, 10);
+            if (date) {
+              const n = Number(r.total_errors_count) || 0;
+              map.set(date, (map.get(date) || 0) + n);
+            }
+          });
+          data.errorCountByDay = Array.from(map.entries()).map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date));
+        }
+        return data;
+      }
+
       function render(data) {
-        currentData = data;
-        destroyCharts();
-        renderKpiCards(data);
-        renderBucketTable('paTableIndividual', data.byIndividual || []);
-        renderBucketTable('paTableTeam', data.byTeam || []);
-        renderBucketTable('paTableRole', data.byRole || []);
-        renderBucketTable('paTableDesignation', data.byDesignation || []);
-        renderBucketTable('paTableSupervisor', data.bySupervisor || []);
-        renderBucketTable('paTableQualityMentor', data.byQualityMentor || []);
-        fillTable('paTableErrors', data.errorBreakdown || [], [(r) => r.name, (r) => r.count]);
-        renderCharts(data);
-        renderTabs(data);
-        scopeBadge.textContent = data.isSuperAdmin ? 'Viewing all' : 'Your performance only';
+        currentData = ensureDerivedData(data);
+        renderDateBtnText();
+        renderKpiRow(currentData);
+        renderStatPills(currentData);
+        fillChannelFilter(currentData);
+        fillCountryFilter(currentData);
+        renderCombinedTable(currentData);
+        renderChannelBars(currentData);
+        renderRecentAudits(currentData);
+        renderErrorSection(currentData);
+      }
+
+      document.getElementById('qmsSearchAgent').addEventListener('input', () => render(currentData));
+      document.getElementById('qmsFilterChannel').addEventListener('change', () => render(currentData));
+      document.getElementById('qmsFilterCountry').addEventListener('change', () => render(currentData));
+
+      const headerUpdatingEl = document.getElementById('qmsHeaderUpdating');
+      const headerErrorEl = document.getElementById('qmsHeaderError');
+      const layoutEl = document.getElementById('qmsLayout');
+
+      function showInlineLoading(show) {
+        if (headerUpdatingEl) headerUpdatingEl.style.display = show ? 'inline-flex' : 'none';
+        if (headerErrorEl) headerErrorEl.style.display = 'none';
+        if (layoutEl) layoutEl.classList.toggle('qms-layout-updating', !!show);
+      }
+
+      function showInlineError(message) {
+        if (headerUpdatingEl) headerUpdatingEl.style.display = 'none';
+        if (headerErrorEl) {
+          headerErrorEl.textContent = message || 'Failed to load.';
+          headerErrorEl.style.display = 'block';
+        }
+        if (layoutEl) layoutEl.classList.remove('qms-layout-updating');
       }
 
       async function load() {
-        loadingEl.style.display = 'flex';
-        contentEl.style.display = 'none';
+        const isRefetch = !!currentData;
+        if (isRefetch) {
+          showInlineLoading(true);
+        } else {
+          loadingEl.style.display = 'flex';
+          dashboardEl.style.display = 'none';
+        }
         errorEl.style.display = 'none';
         try {
-          const email = await getUserEmail();
+          const email = await (window.supabaseClient?.auth?.getUser?.().then((r) => r?.data?.user?.email) ?? null);
           const { PerformanceAnalyticsService } = await import('/js/features/performance-analytics/application/performance-analytics-service.js');
           const service = new PerformanceAnalyticsService();
           const filters = getFilters();
           const data = await service.loadAnalytics(email, filters);
-          loadingEl.style.display = 'none';
-          contentEl.style.display = 'block';
+          if (isRefetch) {
+            showInlineLoading(false);
+          } else {
+            loadingEl.style.display = 'none';
+            dashboardEl.style.display = 'block';
+          }
           render(data);
         } catch (err) {
-          loadingEl.style.display = 'none';
-          errorEl.style.display = 'block';
-          errorEl.textContent = err && err.message ? err.message : 'Failed to load analytics.';
+          const message = (err && err.message) ? err.message : 'Failed to load analytics.';
+          if (isRefetch) {
+            showInlineError(message);
+          } else {
+            loadingEl.style.display = 'none';
+            errorEl.style.display = 'block';
+            errorEl.textContent = message;
+          }
         }
       }
 
-      setDefaultDates();
-      applyBtn.addEventListener('click', load);
-      resetBtn.addEventListener('click', () => { setDefaultDates(); load(); });
       load();
     })();
   </script>
