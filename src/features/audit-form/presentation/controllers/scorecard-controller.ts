@@ -186,7 +186,7 @@ export class ScorecardController {
             // No preselected scorecard but channel is selected - auto-select the default/first
             const firstScorecard = filteredScorecards[0];
             if (firstScorecard) {
-              logInfo('Auto-selecting default scorecard for channel:', firstScorecard.name, firstScorecard.id);
+              logInfo('Auto-selecting default scorecard for channel', { name: firstScorecard.name, id: firstScorecard.id });
               scorecardSelect.value = firstScorecard.id;
               await this.loadScorecardParameters(firstScorecard.id);
             }
