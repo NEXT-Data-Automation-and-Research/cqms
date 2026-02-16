@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/console-stub.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Massive AI Audit | CQMS</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       MASSIVE AI AUDIT — Production Styles
+       ═══════════════════════════════════════════════════════════ */
+
+    /* ── Reset & Base ────────────────────────────────────────── */
+    .maar-page {
+      width: 100%;
+      padding: 1.5rem 2rem 3rem;
+      font-family: var(--font-family, 'Poppins', sans-serif);
+      box-sizing: border-box;
+    }
+
+    /* ── Sticky Navigation Bar ────────────────────────────────── */
+    .maar-nav-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--color-background, #ffffff);
+      border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+      margin: -1.5rem -2rem 1.25rem;
+      padding: 0.75rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      backdrop-filter: blur(8px);
+      background: rgba(255,255,255,0.92);
+      transition: box-shadow 0.2s ease;
+    }
+    [data-theme="dark"] .maar-nav-bar {
+      background: rgba(17,24,39,0.92);
+      border-bottom-color: var(--color-border-light, #374151);
+    }
+    .maar-nav-bar.scrolled {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .maar-back-btn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 2rem;
+      height: 2rem;
+      border-radius: var(--radius-md, 0.375rem);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      background: var(--color-background, #ffffff);
+      color: var(--color-text-secondary, #6b7280);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .maar-back-btn:hover {
+      background: var(--color-background-secondary, #f9fafb);
+      color: var(--color-text-primary, #1f2937);
+      border-color: var(--color-primary-500, #645CFE);
+    }
+    .maar-back-btn.visible { display: flex; }
+    .maar-back-btn svg { width: 1rem; height: 1rem; }
+
+    /* ── Breadcrumb ──────────────────────────────────────────── */
+    .maar-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, #6b7280);
+      flex-wrap: wrap;
+      min-height: 1.25rem;
+      flex: 1;
+      min-width: 0;
+    }
+    .maar-bc-btn {
+      cursor: pointer;
+      color: var(--color-primary-500, #645CFE);
+      font-weight: 600;
+      background: none;
+      border: none;
+      padding: 0.15rem 0;
+      font-family: inherit;
+      font-size: inherit;
+      transition: color 0.15s;
+    }
+    .maar-bc-btn:hover { color: var(--color-primary-700, #4d42d1); text-decoration: underline; }
+    .maar-bc-sep { color: var(--color-text-tertiary, #9ca3af); user-select: none; font-size: 0.75rem; }
+    .maar-bc-current { color: var(--color-text-primary, #1f2937); font-weight: 600; }
+
+    /* ── Page Header ─────────────────────────────────────────── */
+    .maar-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .maar-header-left { flex: 1; min-width: 0; }
+    .maar-header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      line-height: 1.3;
+    }
+    .maar-header-desc {
+      margin: 0.25rem 0 0;
+      font-size: 0.875rem;
+      color: var(--color-text-secondary, #6b7280);
+      line-height: 1.45;
+    }
+
+    /* ── Global Error ────────────────────────────────────────── */
+    .maar-error-banner {
+      padding: 0.75rem 1rem;
+      background: var(--color-error-light, #fee2e2);
+      border: 1px solid #fecaca;
+      border-radius: var(--radius-lg, 0.5rem);
+      font-size: 0.875rem;
+      color: var(--color-error-dark, #991b1b);
+      font-weight: 500;
+      margin-bottom: 1.25rem;
+      display: none;
+    }
+
+    /* ── KPI Grid ────────────────────────────────────────────── */
+    .maar-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      gap: 0.875rem;
+      margin-bottom: 1.5rem;
+      width: 100%;
+    }
+    @media (min-width: 1200px) { .maar-kpi-grid { grid-template-columns: repeat(6, 1fr); } }
+    @media (max-width: 1199px) and (min-width: 769px) { .maar-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) { .maar-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .maar-kpi {
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem);
+      padding: 1.125rem 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    }
+    .maar-kpi:hover {
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
+    }
+    .maar-kpi-accent {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      border-radius: var(--radius-xl, 0.75rem) var(--radius-xl, 0.75rem) 0 0;
+    }
+    .maar-kpi-icon {
+      width: 2.25rem;
+      height: 2.25rem;
+      border-radius: var(--radius-lg, 0.5rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.75rem;
+      flex-shrink: 0;
+    }
+    .maar-kpi-icon svg { width: 1.125rem; height: 1.125rem; }
+    .maar-kpi-label {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+    }
+    .maar-kpi-val {
+      font-size: clamp(1.25rem, 2vw, 1.75rem);
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      line-height: 1.2;
+      margin-bottom: 0.15rem;
+    }
+    .maar-kpi-sub {
+      font-size: 0.75rem;
+      color: var(--color-text-tertiary, #9ca3af);
+      line-height: 1.35;
+    }
+
+    /* ── Status Pill ──────────────────────────────────────────── */
+    .maar-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-full, 9999px);
+      font-size: 0.6875rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .maar-pill-queued    { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-secondary, #6b7280); }
+    .maar-pill-running   { background: var(--color-info-light, #dbeafe); color: var(--color-info-dark, #1e40af); }
+    .maar-pill-completed { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .maar-pill-failed    { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
+    .maar-pill-cancelled { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+    .maar-pill-passed    { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .maar-pill-failed-pf { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
+    .maar-pill-na        { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+
+    /* ── Score Badge ──────────────────────────────────────────── */
+    .maar-score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.75rem;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      border-radius: var(--radius-md, 0.375rem);
+    }
+    .maar-score-high { background: #dcfce7; color: #166534; }
+    .maar-score-mid  { background: #fef9c3; color: #854d0e; }
+    .maar-score-low  { background: #fee2e2; color: #b91c1c; }
+
+    /* ── Progress Bar ────────────────────────────────────────── */
+    .maar-progress {
+      height: 0.375rem;
+      background: var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-full, 9999px);
+      overflow: hidden;
+    }
+    .maar-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-primary-500, #645CFE), var(--color-primary-400, #8b7cff));
+      border-radius: var(--radius-full, 9999px);
+      transition: width 0.5s ease;
+    }
+    .maar-progress-fill.active {
+      background: linear-gradient(90deg, #3b82f6, #60a5fa, #3b82f6);
+      background-size: 200% 100%;
+      animation: maar-progress-pulse 2s ease-in-out infinite;
+    }
+    @keyframes maar-progress-pulse {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+
+    /* ═══════ VIEW 1: Batch Cards ═══════════════════════════ */
+    .maar-batch-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.875rem;
+    }
+    .maar-batch {
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+    .maar-batch:hover {
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
+      border-color: var(--color-primary-400, #8b7cff);
+      transform: translateY(-1px);
+    }
+    .maar-batch-accent {
+      height: 4px;
+      width: 100%;
+    }
+    .maar-batch-accent-completed { background: linear-gradient(90deg, #10b981, #34d399); }
+    .maar-batch-accent-running   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .maar-batch-accent-queued    { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+    .maar-batch-accent-failed    { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .maar-batch-accent-cancelled { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+    .maar-batch-body {
+      padding: 1.25rem 1.5rem;
+    }
+    .maar-batch-top {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .maar-batch-title {
+      margin: 0;
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      flex: 1;
+      min-width: 0;
+    }
+    .maar-batch-meta {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, #6b7280);
+      margin-bottom: 0.75rem;
+    }
+    .maar-batch-meta-item { display: flex; align-items: center; gap: 0.35rem; }
+    .maar-batch-meta-item svg { width: 0.9375rem; height: 0.9375rem; flex-shrink: 0; opacity: 0.55; }
+    .maar-batch-progress-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .maar-batch-progress-bar { flex: 1; }
+    .maar-batch-progress-pct {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      min-width: 3rem;
+      text-align: right;
+    }
+    .maar-batch-kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+      gap: 0.625rem;
+    }
+    .maar-batch-kpi {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.625rem 0.875rem;
+      text-align: center;
+    }
+    .maar-batch-kpi-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      line-height: 1.25;
+    }
+    .maar-batch-kpi-lbl {
+      font-size: 0.625rem;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+      margin-top: 0.15rem;
+    }
+
+    /* ── Page Summary ──────────────────────────────────────── */
+    .maar-page-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      gap: 0.875rem;
+      margin-bottom: 2rem;
+    }
+    @media (min-width: 960px) { .maar-page-summary { grid-template-columns: repeat(4, 1fr); } }
+
+    /* ── Batch Card 2-Column Layout ────────────────────────── */
+    .maar-batch-layout {
+      display: flex;
+      gap: 1.75rem;
+      align-items: stretch;
+    }
+    .maar-batch-main { flex: 1; min-width: 0; }
+    .maar-batch-score-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 7.5rem;
+      padding: 0.25rem 0.5rem 0.25rem 0;
+      border-left: 1px solid var(--color-border-light, #e5e7eb);
+      margin-left: auto;
+    }
+    .maar-batch-lg-ring {
+      width: 5.5rem;
+      height: 5.5rem;
+      position: relative;
+    }
+    .maar-batch-lg-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .maar-batch-lg-ring-bg { fill: none; stroke: var(--color-border-light, #e5e7eb); stroke-width: 5; }
+    .maar-batch-lg-ring-fg { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+    .maar-batch-lg-ring-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .maar-batch-lg-ring-val {
+      font-size: 1.375rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--color-text-primary, #1f2937);
+    }
+    .maar-batch-lg-ring-lbl {
+      font-size: 0.5625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      margin-top: 0.2rem;
+    }
+    .maar-batch-score-range {
+      font-size: 0.6875rem;
+      color: var(--color-text-tertiary, #9ca3af);
+      margin-top: 0.5rem;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    /* ── Batch Metrics Row ──────────────────────────────────── */
+    .maar-batch-metrics {
+      display: flex;
+      gap: 0.5rem;
+      margin: 0.875rem 0;
+      flex-wrap: wrap;
+    }
+    .maar-bm {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.5rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+      min-width: 7rem;
+    }
+    .maar-bm-icon {
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--radius-md, 0.375rem);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .maar-bm-icon svg { width: 0.875rem; height: 0.875rem; }
+    .maar-bm-text { display: flex; flex-direction: column; }
+    .maar-bm-val {
+      font-size: 1.0625rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      line-height: 1.2;
+    }
+    .maar-bm-lbl {
+      font-size: 0.5625rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+    }
+
+    /* ── Pass/Fail Distribution Bar ────────────────────────── */
+    .maar-pf-section { margin-top: 0.875rem; }
+    .maar-pf-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.375rem;
+    }
+    .maar-pf-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .maar-pf-rate {
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+    .maar-pf-track {
+      height: 0.5rem;
+      border-radius: var(--radius-full, 9999px);
+      overflow: hidden;
+      display: flex;
+      background: var(--color-border-light, #e5e7eb);
+    }
+    .maar-pf-seg-passed {
+      background: linear-gradient(90deg, #10b981, #34d399);
+      transition: width 0.5s ease;
+    }
+    .maar-pf-seg-failed {
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      transition: width 0.5s ease;
+    }
+    .maar-pf-legend {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.35rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+    }
+    .maar-pf-legend-passed { color: #10b981; display: flex; align-items: center; gap: 0.25rem; }
+    .maar-pf-legend-failed { color: #ef4444; display: flex; align-items: center; gap: 0.25rem; }
+    .maar-pf-legend-dot {
+      width: 0.375rem;
+      height: 0.375rem;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    /* ── Error Summary Row in Batch Card ───────────────────── */
+    .maar-batch-error-row {
+      display: flex;
+      gap: 0.375rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 0.875rem;
+      padding-top: 0.875rem;
+      border-top: 1px solid var(--color-border-light, #e5e7eb);
+    }
+    .maar-batch-err-title {
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      margin-right: 0.375rem;
+    }
+    .maar-batch-err-title svg { width: 0.875rem; height: 0.875rem; color: var(--color-text-tertiary, #9ca3af); }
+
+    /* ── Batch Status Indicator ─────────────────────────────── */
+    .maar-batch-status-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .maar-batch-status-info {
+      font-size: 0.75rem;
+      color: var(--color-text-tertiary, #9ca3af);
+      font-weight: 500;
+    }
+
+    @media (max-width: 640px) {
+      .maar-batch-layout { flex-direction: column; gap: 1rem; }
+      .maar-batch-score-col { flex-direction: row; gap: 1rem; min-width: 0; border-left: none; border-top: 1px solid var(--color-border-light, #e5e7eb); padding: 1rem 0 0; }
+      .maar-batch-metrics { flex-direction: column; }
+    }
+
+    /* ═══════ VIEW 2: Agent Cards ══════════════════════════ */
+    .maar-section-title {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      margin: 0 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .maar-section-title svg { width: 1.125rem; height: 1.125rem; color: var(--color-primary-500, #645CFE); }
+
+    .maar-agents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+      gap: 0.875rem;
+    }
+    @media (max-width: 640px) { .maar-agents-grid { grid-template-columns: 1fr; } }
+
+    .maar-agent {
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.875rem;
+    }
+    .maar-agent:hover {
+      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
+      border-color: var(--color-primary-400, #8b7cff);
+      transform: translateY(-1px);
+    }
+    .maar-agent-top {
+      display: flex;
+      align-items: center;
+      gap: 0.875rem;
+    }
+    .maar-agent-avatar {
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-primary-500, #645CFE), var(--color-primary-400, #8b7cff));
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      box-shadow: 0 2px 8px rgba(100, 92, 254, 0.25);
+    }
+    .maar-agent-info { flex: 1; min-width: 0; }
+    .maar-agent-name {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .maar-agent-email {
+      font-size: 0.75rem;
+      color: var(--color-text-tertiary, #9ca3af);
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .maar-agent-score-ring {
+      width: 3rem;
+      height: 3rem;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .maar-agent-score-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .maar-agent-score-ring-bg { fill: none; stroke: var(--color-border-light, #e5e7eb); stroke-width: 4; }
+    .maar-agent-score-ring-fg { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+    .maar-agent-score-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+    }
+    .maar-agent-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+    .maar-agent-stat {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--radius-md, 0.375rem);
+      padding: 0.5rem 0.375rem;
+      text-align: center;
+    }
+    .maar-agent-stat-val {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      line-height: 1.2;
+    }
+    .maar-agent-stat-lbl {
+      font-size: 0.5625rem;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 600;
+      margin-top: 0.1rem;
+    }
+    .maar-agent-pills {
+      display: flex;
+      gap: 0.3rem;
+      flex-wrap: wrap;
+    }
+    .maar-error-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: var(--radius-full, 9999px);
+      font-size: 0.625rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .maar-ep-cfail { background: #7f1d1d; color: #fff; }
+    .maar-ep-crit  { background: #991b1b; color: #fff; }
+    .maar-ep-sig   { background: #c2410c; color: #fff; }
+    .maar-ep-maj   { background: #b45309; color: #fff; }
+    .maar-ep-min   { background: #ca8a04; color: #fff; }
+    .maar-agent-pf-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* ── Error Distribution Bar ────────────────────────────── */
+    .maar-error-bar-wrap {
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem);
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .maar-error-bar-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      margin: 0 0 1rem;
+    }
+    .maar-error-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.625rem;
+    }
+    .maar-error-bar-label {
+      width: 6.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .maar-error-bar-track {
+      flex: 1;
+      height: 1.375rem;
+      background: var(--color-background-tertiary, #f3f4f6);
+      border-radius: var(--radius-md, 0.375rem);
+      overflow: hidden;
+      position: relative;
+    }
+    .maar-error-bar-fill {
+      height: 100%;
+      border-radius: var(--radius-md, 0.375rem);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      padding-left: 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: 700;
+      color: #fff;
+      min-width: 1.5rem;
+    }
+    .maar-error-bar-count {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+      min-width: 2rem;
+      text-align: left;
+      flex-shrink: 0;
+    }
+
+    /* ═══════ VIEW 3: Conversations Table ══════════════════ */
+    .maar-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .maar-search {
+      flex: 1;
+      min-width: 14rem;
+      padding: 0.55rem 0.875rem 0.55rem 2.25rem;
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-lg, 0.5rem);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      background: var(--color-background, #ffffff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 0.75rem center no-repeat;
+      color: var(--color-text-primary, #1f2937);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .maar-search:focus { border-color: var(--color-primary-500, #645CFE); box-shadow: 0 0 0 3px rgba(100, 92, 254, 0.1); }
+    .maar-select {
+      padding: 0.55rem 0.875rem;
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-lg, 0.5rem);
+      font-size: 0.8125rem;
+      font-family: inherit;
+      background: var(--color-background, #ffffff);
+      color: var(--color-text-primary, #1f2937);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .maar-select:focus { border-color: var(--color-primary-500, #645CFE); }
+
+    .maar-table-card {
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem);
+      overflow: hidden;
+    }
+    .maar-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+    }
+    .maar-table thead {
+      background: var(--color-background-secondary, #f9fafb);
+    }
+    .maar-table th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text-secondary, #6b7280);
+      font-size: 0.6875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      border-bottom: 2px solid var(--color-border-light, #e5e7eb);
+    }
+    .maar-table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+      color: var(--color-text-primary, #1f2937);
+      vertical-align: middle;
+    }
+    .maar-table tbody tr {
+      cursor: pointer;
+      transition: background 0.12s ease;
+    }
+    .maar-table tbody tr:hover { background: var(--color-background-secondary, #f9fafb); }
+    .maar-table tbody tr:last-child td { border-bottom: none; }
+    .maar-table a {
+      color: var(--color-primary-500, #645CFE);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .maar-table a:hover { text-decoration: underline; }
+
+    .maar-conv-id {
+      font-weight: 600;
+      color: var(--color-primary-500, #645CFE);
+      font-family: var(--font-family-mono, monospace);
+      font-size: 0.8125rem;
+    }
+    .maar-err-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.5rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: var(--radius-md, 0.375rem);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .maar-err-zero { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .maar-err-some { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
+    .maar-err-warn { background: var(--color-warning-light, #fef3c7); color: var(--color-warning-dark, #92400e); }
+
+    /* ═══════ Detail Modal ═════════════════════════════════ */
+    .maar-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: var(--z-modal, 1050);
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-y: auto;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      backdrop-filter: blur(2px);
+    }
+    .maar-overlay.open { opacity: 1; }
+    .maar-overlay.closing { opacity: 0; }
+    .maar-modal {
+      background: var(--color-background, #ffffff);
+      border-radius: var(--radius-xl, 0.75rem);
+      box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1));
+      width: 100%;
+      max-width: 60rem;
+      transform: translateY(-1rem) scale(0.97);
+      transition: transform 0.2s ease;
+    }
+    .maar-overlay.open .maar-modal { transform: translateY(0) scale(1); }
+    .maar-modal-head {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .maar-modal-head-info { flex: 1; min-width: 0; }
+    .maar-modal-title {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #1f2937);
+    }
+    .maar-modal-sub {
+      margin: 0.2rem 0 0;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, #6b7280);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .maar-modal-sub a { color: var(--color-primary-500, #645CFE); text-decoration: none; font-weight: 600; }
+    .maar-modal-sub a:hover { text-decoration: underline; }
+    .maar-modal-close {
+      width: 2.25rem;
+      height: 2.25rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-md, 0.375rem);
+      cursor: pointer;
+      color: var(--color-text-secondary, #6b7280);
+      transition: background 0.15s, color 0.15s;
+    }
+    .maar-modal-close:hover { background: var(--color-background-secondary, #f9fafb); color: var(--color-text-primary, #1f2937); }
+    .maar-modal-close svg { width: 1.125rem; height: 1.125rem; }
+    .maar-modal-body { padding: 1.5rem; }
+
+    /* ── Modal Score Cards ─────────────────────────────────── */
+    .maar-modal-scores {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .maar-modal-sc {
+      background: var(--color-background-secondary, #f9fafb);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .maar-modal-sc-label {
+      font-size: 0.6875rem;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 600;
+      margin: 0 0 0.3rem;
+    }
+    .maar-modal-sc-val { font-size: 1.5rem; font-weight: 700; margin: 0; }
+
+    /* ── Modal Error Counts ────────────────────────────────── */
+    .maar-modal-errors {
+      background: var(--color-success-light, #d1fae5);
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.875rem;
+      margin-bottom: 1.25rem;
+      border: 1px solid #a7f3d0;
+    }
+    .maar-modal-err-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+      gap: 0.75rem;
+    }
+    .maar-modal-err-label {
+      font-size: 0.6875rem;
+      color: var(--color-success-dark, #065f46);
+      margin: 0 0 0.3rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .maar-modal-err-val {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--color-text-primary, #374151);
+      background: var(--color-background, #ffffff);
+      border: 1px solid var(--color-border, #d1d5db);
+      border-radius: var(--radius-sm, 0.25rem);
+      padding: 0.3rem 0.5rem;
+      text-align: center;
+    }
+
+    /* ── Modal Detail Section ──────────────────────────────── */
+    .maar-modal-section {
+      background: var(--color-background-secondary, #f9fafb);
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.875rem;
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      margin-bottom: 1.25rem;
+    }
+    .maar-modal-section-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: var(--color-primary-500, #645CFE);
+      margin: 0 0 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .maar-modal-section-title svg { width: 1rem; height: 1rem; }
+    .maar-param-wrap {
+      background: var(--color-background, #ffffff);
+      border-radius: var(--radius-lg, 0.5rem);
+      box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05));
+      overflow: hidden;
+    }
+    .maar-param-head {
+      background: var(--color-background, #ffffff);
+      padding: 0.65rem 0.875rem;
+      border-bottom: 2px solid var(--color-border-light, #e5e7eb);
+    }
+    .maar-pgrid {
+      display: grid;
+      grid-template-columns: 1.5fr 0.6fr 0.75fr 0.6fr 3.5fr;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .maar-pgrid.hdr {
+      font-weight: 700;
+      font-size: 0.6875rem;
+      color: var(--color-text-secondary, #6b7280);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .maar-prow { padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--color-background-tertiary, #f3f4f6); }
+    .maar-prow:last-child { border-bottom: none; }
+    .maar-pname { font-size: 0.8125rem; color: var(--color-text-primary, #1f2937); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .maar-ppoints { text-align: center; font-size: 0.8125rem; font-weight: 600; }
+    .maar-sev-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.15rem 0.5rem;
+      border-radius: var(--radius-sm, 0.25rem);
+      font-size: 0.625rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .maar-pstatus { text-align: center; font-size: 0.8125rem; font-weight: 700; }
+    .maar-pfeedback {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, #6b7280);
+      line-height: 1.5;
+      min-width: 0;
+      word-wrap: break-word;
+    }
+    .maar-pfeedback ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
+    .maar-pfeedback li { margin-bottom: 0.2rem; }
+
+    /* ── AI Notes ──────────────────────────────────────────── */
+    .maar-ai-notes {
+      background: var(--color-warning-light, #fffbeb);
+      border: 1px solid #fde68a;
+      border-radius: var(--radius-lg, 0.5rem);
+      padding: 0.875rem 1rem;
+      font-size: 0.8125rem;
+      color: var(--color-warning-dark, #92400e);
+      line-height: 1.6;
+    }
+
+    /* ── Loading / Empty ──────────────────────────────────── */
+    .maar-loading, .maar-empty {
+      padding: 4rem 2rem;
+      text-align: center;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .maar-loading-spinner {
+      width: 2.5rem;
+      height: 2.5rem;
+      border: 3px solid var(--color-border-light, #e5e7eb);
+      border-top-color: var(--color-primary-500, #645CFE);
+      border-radius: 50%;
+      margin: 0 auto 1rem;
+      animation: maar-spin 0.8s linear infinite;
+    }
+    @keyframes maar-spin { to { transform: rotate(360deg); } }
+    .maar-empty-icon {
+      width: 3.5rem;
+      height: 3.5rem;
+      margin: 0 auto 1rem;
+      color: var(--color-text-tertiary, #d1d5db);
+    }
+    .maar-empty-title {
+      margin: 0 0 0.5rem;
+      font-size: 1.0625rem;
+      font-weight: 600;
+      color: var(--color-text-primary, #1f2937);
+    }
+    .maar-empty p { margin: 0; font-size: 0.875rem; color: var(--color-text-secondary, #6b7280); }
+
+    /* ── View Transitions ────────────────────────────────── */
+    .maar-view { display: none; }
+    .maar-view.active { display: block; animation: maarFade 0.25s ease; }
+    @keyframes maarFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .maar-page { padding: 1rem 0.875rem 2rem; }
+      .maar-nav-bar { margin: -1rem -0.875rem 1rem; padding: 0.625rem 0.875rem; }
+      .maar-batch-body { padding: 1rem; }
+      .maar-agent { padding: 1rem; }
+      .maar-agent-stats { grid-template-columns: repeat(2, 1fr); }
+      .maar-toolbar { flex-direction: column; }
+      .maar-search { min-width: 100%; }
+      .maar-modal { max-width: 100%; }
+      .maar-overlay { padding: 1rem 0.5rem; }
+      .maar-pgrid { grid-template-columns: 1fr; gap: 0.35rem; }
+      .maar-pgrid.hdr { display: none; }
+      .maar-prow { padding: 0.75rem; }
+      .maar-error-bar-label { width: 4.5rem; font-size: 0.6875rem; }
+    }
+  </style>
+  <script type="importmap">
+    {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
+  </script>
+</head>
+<body class="home-page">
+  <script type="module" src="/js/auth-checker.js"></script>
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+
+  <main class="main-content" role="main">
+    <div class="maar-page">
+
+      <!-- Sticky Navigation Bar -->
+      <div class="maar-nav-bar" id="maar-nav-bar">
+        <button class="maar-back-btn" id="maar-back" title="Go back" aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <nav class="maar-breadcrumb" id="maar-bc" aria-label="Breadcrumb"></nav>
+      </div>
+
+      <!-- Page Header -->
+      <div class="maar-header">
+        <div class="maar-header-left">
+          <h1 id="maar-title">Massive AI Audit</h1>
+          <p class="maar-header-desc" id="maar-desc">AI-powered bulk audit results, organized by batch.</p>
+        </div>
+      </div>
+
+      <!-- Global Error -->
+      <div id="maar-error" class="maar-error-banner"></div>
+
+      <!-- ═══════ VIEW 1: Batches ═══════════════════════════ -->
+      <div class="maar-view active" id="v-batches">
+        <div id="batches-loading" class="maar-loading">
+          <div class="maar-loading-spinner"></div>
+          Loading batches&hellip;
+        </div>
+        <div id="batches-empty" class="maar-empty" style="display:none;">
+          <div class="maar-empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <p class="maar-empty-title">No audit batches yet</p>
+          <p>Start a massive AI audit from Audit Distribution to see batches here.</p>
+        </div>
+        <div id="page-summary" class="maar-page-summary" style="display:none;"></div>
+        <div id="batches-list" class="maar-batch-list" style="display:none;"></div>
+      </div>
+
+      <!-- ═══════ VIEW 2: Batch Detail ══════════════════════ -->
+      <div class="maar-view" id="v-batch">
+        <div id="batch-kpis" class="maar-kpi-grid"></div>
+        <div id="batch-error-bar"></div>
+        <div id="batch-agents-title" class="maar-section-title" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Agents
+        </div>
+        <div id="batch-agents" class="maar-agents-grid"></div>
+        <div id="batch-loading" class="maar-loading" style="display:none;">
+          <div class="maar-loading-spinner"></div>
+          Loading batch data&hellip;
+        </div>
+      </div>
+
+      <!-- ═══════ VIEW 3: Agent Conversations ═══════════════ -->
+      <div class="maar-view" id="v-convos">
+        <div id="convos-kpis" class="maar-kpi-grid"></div>
+        <div class="maar-toolbar" id="convos-toolbar">
+          <input type="text" class="maar-search" id="conv-search" placeholder="Search by conversation ID or notes...">
+          <select class="maar-select" id="conv-pf">
+            <option value="">All Results</option>
+            <option value="passed">Passed Only</option>
+            <option value="failed">Failed Only</option>
+          </select>
+          <select class="maar-select" id="conv-sort">
+            <option value="errors-desc">Most Errors First</option>
+            <option value="errors-asc">Least Errors First</option>
+            <option value="score-asc">Lowest Score</option>
+            <option value="score-desc">Highest Score</option>
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+          </select>
+        </div>
+        <div class="maar-table-card" id="conv-table-card">
+          <table class="maar-table" id="conv-table">
+            <thead>
+              <tr>
+                <th>Conversation</th>
+                <th>Score</th>
+                <th>Result</th>
+                <th>Errors</th>
+                <th>Critical</th>
+                <th>Significant</th>
+                <th>Major</th>
+                <th>Minor</th>
+                <th>Confidence</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="conv-tbody"></tbody>
+          </table>
+        </div>
+        <div id="conv-empty" class="maar-empty" style="display:none;">
+          <p class="maar-empty-title">No conversations match</p>
+          <p>Adjust your filters or search terms.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══════ Detail Modal ═══════════════════════════════ -->
+    <div id="maar-overlay" class="maar-overlay" style="display:none;">
+      <div class="maar-modal">
+        <div class="maar-modal-head">
+          <div class="maar-modal-head-info">
+            <h2 class="maar-modal-title" id="modal-title">Audit Detail</h2>
+            <div class="maar-modal-sub" id="modal-sub"></div>
+          </div>
+          <button class="maar-modal-close" id="modal-close" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="maar-modal-body" id="modal-body"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    (async function () {
+      /* ═══════════════════════════════════════════════════════
+       *  Utilities
+       * ═══════════════════════════════════════════════════════ */
+      const $ = id => document.getElementById(id);
+      function esc(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+      function pillClass(s) { return ({ queued:'maar-pill-queued', running:'maar-pill-running', completed:'maar-pill-completed', failed:'maar-pill-failed', cancelled:'maar-pill-cancelled' })[s] || 'maar-pill-queued'; }
+      function pfClass(pf) { if (pf === 'passed') return 'maar-pill-passed'; if (pf === 'failed') return 'maar-pill-failed-pf'; return 'maar-pill-na'; }
+      function scoreClass(v) { const n = Number(v); if (n >= 80) return 'maar-score-high'; if (n >= 50) return 'maar-score-mid'; return 'maar-score-low'; }
+      function scoreColor(v) { const n = Number(v); if (n >= 80) return '#166534'; if (n >= 50) return '#854d0e'; return '#b91c1c'; }
+      function statusLabel(s) { return (s || 'queued').charAt(0).toUpperCase() + (s || 'queued').slice(1); }
+      function fmtDate(d) { if (!d) return '\u2014'; try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return d; } }
+      function fmtDateTime(d) { if (!d) return '\u2014'; try { return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return d; } }
+      function truncId(id) { if (!id) return '\u2014'; if (id.length > 14) return id.slice(0, 6) + '\u2026' + id.slice(-6); return id; }
+      function initials(name) { if (!name) return '?'; const p = name.trim().split(/\s+/); return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase(); }
+      function calcPct(j) { const ta = j.total_agents || 0, ca = j.completed_agents || 0; return ta > 0 ? Math.round((ca / ta) * 100) : 0; }
+
+      function errorsFrom(params) {
+        let t = 0, cf = 0, c = 0, s = 0, mj = 0, mn = 0;
+        if (!Array.isArray(params)) return { total: t, criticalFail: cf, critical: c, significant: s, major: mj, minor: mn };
+        params.forEach(p => {
+          const m = Number(p.measurement) || 0;
+          if (m > 0) {
+            t += m;
+            const cat = (p.error_category || '').toLowerCase();
+            if (p.is_fail_all) cf += m;
+            else if (cat.includes('critical')) c += m;
+            else if (cat.includes('significant')) s += m;
+            else if (cat.includes('major')) mj += m;
+            else if (cat.includes('minor')) mn += m;
+            else s += m;
+          }
+        });
+        return { total: t, criticalFail: cf, critical: c, significant: s, major: mj, minor: mn };
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  Auth & API
+       * ═══════════════════════════════════════════════════════ */
+      const getToken = async (n) => {
+        for (let i = 0; i < (n || 3); i++) {
+          try {
+            const { initSupabase, getSupabase } = await import('/js/utils/supabase-init.js');
+            let sb = getSupabase(); if (!sb) { await initSupabase(); sb = getSupabase(); }
+            if (!sb) { await new Promise(r => setTimeout(r, 1000 * (i + 1))); continue; }
+            const { data: { session } } = await sb.auth.getSession();
+            if (session?.access_token) return session.access_token;
+            if (i < (n || 3) - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+          } catch (e) { console.warn('[MassiveAI] token attempt ' + (i + 1), e); if (i < (n || 3) - 1) await new Promise(r => setTimeout(r, 1500 * (i + 1))); }
+        }
+        return null;
+      };
+      const api = async (path) => {
+        const tok = await getToken(3); if (!tok) throw new Error('Session expired. Please refresh.');
+        const r = await fetch(path, { headers: { Authorization: 'Bearer ' + tok } });
+        if (r.status === 401) throw new Error('Session expired. Please refresh.');
+        if (r.status === 429) throw new Error('Rate limited — wait a moment and refresh.');
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      };
+
+      /* ═══════════════════════════════════════════════════════
+       *  State
+       * ═══════════════════════════════════════════════════════ */
+      let allJobs = [], curJobId = null, curResults = [], curAgentKey = null, curAgentConvos = [], curAgentName = null;
+      const cache = {};
+      let navDepth = 0; // 0=batches, 1=batch detail, 2=agent convos
+      let handlingPopstate = false;
+      let resultCountsByJob = {}; // { jobId: { count, passed, failed, avgScore } } — from /results endpoint
+
+      /* ═══════════════════════════════════════════════════════
+       *  Scroll & Sticky Nav Bar
+       * ═══════════════════════════════════════════════════════ */
+      function scrollTop() {
+        // Scroll both the window and .main-content (whichever is the scroll container)
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        const mc = document.querySelector('.main-content');
+        if (mc) mc.scrollTo({ top: 0, behavior: 'instant' });
+      }
+
+      // Add shadow to sticky nav when scrolled
+      const navBar = $('maar-nav-bar');
+      function checkNavScroll() {
+        const mc = document.querySelector('.main-content');
+        const scrollY = mc ? mc.scrollTop : window.scrollY;
+        if (scrollY > 8) navBar.classList.add('scrolled');
+        else navBar.classList.remove('scrolled');
+      }
+      window.addEventListener('scroll', checkNavScroll, { passive: true });
+      const mc = document.querySelector('.main-content');
+      if (mc) mc.addEventListener('scroll', checkNavScroll, { passive: true });
+
+      /* ═══════════════════════════════════════════════════════
+       *  Navigation
+       * ═══════════════════════════════════════════════════════ */
+      function showView(id) {
+        document.querySelectorAll('.maar-view').forEach(v => v.classList.remove('active'));
+        const t = $(id);
+        if (t) t.classList.add('active');
+      }
+
+      function updateBackBtn() {
+        const btn = $('maar-back');
+        if (navDepth > 0) btn.classList.add('visible');
+        else btn.classList.remove('visible');
+      }
+
+      function setBreadcrumb(parts) {
+        const el = $('maar-bc');
+        let h = '';
+        parts.forEach((p, i) => {
+          if (i > 0) h += '<span class="maar-bc-sep">/</span>';
+          if (p.fn) h += '<button class="maar-bc-btn" data-bci="' + i + '">' + esc(p.label) + '</button>';
+          else h += '<span class="maar-bc-current">' + esc(p.label) + '</span>';
+        });
+        el.innerHTML = h;
+        el.querySelectorAll('.maar-bc-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const idx = +btn.getAttribute('data-bci');
+            if (parts[idx]?.fn) parts[idx].fn();
+          });
+        });
+      }
+
+      function pushState(state) {
+        if (!handlingPopstate) {
+          history.pushState(state, '', window.location.pathname + (state.jobId ? '?id=' + state.jobId : ''));
+        }
+      }
+
+      function goToBatches(skipHistory) {
+        curJobId = null; curAgentKey = null; curAgentName = null;
+        navDepth = 0;
+        showView('v-batches');
+        setBreadcrumb([{ label: 'All Batches' }]);
+        $('maar-title').textContent = 'Massive AI Audit';
+        $('maar-desc').textContent = 'AI-powered bulk audit results, organized by batch.';
+        updateBackBtn();
+        scrollTop();
+        if (!skipHistory) pushState({ view: 'batches' });
+      }
+
+      async function goToBatch(jobId, skipHistory) {
+        curJobId = jobId; curAgentKey = null; curAgentName = null;
+        navDepth = 1;
+        showView('v-batch');
+        const job = allJobs.find(j => j.id === jobId);
+        const lbl = 'Batch ' + (job ? job.id.slice(0, 8) : jobId.slice(0, 8)) + '\u2026';
+        setBreadcrumb([{ label: 'All Batches', fn: () => goToBatches() }, { label: lbl }]);
+        $('maar-title').textContent = lbl;
+        $('maar-desc').textContent = job ? 'Audit period: ' + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) : 'Batch audit details.';
+        updateBackBtn();
+        scrollTop();
+        if (!skipHistory) pushState({ view: 'batch', jobId });
+        await loadBatch(jobId);
+      }
+
+      function goToAgent(key, name, skipHistory) {
+        curAgentKey = key;
+        curAgentName = name || 'Agent';
+        navDepth = 2;
+        showView('v-convos');
+        const job = allJobs.find(j => j.id === curJobId);
+        const bLbl = 'Batch ' + (job ? job.id.slice(0, 8) : '') + '\u2026';
+        setBreadcrumb([
+          { label: 'All Batches', fn: () => goToBatches() },
+          { label: bLbl, fn: () => goToBatch(curJobId) },
+          { label: name || 'Agent' }
+        ]);
+        $('maar-title').textContent = name || 'Agent';
+        $('maar-desc').textContent = 'Conversations audited for ' + (name || 'this agent') + '.';
+        updateBackBtn();
+        scrollTop();
+        if (!skipHistory) pushState({ view: 'agent', jobId: curJobId, agentKey: key, agentName: name });
+        renderConvos(key);
+      }
+
+      // Back button handler
+      function goBack() {
+        if (navDepth === 2) {
+          goToBatch(curJobId);
+        } else if (navDepth === 1) {
+          goToBatches();
+        }
+      }
+      $('maar-back').addEventListener('click', goBack);
+
+      // Browser back/forward button support
+      window.addEventListener('popstate', async (e) => {
+        handlingPopstate = true;
+        try {
+          const state = e.state;
+          if (!state || state.view === 'batches') {
+            goToBatches(true);
+          } else if (state.view === 'batch' && state.jobId) {
+            await goToBatch(state.jobId, true);
+          } else if (state.view === 'agent' && state.jobId && state.agentKey) {
+            if (curJobId !== state.jobId) {
+              curJobId = state.jobId;
+              let res = cache[state.jobId];
+              if (!res) { res = await api('/api/massive-ai-audit/jobs/' + encodeURIComponent(state.jobId) + '/assignments'); cache[state.jobId] = res; }
+              curResults = res || [];
+            }
+            goToAgent(state.agentKey, state.agentName, true);
+          } else {
+            goToBatches(true);
+          }
+        } finally {
+          handlingPopstate = false;
+        }
+      });
+
+      /* ═══════════════════════════════════════════════════════
+       *  SVG Icons
+       * ═══════════════════════════════════════════════════════ */
+      const icons = {
+        users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+        chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+        target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+        bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+        shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+        calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+        clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+        done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        trendDown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>',
+        trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+      };
+
+      /* ═══════════════════════════════════════════════════════
+       *  KPI Card Builder
+       * ═══════════════════════════════════════════════════════ */
+      function kpi(label, value, sub, accent, icon, valColor) {
+        return '<div class="maar-kpi">'
+          + '<div class="maar-kpi-accent" style="background:' + (accent || 'var(--color-primary-500, #645CFE)') + ';"></div>'
+          + '<div class="maar-kpi-icon" style="background:' + (accent || 'var(--color-primary-500, #645CFE)') + '15; color:' + (accent || 'var(--color-primary-500, #645CFE)') + ';">' + (icon || '') + '</div>'
+          + '<div class="maar-kpi-label">' + esc(label) + '</div>'
+          + '<div class="maar-kpi-val"' + (valColor ? ' style="color:' + valColor + ';"' : '') + '>' + esc(String(value)) + '</div>'
+          + (sub ? '<div class="maar-kpi-sub">' + esc(sub) + '</div>' : '')
+          + '</div>';
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  VIEW 1: Batches List
+       * ═══════════════════════════════════════════════════════ */
+      function deriveStatus(job, realConvoCount) {
+        const st = job.status || 'queued';
+        if (st === 'completed' || st === 'failed' || st === 'cancelled') return st;
+        if ((st === 'running' || st === 'queued') && realConvoCount && realConvoCount > 0) {
+          const ta = job.total_agents || 0;
+          const ca = job.completed_agents || 0;
+          const tc = job.total_conversations;
+          // Definitive: total_conversations is known and results >= total
+          if (tc && realConvoCount >= tc) return 'completed';
+          // Definitive: all agents marked complete by n8n callback
+          if (ta > 0 && ca >= ta) return 'completed';
+          // Heuristic: no total set and no new results in the last 60 minutes — likely stuck/done
+          // Check the most recent result's created_at from cache
+          const cached = cache[job.id];
+          if (!tc && cached && cached.length > 0) {
+            const newest = cached.reduce((latest, r) => {
+              const t = new Date(r.created_at || 0).getTime();
+              return t > latest ? t : latest;
+            }, 0);
+            const staleMins = (Date.now() - newest) / 60000;
+            // Only mark as completed if no new results for 60+ minutes AND job is 3+ hours old
+            const ageMs = Date.now() - new Date(job.created_at || 0).getTime();
+            if (staleMins > 60 && ageMs > 3 * 60 * 60 * 1000) return 'completed';
+          }
+        }
+        return st;
+      }
+
+      /* ── Page-level summary across all batches ─────────── */
+      function renderPageSummary(jobs) {
+        let totalConvos = 0, totalPassed = 0, totalFailed = 0, allScores = [], totalErrors = 0;
+        jobs.forEach(job => {
+          const rc = resultCountsByJob[job.id];
+          if (rc) {
+            totalConvos += rc.count;
+            totalPassed += rc.passed;
+            totalFailed += rc.failed;
+            if (rc.avgScore != null) allScores.push(rc.avgScore);
+          }
+          (cache[job.id] || []).forEach(r => { totalErrors += errorsFrom(r.parameters_result).total; });
+        });
+        const overallAvg = allScores.length ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : null;
+        const overallPassRate = totalConvos > 0 ? Math.round((totalPassed / totalConvos) * 100) : 0;
+
+        const el = $('page-summary');
+        if (totalConvos === 0) { el.style.display = 'none'; return; }
+        el.style.display = 'grid';
+        el.innerHTML =
+          kpi('Total Batches', jobs.length, jobs.filter(j => deriveStatus(j, (resultCountsByJob[j.id]||{}).count) === 'completed').length + ' completed', '#645CFE', icons.bar)
+          + kpi('All Conversations', totalConvos.toLocaleString(), totalPassed + ' passed \u00b7 ' + totalFailed + ' failed', '#3b82f6', icons.chat)
+          + kpi('Overall Pass Rate', overallPassRate + '%', '', overallPassRate >= 80 ? '#10b981' : overallPassRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, overallPassRate >= 80 ? '#166534' : overallPassRate >= 50 ? '#854d0e' : '#b91c1c')
+          + kpi('Overall Avg Score', overallAvg != null ? overallAvg + '%' : '\u2014', totalErrors > 0 ? totalErrors.toLocaleString() + ' total errors' : '', '#10b981', icons.target, overallAvg != null ? scoreColor(overallAvg) : undefined);
+      }
+
+      function renderBatches(jobs) {
+        allJobs = jobs;
+        $('batches-loading').style.display = 'none';
+        if (!jobs.length) { $('batches-empty').style.display = 'block'; $('batches-list').style.display = 'none'; $('page-summary').style.display = 'none'; return; }
+        $('batches-empty').style.display = 'none';
+        $('batches-list').style.display = 'flex';
+
+        renderPageSummary(jobs);
+
+        let h = '';
+        jobs.forEach(job => {
+          const ta = job.total_agents || 0, ca = job.completed_agents || 0;
+          const tc = job.total_conversations;
+          const cc = job.completed_conversations || 0;
+
+          const rc = resultCountsByJob[job.id];
+          const realConvoCount = rc ? rc.count : null;
+          const realPassed = rc ? rc.passed : 0;
+          const realFailed = rc ? rc.failed : 0;
+          const realAvg = rc ? rc.avgScore : null;
+
+          const st = deriveStatus(job, realConvoCount);
+          const bestConvoCount = realConvoCount || tc || (cc > 0 ? cc : null);
+
+          // Compute real agent count from cache when available
+          const cachedResults = cache[job.id] || [];
+          const realAgentCount = cachedResults.length > 0 ? (new Set(cachedResults.map(r => r.employee_email || r.employee_name))).size : ta;
+
+          // Compute error totals from cached results
+          let bErr = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+          cachedResults.forEach(r => { const e = errorsFrom(r.parameters_result); for (const k in bErr) bErr[k] += e[k]; });
+
+          // Compute min/max score
+          const scores = cachedResults.filter(r => r.final_score != null).map(r => Number(r.final_score));
+          const minScore = scores.length ? Math.min(...scores) : null;
+          const maxScore = scores.length ? Math.max(...scores) : null;
+
+          // Pass rate
+          const passRate = bestConvoCount && bestConvoCount > 0 ? ((realPassed / bestConvoCount) * 100) : 0;
+          const passRateRounded = Math.round(passRate * 10) / 10;
+
+          // Progress — multiple strategies to show meaningful progress
+          let pct, pctLabel, pctIndeterminate = false;
+          if (st === 'completed') {
+            pct = 100;
+            pctLabel = '100%';
+          } else if (tc != null && tc > 0 && realConvoCount) {
+            // Best case: we know the total and have real results
+            pct = Math.min(Math.round((realConvoCount / tc) * 100), 99);
+            pctLabel = pct + '%';
+          } else if (tc != null && tc > 0 && cc > 0) {
+            // total_conversations set and completed_conversations updating
+            pct = Math.min(Math.round((cc / tc) * 100), 99);
+            pctLabel = pct + '%';
+          } else if (ta > 0 && ca > 0) {
+            // Agent-based progress
+            pct = Math.round((ca / ta) * 100);
+            pctLabel = pct + '%';
+          } else if (realConvoCount && realConvoCount > 0) {
+            // We have results flowing in but no known total — show active progress
+            pctIndeterminate = true;
+            pct = 60; // visual width for the animated bar
+            pctLabel = realConvoCount + ' processed';
+          } else {
+            pct = 0;
+            pctLabel = 'Starting\u2026';
+          }
+
+          // Score ring data
+          const ringRadius = 22, ringCirc = 2 * Math.PI * ringRadius;
+          const ringPct = realAvg != null ? realAvg / 100 : 0;
+          const ringDashOffset = ringCirc * (1 - ringPct);
+          const ringColor = realAvg != null ? (realAvg >= 80 ? '#10b981' : realAvg >= 50 ? '#f59e0b' : '#ef4444') : '#d1d5db';
+
+          h += '<div class="maar-batch" data-jid="' + esc(job.id) + '">';
+          h += '<div class="maar-batch-accent maar-batch-accent-' + st + '"></div>';
+          h += '<div class="maar-batch-body">';
+
+          // ── 2-Column Layout ────────────────────────────
+          h += '<div class="maar-batch-layout">';
+
+          // LEFT: Info + Metrics + Pass/Fail Bar
+          h += '<div class="maar-batch-main">';
+
+          // Top: title + status
+          h += '<div class="maar-batch-top">';
+          h += '  <h3 class="maar-batch-title">Batch ' + esc(job.id.slice(0, 8)) + '\u2026</h3>';
+          h += '  <span class="maar-pill ' + pillClass(st) + '">' + statusLabel(st) + '</span>';
+          h += '</div>';
+
+          // Meta
+          h += '<div class="maar-batch-meta">';
+          h += '  <span class="maar-batch-meta-item">' + icons.calendar + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) + '</span>';
+          h += '  <span class="maar-batch-meta-item">' + icons.clock + 'Created ' + fmtDateTime(job.created_at) + '</span>';
+          if (job.completed_at) h += '  <span class="maar-batch-meta-item">' + icons.done + 'Completed ' + fmtDateTime(job.completed_at) + '</span>';
+          h += '</div>';
+
+          // Progress bar (for running/queued)
+          if (st === 'running' || st === 'queued') {
+            h += '<div class="maar-batch-progress-row">';
+            h += '  <div class="maar-batch-progress-bar"><div class="maar-progress"><div class="maar-progress-fill' + (pctIndeterminate ? ' active' : '') + '" style="width:' + pct + '%;"></div></div></div>';
+            h += '  <div class="maar-batch-progress-pct">' + esc(pctLabel) + '</div>';
+            h += '</div>';
+          }
+
+          // Metrics row with icons
+          h += '<div class="maar-batch-metrics">';
+          h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#645CFE15; color:#645CFE;">' + icons.users + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + realAgentCount + '</span><span class="maar-bm-lbl">Agents</span></div></div>';
+          h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#3b82f615; color:#3b82f6;">' + icons.chat + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + (bestConvoCount != null ? bestConvoCount : '\u2014') + '</span><span class="maar-bm-lbl">Conversations</span></div></div>';
+          if (realConvoCount && realConvoCount > 0) {
+            h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#10b98115; color:#10b981;">' + icons.check + '</div><div class="maar-bm-text"><span class="maar-bm-val" style="color:#166534;">' + realPassed + '</span><span class="maar-bm-lbl">Passed</span></div></div>';
+            h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#ef444415; color:#ef4444;">' + icons.alert + '</div><div class="maar-bm-text"><span class="maar-bm-val" style="color:' + (realFailed > 0 ? '#b91c1c' : '#166534') + ';">' + realFailed + '</span><span class="maar-bm-lbl">Failed</span></div></div>';
+          } else {
+            h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#9ca3af15; color:#9ca3af;">' + icons.done + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + ca + '/' + ta + '</span><span class="maar-bm-lbl">Agents Done</span></div></div>';
+          }
+          h += '</div>';
+
+          // Pass/Fail distribution bar (only if we have results)
+          if (realConvoCount && realConvoCount > 0) {
+            const passW = passRate.toFixed(1);
+            const failW = (100 - passRate).toFixed(1);
+            h += '<div class="maar-pf-section">';
+            h += '  <div class="maar-pf-header">';
+            h += '    <span class="maar-pf-title">Pass / Fail Distribution</span>';
+            h += '    <span class="maar-pf-rate" style="color:' + (passRateRounded >= 80 ? '#166534' : passRateRounded >= 50 ? '#854d0e' : '#b91c1c') + ';">' + passRateRounded + '% pass rate</span>';
+            h += '  </div>';
+            h += '  <div class="maar-pf-track">';
+            h += '    <div class="maar-pf-seg-passed" style="width:' + passW + '%;"></div>';
+            h += '    <div class="maar-pf-seg-failed" style="width:' + failW + '%;"></div>';
+            h += '  </div>';
+            h += '  <div class="maar-pf-legend">';
+            h += '    <span class="maar-pf-legend-passed"><span class="maar-pf-legend-dot" style="background:#10b981;"></span> ' + realPassed + ' Passed</span>';
+            h += '    <span class="maar-pf-legend-failed"><span class="maar-pf-legend-dot" style="background:#ef4444;"></span> ' + realFailed + ' Failed</span>';
+            h += '  </div>';
+            h += '</div>';
+          }
+
+          h += '</div>'; // end .maar-batch-main
+
+          // RIGHT: Score Ring
+          if (realAvg != null) {
+            h += '<div class="maar-batch-score-col">';
+            h += '  <div class="maar-batch-lg-ring">';
+            h += '    <svg viewBox="0 0 52 52"><circle class="maar-batch-lg-ring-bg" cx="26" cy="26" r="' + ringRadius + '"/><circle class="maar-batch-lg-ring-fg" cx="26" cy="26" r="' + ringRadius + '" stroke="' + ringColor + '" stroke-dasharray="' + ringCirc.toFixed(2) + '" stroke-dashoffset="' + ringDashOffset.toFixed(2) + '"/></svg>';
+            h += '    <div class="maar-batch-lg-ring-label"><span class="maar-batch-lg-ring-val" style="color:' + ringColor + ';">' + realAvg + '%</span><span class="maar-batch-lg-ring-lbl">Avg Score</span></div>';
+            h += '  </div>';
+            if (minScore != null && maxScore != null) {
+              h += '  <div class="maar-batch-score-range">Min ' + minScore + '% \u00b7 Max ' + maxScore + '%</div>';
+            }
+            h += '</div>';
+          }
+
+          h += '</div>'; // end .maar-batch-layout
+
+          // Error severity chips (if we have errors)
+          if (bErr.total > 0) {
+            h += '<div class="maar-batch-error-row">';
+            h += '  <span class="maar-batch-err-title">' + icons.alert + ' ' + bErr.total + ' Errors:</span>';
+            if (bErr.criticalFail > 0) h += '<span class="maar-error-pill maar-ep-cfail">' + bErr.criticalFail + ' Fail-All</span>';
+            if (bErr.critical > 0) h += '<span class="maar-error-pill maar-ep-crit">' + bErr.critical + ' Critical</span>';
+            if (bErr.significant > 0) h += '<span class="maar-error-pill maar-ep-sig">' + bErr.significant + ' Significant</span>';
+            if (bErr.major > 0) h += '<span class="maar-error-pill maar-ep-maj">' + bErr.major + ' Major</span>';
+            if (bErr.minor > 0) h += '<span class="maar-error-pill maar-ep-min">' + bErr.minor + ' Minor</span>';
+            h += '</div>';
+          }
+
+          h += '</div></div>'; // end .maar-batch-body, .maar-batch
+        });
+        $('batches-list').innerHTML = h;
+
+        $('batches-list').querySelectorAll('.maar-batch').forEach(card => {
+          card.addEventListener('click', () => goToBatch(card.getAttribute('data-jid')));
+        });
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  VIEW 2: Batch Detail
+       * ═══════════════════════════════════════════════════════ */
+      async function loadBatch(jobId) {
+        $('batch-kpis').innerHTML = '';
+        $('batch-error-bar').innerHTML = '';
+        $('batch-agents').innerHTML = '';
+        $('batch-agents-title').style.display = 'none';
+        $('batch-loading').style.display = 'block';
+
+        try {
+          let res = cache[jobId];
+          if (!res) { res = await api('/api/massive-ai-audit/jobs/' + encodeURIComponent(jobId) + '/assignments'); cache[jobId] = res; }
+          curResults = res || [];
+          $('batch-loading').style.display = 'none';
+          renderBatchDetail(curResults);
+        } catch (e) {
+          $('batch-loading').style.display = 'none';
+          $('batch-agents').innerHTML = '<div class="maar-empty"><p class="maar-empty-title">Failed to load</p><p>' + esc(e.message) + '</p></div>';
+        }
+      }
+
+      function renderBatchDetail(results) {
+        if (!results.length) {
+          $('batch-kpis').innerHTML = '';
+          $('batch-agents').innerHTML = '<div class="maar-empty"><p class="maar-empty-title">No results yet</p><p>This batch hasn\'t produced results yet. Check back if it\'s still running.</p></div>';
+          return;
+        }
+
+        // Group by agent
+        const agentMap = {};
+        results.forEach(r => {
+          const k = r.employee_email || r.employee_name || 'unknown';
+          if (!agentMap[k]) agentMap[k] = { name: r.employee_name || r.employee_email || 'Unknown', email: r.employee_email || '', convos: [] };
+          agentMap[k].convos.push(r);
+        });
+
+        // Batch stats
+        const n = results.length;
+        const passed = results.filter(r => r.pass_fail === 'passed').length;
+        const failed = results.filter(r => r.pass_fail === 'failed').length;
+        const passRate = n > 0 ? Math.round((passed / n) * 100) : 0;
+        const scores = results.filter(r => r.final_score != null).map(r => Number(r.final_score));
+        const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+        const minScore = scores.length ? Math.min(...scores) : null;
+        const maxScore = scores.length ? Math.max(...scores) : null;
+
+        let bErr = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+        results.forEach(r => { const e = errorsFrom(r.parameters_result); for (const k in bErr) bErr[k] += e[k]; });
+
+        // KPI row
+        let kh = '';
+        kh += kpi('Agents', Object.keys(agentMap).length, '', '#645CFE', icons.users);
+        kh += kpi('Conversations', n, '', '#3b82f6', icons.chat);
+        kh += kpi('Avg Score', avg != null ? avg + '%' : '\u2014', minScore != null ? 'Min ' + minScore + '% \u00b7 Max ' + maxScore + '%' : '', '#10b981', icons.target, avg != null ? scoreColor(avg) : undefined);
+        kh += kpi('Pass Rate', passRate + '%', passed + ' passed \u00b7 ' + failed + ' failed', passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, passRate >= 80 ? '#166534' : passRate >= 50 ? '#854d0e' : '#b91c1c');
+        kh += kpi('Total Errors', bErr.total, '', '#ef4444', icons.alert);
+        kh += kpi('Critical', bErr.criticalFail + bErr.critical, bErr.criticalFail > 0 ? bErr.criticalFail + ' auto-fail' : '', '#7f1d1d', icons.zap, '#b91c1c');
+        $('batch-kpis').innerHTML = kh;
+
+        // Error distribution bar chart
+        const maxErr = Math.max(bErr.criticalFail, bErr.critical, bErr.significant, bErr.major, bErr.minor, 1);
+        const barData = [
+          { label: 'Critical Fail', val: bErr.criticalFail, color: '#7f1d1d' },
+          { label: 'Critical', val: bErr.critical, color: '#991b1b' },
+          { label: 'Significant', val: bErr.significant, color: '#c2410c' },
+          { label: 'Major', val: bErr.major, color: '#b45309' },
+          { label: 'Minor', val: bErr.minor, color: '#ca8a04' },
+        ];
+        if (bErr.total > 0) {
+          let bh = '<div class="maar-error-bar-wrap"><div class="maar-error-bar-title">Error Distribution</div>';
+          barData.forEach(b => {
+            const w = b.val > 0 ? Math.max((b.val / maxErr) * 100, 5) : 0;
+            bh += '<div class="maar-error-bar-row">';
+            bh += '<div class="maar-error-bar-label">' + b.label + '</div>';
+            bh += '<div class="maar-error-bar-track"><div class="maar-error-bar-fill" style="width:' + w + '%; background:' + b.color + ';">' + (b.val > 0 ? b.val : '') + '</div></div>';
+            bh += '<div class="maar-error-bar-count">' + b.val + '</div>';
+            bh += '</div>';
+          });
+          bh += '</div>';
+          $('batch-error-bar').innerHTML = bh;
+        } else {
+          $('batch-error-bar').innerHTML = '';
+        }
+
+        // Agent cards
+        $('batch-agents-title').style.display = 'flex';
+        let ah = '';
+        Object.keys(agentMap).forEach(key => {
+          const ag = agentMap[key];
+          const convos = ag.convos;
+          const aScores = convos.filter(c => c.final_score != null).map(c => Number(c.final_score));
+          const aAvg = aScores.length ? Math.round(aScores.reduce((a, b) => a + b, 0) / aScores.length) : null;
+          const aPassed = convos.filter(c => c.pass_fail === 'passed').length;
+          const aFailed = convos.filter(c => c.pass_fail === 'failed').length;
+          const aPassRate = convos.length > 0 ? Math.round((aPassed / convos.length) * 100) : 0;
+
+          let aE = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+          convos.forEach(c => { const e = errorsFrom(c.parameters_result); for (const k in aE) aE[k] += e[k]; });
+
+          // Score ring
+          const radius = 18, circ = 2 * Math.PI * radius;
+          const ringPct = aAvg != null ? aAvg / 100 : 0;
+          const dashOffset = circ * (1 - ringPct);
+          const ringColor = aAvg != null ? (aAvg >= 80 ? '#10b981' : aAvg >= 50 ? '#f59e0b' : '#ef4444') : '#d1d5db';
+
+          ah += '<div class="maar-agent" data-ak="' + esc(key) + '" data-an="' + esc(ag.name) + '">';
+          ah += '<div class="maar-agent-top">';
+          ah += '  <div class="maar-agent-avatar">' + esc(initials(ag.name)) + '</div>';
+          ah += '  <div class="maar-agent-info">';
+          ah += '    <p class="maar-agent-name">' + esc(ag.name) + '</p>';
+          if (ag.email && ag.email !== ag.name) ah += '    <p class="maar-agent-email">' + esc(ag.email) + '</p>';
+          ah += '  </div>';
+          ah += '  <div class="maar-agent-score-ring">';
+          ah += '    <svg viewBox="0 0 44 44"><circle class="maar-agent-score-ring-bg" cx="22" cy="22" r="' + radius + '"/><circle class="maar-agent-score-ring-fg" cx="22" cy="22" r="' + radius + '" stroke="' + ringColor + '" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '"/></svg>';
+          ah += '    <div class="maar-agent-score-label">' + (aAvg != null ? aAvg + '%' : '\u2014') + '</div>';
+          ah += '  </div>';
+          ah += '</div>';
+
+          ah += '<div class="maar-agent-stats">';
+          ah += '  <div class="maar-agent-stat"><div class="maar-agent-stat-val">' + convos.length + '</div><div class="maar-agent-stat-lbl">Convos</div></div>';
+          ah += '  <div class="maar-agent-stat"><div class="maar-agent-stat-val" style="color:' + (aPassRate >= 80 ? '#166534' : aPassRate >= 50 ? '#854d0e' : '#b91c1c') + ';">' + aPassRate + '%</div><div class="maar-agent-stat-lbl">Pass Rate</div></div>';
+          ah += '  <div class="maar-agent-stat"><div class="maar-agent-stat-val" style="color:' + (aE.total > 0 ? '#b91c1c' : '#166534') + ';">' + aE.total + '</div><div class="maar-agent-stat-lbl">Errors</div></div>';
+          ah += '  <div class="maar-agent-stat"><div class="maar-agent-stat-val" style="color:' + (aE.criticalFail + aE.critical > 0 ? '#b91c1c' : '#166534') + ';">' + (aE.criticalFail + aE.critical) + '</div><div class="maar-agent-stat-lbl">Critical</div></div>';
+          ah += '</div>';
+
+          // Error pills
+          let pills = '';
+          if (aE.criticalFail > 0) pills += '<span class="maar-error-pill maar-ep-cfail">' + aE.criticalFail + ' Fail-All</span>';
+          if (aE.critical > 0) pills += '<span class="maar-error-pill maar-ep-crit">' + aE.critical + ' Critical</span>';
+          if (aE.significant > 0) pills += '<span class="maar-error-pill maar-ep-sig">' + aE.significant + ' Significant</span>';
+          if (aE.major > 0) pills += '<span class="maar-error-pill maar-ep-maj">' + aE.major + ' Major</span>';
+          if (aE.minor > 0) pills += '<span class="maar-error-pill maar-ep-min">' + aE.minor + ' Minor</span>';
+          if (pills) ah += '<div class="maar-agent-pills">' + pills + '</div>';
+
+          ah += '<div class="maar-agent-pf-row">';
+          ah += '  <span class="maar-pill maar-pill-passed" style="font-size:0.625rem;">' + aPassed + ' Passed</span>';
+          ah += '  <span class="maar-pill maar-pill-failed-pf" style="font-size:0.625rem;">' + aFailed + ' Failed</span>';
+          ah += '</div>';
+          ah += '</div>';
+        });
+        $('batch-agents').innerHTML = ah;
+
+        $('batch-agents').querySelectorAll('.maar-agent').forEach(card => {
+          card.addEventListener('click', () => goToAgent(card.getAttribute('data-ak'), card.getAttribute('data-an')));
+        });
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  VIEW 3: Agent Conversations
+       * ═══════════════════════════════════════════════════════ */
+      function renderConvos(agentKey) {
+        const convos = curResults.filter(r => (r.employee_email || r.employee_name || 'unknown') === agentKey);
+        curAgentConvos = convos;
+
+        // Agent KPIs
+        const aScores = convos.filter(c => c.final_score != null).map(c => Number(c.final_score));
+        const aAvg = aScores.length ? Math.round(aScores.reduce((a, b) => a + b, 0) / aScores.length) : null;
+        const aMin = aScores.length ? Math.min(...aScores) : null;
+        const aMax = aScores.length ? Math.max(...aScores) : null;
+        const passed = convos.filter(c => c.pass_fail === 'passed').length;
+        const failed = convos.filter(c => c.pass_fail === 'failed').length;
+        const passRate = convos.length > 0 ? Math.round((passed / convos.length) * 100) : 0;
+        let aE = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+        convos.forEach(c => { const e = errorsFrom(c.parameters_result); for (const k in aE) aE[k] += e[k]; });
+        const avgErrors = convos.length > 0 ? (aE.total / convos.length).toFixed(1) : '0';
+
+        let kh = '';
+        kh += kpi('Conversations', convos.length, '', '#3b82f6', icons.chat);
+        kh += kpi('Avg Score', aAvg != null ? aAvg + '%' : '\u2014', aMin != null ? 'Min ' + aMin + '% \u00b7 Max ' + aMax + '%' : '', '#10b981', icons.target, aAvg != null ? scoreColor(aAvg) : undefined);
+        kh += kpi('Pass Rate', passRate + '%', passed + ' passed \u00b7 ' + failed + ' failed', passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, passRate >= 80 ? '#166534' : passRate >= 50 ? '#854d0e' : '#b91c1c');
+        kh += kpi('Total Errors', aE.total, 'Avg ' + avgErrors + ' per conversation', '#ef4444', icons.alert);
+        kh += kpi('Critical', aE.criticalFail + aE.critical, aE.criticalFail > 0 ? aE.criticalFail + ' auto-fail' : '', '#7f1d1d', icons.zap, '#b91c1c');
+        kh += kpi('Significant+', aE.significant + aE.major + aE.minor, aE.significant + ' sig \u00b7 ' + aE.major + ' maj \u00b7 ' + aE.minor + ' min', '#c2410c', icons.bar);
+        $('convos-kpis').innerHTML = kh;
+
+        $('conv-search').value = '';
+        $('conv-pf').value = '';
+        $('conv-sort').value = 'errors-desc';
+        renderConvoTable();
+      }
+
+      function renderConvoTable() {
+        const search = $('conv-search').value.toLowerCase().trim();
+        const pf = $('conv-pf').value;
+        const sort = $('conv-sort').value;
+
+        let list = curAgentConvos.slice();
+        if (search) list = list.filter(c => (c.conversation_id || '').toLowerCase().includes(search) || (c.ai_notes || '').toLowerCase().includes(search));
+        if (pf) list = list.filter(c => c.pass_fail === pf);
+
+        list.sort((a, b) => {
+          const ae = errorsFrom(a.parameters_result).total, be = errorsFrom(b.parameters_result).total;
+          const as = a.final_score != null ? Number(a.final_score) : -1, bs = b.final_score != null ? Number(b.final_score) : -1;
+          const ad = new Date(a.created_at || 0).getTime(), bd = new Date(b.created_at || 0).getTime();
+          switch (sort) {
+            case 'errors-desc': return be - ae;
+            case 'errors-asc': return ae - be;
+            case 'score-asc': return as - bs;
+            case 'score-desc': return bs - as;
+            case 'date-desc': return bd - ad;
+            case 'date-asc': return ad - bd;
+            default: return be - ae;
+          }
+        });
+
+        const tbody = $('conv-tbody');
+        const tableCard = $('conv-table-card');
+        const emptyEl = $('conv-empty');
+
+        if (!list.length) { tbody.innerHTML = ''; tableCard.style.display = 'none'; emptyEl.style.display = 'block'; return; }
+        tableCard.style.display = 'block';
+        emptyEl.style.display = 'none';
+
+        let rh = '';
+        list.forEach((r, i) => {
+          const e = errorsFrom(r.parameters_result);
+          const sc = r.final_score != null ? Number(r.final_score) : null;
+          const scHtml = sc != null ? '<span class="maar-score ' + scoreClass(sc) + '">' + sc + '%</span>' : '\u2014';
+          const rpf = r.pass_fail || 'n/a';
+          const conf = r.confidence_score != null ? Number(r.confidence_score) + '%' : '\u2014';
+          const cid = r.conversation_id || '';
+
+          function errBadge(val, type) {
+            if (val === 0) return '<span class="maar-err-num maar-err-zero">0</span>';
+            if (type === 'crit') return '<span class="maar-err-num maar-err-some">' + val + '</span>';
+            return '<span class="maar-err-num maar-err-warn">' + val + '</span>';
+          }
+
+          rh += '<tr data-ci="' + i + '">';
+          rh += '<td><span class="maar-conv-id">' + esc(truncId(cid)) + '</span></td>';
+          rh += '<td>' + scHtml + '</td>';
+          rh += '<td><span class="maar-pill ' + pfClass(rpf) + '">' + esc(rpf.toUpperCase()) + '</span></td>';
+          rh += '<td>' + errBadge(e.total, e.total > 3 ? 'crit' : 'warn') + '</td>';
+          rh += '<td>' + errBadge(e.criticalFail + e.critical, 'crit') + '</td>';
+          rh += '<td>' + errBadge(e.significant, 'warn') + '</td>';
+          rh += '<td>' + errBadge(e.major, 'warn') + '</td>';
+          rh += '<td>' + errBadge(e.minor, 'warn') + '</td>';
+          rh += '<td>' + esc(conf) + '</td>';
+          rh += '<td style="white-space:nowrap;">' + esc(fmtDate(r.audit_date || r.created_at)) + '</td>';
+          rh += '</tr>';
+        });
+        tbody.innerHTML = rh;
+        tbody._data = list;
+
+        tbody.querySelectorAll('tr[data-ci]').forEach(tr => {
+          tr.addEventListener('click', () => {
+            const i = +tr.getAttribute('data-ci');
+            if (tbody._data?.[i]) openModal(tbody._data[i]);
+          });
+        });
+      }
+
+      $('conv-search').addEventListener('input', renderConvoTable);
+      $('conv-pf').addEventListener('change', renderConvoTable);
+      $('conv-sort').addEventListener('change', renderConvoTable);
+
+      /* ═══════════════════════════════════════════════════════
+       *  Detail Modal
+       * ═══════════════════════════════════════════════════════ */
+      const overlay = $('maar-overlay');
+
+      function openModal(result) {
+        const agent = result.employee_name || result.employee_email || 'Unknown';
+        $('modal-title').textContent = 'Conversation ' + (result.conversation_id ? truncId(result.conversation_id) : '');
+
+        const cid = result.conversation_id || '';
+        const cLink = cid ? '<a href="https://app.intercom.com/a/inbox/_/inbox/conversation/' + encodeURIComponent(cid) + '" target="_blank" rel="noopener">Open in Intercom</a>' : '';
+        let sp = ['Agent: <strong>' + esc(agent) + '</strong>'];
+        if (cLink) sp.push(cLink);
+        sp.push('Date: ' + esc(fmtDate(result.audit_date || result.created_at)));
+        $('modal-sub').innerHTML = sp.join('<span style="color:var(--color-text-tertiary,#9ca3af); margin:0 0.4rem;">\u00b7</span>');
+
+        let h = '';
+
+        // Score cards
+        const sc = result.final_score != null ? Number(result.final_score) : null;
+        const conf = result.confidence_score != null ? Number(result.confidence_score) : null;
+        const pf = result.pass_fail || 'n/a';
+
+        h += '<div class="maar-modal-scores">';
+        h += '<div class="maar-modal-sc"><p class="maar-modal-sc-label">Score</p><p class="maar-modal-sc-val" style="color:' + (sc != null ? scoreColor(sc) : '#374151') + ';">' + (sc != null ? sc + '%' : '\u2014') + '</p></div>';
+        h += '<div class="maar-modal-sc"><p class="maar-modal-sc-label">Result</p><p class="maar-modal-sc-val"><span class="maar-pill ' + pfClass(pf) + '" style="font-size:1rem;">' + esc(pf.toUpperCase()) + '</span></p></div>';
+        h += '<div class="maar-modal-sc"><p class="maar-modal-sc-label">Confidence</p><p class="maar-modal-sc-val" style="color:#374151;">' + (conf != null ? (conf > 1 ? conf + '%' : (conf * 100).toFixed(0) + '%') : '\u2014') + '</p></div>';
+        h += '<div class="maar-modal-sc"><p class="maar-modal-sc-label">Status</p><p class="maar-modal-sc-val"><span class="maar-pill ' + pillClass(result.status || 'completed') + '" style="font-size:0.8125rem;">' + statusLabel(result.status || 'completed') + '</span></p></div>';
+        h += '</div>';
+
+        // Error counts
+        const params = Array.isArray(result.parameters_result) ? result.parameters_result : [];
+        const e = errorsFrom(params);
+        h += '<div class="maar-modal-errors"><div class="maar-modal-err-grid">';
+        [['Total Errors', e.total], ['Critical Fail', e.criticalFail], ['Critical', e.critical], ['Significant', e.significant], ['Major', e.major], ['Minor', e.minor]].forEach(([l, v]) => {
+          h += '<div><p class="maar-modal-err-label">' + l + '</p><div class="maar-modal-err-val">' + v + '</div></div>';
+        });
+        h += '</div></div>';
+
+        // Param rows
+        if (params.length > 0) {
+          h += '<div class="maar-modal-section"><div class="maar-modal-section-title">' + icons.alert + ' Error Details</div>';
+          h += '<div class="maar-param-wrap"><div class="maar-param-head"><div class="maar-pgrid hdr"><div>Error Type</div><div style="text-align:center;">Points</div><div style="text-align:center;">Severity</div><div style="text-align:center;">Status</div><div>Feedback</div></div></div>';
+          h += '<div style="padding:0 0.875rem 0.875rem;">';
+          params.forEach(p => h += renderParam(p));
+          h += '</div></div></div>';
+        }
+
+        // Scorecard data fallback
+        const sd = result.scorecard_data;
+        if (sd && typeof sd === 'object' && Object.keys(sd).length > 0 && params.length === 0) {
+          h += '<div class="maar-modal-section"><div class="maar-modal-section-title">' + icons.bar + ' Scorecard Data</div>';
+          h += '<div class="maar-param-wrap"><div style="padding:0.875rem;">';
+          Object.keys(sd).forEach(k => {
+            if (k.startsWith('feedback_')) return;
+            h += '<div style="display:flex; gap:1rem; padding:0.4rem 0; border-bottom:1px solid var(--color-background-tertiary,#f3f4f6); font-size:0.8125rem;">';
+            h += '<div style="font-weight:600; color:var(--color-text-primary,#1f2937); min-width:10rem;">' + esc(k) + '</div>';
+            h += '<div style="color:var(--color-text-secondary,#374151);">' + esc(String(sd[k])) + '</div></div>';
+          });
+          h += '</div></div></div>';
+        }
+
+        // AI notes
+        if (result.ai_notes) {
+          h += '<div class="maar-modal-section"><div class="maar-modal-section-title">' + icons.zap + ' AI Notes</div>';
+          h += '<div class="maar-ai-notes">' + esc(result.ai_notes) + '</div></div>';
+        }
+
+        $('modal-body').innerHTML = h;
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+      }
+
+      function closeModal() {
+        overlay.classList.remove('open');
+        overlay.classList.add('closing');
+        setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('closing'); }, 200);
+      }
+
+      $('modal-close').addEventListener('click', closeModal);
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal(); });
+
+      function sevStyle(cat, isFail) {
+        const c = (cat || '').toLowerCase();
+        if (isFail || c.includes('fail')) return { bg: '#7f1d1d', fg: '#fff', lbl: 'CRITICAL FAIL' };
+        if (c.includes('critical')) return { bg: '#991b1b', fg: '#fff', lbl: 'CRITICAL' };
+        if (c.includes('significant')) return { bg: '#c2410c', fg: '#fff', lbl: 'SIGNIFICANT' };
+        if (c.includes('major')) return { bg: '#b45309', fg: '#fff', lbl: 'MAJOR' };
+        if (c.includes('minor')) return { bg: '#ca8a04', fg: '#fff', lbl: 'MINOR' };
+        return { bg: '#b91c1c', fg: '#fff', lbl: (cat || 'ERROR').toUpperCase() };
+      }
+
+      function renderParam(p) {
+        const m = Number(p.measurement) || 0;
+        const s = sevStyle(p.error_category, p.is_fail_all);
+        const has = m > 0;
+        const stHtml = has
+          ? '<span style="color:#ef4444; font-weight:700;">' + m + ' \u2716</span>'
+          : '<span style="color:#10b981; font-weight:700;">\u2714</span>';
+        const fb = Array.isArray(p.feedback) ? p.feedback : [];
+        const fbHtml = fb.length > 0 ? '<ul>' + fb.map(f => '<li>' + esc(String(f)) + '</li>').join('') + '</ul>' : '<span style="color:var(--color-text-tertiary,#9ca3af); font-style:italic;">No feedback</span>';
+
+        return '<div class="maar-prow"><div class="maar-pgrid">'
+          + '<div class="maar-pname"><span style="font-weight:700; color:' + (has ? '#ef4444' : '#10b981') + ';">' + (has ? '\u2212' : '+') + '</span> ' + esc(p.error_name || 'Parameter') + '</div>'
+          + '<div class="maar-ppoints">' + (p.penalty_points || 0) + '</div>'
+          + '<div style="text-align:center;"><span class="maar-sev-badge" style="background:' + s.bg + '; color:' + s.fg + ';">' + s.lbl + '</span></div>'
+          + '<div class="maar-pstatus">' + stHtml + '</div>'
+          + '<div class="maar-pfeedback">' + fbHtml + '</div>'
+          + '</div></div>';
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  Keyboard Navigation
+       * ═══════════════════════════════════════════════════════ */
+      document.addEventListener('keydown', (e) => {
+        // Alt+Left or Backspace (when not focused on input) = go back
+        if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); return; }
+        if (e.key === 'Backspace' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+          e.preventDefault();
+          goBack();
+        }
+      });
+
+      /* ═══════════════════════════════════════════════════════
+       *  Init
+       * ═══════════════════════════════════════════════════════ */
+      // Build result counts per job from the results array
+      function buildResultCounts(results) {
+        const map = {};
+        (results || []).forEach(r => {
+          const jid = r.job_id;
+          if (!jid) return;
+          if (!map[jid]) map[jid] = { count: 0, passed: 0, failed: 0, scores: [] };
+          map[jid].count++;
+          if (r.pass_fail === 'passed') map[jid].passed++;
+          if (r.pass_fail === 'failed') map[jid].failed++;
+          if (r.final_score != null) map[jid].scores.push(Number(r.final_score));
+        });
+        // Calculate averages
+        for (const jid in map) {
+          const s = map[jid].scores;
+          map[jid].avgScore = s.length > 0 ? Math.round(s.reduce((a, b) => a + b, 0) / s.length) : null;
+          delete map[jid].scores; // free memory
+        }
+        return map;
+      }
+
+      // Fetch all results per-job using /assignments endpoint (no row limit)
+      async function fetchAllJobResults(jobs) {
+        const results = await Promise.all(
+          (jobs || []).map(j =>
+            api('/api/massive-ai-audit/jobs/' + encodeURIComponent(j.id) + '/assignments')
+              .then(res => ({ jobId: j.id, results: res || [] }))
+              .catch(() => ({ jobId: j.id, results: [] }))
+          )
+        );
+        // Populate cache and build flat array for buildResultCounts
+        const allFlat = [];
+        results.forEach(({ jobId, results: res }) => {
+          cache[jobId] = res;
+          res.forEach(r => { r.job_id = jobId; allFlat.push(r); });
+        });
+        resultCountsByJob = buildResultCounts(allFlat);
+      }
+
+      const errEl = $('maar-error');
+      try {
+        // 1. Fetch jobs list
+        const jobs = await api('/api/massive-ai-audit/jobs');
+        allJobs = jobs || [];
+
+        // 2. Fetch results per-job in parallel (no row limit, complete data)
+        await fetchAllJobResults(allJobs);
+
+        renderBatches(allJobs);
+        setBreadcrumb([{ label: 'All Batches' }]);
+        updateBackBtn();
+
+        // Set initial history state
+        history.replaceState({ view: 'batches' }, '', window.location.pathname + window.location.search);
+
+        // URL param: jump to batch
+        const urlParams = new URLSearchParams(window.location.search);
+        const jid = urlParams.get('id');
+        if (jid) await goToBatch(jid);
+
+        // Poll running jobs — use derived status to detect truly active jobs
+        const hasActive = allJobs.some(j => {
+          const rc = resultCountsByJob[j.id];
+          return deriveStatus(j, rc ? rc.count : null) === 'running' || deriveStatus(j, rc ? rc.count : null) === 'queued';
+        });
+        if (hasActive) {
+          let timer = setInterval(async () => {
+            try {
+              const fresh = await api('/api/massive-ai-audit/jobs');
+              allJobs = fresh || [];
+              await fetchAllJobResults(allJobs);
+
+              if ($('v-batches').classList.contains('active')) renderBatches(allJobs);
+              if (curJobId && $('v-batch').classList.contains('active')) { await loadBatch(curJobId); }
+              const stillActive = allJobs.some(j => {
+                const rc2 = resultCountsByJob[j.id];
+                return deriveStatus(j, rc2 ? rc2.count : null) === 'running' || deriveStatus(j, rc2 ? rc2.count : null) === 'queued';
+              });
+              if (!stillActive) { clearInterval(timer); console.log('[MassiveAI] Poll stopped — all jobs completed'); }
+            } catch (e) { console.error('Poll error', e); }
+          }, 30000);
+        }
+      } catch (e) {
+        $('batches-loading').style.display = 'none';
+        errEl.textContent = e?.message || 'Failed to load data';
+        errEl.style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>

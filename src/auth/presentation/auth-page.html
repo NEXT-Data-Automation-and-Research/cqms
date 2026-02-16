@@ -39,6 +39,82 @@
         @media (min-width: 1280px) {
             #typewriterHeading { font-size: 5rem; }
         }
+        /* Easter egg: animate in when visible */
+        #cqmsBrand.egg-visible,
+        #cqmsFooter.egg-visible {
+            animation: eggReveal 0.5s ease-out forwards;
+        }
+        @keyframes eggReveal {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(4px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        /* Easter egg video overlay */
+        #eggVideoOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.5rem;
+            background: rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
+        }
+        #eggVideoOverlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        /* Visible frame around the video + "Made with love" (no recommendations bleed) */
+        #eggVideoOverlay .egg-frame {
+            width: min(90vw, 560px);
+            border: 3px solid #1A733E;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background: #0d0d0d;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+        #eggVideoOverlay .egg-video-wrap {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+        }
+        #eggVideoOverlay .egg-video-wrap iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        /* "Made with love" inside the frame, below the video */
+        #eggVideoOverlay .egg-overlay-text {
+            display: block;
+            padding: 0.75rem 1rem;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #E0FFB3;
+            text-align: center;
+            background: #1A733E;
+            pointer-events: none;
+        }
+        #eggVideoOverlay .egg-close-hint {
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.875rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body class="min-h-screen antialiased">
@@ -55,7 +131,7 @@
             </div>
             <div class="flex flex-col gap-1 items-start flex-shrink-0">
                 <img src="https://careers.recruiteecdn.com/image/upload/production/images/BpRN/wCefCTnrj5fG.png" alt="NEXT Ventures" class="h-8 w-auto object-contain object-left opacity-90 -ml-[0.4rem]" width="160" height="32" loading="lazy">
-                <p class="text-[#E0FFB3] text-base lg:text-lg xl:text-xl font-bold">Communications Quality Management System</p>
+                <p id="cqmsBrand" class="text-[#E0FFB3] text-base lg:text-lg xl:text-xl font-bold">Communications Quality Management System</p>
             </div>
         </div>
 
@@ -111,6 +187,17 @@
     </div>
     </section>
 
+    <!-- Easter egg: YouTube in a frame with "Made with love"; click outside to close -->
+    <div id="eggVideoOverlay" aria-hidden="true" role="dialog" aria-label="Easter egg video">
+        <div class="egg-frame">
+            <div class="egg-video-wrap">
+                <iframe id="eggYouTubeIframe" width="560" height="315" src="" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            </div>
+            <p class="egg-overlay-text">Made with ❤️ by Team DAR | 2026</p>
+        </div>
+        <p class="egg-close-hint">Click outside the frame to close</p>
+    </div>
+
     <!-- Features: luxury showcase below the fold (theme: cream + green) -->
     <section id="features" class="relative bg-[#F6F5F0] text-slate-900 overflow-hidden" aria-label="Platform features">
         <!-- Subtle grid texture -->
@@ -154,7 +241,7 @@
             <!-- Bottom line -->
             <div class="mt-20 lg:mt-24 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pt-12 border-t border-[#1A733E]/20">
                 <p class="font-display text-2xl sm:text-3xl text-[#1A733E]">Every detail matters.</p>
-                <p class="text-slate-600 text-sm max-w-md">NEXT Ventures · Communications Quality Management System</p>
+                <p id="cqmsFooter" class="text-slate-600 text-sm max-w-md">NEXT Ventures · Communications Quality Management System</p>
             </div>
         </div>
     </section>
@@ -190,6 +277,78 @@
                 }
             }
             setTimeout(type, 400);
+        })();
+
+        /* Easter egg: type D-A-R → YouTube plays with sound, text on overlay; video stays until you close it */
+        (function initEasterEgg() {
+            const EGG_TEXT = 'Made with ❤️ by Team DAR | 2026';
+            const GO_AWAY_TEXT = 'Go away';
+            const YOUTUBE_EMBED = 'https://www.youtube.com/embed/Aq5WXmQQooo?si=hD5brYF2voyo6asZ&autoplay=1&rel=0&modestbranding=1';
+            const brandEl = document.getElementById('cqmsBrand');
+            const footerEl = document.getElementById('cqmsFooter');
+            const overlayEl = document.getElementById('eggVideoOverlay');
+            const iframeEl = document.getElementById('eggYouTubeIframe');
+            const brandOriginal = brandEl ? brandEl.textContent : '';
+            const footerOriginal = footerEl ? footerEl.textContent : '';
+            var eggTimeout = null;
+            function setText(el, text, addClass) {
+                if (!el) return;
+                el.textContent = text;
+                if (addClass) el.classList.add('egg-visible'); else el.classList.remove('egg-visible');
+            }
+            function showVideo() {
+                if (overlayEl) overlayEl.classList.add('show');
+                if (iframeEl) iframeEl.src = YOUTUBE_EMBED;
+            }
+            function hideVideo() {
+                if (overlayEl) overlayEl.classList.remove('show');
+                if (iframeEl) iframeEl.src = '';
+                setText(brandEl, brandOriginal, false);
+                setText(footerEl, footerOriginal, false);
+                if (eggTimeout) {
+                    clearTimeout(eggTimeout);
+                    eggTimeout = null;
+                }
+            }
+            function runEgg() {
+                if (overlayEl && overlayEl.classList.contains('show')) {
+                    hideVideo();
+                    return;
+                }
+                if (eggTimeout) {
+                    clearTimeout(eggTimeout);
+                    eggTimeout = null;
+                }
+                setText(brandEl, EGG_TEXT, true);
+                setText(footerEl, EGG_TEXT, true);
+                showVideo();
+                eggTimeout = setTimeout(function () {
+                    setText(brandEl, GO_AWAY_TEXT, false);
+                    setText(footerEl, GO_AWAY_TEXT, false);
+                    eggTimeout = setTimeout(function () {
+                        setText(brandEl, brandOriginal, false);
+                        setText(footerEl, footerOriginal, false);
+                        eggTimeout = null;
+                    }, 2000);
+                }, 3500);
+            }
+            if (overlayEl) {
+                overlayEl.addEventListener('click', function (e) {
+                    if (e.target === overlayEl || e.target.closest('.egg-close-hint')) hideVideo();
+                });
+            }
+            var keySeq = '';
+            var keySeqReset = null;
+            document.addEventListener('keydown', function (e) {
+                keySeq += e.key.toLowerCase();
+                if (keySeq.length > 3) keySeq = keySeq.slice(-3);
+                if (keySeq === 'dar') {
+                    keySeq = '';
+                    runEgg();
+                }
+                clearTimeout(keySeqReset);
+                keySeqReset = setTimeout(function () { keySeq = ''; }, 1500);
+            });
         })();
 
         import { initSupabase, getSupabase } from '/js/utils/supabase-init.js';
@@ -421,7 +580,7 @@
         
         // Also check on page load if this was a back navigation
         if (window.performance?.navigation?.type === 2 || 
-            (window.performance?.getEntriesByType?.('navigation')?.[0] as PerformanceNavigationTiming)?.type === 'back_forward') {
+            window.performance?.getEntriesByType?.('navigation')?.[0]?.type === 'back_forward') {
             // This was a back/forward navigation
             (async () => {
                 try {

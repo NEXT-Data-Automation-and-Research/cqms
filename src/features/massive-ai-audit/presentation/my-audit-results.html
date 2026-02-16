@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="/js/console-stub.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My AI Audit Results | CQMS</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/sidebar.css">
+  <link rel="stylesheet" href="/home-page.css">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       MY AI AUDIT RESULTS — Employee View
+       ═══════════════════════════════════════════════════════════ */
+
+    .myar-page {
+      width: 100%;
+      padding: 1.5rem 2rem 3rem;
+      font-family: var(--font-family, 'Poppins', sans-serif);
+      box-sizing: border-box;
+    }
+
+    /* ── Sticky Nav ─────────────────────────────────────────── */
+    .myar-nav-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+      margin: -1.5rem -2rem 1.25rem; padding: 0.75rem 2rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      backdrop-filter: blur(8px); transition: box-shadow 0.2s ease;
+    }
+    [data-theme="dark"] .myar-nav-bar { background: rgba(17,24,39,0.92); border-bottom-color: #374151; }
+    .myar-nav-bar.scrolled { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .myar-back-btn {
+      display: none; align-items: center; justify-content: center;
+      width: 2rem; height: 2rem; border-radius: var(--radius-md, 0.375rem);
+      border: 1px solid var(--color-border-light, #e5e7eb);
+      background: var(--color-background, #fff); color: var(--color-text-secondary, #6b7280);
+      cursor: pointer; transition: all 0.15s ease; flex-shrink: 0; padding: 0;
+    }
+    .myar-back-btn:hover { background: var(--color-background-secondary, #f9fafb); color: var(--color-text-primary, #1f2937); border-color: var(--color-primary-500, #645CFE); }
+    .myar-back-btn.visible { display: flex; }
+    .myar-back-btn svg { width: 1rem; height: 1rem; }
+    .myar-breadcrumb { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8125rem; color: var(--color-text-secondary, #6b7280); flex: 1; min-width: 0; flex-wrap: wrap; }
+    .myar-bc-btn { cursor: pointer; color: var(--color-primary-500, #645CFE); font-weight: 600; background: none; border: none; padding: 0.15rem 0; font-family: inherit; font-size: inherit; }
+    .myar-bc-btn:hover { text-decoration: underline; }
+    .myar-bc-sep { color: var(--color-text-tertiary, #9ca3af); user-select: none; font-size: 0.75rem; }
+    .myar-bc-current { color: var(--color-text-primary, #1f2937); font-weight: 600; }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .myar-header { margin-bottom: 1.5rem; }
+    .myar-header h1 { margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--color-text-primary, #1f2937); }
+    .myar-header-desc { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--color-text-secondary, #6b7280); }
+    .myar-header-user { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; }
+    .myar-avatar {
+      width: 2.75rem; height: 2.75rem; border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-primary-500, #645CFE), var(--color-primary-400, #8b7cff));
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700; flex-shrink: 0; text-transform: uppercase;
+    }
+    .myar-user-info { flex: 1; min-width: 0; }
+    .myar-user-name { font-size: 1rem; font-weight: 700; color: var(--color-text-primary, #1f2937); }
+    .myar-user-email { font-size: 0.8125rem; color: var(--color-text-tertiary, #9ca3af); }
+
+    /* ── KPI Grid ───────────────────────────────────────────── */
+    .myar-kpi-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+      gap: 0.875rem; margin-bottom: 1.5rem; width: 100%;
+    }
+    @media (min-width: 1200px) { .myar-kpi-grid { grid-template-columns: repeat(5, 1fr); } }
+    @media (max-width: 768px) { .myar-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    .myar-kpi {
+      background: var(--color-background, #fff); border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem); padding: 1.125rem 1.25rem;
+      position: relative; overflow: hidden; transition: box-shadow 0.2s ease;
+    }
+    .myar-kpi:hover { box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1)); }
+    .myar-kpi-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 0.75rem 0.75rem 0 0; }
+    .myar-kpi-icon { width: 2.25rem; height: 2.25rem; border-radius: var(--radius-lg, 0.5rem); display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+    .myar-kpi-icon svg { width: 1.125rem; height: 1.125rem; }
+    .myar-kpi-label { font-size: 0.6875rem; font-weight: 600; color: var(--color-text-secondary, #6b7280); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem; }
+    .myar-kpi-val { font-size: clamp(1.25rem, 2vw, 1.75rem); font-weight: 700; color: var(--color-text-primary, #1f2937); line-height: 1.2; margin-bottom: 0.15rem; }
+    .myar-kpi-sub { font-size: 0.75rem; color: var(--color-text-tertiary, #9ca3af); }
+
+    /* ── Score Trend Section ─────────────────────────────────── */
+    .myar-trend-section {
+      background: var(--color-background, #fff); border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .myar-trend-title { font-size: 0.9375rem; font-weight: 700; color: var(--color-text-primary, #1f2937); margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .myar-trend-title svg { width: 1.125rem; height: 1.125rem; color: var(--color-primary-500, #645CFE); }
+    .myar-trend-bars { display: flex; align-items: flex-end; gap: 0.75rem; height: 8rem; padding: 0 0.5rem; }
+    .myar-trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; min-width: 3rem; }
+    .myar-trend-bar-wrap { width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
+    .myar-trend-bar {
+      width: 2.5rem; max-width: 100%; border-radius: var(--radius-md, 0.375rem) var(--radius-md, 0.375rem) 0 0;
+      transition: height 0.5s ease; position: relative; min-height: 0.25rem; cursor: default;
+    }
+    .myar-trend-bar-val {
+      position: absolute; top: -1.25rem; left: 50%; transform: translateX(-50%);
+      font-size: 0.6875rem; font-weight: 700; white-space: nowrap;
+    }
+    .myar-trend-label { font-size: 0.625rem; color: var(--color-text-tertiary, #9ca3af); text-align: center; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+    /* ── Top Errors Section ───────────────────────────────────── */
+    .myar-errors-section {
+      background: var(--color-background, #fff); border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem); padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+    }
+    .myar-errors-title { font-size: 0.9375rem; font-weight: 700; color: var(--color-text-primary, #1f2937); margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .myar-errors-title svg { width: 1.125rem; height: 1.125rem; color: #ef4444; }
+    .myar-error-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.625rem; }
+    .myar-error-rank { width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--color-background-secondary, #f3f4f6); display: flex; align-items: center; justify-content: center; font-size: 0.625rem; font-weight: 700; color: var(--color-text-secondary, #6b7280); flex-shrink: 0; }
+    .myar-error-name { flex: 1; font-size: 0.8125rem; font-weight: 600; color: var(--color-text-primary, #1f2937); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .myar-error-track { width: 10rem; height: 0.5rem; background: var(--color-background-tertiary, #f3f4f6); border-radius: 9999px; overflow: hidden; flex-shrink: 0; }
+    .myar-error-fill { height: 100%; border-radius: 9999px; transition: width 0.5s ease; }
+    .myar-error-count { font-size: 0.8125rem; font-weight: 700; min-width: 2.5rem; text-align: right; flex-shrink: 0; }
+
+    /* ── Batch Cards ──────────────────────────────────────────── */
+    .myar-section-title { font-size: 0.9375rem; font-weight: 700; color: var(--color-text-primary, #1f2937); margin: 0 0 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .myar-section-title svg { width: 1.125rem; height: 1.125rem; color: var(--color-primary-500, #645CFE); }
+    .myar-batch-list { display: flex; flex-direction: column; gap: 0.875rem; margin-bottom: 1.5rem; }
+    .myar-batch {
+      background: var(--color-background, #fff); border: 1px solid var(--color-border-light, #e5e7eb);
+      border-radius: var(--radius-xl, 0.75rem); overflow: hidden; cursor: pointer;
+      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+    .myar-batch:hover { box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1)); border-color: var(--color-primary-400, #8b7cff); transform: translateY(-1px); }
+    .myar-batch-accent { height: 4px; width: 100%; }
+    .myar-batch-accent-completed { background: linear-gradient(90deg, #10b981, #34d399); }
+    .myar-batch-accent-running { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+    .myar-batch-accent-queued { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+    .myar-batch-body { padding: 1.25rem 1.5rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+    .myar-batch-info { flex: 1; min-width: 0; }
+    .myar-batch-title { margin: 0; font-size: 1rem; font-weight: 700; color: var(--color-text-primary, #1f2937); }
+    .myar-batch-meta { font-size: 0.8125rem; color: var(--color-text-secondary, #6b7280); margin-top: 0.25rem; display: flex; gap: 1rem; flex-wrap: wrap; }
+    .myar-batch-meta svg { width: 0.875rem; height: 0.875rem; opacity: 0.5; vertical-align: -0.15em; }
+    .myar-batch-stats { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .myar-batch-stat { text-align: center; min-width: 4rem; }
+    .myar-batch-stat-val { font-size: 1.125rem; font-weight: 700; line-height: 1.2; }
+    .myar-batch-stat-lbl { font-size: 0.5625rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; color: var(--color-text-secondary, #6b7280); }
+    .myar-batch-ring { width: 3.25rem; height: 3.25rem; position: relative; flex-shrink: 0; }
+    .myar-batch-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .myar-batch-ring-bg { fill: none; stroke: var(--color-border-light, #e5e7eb); stroke-width: 4; }
+    .myar-batch-ring-fg { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease; }
+    .myar-batch-ring-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 800; }
+
+    /* ── Pill / Score / Error badges ────────────────────────── */
+    .myar-pill { display: inline-flex; align-items: center; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .myar-pill-passed { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .myar-pill-failed { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
+    .myar-pill-running { background: var(--color-info-light, #dbeafe); color: var(--color-info-dark, #1e40af); }
+    .myar-pill-completed { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .myar-pill-na { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+    .myar-score { display: inline-flex; align-items: center; justify-content: center; min-width: 2.75rem; padding: 0.2rem 0.55rem; font-size: 0.8125rem; font-weight: 700; border-radius: var(--radius-md, 0.375rem); }
+    .myar-score-high { background: #dcfce7; color: #166534; }
+    .myar-score-mid { background: #fef9c3; color: #854d0e; }
+    .myar-score-low { background: #fee2e2; color: #b91c1c; }
+    .myar-err-num { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5rem; padding: 0.15rem 0.4rem; border-radius: var(--radius-md, 0.375rem); font-size: 0.75rem; font-weight: 700; }
+    .myar-err-zero { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
+    .myar-err-some { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
+    .myar-err-warn { background: var(--color-warning-light, #fef3c7); color: var(--color-warning-dark, #92400e); }
+    .myar-error-pill { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.45rem; border-radius: 9999px; font-size: 0.625rem; font-weight: 700; white-space: nowrap; }
+    .myar-ep-cfail { background: #7f1d1d; color: #fff; }
+    .myar-ep-crit { background: #991b1b; color: #fff; }
+    .myar-ep-sig { background: #c2410c; color: #fff; }
+    .myar-ep-maj { background: #b45309; color: #fff; }
+    .myar-ep-min { background: #ca8a04; color: #fff; }
+
+    /* ── Conversation Table ───────────────────────────────────── */
+    .myar-toolbar { display: flex; align-items: center; gap: 0.625rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .myar-search {
+      flex: 1; min-width: 14rem; padding: 0.55rem 0.875rem 0.55rem 2.25rem;
+      border: 1px solid var(--color-border-light, #e5e7eb); border-radius: var(--radius-lg, 0.5rem);
+      font-size: 0.8125rem; font-family: inherit;
+      background: var(--color-background, #fff) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 0.75rem center no-repeat;
+      color: var(--color-text-primary, #1f2937); outline: none;
+    }
+    .myar-search:focus { border-color: var(--color-primary-500, #645CFE); box-shadow: 0 0 0 3px rgba(100,92,254,0.1); }
+    .myar-select { padding: 0.55rem 0.875rem; border: 1px solid var(--color-border-light, #e5e7eb); border-radius: var(--radius-lg, 0.5rem); font-size: 0.8125rem; font-family: inherit; background: var(--color-background, #fff); color: var(--color-text-primary, #1f2937); cursor: pointer; }
+    .myar-table-card { background: var(--color-background, #fff); border: 1px solid var(--color-border-light, #e5e7eb); border-radius: var(--radius-xl, 0.75rem); overflow: hidden; }
+    .myar-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .myar-table thead { background: var(--color-background-secondary, #f9fafb); }
+    .myar-table th { padding: 0.75rem 1rem; text-align: left; font-weight: 600; color: var(--color-text-secondary, #6b7280); font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; border-bottom: 2px solid var(--color-border-light, #e5e7eb); }
+    .myar-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--color-border-light, #e5e7eb); color: var(--color-text-primary, #1f2937); vertical-align: middle; }
+    .myar-table tbody tr { cursor: pointer; transition: background 0.12s ease; }
+    .myar-table tbody tr:hover { background: var(--color-background-secondary, #f9fafb); }
+    .myar-table tbody tr:last-child td { border-bottom: none; }
+    .myar-conv-id { font-weight: 600; color: var(--color-primary-500, #645CFE); font-family: var(--font-family-mono, monospace); font-size: 0.8125rem; }
+
+    /* ── Detail Modal ─────────────────────────────────────────── */
+    .myar-overlay { position: fixed; inset: 0; z-index: 1050; background: rgba(0,0,0,0.5); display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; overflow-y: auto; opacity: 0; transition: opacity 0.2s ease; backdrop-filter: blur(2px); }
+    .myar-overlay.open { opacity: 1; }
+    .myar-overlay.closing { opacity: 0; }
+    .myar-modal { background: var(--color-background, #fff); border-radius: var(--radius-xl, 0.75rem); box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1)); width: 100%; max-width: 60rem; transform: translateY(-1rem) scale(0.97); transition: transform 0.2s ease; }
+    .myar-overlay.open .myar-modal { transform: translateY(0) scale(1); }
+    .myar-modal-head { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--color-border-light, #e5e7eb); display: flex; align-items: center; gap: 0.75rem; }
+    .myar-modal-head-info { flex: 1; min-width: 0; }
+    .myar-modal-title { margin: 0; font-size: 1.125rem; font-weight: 700; color: var(--color-text-primary, #1f2937); }
+    .myar-modal-sub { margin: 0.2rem 0 0; font-size: 0.8125rem; color: var(--color-text-secondary, #6b7280); display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .myar-modal-sub a { color: var(--color-primary-500, #645CFE); text-decoration: none; font-weight: 600; }
+    .myar-modal-sub a:hover { text-decoration: underline; }
+    .myar-modal-close { width: 2.25rem; height: 2.25rem; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--color-border-light, #e5e7eb); border-radius: var(--radius-md, 0.375rem); cursor: pointer; color: var(--color-text-secondary, #6b7280); }
+    .myar-modal-close:hover { background: var(--color-background-secondary, #f9fafb); color: var(--color-text-primary, #1f2937); }
+    .myar-modal-close svg { width: 1.125rem; height: 1.125rem; }
+    .myar-modal-body { padding: 1.5rem; }
+    .myar-modal-scores { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+    .myar-modal-sc { background: var(--color-background-secondary, #f9fafb); border: 1px solid var(--color-border-light, #e5e7eb); border-radius: var(--radius-lg, 0.5rem); padding: 0.75rem; text-align: center; }
+    .myar-modal-sc-label { font-size: 0.6875rem; color: var(--color-text-secondary, #6b7280); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; margin: 0 0 0.3rem; }
+    .myar-modal-sc-val { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .myar-modal-errors { background: var(--color-success-light, #d1fae5); border-radius: var(--radius-lg, 0.5rem); padding: 0.875rem; margin-bottom: 1.25rem; border: 1px solid #a7f3d0; }
+    .myar-modal-err-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: 0.75rem; }
+    .myar-modal-err-label { font-size: 0.6875rem; color: var(--color-success-dark, #065f46); margin: 0 0 0.3rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+    .myar-modal-err-val { font-size: 1rem; font-weight: 700; color: var(--color-text-primary, #374151); background: var(--color-background, #fff); border: 1px solid var(--color-border, #d1d5db); border-radius: var(--radius-sm, 0.25rem); padding: 0.3rem 0.5rem; text-align: center; }
+    .myar-modal-section { background: var(--color-background-secondary, #f9fafb); border-radius: var(--radius-lg, 0.5rem); padding: 0.875rem; border: 1px solid var(--color-border-light, #e5e7eb); margin-bottom: 1.25rem; }
+    .myar-modal-section-title { font-size: 0.875rem; font-weight: 700; color: var(--color-primary-500, #645CFE); margin: 0 0 0.75rem; display: flex; align-items: center; gap: 0.4rem; }
+    .myar-modal-section-title svg { width: 1rem; height: 1rem; }
+    .myar-param-wrap { background: var(--color-background, #fff); border-radius: var(--radius-lg, 0.5rem); box-shadow: var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05)); overflow: hidden; }
+    .myar-param-head { padding: 0.65rem 0.875rem; border-bottom: 2px solid var(--color-border-light, #e5e7eb); }
+    .myar-pgrid { display: grid; grid-template-columns: 1.5fr 0.6fr 0.75fr 0.6fr 3.5fr; gap: 0.75rem; align-items: center; }
+    .myar-pgrid.hdr { font-weight: 700; font-size: 0.6875rem; color: var(--color-text-secondary, #6b7280); text-transform: uppercase; letter-spacing: 0.05em; }
+    .myar-prow { padding: 0.55rem 0.875rem; border-bottom: 1px solid var(--color-background-tertiary, #f3f4f6); }
+    .myar-prow:last-child { border-bottom: none; }
+    .myar-pname { font-size: 0.8125rem; color: var(--color-text-primary, #1f2937); font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+    .myar-ppoints { text-align: center; font-size: 0.8125rem; font-weight: 600; }
+    .myar-sev-badge { display: inline-flex; align-items: center; justify-content: center; padding: 0.15rem 0.5rem; border-radius: var(--radius-sm, 0.25rem); font-size: 0.625rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap; }
+    .myar-pstatus { text-align: center; font-size: 0.8125rem; font-weight: 700; }
+    .myar-pfeedback { font-size: 0.8125rem; color: var(--color-text-secondary, #6b7280); line-height: 1.5; min-width: 0; word-wrap: break-word; }
+    .myar-pfeedback ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
+    .myar-ai-notes { background: var(--color-warning-light, #fffbeb); border: 1px solid #fde68a; border-radius: var(--radius-lg, 0.5rem); padding: 0.875rem 1rem; font-size: 0.8125rem; color: var(--color-warning-dark, #92400e); line-height: 1.6; }
+
+    /* ── Loading / Empty ──────────────────────────────────────── */
+    .myar-loading, .myar-empty { padding: 4rem 2rem; text-align: center; color: var(--color-text-secondary, #6b7280); }
+    .myar-loading-spinner { width: 2.5rem; height: 2.5rem; border: 3px solid var(--color-border-light, #e5e7eb); border-top-color: var(--color-primary-500, #645CFE); border-radius: 50%; margin: 0 auto 1rem; animation: myar-spin 0.8s linear infinite; }
+    @keyframes myar-spin { to { transform: rotate(360deg); } }
+    .myar-empty-icon { width: 3.5rem; height: 3.5rem; margin: 0 auto 1rem; color: var(--color-text-tertiary, #d1d5db); }
+    .myar-empty-title { margin: 0 0 0.5rem; font-size: 1.0625rem; font-weight: 600; color: var(--color-text-primary, #1f2937); }
+    .myar-empty p { margin: 0; font-size: 0.875rem; }
+
+    /* ── View Transitions ─────────────────────────────────────── */
+    .myar-view { display: none; }
+    .myar-view.active { display: block; animation: myarFade 0.25s ease; }
+    @keyframes myarFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Responsive ────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .myar-page { padding: 1rem 0.875rem 2rem; }
+      .myar-nav-bar { margin: -1rem -0.875rem 1rem; padding: 0.625rem 0.875rem; }
+      .myar-batch-body { flex-direction: column; gap: 0.75rem; padding: 1rem; }
+      .myar-batch-stats { gap: 0.625rem; }
+      .myar-toolbar { flex-direction: column; }
+      .myar-search { min-width: 100%; }
+      .myar-pgrid { grid-template-columns: 1fr; gap: 0.35rem; }
+      .myar-pgrid.hdr { display: none; }
+      .myar-trend-bars { gap: 0.375rem; }
+      .myar-trend-bar { width: 1.5rem; }
+      .myar-error-track { width: 5rem; }
+    }
+  </style>
+  <script type="importmap">
+    {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
+  </script>
+</head>
+<body class="home-page">
+  <script type="module" src="/js/auth-checker.js"></script>
+  <script type="module" src="/js/load-sidebar.js" defer></script>
+
+  <main class="main-content" role="main">
+    <div class="myar-page">
+
+      <!-- Sticky Nav -->
+      <div class="myar-nav-bar" id="myar-nav-bar">
+        <button class="myar-back-btn" id="myar-back" title="Go back" aria-label="Go back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <nav class="myar-breadcrumb" id="myar-bc" aria-label="Breadcrumb"></nav>
+      </div>
+
+      <!-- Header -->
+      <div class="myar-header">
+        <h1 id="myar-title">My AI Audit Results</h1>
+        <p class="myar-header-desc" id="myar-desc">Your personal audit performance from AI-powered bulk audits.</p>
+        <div class="myar-header-user" id="myar-user-card" style="display:none;"></div>
+      </div>
+
+      <div id="myar-error" style="padding:0.75rem 1rem; background:#fee2e2; border:1px solid #fecaca; border-radius:0.5rem; font-size:0.875rem; color:#991b1b; font-weight:500; margin-bottom:1.25rem; display:none;"></div>
+
+      <!-- VIEW 1: Dashboard -->
+      <div class="myar-view active" id="v-dashboard">
+        <div id="dash-loading" class="myar-loading"><div class="myar-loading-spinner"></div>Loading your audit results&hellip;</div>
+        <div id="dash-empty" class="myar-empty" style="display:none;">
+          <div class="myar-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
+          <p class="myar-empty-title">No audit results yet</p>
+          <p>You haven't been included in any AI bulk audits yet. Check back later.</p>
+        </div>
+        <div id="dash-content" style="display:none;">
+          <div id="dash-kpis" class="myar-kpi-grid"></div>
+          <div id="dash-trend"></div>
+          <div id="dash-errors"></div>
+          <div id="dash-batches-title" class="myar-section-title" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Audit Batches
+          </div>
+          <div id="dash-batches" class="myar-batch-list"></div>
+        </div>
+      </div>
+
+      <!-- VIEW 2: Batch Conversations -->
+      <div class="myar-view" id="v-batch">
+        <div id="batch-kpis" class="myar-kpi-grid"></div>
+        <div class="myar-toolbar" id="batch-toolbar">
+          <input type="text" class="myar-search" id="conv-search" placeholder="Search by conversation ID or notes...">
+          <select class="myar-select" id="conv-pf">
+            <option value="">All Results</option>
+            <option value="passed">Passed Only</option>
+            <option value="failed">Failed Only</option>
+          </select>
+          <select class="myar-select" id="conv-sort">
+            <option value="errors-desc">Most Errors First</option>
+            <option value="errors-asc">Least Errors First</option>
+            <option value="score-asc">Lowest Score</option>
+            <option value="score-desc">Highest Score</option>
+            <option value="date-desc">Newest First</option>
+            <option value="date-asc">Oldest First</option>
+          </select>
+        </div>
+        <div class="myar-table-card" id="conv-table-card">
+          <table class="myar-table" id="conv-table">
+            <thead><tr><th>Conversation</th><th>Score</th><th>Result</th><th>Errors</th><th>Critical</th><th>Significant</th><th>Major</th><th>Minor</th><th>Confidence</th><th>Date</th></tr></thead>
+            <tbody id="conv-tbody"></tbody>
+          </table>
+        </div>
+        <div id="conv-empty" class="myar-empty" style="display:none;"><p class="myar-empty-title">No conversations match</p><p>Adjust your filters or search terms.</p></div>
+      </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="myar-overlay" class="myar-overlay" style="display:none;">
+      <div class="myar-modal">
+        <div class="myar-modal-head">
+          <div class="myar-modal-head-info">
+            <h2 class="myar-modal-title" id="modal-title">Audit Detail</h2>
+            <div class="myar-modal-sub" id="modal-sub"></div>
+          </div>
+          <button class="myar-modal-close" id="modal-close" title="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="myar-modal-body" id="modal-body"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    (async function () {
+      const $ = id => document.getElementById(id);
+      function esc(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+      function scoreClass(v) { const n = Number(v); if (n >= 80) return 'myar-score-high'; if (n >= 50) return 'myar-score-mid'; return 'myar-score-low'; }
+      function scoreColor(v) { const n = Number(v); if (n >= 80) return '#166534'; if (n >= 50) return '#854d0e'; return '#b91c1c'; }
+      function scoreRingColor(v) { const n = Number(v); if (n >= 80) return '#10b981'; if (n >= 50) return '#f59e0b'; return '#ef4444'; }
+      function pfClass(pf) { if (pf === 'passed') return 'myar-pill-passed'; if (pf === 'failed') return 'myar-pill-failed'; return 'myar-pill-na'; }
+      function fmtDate(d) { if (!d) return '\u2014'; try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return d; } }
+      function fmtDateTime(d) { if (!d) return '\u2014'; try { return new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return d; } }
+      function truncId(id) { if (!id) return '\u2014'; if (id.length > 14) return id.slice(0, 6) + '\u2026' + id.slice(-6); return id; }
+      function initials(name) { if (!name) return '?'; const p = name.trim().split(/\s+/); return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : name.slice(0, 2).toUpperCase(); }
+
+      function errorsFrom(params) {
+        let t = 0, cf = 0, c = 0, s = 0, mj = 0, mn = 0;
+        if (!Array.isArray(params)) return { total: t, criticalFail: cf, critical: c, significant: s, major: mj, minor: mn };
+        params.forEach(p => {
+          const m = Number(p.measurement) || 0;
+          if (m > 0) {
+            t += m;
+            const cat = (p.error_category || '').toLowerCase();
+            if (p.is_fail_all) cf += m;
+            else if (cat.includes('critical')) c += m;
+            else if (cat.includes('significant')) s += m;
+            else if (cat.includes('major')) mj += m;
+            else if (cat.includes('minor')) mn += m;
+            else s += m;
+          }
+        });
+        return { total: t, criticalFail: cf, critical: c, significant: s, major: mj, minor: mn };
+      }
+
+      /* error name frequency counter */
+      function errorNameFrequency(results) {
+        const freq = {};
+        results.forEach(r => {
+          (Array.isArray(r.parameters_result) ? r.parameters_result : []).forEach(p => {
+            const m = Number(p.measurement) || 0;
+            if (m > 0 && p.error_name) {
+              const name = p.error_name;
+              freq[name] = (freq[name] || 0) + m;
+            }
+          });
+        });
+        return Object.entries(freq).sort((a, b) => b[1] - a[1]);
+      }
+
+      const icons = {
+        chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+        target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+        check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        zap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+        bar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+        trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+        calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>',
+      };
+
+      /* ── Auth & API ────────────────────────────────────────── */
+      let userName = '', userEmail = '';
+      const getToken = async (n) => {
+        for (let i = 0; i < (n || 3); i++) {
+          try {
+            const { initSupabase, getSupabase } = await import('/js/utils/supabase-init.js');
+            let sb = getSupabase(); if (!sb) { await initSupabase(); sb = getSupabase(); }
+            if (!sb) { await new Promise(r => setTimeout(r, 1000 * (i + 1))); continue; }
+            const { data: { session } } = await sb.auth.getSession();
+            if (session?.access_token) {
+              userEmail = session.user?.email || '';
+              userName = session.user?.user_metadata?.name || session.user?.user_metadata?.full_name || userEmail.split('@')[0] || '';
+              return session.access_token;
+            }
+          } catch (e) { console.warn('[MyAR] token attempt', e); }
+        }
+        return null;
+      };
+      const api = async (path) => {
+        const tok = await getToken(3); if (!tok) throw new Error('Session expired. Please refresh.');
+        const r = await fetch(path, { headers: { Authorization: 'Bearer ' + tok } });
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      };
+
+      /* ── State ─────────────────────────────────────────────── */
+      let allResults = [], jobMap = {}, curJobId = null, curBatchConvos = [];
+      let navDepth = 0;
+
+      /* ── Navigation ────────────────────────────────────────── */
+      function showView(id) { document.querySelectorAll('.myar-view').forEach(v => v.classList.remove('active')); $(id)?.classList.add('active'); }
+      function scrollTop() { window.scrollTo({ top: 0, behavior: 'instant' }); const mc = document.querySelector('.main-content'); if (mc) mc.scrollTo({ top: 0, behavior: 'instant' }); }
+      function updateBackBtn() { $('myar-back').classList.toggle('visible', navDepth > 0); }
+      function setBreadcrumb(parts) {
+        const el = $('myar-bc'); let h = '';
+        parts.forEach((p, i) => {
+          if (i > 0) h += '<span class="myar-bc-sep">/</span>';
+          if (p.fn) h += '<button class="myar-bc-btn" data-bci="' + i + '">' + esc(p.label) + '</button>';
+          else h += '<span class="myar-bc-current">' + esc(p.label) + '</span>';
+        });
+        el.innerHTML = h;
+        el.querySelectorAll('.myar-bc-btn').forEach(btn => { btn.addEventListener('click', () => { const idx = +btn.getAttribute('data-bci'); if (parts[idx]?.fn) parts[idx].fn(); }); });
+      }
+
+      function goToDashboard() {
+        curJobId = null; navDepth = 0;
+        showView('v-dashboard'); setBreadcrumb([{ label: 'My Results' }]);
+        $('myar-title').textContent = 'My AI Audit Results';
+        $('myar-desc').textContent = 'Your personal audit performance from AI-powered bulk audits.';
+        updateBackBtn(); scrollTop();
+      }
+
+      function goToBatch(jobId) {
+        curJobId = jobId; navDepth = 1;
+        showView('v-batch');
+        const job = jobMap[jobId] || {};
+        const lbl = fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date);
+        setBreadcrumb([{ label: 'My Results', fn: goToDashboard }, { label: lbl }]);
+        $('myar-title').textContent = 'Batch: ' + lbl;
+        $('myar-desc').textContent = 'Your conversations audited in this batch.';
+        updateBackBtn(); scrollTop();
+        renderBatchView(jobId);
+      }
+
+      function goBack() { if (navDepth > 0) goToDashboard(); }
+      $('myar-back').addEventListener('click', goBack);
+      document.addEventListener('keydown', e => { if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); goBack(); } });
+
+      /* ── KPI helper ────────────────────────────────────────── */
+      function kpi(label, value, sub, accent, icon, valColor) {
+        return '<div class="myar-kpi">'
+          + '<div class="myar-kpi-accent" style="background:' + (accent || '#645CFE') + ';"></div>'
+          + '<div class="myar-kpi-icon" style="background:' + (accent || '#645CFE') + '15; color:' + (accent || '#645CFE') + ';">' + (icon || '') + '</div>'
+          + '<div class="myar-kpi-label">' + esc(label) + '</div>'
+          + '<div class="myar-kpi-val"' + (valColor ? ' style="color:' + valColor + ';"' : '') + '>' + esc(String(value)) + '</div>'
+          + (sub ? '<div class="myar-kpi-sub">' + sub + '</div>' : '')
+          + '</div>';
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  VIEW 1: Dashboard
+       * ═══════════════════════════════════════════════════════ */
+      function renderDashboard() {
+        if (!allResults.length) { $('dash-empty').style.display = 'block'; $('dash-content').style.display = 'none'; return; }
+        $('dash-empty').style.display = 'none';
+        $('dash-content').style.display = 'block';
+
+        // Show user card
+        const uc = $('myar-user-card');
+        uc.style.display = 'flex';
+        uc.innerHTML = '<div class="myar-avatar">' + esc(initials(userName)) + '</div><div class="myar-user-info"><div class="myar-user-name">' + esc(userName) + '</div><div class="myar-user-email">' + esc(userEmail) + '</div></div>';
+
+        // Compute stats
+        const n = allResults.length;
+        const scores = allResults.filter(r => r.final_score != null).map(r => Number(r.final_score));
+        const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+        const passed = allResults.filter(r => r.pass_fail === 'passed').length;
+        const failed = allResults.filter(r => r.pass_fail === 'failed').length;
+        const passRate = n > 0 ? Math.round((passed / n) * 100) : 0;
+        let allErr = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+        allResults.forEach(r => { const e = errorsFrom(r.parameters_result); for (const k in allErr) allErr[k] += e[k]; });
+
+        // KPIs
+        let kh = '';
+        kh += kpi('Conversations Audited', n, '', '#3b82f6', icons.chat);
+        kh += kpi('Average Score', avg != null ? avg + '%' : '\u2014', '', '#10b981', icons.target, avg != null ? scoreColor(avg) : undefined);
+        kh += kpi('Pass Rate', passRate + '%', esc(passed + ' passed \u00b7 ' + failed + ' failed'), passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, passRate >= 80 ? '#166534' : passRate >= 50 ? '#854d0e' : '#b91c1c');
+        kh += kpi('Total Errors', allErr.total, '', '#ef4444', icons.alert);
+        kh += kpi('Critical Errors', allErr.criticalFail + allErr.critical, allErr.criticalFail > 0 ? esc(allErr.criticalFail + ' auto-fail') : '', '#7f1d1d', icons.zap, '#b91c1c');
+        $('dash-kpis').innerHTML = kh;
+
+        // Score trend by batch
+        const byJob = {};
+        allResults.forEach(r => { if (!r.job_id) return; if (!byJob[r.job_id]) byJob[r.job_id] = []; byJob[r.job_id].push(r); });
+        const jobIds = Object.keys(byJob).sort((a, b) => {
+          const ja = jobMap[a], jb = jobMap[b];
+          return new Date(ja?.created_at || 0).getTime() - new Date(jb?.created_at || 0).getTime();
+        });
+
+        if (jobIds.length > 1) {
+          let maxScore = 100;
+          const trendData = jobIds.map(jid => {
+            const jScores = byJob[jid].filter(r => r.final_score != null).map(r => Number(r.final_score));
+            const jAvg = jScores.length ? Math.round(jScores.reduce((a, b) => a + b, 0) / jScores.length) : 0;
+            const job = jobMap[jid] || {};
+            return { jid, avg: jAvg, label: fmtDate(job.start_date) || jid.slice(0, 6), count: byJob[jid].length };
+          });
+
+          let th = '<div class="myar-trend-section"><div class="myar-trend-title">' + icons.trendUp + ' Score Trend Across Batches</div>';
+          th += '<div class="myar-trend-bars">';
+          trendData.forEach(d => {
+            const hPct = Math.max((d.avg / maxScore) * 100, 5);
+            const col = scoreRingColor(d.avg);
+            th += '<div class="myar-trend-col">';
+            th += '<div class="myar-trend-bar-wrap"><div class="myar-trend-bar" style="height:' + hPct + '%; background:' + col + ';" title="' + d.avg + '% avg (' + d.count + ' convos)"><span class="myar-trend-bar-val" style="color:' + col + ';">' + d.avg + '%</span></div></div>';
+            th += '<div class="myar-trend-label">' + esc(d.label) + '</div>';
+            th += '</div>';
+          });
+          th += '</div></div>';
+          $('dash-trend').innerHTML = th;
+        } else {
+          $('dash-trend').innerHTML = '';
+        }
+
+        // Top error types
+        const topErrors = errorNameFrequency(allResults).slice(0, 7);
+        if (topErrors.length > 0) {
+          const maxE = topErrors[0][1];
+          let eh = '<div class="myar-errors-section"><div class="myar-errors-title">' + icons.alert + ' Your Most Frequent Errors</div>';
+          topErrors.forEach(([name, count], i) => {
+            const w = Math.max((count / maxE) * 100, 8);
+            const col = i < 2 ? '#ef4444' : i < 4 ? '#f59e0b' : '#6b7280';
+            eh += '<div class="myar-error-row">';
+            eh += '<div class="myar-error-rank">' + (i + 1) + '</div>';
+            eh += '<div class="myar-error-name">' + esc(name) + '</div>';
+            eh += '<div class="myar-error-track"><div class="myar-error-fill" style="width:' + w + '%; background:' + col + ';"></div></div>';
+            eh += '<div class="myar-error-count" style="color:' + col + ';">' + count + '</div>';
+            eh += '</div>';
+          });
+          eh += '</div>';
+          $('dash-errors').innerHTML = eh;
+        } else {
+          $('dash-errors').innerHTML = '';
+        }
+
+        // Batch cards
+        $('dash-batches-title').style.display = 'flex';
+        let bh = '';
+        jobIds.slice().reverse().forEach(jid => {
+          const job = jobMap[jid] || {};
+          const convos = byJob[jid];
+          const jScores = convos.filter(r => r.final_score != null).map(r => Number(r.final_score));
+          const jAvg = jScores.length ? Math.round(jScores.reduce((a, b) => a + b, 0) / jScores.length) : null;
+          const jPassed = convos.filter(r => r.pass_fail === 'passed').length;
+          const jFailed = convos.filter(r => r.pass_fail === 'failed').length;
+          const jPassRate = convos.length > 0 ? Math.round((jPassed / convos.length) * 100) : 0;
+          let jErr = { total: 0 }; convos.forEach(r => { jErr.total += errorsFrom(r.parameters_result).total; });
+
+          const st = job.status || 'completed';
+          const radius = 16, circ = 2 * Math.PI * radius;
+          const ringPct = jAvg != null ? jAvg / 100 : 0;
+          const dashOff = circ * (1 - ringPct);
+          const ringCol = jAvg != null ? scoreRingColor(jAvg) : '#d1d5db';
+
+          bh += '<div class="myar-batch" data-jid="' + esc(jid) + '">';
+          bh += '<div class="myar-batch-accent myar-batch-accent-' + st + '"></div>';
+          bh += '<div class="myar-batch-body">';
+          bh += '<div class="myar-batch-info">';
+          bh += '<h3 class="myar-batch-title">' + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) + '</h3>';
+          bh += '<div class="myar-batch-meta">' + icons.calendar + ' Created ' + fmtDateTime(job.created_at) + ' &nbsp;\u00b7&nbsp; <span class="myar-pill myar-pill-' + st + '">' + esc((st || 'completed').charAt(0).toUpperCase() + (st || '').slice(1)) + '</span></div>';
+          bh += '</div>';
+          bh += '<div class="myar-batch-stats">';
+          bh += '<div class="myar-batch-stat"><div class="myar-batch-stat-val">' + convos.length + '</div><div class="myar-batch-stat-lbl">Convos</div></div>';
+          bh += '<div class="myar-batch-stat"><div class="myar-batch-stat-val" style="color:' + (jPassRate >= 80 ? '#166534' : jPassRate >= 50 ? '#854d0e' : '#b91c1c') + ';">' + jPassRate + '%</div><div class="myar-batch-stat-lbl">Pass Rate</div></div>';
+          bh += '<div class="myar-batch-stat"><div class="myar-batch-stat-val" style="color:' + (jErr.total > 0 ? '#b91c1c' : '#166534') + ';">' + jErr.total + '</div><div class="myar-batch-stat-lbl">Errors</div></div>';
+          bh += '</div>';
+          bh += '<div class="myar-batch-ring"><svg viewBox="0 0 40 40"><circle class="myar-batch-ring-bg" cx="20" cy="20" r="' + radius + '"/><circle class="myar-batch-ring-fg" cx="20" cy="20" r="' + radius + '" stroke="' + ringCol + '" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOff.toFixed(2) + '"/></svg><div class="myar-batch-ring-label" style="color:' + ringCol + ';">' + (jAvg != null ? jAvg + '%' : '\u2014') + '</div></div>';
+          bh += '</div></div>';
+        });
+        $('dash-batches').innerHTML = bh;
+        $('dash-batches').querySelectorAll('.myar-batch').forEach(card => {
+          card.addEventListener('click', () => goToBatch(card.getAttribute('data-jid')));
+        });
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  VIEW 2: Batch Conversations
+       * ═══════════════════════════════════════════════════════ */
+      function renderBatchView(jobId) {
+        const convos = allResults.filter(r => r.job_id === jobId);
+        curBatchConvos = convos;
+
+        const jScores = convos.filter(r => r.final_score != null).map(r => Number(r.final_score));
+        const jAvg = jScores.length ? Math.round(jScores.reduce((a, b) => a + b, 0) / jScores.length) : null;
+        const jMin = jScores.length ? Math.min(...jScores) : null;
+        const jMax = jScores.length ? Math.max(...jScores) : null;
+        const passed = convos.filter(r => r.pass_fail === 'passed').length;
+        const failed = convos.filter(r => r.pass_fail === 'failed').length;
+        const passRate = convos.length > 0 ? Math.round((passed / convos.length) * 100) : 0;
+        let jErr = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+        convos.forEach(r => { const e = errorsFrom(r.parameters_result); for (const k in jErr) jErr[k] += e[k]; });
+        const avgErr = convos.length > 0 ? (jErr.total / convos.length).toFixed(1) : '0';
+
+        let kh = '';
+        kh += kpi('Conversations', convos.length, '', '#3b82f6', icons.chat);
+        kh += kpi('Avg Score', jAvg != null ? jAvg + '%' : '\u2014', jMin != null ? esc('Min ' + jMin + '% \u00b7 Max ' + jMax + '%') : '', '#10b981', icons.target, jAvg != null ? scoreColor(jAvg) : undefined);
+        kh += kpi('Pass Rate', passRate + '%', esc(passed + ' passed \u00b7 ' + failed + ' failed'), passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, passRate >= 80 ? '#166534' : passRate >= 50 ? '#854d0e' : '#b91c1c');
+        kh += kpi('Total Errors', jErr.total, esc('Avg ' + avgErr + ' per conversation'), '#ef4444', icons.alert);
+        kh += kpi('Critical', jErr.criticalFail + jErr.critical, jErr.criticalFail > 0 ? esc(jErr.criticalFail + ' auto-fail') : '', '#7f1d1d', icons.zap, '#b91c1c');
+        $('batch-kpis').innerHTML = kh;
+
+        $('conv-search').value = '';
+        $('conv-pf').value = '';
+        $('conv-sort').value = 'errors-desc';
+        renderConvoTable();
+      }
+
+      function renderConvoTable() {
+        const search = $('conv-search').value.toLowerCase().trim();
+        const pf = $('conv-pf').value;
+        const sort = $('conv-sort').value;
+        let list = curBatchConvos.slice();
+        if (search) list = list.filter(c => (c.conversation_id || '').toLowerCase().includes(search) || (c.ai_notes || '').toLowerCase().includes(search));
+        if (pf) list = list.filter(c => c.pass_fail === pf);
+        list.sort((a, b) => {
+          const ae = errorsFrom(a.parameters_result).total, be = errorsFrom(b.parameters_result).total;
+          const as2 = a.final_score != null ? Number(a.final_score) : -1, bs2 = b.final_score != null ? Number(b.final_score) : -1;
+          const ad = new Date(a.created_at || 0).getTime(), bd = new Date(b.created_at || 0).getTime();
+          switch (sort) {
+            case 'errors-desc': return be - ae; case 'errors-asc': return ae - be;
+            case 'score-asc': return as2 - bs2; case 'score-desc': return bs2 - as2;
+            case 'date-desc': return bd - ad; case 'date-asc': return ad - bd;
+            default: return be - ae;
+          }
+        });
+        const tbody = $('conv-tbody'), tableCard = $('conv-table-card'), emptyEl = $('conv-empty');
+        if (!list.length) { tbody.innerHTML = ''; tableCard.style.display = 'none'; emptyEl.style.display = 'block'; return; }
+        tableCard.style.display = 'block'; emptyEl.style.display = 'none';
+        let rh = '';
+        list.forEach((r, i) => {
+          const e = errorsFrom(r.parameters_result);
+          const sc = r.final_score != null ? Number(r.final_score) : null;
+          const scHtml = sc != null ? '<span class="myar-score ' + scoreClass(sc) + '">' + sc + '%</span>' : '\u2014';
+          const rpf = r.pass_fail || 'n/a';
+          const conf = r.confidence_score != null ? Number(r.confidence_score) + '%' : '\u2014';
+          function errBadge(val, type) { if (val === 0) return '<span class="myar-err-num myar-err-zero">0</span>'; if (type === 'crit') return '<span class="myar-err-num myar-err-some">' + val + '</span>'; return '<span class="myar-err-num myar-err-warn">' + val + '</span>'; }
+          rh += '<tr data-ci="' + i + '"><td><span class="myar-conv-id">' + esc(truncId(r.conversation_id)) + '</span></td><td>' + scHtml + '</td><td><span class="myar-pill ' + pfClass(rpf) + '">' + esc(rpf.toUpperCase()) + '</span></td><td>' + errBadge(e.total, e.total > 3 ? 'crit' : 'warn') + '</td><td>' + errBadge(e.criticalFail + e.critical, 'crit') + '</td><td>' + errBadge(e.significant, 'warn') + '</td><td>' + errBadge(e.major, 'warn') + '</td><td>' + errBadge(e.minor, 'warn') + '</td><td>' + esc(conf) + '</td><td style="white-space:nowrap;">' + esc(fmtDate(r.audit_date || r.created_at)) + '</td></tr>';
+        });
+        tbody.innerHTML = rh; tbody._data = list;
+        tbody.querySelectorAll('tr[data-ci]').forEach(tr => { tr.addEventListener('click', () => { const i = +tr.getAttribute('data-ci'); if (tbody._data?.[i]) openModal(tbody._data[i]); }); });
+      }
+      $('conv-search').addEventListener('input', renderConvoTable);
+      $('conv-pf').addEventListener('change', renderConvoTable);
+      $('conv-sort').addEventListener('change', renderConvoTable);
+
+      /* ═══════════════════════════════════════════════════════
+       *  Detail Modal
+       * ═══════════════════════════════════════════════════════ */
+      const overlay = $('myar-overlay');
+      function openModal(result) {
+        $('modal-title').textContent = 'Conversation ' + (result.conversation_id ? truncId(result.conversation_id) : '');
+        const cid = result.conversation_id || '';
+        const cLink = cid ? '<a href="https://app.intercom.com/a/inbox/_/inbox/conversation/' + encodeURIComponent(cid) + '" target="_blank" rel="noopener">Open in Intercom</a>' : '';
+        let sp = ['Date: ' + esc(fmtDate(result.audit_date || result.created_at))];
+        if (cLink) sp.push(cLink);
+        $('modal-sub').innerHTML = sp.join('<span style="color:#9ca3af; margin:0 0.4rem;">\u00b7</span>');
+        let h = '';
+        const sc = result.final_score != null ? Number(result.final_score) : null;
+        const conf = result.confidence_score != null ? Number(result.confidence_score) : null;
+        const pf = result.pass_fail || 'n/a';
+        h += '<div class="myar-modal-scores">';
+        h += '<div class="myar-modal-sc"><p class="myar-modal-sc-label">Score</p><p class="myar-modal-sc-val" style="color:' + (sc != null ? scoreColor(sc) : '#374151') + ';">' + (sc != null ? sc + '%' : '\u2014') + '</p></div>';
+        h += '<div class="myar-modal-sc"><p class="myar-modal-sc-label">Result</p><p class="myar-modal-sc-val"><span class="myar-pill ' + pfClass(pf) + '" style="font-size:1rem;">' + esc(pf.toUpperCase()) + '</span></p></div>';
+        h += '<div class="myar-modal-sc"><p class="myar-modal-sc-label">Confidence</p><p class="myar-modal-sc-val" style="color:#374151;">' + (conf != null ? (conf > 1 ? conf + '%' : (conf * 100).toFixed(0) + '%') : '\u2014') + '</p></div>';
+        h += '</div>';
+        const params = Array.isArray(result.parameters_result) ? result.parameters_result : [];
+        const e = errorsFrom(params);
+        h += '<div class="myar-modal-errors"><div class="myar-modal-err-grid">';
+        [['Total Errors', e.total], ['Critical Fail', e.criticalFail], ['Critical', e.critical], ['Significant', e.significant], ['Major', e.major], ['Minor', e.minor]].forEach(([l, v]) => {
+          h += '<div><p class="myar-modal-err-label">' + l + '</p><div class="myar-modal-err-val">' + v + '</div></div>';
+        });
+        h += '</div></div>';
+        if (params.length > 0) {
+          h += '<div class="myar-modal-section"><div class="myar-modal-section-title">' + icons.alert + ' Error Details</div>';
+          h += '<div class="myar-param-wrap"><div class="myar-param-head"><div class="myar-pgrid hdr"><div>Error Type</div><div style="text-align:center;">Points</div><div style="text-align:center;">Severity</div><div style="text-align:center;">Status</div><div>Feedback</div></div></div>';
+          h += '<div style="padding:0 0.875rem 0.875rem;">';
+          params.forEach(p => {
+            const m = Number(p.measurement) || 0;
+            const cat = (p.error_category || '').toLowerCase();
+            let sev;
+            if (p.is_fail_all || cat.includes('fail')) sev = { bg: '#7f1d1d', fg: '#fff', lbl: 'CRITICAL FAIL' };
+            else if (cat.includes('critical')) sev = { bg: '#991b1b', fg: '#fff', lbl: 'CRITICAL' };
+            else if (cat.includes('significant')) sev = { bg: '#c2410c', fg: '#fff', lbl: 'SIGNIFICANT' };
+            else if (cat.includes('major')) sev = { bg: '#b45309', fg: '#fff', lbl: 'MAJOR' };
+            else if (cat.includes('minor')) sev = { bg: '#ca8a04', fg: '#fff', lbl: 'MINOR' };
+            else sev = { bg: '#b91c1c', fg: '#fff', lbl: (p.error_category || 'ERROR').toUpperCase() };
+            const has = m > 0;
+            const stHtml = has ? '<span style="color:#ef4444; font-weight:700;">' + m + ' \u2716</span>' : '<span style="color:#10b981; font-weight:700;">\u2714</span>';
+            const fb = Array.isArray(p.feedback) ? p.feedback : [];
+            const fbHtml = fb.length > 0 ? '<ul>' + fb.map(f => '<li>' + esc(String(f)) + '</li>').join('') + '</ul>' : '<span style="color:#9ca3af; font-style:italic;">No feedback</span>';
+            h += '<div class="myar-prow"><div class="myar-pgrid"><div class="myar-pname"><span style="font-weight:700; color:' + (has ? '#ef4444' : '#10b981') + ';">' + (has ? '\u2212' : '+') + '</span> ' + esc(p.error_name || 'Parameter') + '</div><div class="myar-ppoints">' + (p.penalty_points || 0) + '</div><div style="text-align:center;"><span class="myar-sev-badge" style="background:' + sev.bg + '; color:' + sev.fg + ';">' + sev.lbl + '</span></div><div class="myar-pstatus">' + stHtml + '</div><div class="myar-pfeedback">' + fbHtml + '</div></div></div>';
+          });
+          h += '</div></div></div>';
+        }
+        if (result.ai_notes) {
+          h += '<div class="myar-modal-section"><div class="myar-modal-section-title">' + icons.zap + ' AI Notes</div><div class="myar-ai-notes">' + esc(result.ai_notes) + '</div></div>';
+        }
+        $('modal-body').innerHTML = h;
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
+      }
+      function closeModal() { overlay.classList.remove('open'); overlay.classList.add('closing'); setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('closing'); }, 200); }
+      $('modal-close').addEventListener('click', closeModal);
+      overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal(); });
+
+      /* ── Sticky nav scroll shadow ──────────────────────────── */
+      const navBar = $('myar-nav-bar');
+      function checkScroll() { const mc = document.querySelector('.main-content'); const sy = mc ? mc.scrollTop : window.scrollY; navBar.classList.toggle('scrolled', sy > 8); }
+      window.addEventListener('scroll', checkScroll, { passive: true });
+      const mc = document.querySelector('.main-content'); if (mc) mc.addEventListener('scroll', checkScroll, { passive: true });
+
+      /* ═══════════════════════════════════════════════════════
+       *  Init
+       * ═══════════════════════════════════════════════════════ */
+      const errEl = $('myar-error');
+      try {
+        const data = await api('/api/massive-ai-audit/my-results');
+        allResults = data.results || [];
+        jobMap = data.jobs || {};
+        $('dash-loading').style.display = 'none';
+        setBreadcrumb([{ label: 'My Results' }]);
+        renderDashboard();
+      } catch (e) {
+        $('dash-loading').style.display = 'none';
+        errEl.textContent = e?.message || 'Failed to load data';
+        errEl.style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -166,3 +166,8 @@ pids/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Local / one-off data and workflow exports (do not push)
+hybrid_ai_workflow.json
+docs/n8n-massive-ai-audit-workflow.json
+/Scorecard*.csv
+

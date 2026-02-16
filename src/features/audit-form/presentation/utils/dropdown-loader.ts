@@ -106,8 +106,22 @@ export class DropdownLoader {
           channelSelect.setAttribute('data-listener-attached', 'true');
           channelSelect.addEventListener('change', async () => {
             const selectedChannel = channelSelect.value;
-            if (typeof (window as any).reloadScorecards === 'function') {
-              await (window as any).reloadScorecards(selectedChannel || null);
+            if (!selectedChannel) {
+              if (typeof (window as any).loadScorecards === 'function') {
+                await (window as any).loadScorecards(null, null, true);
+              }
+              return;
+            }
+            
+            // Resolve channel ID to name from selected option text
+            const selectedOption = channelSelect.options[channelSelect.selectedIndex];
+            const channelName = selectedOption?.textContent?.trim() || selectedChannel;
+            
+            // Auto-select default scorecard for this channel
+            if (typeof (window as any).autoSelectScorecardByChannel === 'function') {
+              await (window as any).autoSelectScorecardByChannel(selectedChannel);
+            } else if (typeof (window as any).loadScorecards === 'function') {
+              await (window as any).loadScorecards(channelName, null, false);
             }
           });
         }

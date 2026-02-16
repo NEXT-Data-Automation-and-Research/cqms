@@ -207,6 +207,18 @@
                                 <p class="form-hint" style="margin-top: 0.5rem; color: #166534;">When multiple scorecards are active for a channel, the default one will be selected automatically.</p>
                             </div>
                         </div>
+
+                        <!-- Massive AI Audit Toggle -->
+                        <div style="grid-column: 1 / -1; margin-top: 0.375rem;">
+                            <label style="display: flex; align-items: center; gap: 0.375rem; padding: 0.5625rem; background: #f5f3ff; border: 0.0469rem solid #c4b5fd; border-radius: 0.1875rem; cursor: pointer;">
+                                <input type="checkbox" id="useForMassiveAiAudit" style="width: 0.75rem; height: 0.75rem; cursor: pointer; accent-color: #7c3aed;">
+                                <div>
+                                    <span style="font-size: 0.5156rem; font-weight: 600; color: #5b21b6;">Use for Massive AI Audit</span>
+                                    <span style="font-size: 0.5156rem; font-weight: 500; color: #7c3aed; background: #ede9fe; padding: 0.0625rem 0.25rem; border-radius: 0.125rem; margin-left: 0.25rem;">Beta</span>
+                                    <small style="font-size: 0.4219rem; color: #6d28d9; display: block; margin-top: 0.125rem;">When enabled, this scorecard will appear in the Massive AI Audit scorecard picker for batch AI-driven audits.</small>
+                                </div>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -719,10 +731,14 @@ function createScorecardRow(scorecard) {
     const scoringTypeLabel = scoringTypeLabels[scorecard.scoring_type] || 'Deductive';
     const scoringTypeColor = scoringTypeColors[scorecard.scoring_type] || '#6b7280';
     
+    const massiveAiBadge = scorecard.use_for_massive_ai_audit
+        ? '<span style="display: inline-flex; align-items: center; padding: 0.0625rem 0.25rem; border-radius: 0.125rem; font-size: 0.4rem; font-weight: 600; background: #ede9fe; color: #7c3aed; margin-left: 0.25rem; letter-spacing: 0.03em;">MASSIVE AI</span>'
+        : '';
+
     return `
         <tr>
             <td>
-                <div style="font-weight: 600; color: #1A733E;">${escapeHtml(scorecard.name)}</div>
+                <div style="font-weight: 600; color: #1A733E; display: flex; align-items: center; gap: 0.125rem;">${escapeHtml(scorecard.name)}${massiveAiBadge}</div>
             </td>
             <td>
                 <span style="display: inline-flex; align-items: center; padding: 0.1875rem 0.375rem; border-radius: 0.1875rem; font-size: 0.4688rem; font-weight: 600; background-color: ${scoringTypeColor}15; color: ${scoringTypeColor}; text-transform: uppercase; letter-spacing: 0.05em;">
@@ -915,6 +931,7 @@ async function openScorecardModal(scorecard = null) {
         document.getElementById('scoringType').value = scorecard.scoring_type || 'deductive';
         document.getElementById('maxBonusPoints').value = scorecard.max_bonus_points || 20;
         document.getElementById('allowOver100').checked = scorecard.allow_over_100 || false;
+        document.getElementById('useForMassiveAiAudit').checked = scorecard.use_for_massive_ai_audit || false;
         
         // Set selected channels
         setSelectedChannels(scorecard.channels || '');
@@ -1530,7 +1547,8 @@ async function handleScorecardSubmit(e) {
         scoring_type: scoringType,
         created_by: userEmail,
         // Always include default_for_channels (even if empty) so it can be cleared
-        default_for_channels: defaultChannelsString || null
+        default_for_channels: defaultChannelsString || null,
+        use_for_massive_ai_audit: document.getElementById('useForMassiveAiAudit').checked
     };
     
     // Add hybrid-specific fields
@@ -1845,7 +1863,8 @@ async function handleScorecardSubmit(e) {
                     description: scorecardData.description,
                     channels: scorecardData.channels,
                     default_for_channels: scorecardData.default_for_channels,
-                    passing_threshold: scorecardData.passing_threshold
+                    passing_threshold: scorecardData.passing_threshold,
+                    use_for_massive_ai_audit: scorecardData.use_for_massive_ai_audit
                 };
                 
                 // Add hybrid-specific fields if applicable
