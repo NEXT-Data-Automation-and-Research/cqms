@@ -562,7 +562,8 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   const hasSupabaseKey = !!supabaseKey;
   
   if (hasSupabaseUrl && supabaseUrl) {
-    safeEnv.SUPABASE_URL = supabaseUrl;
+    // Strip trailing slash so the client never requests the root path (which returns 404 / "requested path is invalid")
+    safeEnv.SUPABASE_URL = String(supabaseUrl).replace(/\/+$/, '');
   }
   if (hasSupabaseKey && supabaseKey) {
     safeEnv.SUPABASE_ANON_KEY = supabaseKey;

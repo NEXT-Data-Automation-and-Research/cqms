@@ -3,6 +3,7 @@
  * POST /api/massive-ai-audit/start — create job and trigger n8n (one payload per agent, 2s delay)
  * GET /api/massive-ai-audit/jobs/:id — get job (progress + details)
  * PATCH /api/massive-ai-audit/jobs/:id/progress — update progress (called by n8n/edge function; service auth)
+ * POST /api/massive-ai-audit/jobs/:id/cancel — cancel a running/queued/scheduled job
  */
 
 import { Router, Request, Response } from 'express';
@@ -19,6 +20,93 @@ const router = Router();
 const logger = createLogger('MassiveAIAudit');
 
 const DELAY_MS = 2000;
+
+/** Maximum number of massive AI audits that can run concurrently (queued + running). */
+const MAX_CONCURRENT_AUDITS = 2;
+
+/** In-memory set of cancelled job IDs so the trigger loop can abort early. */
+const cancelledJobIds = new Set<string>();
+
+/** Count jobs currently occupying a slot (queued or running). Uses admin client to see all jobs. */
+async function getActiveAuditCount(): Promise<number> {
+  try {
+    const admin = getServerSupabase();
+    const { count, error } = await admin
+      .from('massive_ai_audit_jobs')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['queued', 'running']);
+    if (error) {
+      logger.warn('getActiveAuditCount failed', { error: error.message });
+      return 0;
+    }
+    return typeof count === 'number' ? count : 0;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn('getActiveAuditCount failed', { error: message });
+    return 0;
+  }
+}
+
+/**
+ * When a job finishes (completed/failed/cancelled), check if there is a scheduled job waiting
+ * and a free slot to run it. If so, move it to 'queued' and kick off the trigger loop.
+ */
+async function startNextScheduledJob(): Promise<void> {
+  try {
+    const activeCount = await getActiveAuditCount();
+    if (activeCount >= MAX_CONCURRENT_AUDITS) return;
+
+    const admin = getServerSupabase();
+    const { data: next, error: fetchErr } = await admin
+      .from('massive_ai_audit_jobs')
+      .select('id, scorecard_id, start_date, end_date, payload_snapshot')
+      .eq('status', 'scheduled')
+      .order('scheduled_at', { ascending: true, nullsFirst: false })
+      .limit(1)
+      .single();
+
+    if (fetchErr || !next?.id) return;
+
+    // Atomically move to queued (only if still scheduled — avoids race)
+    const { error: upd } = await admin
+      .from('massive_ai_audit_jobs')
+      .update({ status: 'queued', scheduled_at: null })
+      .eq('id', next.id)
+      .eq('status', 'scheduled');
+    if (upd) return;
+
+    logger.info('massive-ai-audit: auto-starting scheduled job', { jobId: next.id });
+
+    const snapshot = (next.payload_snapshot ?? {}) as {
+      intercom_admin_ids?: string[];
+      agents?: Array<{ intercom_admin_id?: string; email?: string; name?: string }>;
+      notify_me_when_done?: boolean;
+      notify_results_to_audited_people?: boolean;
+    };
+    const intercomAdminIds = Array.isArray(snapshot.intercom_admin_ids) ? snapshot.intercom_admin_ids : [];
+    if (intercomAdminIds.length === 0) return;
+
+    const edgeFunctionUrl = getMassiveAiAuditTriggerUrl();
+    const triggerKey = getMassiveAiAuditTriggerKey();
+    if (!edgeFunctionUrl || !triggerKey) return;
+
+    setImmediate(() => {
+      triggerMassiveAuditLoop(next.id, {
+        scorecard_id: next.scorecard_id,
+        start_date: next.start_date,
+        end_date: next.end_date,
+        intercom_admin_ids: intercomAdminIds,
+        agents: Array.isArray(snapshot.agents) ? snapshot.agents : [],
+        notify_me_when_done: Boolean(snapshot.notify_me_when_done),
+        notify_results_to_audited_people: Boolean(snapshot.notify_results_to_audited_people),
+        edgeFunctionUrl,
+        supabaseKey: triggerKey,
+      }).catch((err) => logger.error('massive-ai-audit auto-start error', { jobId: next.id, error: err }));
+    });
+  } catch (err) {
+    logger.error('startNextScheduledJob error', err);
+  }
+}
 
 /** Edge function URL: optional explicit URL, else derived from SUPABASE_URL. */
 function getMassiveAiAuditTriggerUrl(): string | null {
@@ -59,8 +147,13 @@ function progressUpdateAuth(req: Request, res: Response, next: () => void): void
 
 /**
  * POST /api/massive-ai-audit/start
- * Body: scorecard_id, start_date, end_date, intercom_admin_ids[], notify_me_when_done?, notify_results_to_audited_people?
- * Creates job, returns job_id immediately, then async sends one request per agent to n8n with 2s delay.
+ * Body: scorecard_id, start_date, end_date, intercom_admin_ids[], notify_me_when_done?,
+ *       notify_results_to_audited_people?, schedule_for_later? (boolean)
+ *
+ * Concurrency: max 2 audits running at once (queued + running).
+ *  - If limit reached and schedule_for_later is false/absent → 429 with code MAX_CONCURRENT_AUDITS.
+ *  - If limit reached and schedule_for_later is true → create job with status 'scheduled';
+ *    it will auto-start when a slot opens.
  */
 router.post('/start', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
   try {
@@ -97,6 +190,7 @@ router.post('/start', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Req
 
     const notifyMe = Boolean(body.notify_me_when_done ?? body.notifyMeWhenDone);
     const notifyPeople = Boolean(body.notify_results_to_audited_people ?? body.notifyResultsToAuditedPeople);
+    const scheduleForLater = Boolean(body.schedule_for_later ?? body.scheduleForLater);
     const agentsSnapshot = body.agents ?? null;
 
     const payloadSnapshot = {
@@ -106,19 +200,41 @@ router.post('/start', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Req
       notify_results_to_audited_people: notifyPeople,
     };
 
+    // ── Concurrency check ────────────────────────────────────────
+    const activeCount = await getActiveAuditCount();
+    const limitReached = activeCount >= MAX_CONCURRENT_AUDITS;
+
+    if (limitReached && !scheduleForLater) {
+      res.status(429).json({
+        success: false,
+        error: `${activeCount} massive AI audit(s) are already running. More than ${MAX_CONCURRENT_AUDITS} running at the same time is not allowed. Cancel a running audit or schedule this one for later.`,
+        code: 'MAX_CONCURRENT_AUDITS',
+        running_count: activeCount,
+      });
+      return;
+    }
+
+    // Determine initial status
+    const initialStatus = limitReached ? 'scheduled' : 'queued';
+
+    const insertRow: Record<string, unknown> = {
+      created_by: userEmail,
+      scorecard_id: scorecardId,
+      start_date: startDate,
+      end_date: endDate,
+      status: initialStatus,
+      total_agents: intercomAdminIds.length,
+      completed_agents: 0,
+      completed_conversations: 0,
+      payload_snapshot: payloadSnapshot,
+    };
+    if (initialStatus === 'scheduled') {
+      insertRow.scheduled_at = new Date().toISOString();
+    }
+
     const { data: job, error: insertError } = await supabase
       .from('massive_ai_audit_jobs')
-      .insert({
-        created_by: userEmail,
-        scorecard_id: scorecardId,
-        start_date: startDate,
-        end_date: endDate,
-        status: 'queued',
-        total_agents: intercomAdminIds.length,
-        completed_agents: 0,
-        completed_conversations: 0,
-        payload_snapshot: payloadSnapshot,
-      })
+      .insert(insertRow)
       .select('id, status, total_agents')
       .single();
 
@@ -132,6 +248,20 @@ router.post('/start', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Req
     }
 
     const jobId = job.id;
+
+    // If scheduled, respond and exit — the job will auto-start when a slot opens
+    if (initialStatus === 'scheduled') {
+      logger.info('massive-ai-audit: job scheduled (queue full)', { jobId, activeCount });
+      res.status(200).json({
+        success: true,
+        job_id: jobId,
+        status: 'scheduled',
+        scheduled: true,
+        total_agents: job.total_agents,
+      });
+      return;
+    }
+
     res.status(200).json({
       success: true,
       job_id: jobId,
@@ -169,7 +299,8 @@ router.post('/start', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Req
   }
 });
 
-/** One request per agent to edge function (which forwards to n8n), 2s delay between each */
+/** One request per agent to edge function (which forwards to n8n), 2s delay between each.
+ *  Checks cancelledJobIds before each agent to abort early when the job is cancelled. */
 async function triggerMassiveAuditLoop(
   jobId: string,
   params: {
@@ -196,6 +327,13 @@ async function triggerMassiveAuditLoop(
   }
 
   for (let i = 0; i < params.intercom_admin_ids.length; i++) {
+    // Abort if the job was cancelled while looping
+    if (cancelledJobIds.has(jobId)) {
+      logger.info('massive-ai-audit: trigger loop aborted (job cancelled)', { jobId, stoppedAtIndex: i });
+      cancelledJobIds.delete(jobId);
+      return;
+    }
+
     const singleId = params.intercom_admin_ids[i];
     // Resolve agent name/email from agents snapshot
     const agentInfo = (params.agents || []).find(
@@ -309,12 +447,12 @@ router.get('/jobs', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Reque
 
     let query = supabase
       .from('massive_ai_audit_jobs')
-      .select('id, created_at, created_by, scorecard_id, start_date, end_date, status, total_agents, total_conversations, completed_agents, completed_conversations, error_message, completed_at')
+      .select('id, created_at, created_by, scorecard_id, start_date, end_date, status, total_agents, total_conversations, completed_agents, completed_conversations, error_message, completed_at, scheduled_at')
       .order('created_at', { ascending: false })
       .limit(100);
 
     if (createdBy) query = query.eq('created_by', createdBy);
-    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled'].includes(status)) {
+    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled', 'scheduled'].includes(status)) {
       query = query.eq('status', status);
     }
     if (scorecardId) query = query.eq('scorecard_id', scorecardId);
@@ -366,7 +504,7 @@ router.get('/results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Re
       .from('massive_ai_audit_jobs')
       .select('id, payload_snapshot');
     if (createdBy) jobsQuery = jobsQuery.eq('created_by', createdBy);
-    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled'].includes(status)) {
+    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled', 'scheduled'].includes(status)) {
       jobsQuery = jobsQuery.eq('status', status);
     }
     if (scorecardId) jobsQuery = jobsQuery.eq('scorecard_id', scorecardId);
@@ -467,7 +605,7 @@ router.get('/jobs/:id', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: R
 
     const { data: job, error } = await supabase
       .from('massive_ai_audit_jobs')
-      .select('id, created_at, created_by, scorecard_id, start_date, end_date, status, total_agents, total_conversations, completed_agents, completed_conversations, payload_snapshot, error_message, completed_at')
+      .select('id, created_at, created_by, scorecard_id, start_date, end_date, status, total_agents, total_conversations, completed_agents, completed_conversations, payload_snapshot, error_message, completed_at, scheduled_at')
       .eq('id', id)
       .single();
 
@@ -609,9 +747,11 @@ router.patch('/jobs/:id/progress', progressUpdateAuth, async (req: Request, res:
         const updates: Record<string, unknown> = { completed_agents: newCompleted };
 
         // Auto-complete: if all agents done and not already completed/failed
+        let justCompleted = false;
         if (autoComplete && newCompleted >= (job.total_agents ?? 0) && !['completed', 'failed', 'cancelled'].includes(job.status)) {
           updates.status = 'completed';
           updates.completed_at = new Date().toISOString();
+          justCompleted = true;
         }
 
         const { error: updErr } = await admin.from('massive_ai_audit_jobs').update(updates).eq('id', id);
@@ -622,10 +762,13 @@ router.patch('/jobs/:id/progress', progressUpdateAuth, async (req: Request, res:
         }
 
         res.status(200).json({ success: true, completed_agents: newCompleted });
+        if (justCompleted) setImmediate(() => startNextScheduledJob());
         return;
       }
 
       res.status(200).json({ success: true, ...((updated as Record<string, unknown>) ?? {}) });
+      // RPC may have auto-completed — check and start next if so
+      setImmediate(() => startNextScheduledJob());
       return;
     }
 
@@ -655,6 +798,12 @@ router.patch('/jobs/:id/progress', progressUpdateAuth, async (req: Request, res:
     }
 
     res.status(200).json({ success: true });
+
+    // If a job just reached a terminal state, try starting next scheduled job
+    const terminalStatuses = ['completed', 'failed', 'cancelled'];
+    if (typeof updates.status === 'string' && terminalStatuses.includes(updates.status)) {
+      setImmediate(() => startNextScheduledJob());
+    }
   } catch (error: unknown) {
     logger.error('massive-ai-audit progress error', error);
     res.status(500).json({
@@ -727,5 +876,100 @@ router.get('/my-results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req:
     });
   }
 });
+
+/**
+ * POST /api/massive-ai-audit/jobs/:id/cancel
+ * Cancels a running, queued, or scheduled job.
+ * Sets status to 'cancelled' and signals the trigger loop to stop sending new payloads.
+ * Already-dispatched n8n workflows will still finish, but no new agents will be triggered.
+ */
+router.post('/jobs/:id/cancel', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const id = req.params.id;
+    if (!id) {
+      res.status(400).json({ success: false, error: 'Job id required' });
+      return;
+    }
+
+    // Verify user can see this job (RLS)
+    const { data: job, error: accessErr } = await supabase
+      .from('massive_ai_audit_jobs')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (accessErr || !job) {
+      res.status(404).json({ success: false, error: 'Job not found' });
+      return;
+    }
+
+    if (['completed', 'failed', 'cancelled'].includes(job.status)) {
+      res.status(400).json({ success: false, error: `Job is already ${job.status}` });
+      return;
+    }
+
+    // Mark cancelled in DB (admin client to bypass RLS for UPDATE)
+    const admin = getServerSupabase();
+    const { error: updErr } = await admin
+      .from('massive_ai_audit_jobs')
+      .update({ status: 'cancelled', completed_at: new Date().toISOString() })
+      .eq('id', id)
+      .in('status', ['queued', 'running', 'scheduled']);
+
+    if (updErr) {
+      logger.error('massive-ai-audit cancel failed', { id, error: updErr });
+      res.status(500).json({ success: false, error: updErr.message });
+      return;
+    }
+
+    // Signal the in-memory trigger loop to abort
+    cancelledJobIds.add(id);
+    // Clean up after 5 minutes (in case the loop already finished)
+    setTimeout(() => cancelledJobIds.delete(id), 5 * 60 * 1000);
+
+    logger.info('massive-ai-audit: job cancelled', { jobId: id, previousStatus: job.status });
+
+    res.status(200).json({ success: true, status: 'cancelled' });
+
+    // A slot may have opened — start next scheduled job
+    setImmediate(() => startNextScheduledJob());
+  } catch (error: unknown) {
+    logger.error('massive-ai-audit cancel error', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
+    });
+  }
+});
+
+// ── Periodic scheduler: check every 30s for scheduled jobs that can start ──
+const SCHEDULER_INTERVAL_MS = 30_000;
+let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+
+function startSchedulerPolling(): void {
+  if (schedulerTimer) return;
+  // Run once immediately on load (in case slots freed while server was down)
+  setImmediate(() => {
+    startNextScheduledJob().catch((err) =>
+      logger.error('massive-ai-audit scheduler: initial check error', err)
+    );
+  });
+  schedulerTimer = setInterval(() => {
+    startNextScheduledJob().catch((err) =>
+      logger.error('massive-ai-audit scheduler: periodic check error', err)
+    );
+  }, SCHEDULER_INTERVAL_MS);
+  logger.info(`massive-ai-audit: scheduler polling started (every ${SCHEDULER_INTERVAL_MS / 1000}s)`);
+}
+
+// Start polling when module is loaded (i.e. when server boots)
+startSchedulerPolling();
 
 export default router;

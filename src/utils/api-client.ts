@@ -130,7 +130,23 @@ async function apiRequest<T>(
       headers,
     });
 
-    const json = await response.json();
+    // Parse body safely: server or proxy may return plain text (e.g. "Too many requests" on 429)
+    const text = await response.text();
+    let json: any = {};
+    if (text && text.trim()) {
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          json = JSON.parse(text);
+        } catch (e) {
+          logger.warn('Response declared JSON but parse failed', { endpoint, status: response.status, snippet: text.slice(0, 80) });
+          json = { error: text };
+        }
+      } else {
+        // Plain text or other: treat as error message when not ok
+        json = response.ok ? {} : { error: text };
+      }
+    }
 
     if (!response.ok) {
       // Handle 401 errors with automatic token refresh (unless skipRedirectOn401 for permission checks)

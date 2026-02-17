@@ -98,6 +98,18 @@ export function csrfProtection(
     return next();
   }
 
+  // Exempt massive-ai-audit progress updates: called by n8n with x-massive-ai-audit-key (service-to-service).
+  const serviceKey = req.headers['x-massive-ai-audit-key'];
+  const pathOrUrl = [req.path, req.originalUrl, (req as any).url].filter(Boolean).join(' ');
+  const isProgressUpdate =
+    !!serviceKey &&
+    typeof pathOrUrl === 'string' &&
+    pathOrUrl.includes('progress') &&
+    (pathOrUrl.includes('massive-ai-audit') || pathOrUrl.includes('/jobs/'));
+  if (isProgressUpdate) {
+    return next();
+  }
+
   const sessionId = getSessionId(req);
   const token = req.headers['x-csrf-token'] as string || req.body?._csrf;
 

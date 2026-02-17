@@ -168,6 +168,9 @@ pids/
 
 # Local / one-off data and workflow exports (do not push)
 hybrid_ai_workflow.json
+massive_ai_audit_workflow.json
+*_workflow.json
 docs/n8n-massive-ai-audit-workflow.json
+docs/SECURITY-CHECK-REPORT.md
 /Scorecard*.csv
 

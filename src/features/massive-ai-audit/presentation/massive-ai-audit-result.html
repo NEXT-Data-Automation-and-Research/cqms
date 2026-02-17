@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Massive AI Audit | CQMS</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/theme.css">
   <link rel="stylesheet" href="/sidebar.css">
@@ -64,7 +65,7 @@
     .maar-back-btn:hover {
       background: var(--color-background-secondary, #f9fafb);
       color: var(--color-text-primary, #1f2937);
-      border-color: var(--color-primary-500, #645CFE);
+      border-color: var(--maar-green-500, #059669);
     }
     .maar-back-btn.visible { display: flex; }
     .maar-back-btn svg { width: 1rem; height: 1rem; }
@@ -83,7 +84,7 @@
     }
     .maar-bc-btn {
       cursor: pointer;
-      color: var(--color-primary-500, #645CFE);
+      color: var(--maar-green-500, #059669);
       font-weight: 600;
       background: none;
       border: none;
@@ -92,7 +93,7 @@
       font-size: inherit;
       transition: color 0.15s;
     }
-    .maar-bc-btn:hover { color: var(--color-primary-700, #4d42d1); text-decoration: underline; }
+    .maar-bc-btn:hover { color: var(--maar-green-700, #047857); text-decoration: underline; }
     .maar-bc-sep { color: var(--color-text-tertiary, #9ca3af); user-select: none; font-size: 0.75rem; }
     .maar-bc-current { color: var(--color-text-primary, #1f2937); font-weight: 600; }
 
@@ -101,23 +102,63 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
       flex-wrap: wrap;
     }
     .maar-header-left { flex: 1; min-width: 0; }
+    .maar-header-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
     .maar-header h1 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: 1.375rem;
       font-weight: 700;
       color: var(--color-text-primary, #1f2937);
       line-height: 1.3;
+      letter-spacing: -0.02em;
     }
+    .maar-header-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-radius: 4px;
+    }
+    .maar-header-pill.completed { background: #d1fae5; color: #065f46; }
+    .maar-header-pill.running { background: #dbeafe; color: #1e40af; }
+    .maar-header-pill.queued { background: #f3f4f6; color: #4b5563; }
+    .maar-header-pill.scheduled { background: #fef3c7; color: #92400e; }
+    .maar-header-pill.failed { background: #fee2e2; color: #991b1b; }
+    .maar-header-pill.cancelled { background: #f3f4f6; color: #6b7280; }
     .maar-header-desc {
-      margin: 0.25rem 0 0;
-      font-size: 0.875rem;
+      margin: 0.375rem 0 0;
+      font-size: 0.8125rem;
       color: var(--color-text-secondary, #6b7280);
-      line-height: 1.45;
+      line-height: 1.5;
+    }
+    .maar-header-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      margin-top: 0.375rem;
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .maar-header-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .maar-header-meta-item strong {
+      font-weight: 600;
+      color: var(--color-text-primary, #374151);
     }
 
     /* ── Global Error ────────────────────────────────────────── */
@@ -214,6 +255,7 @@
     .maar-pill-completed { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
     .maar-pill-failed    { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
     .maar-pill-cancelled { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+    .maar-pill-scheduled { background: #fef3c7; color: #92400e; }
     .maar-pill-passed    { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
     .maar-pill-failed-pf { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
     .maar-pill-na        { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
@@ -242,7 +284,7 @@
     }
     .maar-progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--color-primary-500, #645CFE), var(--color-primary-400, #8b7cff));
+      background: linear-gradient(90deg, var(--maar-green-500, #059669), var(--maar-green-400, #34d399));
       border-radius: var(--radius-full, 9999px);
       transition: width 0.5s ease;
     }
@@ -272,7 +314,7 @@
     }
     .maar-batch:hover {
       box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
-      border-color: var(--color-primary-400, #8b7cff);
+      border-color: var(--maar-green-400, #34d399);
       transform: translateY(-1px);
     }
     .maar-batch-accent {
@@ -284,6 +326,7 @@
     .maar-batch-accent-queued    { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
     .maar-batch-accent-failed    { background: linear-gradient(90deg, #ef4444, #f87171); }
     .maar-batch-accent-cancelled { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
+    .maar-batch-accent-scheduled { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
     .maar-batch-body {
       padding: 1.25rem 1.5rem;
     }
@@ -293,6 +336,12 @@
       gap: 0.75rem;
       margin-bottom: 0.75rem;
       flex-wrap: wrap;
+    }
+    .maar-batch-top-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
     }
     .maar-batch-title {
       margin: 0;
@@ -312,6 +361,23 @@
     }
     .maar-batch-meta-item { display: flex; align-items: center; gap: 0.35rem; }
     .maar-batch-meta-item svg { width: 0.9375rem; height: 0.9375rem; flex-shrink: 0; opacity: 0.55; }
+    .maar-cancel-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      color: var(--color-text-tertiary, #9ca3af);
+      background: none;
+      border: none;
+      border-radius: 0;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .maar-cancel-btn:hover {
+      color: var(--color-text-secondary, #6b7280);
+    }
+    .maar-batch-top .maar-cancel-btn { margin-top: 0; }
     .maar-batch-progress-row {
       display: flex;
       align-items: center;
@@ -326,6 +392,34 @@
       min-width: 3rem;
       text-align: right;
     }
+    .maar-cancel-bar-compact {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.375rem 0.75rem;
+      margin-bottom: 0.75rem;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 6px;
+      font-size: 0.8125rem;
+      color: #78350f;
+      min-height: 2rem;
+    }
+    .maar-cancel-bar-compact .maar-cancel-bar-text { flex: 1; min-width: 0; }
+    .maar-cancel-bar-compact .maar-cancel-bar-btn {
+      flex-shrink: 0;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #fca5a5;
+      border-radius: 4px;
+      background: #fff;
+      color: #dc2626;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .maar-cancel-bar-compact .maar-cancel-bar-btn:hover { background: #fef2f2; }
     .maar-batch-kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
@@ -558,7 +652,7 @@
       align-items: center;
       gap: 0.5rem;
     }
-    .maar-section-title svg { width: 1.125rem; height: 1.125rem; color: var(--color-primary-500, #645CFE); }
+    .maar-section-title svg { width: 1.125rem; height: 1.125rem; color: var(--maar-green-500, #059669); }
 
     .maar-agents-grid {
       display: grid;
@@ -580,7 +674,7 @@
     }
     .maar-agent:hover {
       box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
-      border-color: var(--color-primary-400, #8b7cff);
+      border-color: var(--maar-green-400, #34d399);
       transform: translateY(-1px);
     }
     .maar-agent-top {
@@ -592,7 +686,7 @@
       width: 2.75rem;
       height: 2.75rem;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--color-primary-500, #645CFE), var(--color-primary-400, #8b7cff));
+      background: linear-gradient(135deg, var(--maar-green-500, #059669), var(--maar-green-400, #34d399));
       color: #fff;
       display: flex;
       align-items: center;
@@ -617,6 +711,14 @@
       font-size: 0.75rem;
       color: var(--color-text-tertiary, #9ca3af);
       margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .maar-agent-alias {
+      font-size: 0.6875rem;
+      color: var(--maar-green-600, #047857);
+      margin: 0.15rem 0 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -769,7 +871,7 @@
       outline: none;
       transition: border-color 0.15s;
     }
-    .maar-search:focus { border-color: var(--color-primary-500, #645CFE); box-shadow: 0 0 0 3px rgba(100, 92, 254, 0.1); }
+    .maar-search:focus { border-color: var(--maar-green-500, #059669); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12); }
     .maar-select {
       padding: 0.55rem 0.875rem;
       border: 1px solid var(--color-border-light, #e5e7eb);
@@ -782,24 +884,63 @@
       cursor: pointer;
       transition: border-color 0.15s;
     }
-    .maar-select:focus { border-color: var(--color-primary-500, #645CFE); }
-    .maar-filters-bar { margin-bottom: 1rem; }
-    .maar-filter-lbl { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-secondary, #6b7280); white-space: nowrap; }
-    .maar-input-date { min-width: 10rem; }
-    .maar-filter-btn {
-      padding: 0.55rem 1rem;
+    .maar-select:focus { border-color: var(--maar-green-500, #059669); }
+    .maar-filters-wrap {
+      margin-bottom: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--color-background-secondary, #f9fafb);
+      border: 1px solid var(--color-border-light, #e5e7eb);
       border-radius: var(--radius-lg, 0.5rem);
+    }
+    .maar-filters-bar {
+      display: flex;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+    }
+    .maar-filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .maar-filter-group-dates .maar-input-date { min-width: 8rem; }
+    .maar-filter-lbl {
+      font-size: 0.625rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-text-secondary, #6b7280);
+      white-space: nowrap;
+    }
+    .maar-input-date { min-width: 8rem; }
+    .maar-filter-actions {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.35rem;
+      margin-left: 0.15rem;
+    }
+    .maar-filter-btn {
+      padding: 0.35rem 0.75rem;
+      border-radius: var(--radius-md, 0.375rem);
       font-size: 0.8125rem;
       font-weight: 600;
       border: none;
       cursor: pointer;
-      background: var(--color-primary-500, #645CFE);
+      background: var(--maar-green-500, #059669);
       color: #fff;
-      transition: background 0.15s, transform 0.1s;
+      transition: background 0.15s;
     }
-    .maar-filter-btn:hover { background: var(--color-primary-600, #4d42d1); }
-    .maar-filter-btn-secondary { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-primary, #1f2937); border: 1px solid var(--color-border-light, #e5e7eb); }
-    .maar-filter-btn-secondary:hover { background: var(--color-border-light, #e5e7eb); }
+    .maar-filter-btn:hover:not(:disabled) { background: var(--maar-green-600, #047857); }
+    .maar-filter-btn:disabled { opacity: 0.8; cursor: not-allowed; }
+    .maar-filter-btn { display: inline-flex; align-items: center; justify-content: center; }
+    .maar-filter-btn .maar-btn-spinner { display: none; width: 0.875rem; height: 0.875rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: maar-spin 0.6s linear infinite; flex-shrink: 0; }
+    .maar-filter-btn.is-loading .maar-btn-spinner { display: inline-block; }
+    .maar-filter-btn .maar-btn-text { margin-left: 0; }
+    .maar-filter-btn.is-loading .maar-btn-text { margin-left: 0.35rem; }
+    .maar-filter-btn-secondary { background: var(--color-background, #fff); color: var(--color-text-secondary, #6b7280); border: 1px solid var(--color-border-light, #e5e7eb); }
+    .maar-filter-btn-secondary:hover:not(:disabled) { background: var(--color-background-secondary, #f9fafb); border-color: var(--color-border, #d1d5db); }
+    .maar-filters-bar .maar-select { padding: 0.4rem 0.6rem; font-size: 0.75rem; min-height: 0; }
+    .maar-filters-bar .maar-filter-btn { font-size: 0.75rem; }
 
     .maar-table-card {
       background: var(--color-background, #ffffff);
@@ -840,7 +981,7 @@
     .maar-table tbody tr:hover { background: var(--color-background-secondary, #f9fafb); }
     .maar-table tbody tr:last-child td { border-bottom: none; }
     .maar-table a {
-      color: var(--color-primary-500, #645CFE);
+      color: var(--maar-green-500, #059669);
       text-decoration: none;
       font-weight: 600;
     }
@@ -848,7 +989,7 @@
 
     .maar-conv-id {
       font-weight: 600;
-      color: var(--color-primary-500, #645CFE);
+      color: var(--maar-green-500, #059669);
       font-family: var(--font-family-mono, monospace);
       font-size: 0.8125rem;
     }
@@ -873,9 +1014,9 @@
       z-index: var(--z-modal, 1050);
       background: rgba(0,0,0,0.5);
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: center;
-      padding: 2rem 1rem;
+      padding: 1.5rem 1rem;
       overflow-y: auto;
       opacity: 0;
       transition: opacity 0.2s ease;
@@ -888,13 +1029,17 @@
       border-radius: var(--radius-xl, 0.75rem);
       box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1));
       width: 100%;
-      max-width: 60rem;
+      max-width: 56rem;
+      max-height: min(90vh, 42rem);
+      display: flex;
+      flex-direction: column;
       transform: translateY(-1rem) scale(0.97);
       transition: transform 0.2s ease;
     }
     .maar-overlay.open .maar-modal { transform: translateY(0) scale(1); }
     .maar-modal-head {
-      padding: 1.25rem 1.5rem;
+      flex-shrink: 0;
+      padding: 1rem 1.25rem;
       border-bottom: 1px solid var(--color-border-light, #e5e7eb);
       display: flex;
       align-items: center;
@@ -916,7 +1061,7 @@
       gap: 0.75rem;
       flex-wrap: wrap;
     }
-    .maar-modal-sub a { color: var(--color-primary-500, #645CFE); text-decoration: none; font-weight: 600; }
+    .maar-modal-sub a { color: var(--maar-green-500, #059669); text-decoration: none; font-weight: 600; }
     .maar-modal-sub a:hover { text-decoration: underline; }
     .maar-modal-close {
       width: 2.25rem;
@@ -934,7 +1079,89 @@
     }
     .maar-modal-close:hover { background: var(--color-background-secondary, #f9fafb); color: var(--color-text-primary, #1f2937); }
     .maar-modal-close svg { width: 1.125rem; height: 1.125rem; }
-    .maar-modal-body { padding: 1.5rem; }
+    .maar-modal-body {
+      padding: 1.25rem 1.5rem;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+    .maar-modal-head-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .maar-modal-expand-btn,
+    .maar-modal-back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      border-radius: var(--radius-md, 0.375rem);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      background: var(--maar-green-500, #059669);
+      color: #fff;
+      border: 1px solid var(--maar-green-600, #047857);
+    }
+    .maar-modal-expand-btn:hover,
+    .maar-modal-back-btn:hover { background: var(--maar-green-600, #047857); color: #fff; }
+    .maar-modal-back-btn {
+      background: var(--color-background, #fff);
+      color: var(--color-text-primary, #1f2937);
+      border-color: var(--color-border-light, #e5e7eb);
+    }
+    .maar-modal-back-btn:hover { background: var(--color-background-secondary, #f9fafb); border-color: var(--maar-green-500, #059669); color: var(--maar-green-600, #047857); }
+    .maar-modal-expand-btn.hidden,
+    .maar-modal-back-btn.hidden { display: none; }
+    .maar-modal.expanded { max-width: 96vw; max-height: 92vh; width: 96vw; }
+    .maar-modal.expanded .maar-modal-body { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .maar-modal-body-inner.expanded {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .maar-expanded-left {
+      flex: 0 0 42%;
+      min-width: 16rem;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--color-border-light, #e5e7eb);
+      background: var(--color-background-secondary, #f9fafb);
+      overflow: hidden;
+    }
+    .maar-expanded-left .maar-expanded-conversation-wrap {
+      flex: 1;
+      min-height: 0;
+      padding: 0.75rem;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .maar-expanded-left #maar-expanded-conversation-container {
+      flex: 1;
+      min-height: 20rem;
+      border-radius: var(--radius-lg, 0.5rem);
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid var(--color-border-light, #e5e7eb);
+    }
+    .maar-expanded-splitter {
+      width: 0.25rem;
+      background: var(--color-border-light, #e5e7eb);
+      flex-shrink: 0;
+      cursor: col-resize;
+    }
+    .maar-expanded-right {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem;
+      background: var(--color-background, #fff);
+    }
 
     /* ── Modal Score Cards ─────────────────────────────────── */
     .maar-modal-scores {
@@ -1003,7 +1230,7 @@
     .maar-modal-section-title {
       font-size: 0.875rem;
       font-weight: 700;
-      color: var(--color-primary-500, #645CFE);
+      color: var(--maar-green-500, #059669);
       margin: 0 0 0.75rem;
       display: flex;
       align-items: center;
@@ -1078,14 +1305,31 @@
       text-align: center;
       color: var(--color-text-secondary, #6b7280);
     }
+    /* Compact loading strip: fixed height so spinner placement never shifts */
+    .maar-loading-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 3rem;
+      padding: 0.75rem 1rem;
+      color: var(--color-text-secondary, #6b7280);
+      font-size: 0.8125rem;
+    }
     .maar-loading-spinner {
       width: 2.5rem;
       height: 2.5rem;
       border: 3px solid var(--color-border-light, #e5e7eb);
-      border-top-color: var(--color-primary-500, #645CFE);
+      border-top-color: var(--maar-green-500, #059669);
       border-radius: 50%;
       margin: 0 auto 1rem;
       animation: maar-spin 0.8s linear infinite;
+    }
+    .maar-loading-strip .maar-loading-spinner {
+      width: 1.25rem;
+      height: 1.25rem;
+      margin: 0;
+      border-width: 2px;
     }
     @keyframes maar-spin { to { transform: rotate(360deg); } }
     .maar-empty-icon {
@@ -1117,6 +1361,10 @@
       .maar-toolbar { flex-direction: column; }
       .maar-search { min-width: 100%; }
       .maar-modal { max-width: 100%; }
+      .maar-modal.expanded { width: 100%; max-width: 100%; }
+      .maar-modal-body-inner.expanded { flex-direction: column; }
+      .maar-expanded-left { flex: 0 0 auto; min-height: 18rem; border-right: none; border-bottom: 1px solid var(--color-border-light, #e5e7eb); }
+      .maar-expanded-splitter { width: 100%; height: 0.25rem; cursor: default; }
       .maar-overlay { padding: 1rem 0.5rem; }
       .maar-pgrid { grid-template-columns: 1fr; gap: 0.35rem; }
       .maar-pgrid.hdr { display: none; }
@@ -1146,8 +1394,12 @@
       <!-- Page Header -->
       <div class="maar-header">
         <div class="maar-header-left">
-          <h1 id="maar-title">Massive AI Audit</h1>
+          <div class="maar-header-title-row">
+            <h1 id="maar-title">Massive AI Audit</h1>
+            <span id="maar-status-pill" class="maar-header-pill" style="display:none;"></span>
+          </div>
           <p class="maar-header-desc" id="maar-desc">AI-powered bulk audit results, organized by batch.</p>
+          <div class="maar-header-meta" id="maar-meta" style="display:none;"></div>
         </div>
       </div>
 
@@ -1156,10 +1408,6 @@
 
       <!-- ═══════ VIEW 1: Batches ═══════════════════════════ -->
       <div class="maar-view active" id="v-batches">
-        <div id="batches-loading" class="maar-loading">
-          <div class="maar-loading-spinner"></div>
-          Loading batches&hellip;
-        </div>
         <div id="batches-empty" class="maar-empty" style="display:none;">
           <div class="maar-empty-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1167,26 +1415,43 @@
           <p class="maar-empty-title">No audit batches yet</p>
           <p>Start a massive AI audit from Audit Distribution to see batches here.</p>
         </div>
-        <div class="maar-toolbar maar-filters-bar" id="batches-filters" style="display:none;">
-          <label class="maar-filter-lbl">Run by</label>
-          <select class="maar-select" id="filter-created-by">
-            <option value="">All</option>
-          </select>
-          <label class="maar-filter-lbl">Status</label>
-          <select class="maar-select" id="filter-status">
-            <option value="">All</option>
-            <option value="queued">Queued</option>
-            <option value="running">Running</option>
-            <option value="completed">Completed</option>
-            <option value="failed">Failed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <label class="maar-filter-lbl">From</label>
-          <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
-          <label class="maar-filter-lbl">To</label>
-          <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
-          <button type="button" class="maar-filter-btn" id="filter-apply">Apply</button>
-          <button type="button" class="maar-filter-btn maar-filter-btn-secondary" id="filter-clear">Clear</button>
+        <div class="maar-filters-wrap" id="batches-filters" style="display:none;">
+          <div class="maar-filters-bar">
+            <div class="maar-filter-group">
+              <label class="maar-filter-lbl" for="filter-created-by">Run by</label>
+              <select class="maar-select" id="filter-created-by">
+                <option value="">All</option>
+              </select>
+            </div>
+            <div class="maar-filter-group">
+              <label class="maar-filter-lbl" for="filter-status">Status</label>
+              <select class="maar-select" id="filter-status">
+                <option value="">All</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="maar-filter-group maar-filter-group-dates">
+              <label class="maar-filter-lbl" for="filter-from-date">From</label>
+              <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
+            </div>
+            <div class="maar-filter-group">
+              <label class="maar-filter-lbl" for="filter-to-date">To</label>
+              <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
+            </div>
+            <div class="maar-filter-actions">
+              <button type="button" class="maar-filter-btn" id="filter-apply"><span class="maar-btn-spinner"></span><span class="maar-btn-text">Apply</span></button>
+              <button type="button" class="maar-filter-btn maar-filter-btn-secondary" id="filter-clear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <div id="batches-loading" class="maar-loading-strip">
+          <div class="maar-loading-spinner" aria-hidden="true"></div>
+          <span>Loading batches&hellip;</span>
         </div>
         <div id="page-summary" class="maar-page-summary" style="display:none;"></div>
         <div id="batches-list" class="maar-batch-list" style="display:none;"></div>
@@ -1194,6 +1459,7 @@
 
       <!-- ═══════ VIEW 2: Batch Detail ══════════════════════ -->
       <div class="maar-view" id="v-batch">
+        <div id="batch-cancel-bar" style="display:none;"></div>
         <div id="batch-kpis" class="maar-kpi-grid"></div>
         <div id="batch-error-bar"></div>
         <div id="batch-agents-title" class="maar-section-title" style="display:none;">
@@ -1255,15 +1521,22 @@
 
     <!-- ═══════ Detail Modal ═══════════════════════════════ -->
     <div id="maar-overlay" class="maar-overlay" style="display:none;">
-      <div class="maar-modal">
+      <div class="maar-modal" id="maar-modal">
         <div class="maar-modal-head">
           <div class="maar-modal-head-info">
             <h2 class="maar-modal-title" id="modal-title">Audit Detail</h2>
             <div class="maar-modal-sub" id="modal-sub"></div>
           </div>
-          <button class="maar-modal-close" id="modal-close" title="Close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+          <div class="maar-modal-head-actions">
+            <button type="button" class="maar-modal-expand-btn hidden" id="modal-expand-btn" title="View with conversation">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              View with conversation
+            </button>
+            <button type="button" class="maar-modal-back-btn hidden" id="modal-back-btn" title="Back to summary">← Back to summary</button>
+            <button class="maar-modal-close" id="modal-close" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
         </div>
         <div class="maar-modal-body" id="modal-body"></div>
       </div>
@@ -1278,7 +1551,7 @@
       const $ = id => document.getElementById(id);
       function esc(s) { if (s == null) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-      function pillClass(s) { return ({ queued:'maar-pill-queued', running:'maar-pill-running', completed:'maar-pill-completed', failed:'maar-pill-failed', cancelled:'maar-pill-cancelled' })[s] || 'maar-pill-queued'; }
+      function pillClass(s) { return ({ queued:'maar-pill-queued', running:'maar-pill-running', completed:'maar-pill-completed', failed:'maar-pill-failed', cancelled:'maar-pill-cancelled', scheduled:'maar-pill-scheduled' })[s] || 'maar-pill-queued'; }
       function pfClass(pf) { if (pf === 'passed') return 'maar-pill-passed'; if (pf === 'failed') return 'maar-pill-failed-pf'; return 'maar-pill-na'; }
       function scoreClass(v) { const n = Number(v); if (n >= 80) return 'maar-score-high'; if (n >= 50) return 'maar-score-mid'; return 'maar-score-low'; }
       function scoreColor(v) { const n = Number(v); if (n >= 80) return '#166534'; if (n >= 50) return '#854d0e'; return '#b91c1c'; }
@@ -1328,10 +1601,48 @@
         const tok = await getToken(3); if (!tok) throw new Error('Session expired. Please refresh.');
         const r = await fetch(path, { headers: { Authorization: 'Bearer ' + tok } });
         if (r.status === 401) throw new Error('Session expired. Please refresh.');
-        if (r.status === 429) throw new Error('Rate limited — wait a moment and refresh.');
+        if (r.status === 429) {
+          const text = await r.text();
+          let msg = 'Too many requests. Wait a moment and refresh.';
+          try { const b = JSON.parse(text); msg = b.error || b.message || msg; } catch (_) { if (text) msg = text; }
+          throw new Error(msg);
+        }
         if (!r.ok) throw new Error(await r.text());
         return r.json();
       };
+
+      /** POST helper with CSRF token support */
+      const apiPost = async (path, body) => {
+        const tok = await getToken(3); if (!tok) throw new Error('Session expired. Please refresh.');
+        const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok };
+        // Fetch CSRF token from GET /api/csrf (token comes back in X-CSRF-Token response header)
+        try {
+          const csrfRes = await fetch('/api/csrf', { method: 'GET', headers: { Authorization: 'Bearer ' + tok } });
+          const csrfToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+          if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+        } catch (e) { /* best-effort */ }
+        const r = await fetch(path, { method: 'POST', headers, body: body ? JSON.stringify(body) : undefined });
+        if (r.status === 429) {
+          const text = await r.text();
+          let msg = 'Too many requests. Wait a moment and try again, or schedule the audit for later.';
+          try { const b = JSON.parse(text); msg = b.error || b.message || msg; } catch (_) { if (text) msg = text; }
+          throw new Error(msg);
+        }
+        if (!r.ok) { const t = await r.text(); throw new Error(t || 'Request failed'); }
+        return r.json();
+      };
+
+      /** Cancel a job (running/queued/scheduled) */
+      async function cancelJob(jobId) {
+        if (!confirm('Are you sure you want to cancel this audit batch? Already-processed conversations will be kept, but no new agents will be triggered.')) return false;
+        try {
+          await apiPost('/api/massive-ai-audit/jobs/' + encodeURIComponent(jobId) + '/cancel');
+          return true;
+        } catch (e) {
+          alert('Failed to cancel: ' + (e.message || 'Unknown error'));
+          return false;
+        }
+      }
 
       /* ═══════════════════════════════════════════════════════
        *  State
@@ -1339,6 +1650,33 @@
       let allJobs = [], curJobId = null, curResults = [], curAgentKey = null, curAgentConvos = [], curAgentName = null;
       const cache = {};
       let navDepth = 0; // 0=batches, 1=batch detail, 2=agent convos
+      /** Intercom admin email -> name (alias) from Intercom API */
+      let intercomAdminByEmail = null;
+      async function ensureIntercomAdmins() {
+        if (intercomAdminByEmail !== null) return;
+        intercomAdminByEmail = {};
+        try {
+          const tok = await getToken(1);
+          const { getSupabase } = await import('/js/utils/supabase-init.js');
+          const sb = getSupabase();
+          const supabaseUrl = (sb && sb.supabaseUrl) ? sb.supabaseUrl : (window.SupabaseConfig && window.SupabaseConfig.url) ? window.SupabaseConfig.url : (window.env && window.env.SUPABASE_URL) ? window.env.SUPABASE_URL : '';
+          if (!supabaseUrl || !tok) return;
+          const url = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins`;
+          const r = await fetch(url, { headers: { Authorization: 'Bearer ' + tok } });
+          if (!r.ok) return;
+          const data = await r.json();
+          const admins = Array.isArray(data) ? data : (data.admins || data.data || []);
+          admins.forEach(a => {
+            const email = (a.email || '').trim().toLowerCase();
+            const name = (a.name || '').trim();
+            if (email && name) intercomAdminByEmail[email] = name;
+          });
+        } catch (e) { console.warn('[maar] Intercom admins fetch failed:', e); }
+      }
+      function getIntercomAlias(email) {
+        if (!email || !intercomAdminByEmail) return null;
+        return intercomAdminByEmail[(email + '').trim().toLowerCase()] || null;
+      }
       let handlingPopstate = false;
       let resultCountsByJob = {}; // { jobId: { count, passed, failed, avgScore } } — from /results endpoint
 
@@ -1402,6 +1740,20 @@
         }
       }
 
+      function setBatchHeaderStatus(status) {
+        const pill = $('maar-status-pill');
+        const meta = $('maar-meta');
+        if (!pill) return;
+        if (!status) {
+          pill.style.display = 'none';
+          if (meta) meta.style.display = 'none';
+          return;
+        }
+        pill.textContent = (status || '').charAt(0).toUpperCase() + (status || '').slice(1);
+        pill.className = 'maar-header-pill ' + (status || '');
+        pill.style.display = 'inline-flex';
+      }
+
       function goToBatches(skipHistory) {
         curJobId = null; curAgentKey = null; curAgentName = null;
         navDepth = 0;
@@ -1409,6 +1761,9 @@
         setBreadcrumb([{ label: 'All Batches' }]);
         $('maar-title').textContent = 'Massive AI Audit';
         $('maar-desc').textContent = 'AI-powered bulk audit results, organized by batch.';
+        $('maar-desc').style.display = '';
+        setBatchHeaderStatus(null);
+        if ($('maar-meta')) $('maar-meta').style.display = 'none';
         updateBackBtn();
         scrollTop();
         if (!skipHistory) pushState({ view: 'batches' });
@@ -1422,14 +1777,22 @@
         const lbl = 'Batch ' + (job ? job.id.slice(0, 8) : jobId.slice(0, 8)) + '\u2026';
         setBreadcrumb([{ label: 'All Batches', fn: () => goToBatches() }, { label: lbl }]);
         $('maar-title').textContent = lbl;
-        $('maar-desc').textContent = job ? 'Run by ' + (job.created_by || '') + ' \u00b7 Audit period: ' + fmtDate(job.start_date) + ' \u2013 ' + fmtDate(job.end_date) : 'Batch audit details.';
+        $('maar-desc').textContent = '';
+        $('maar-desc').style.display = 'none';
+        setBatchHeaderStatus(job ? (job.status || 'queued') : null);
+        const meta = $('maar-meta');
+        if (meta && job) {
+          meta.innerHTML = '<span class="maar-header-meta-item"><strong>Run by</strong> ' + esc(job.created_by || '\u2014') + '</span>'
+            + '<span class="maar-header-meta-item"><strong>Audit period</strong> ' + esc(fmtDate(job.start_date)) + ' \u2013 ' + esc(fmtDate(job.end_date)) + '</span>';
+          meta.style.display = 'flex';
+        } else if (meta) meta.style.display = 'none';
         updateBackBtn();
         scrollTop();
         if (!skipHistory) pushState({ view: 'batch', jobId });
         await loadBatch(jobId);
       }
 
-      function goToAgent(key, name, skipHistory) {
+      async function goToAgent(key, name, skipHistory) {
         curAgentKey = key;
         curAgentName = name || 'Agent';
         navDepth = 2;
@@ -1442,7 +1805,14 @@
           { label: name || 'Agent' }
         ]);
         $('maar-title').textContent = name || 'Agent';
-        $('maar-desc').textContent = 'Conversations audited for ' + (name || 'this agent') + '.';
+        await ensureIntercomAdmins();
+        const alias = getIntercomAlias(key);
+        let desc = 'Conversations audited for ' + (name || 'this agent') + '.';
+        if (alias && alias !== name) desc += ' Intercom: ' + alias;
+        $('maar-desc').textContent = desc;
+        $('maar-desc').style.display = '';
+        setBatchHeaderStatus(null);
+        if ($('maar-meta')) $('maar-meta').style.display = 'none';
         updateBackBtn();
         scrollTop();
         if (!skipHistory) pushState({ view: 'agent', jobId: curJobId, agentKey: key, agentName: name });
@@ -1508,8 +1878,8 @@
        * ═══════════════════════════════════════════════════════ */
       function kpi(label, value, sub, accent, icon, valColor) {
         return '<div class="maar-kpi">'
-          + '<div class="maar-kpi-accent" style="background:' + (accent || 'var(--color-primary-500, #645CFE)') + ';"></div>'
-          + '<div class="maar-kpi-icon" style="background:' + (accent || 'var(--color-primary-500, #645CFE)') + '15; color:' + (accent || 'var(--color-primary-500, #645CFE)') + ';">' + (icon || '') + '</div>'
+          + '<div class="maar-kpi-accent" style="background:' + (accent || 'var(--maar-green-500, #059669)') + ';"></div>'
+          + '<div class="maar-kpi-icon" style="background:' + (accent || 'var(--maar-green-500, #059669)') + '15; color:' + (accent || 'var(--maar-green-500, #059669)') + ';">' + (icon || '') + '</div>'
           + '<div class="maar-kpi-label">' + esc(label) + '</div>'
           + '<div class="maar-kpi-val"' + (valColor ? ' style="color:' + valColor + ';"' : '') + '>' + esc(String(value)) + '</div>'
           + (sub ? '<div class="maar-kpi-sub">' + esc(sub) + '</div>' : '')
@@ -1521,7 +1891,7 @@
        * ═══════════════════════════════════════════════════════ */
       function deriveStatus(job, realConvoCount) {
         const st = job.status || 'queued';
-        if (st === 'completed' || st === 'failed' || st === 'cancelled') return st;
+        if (st === 'completed' || st === 'failed' || st === 'cancelled' || st === 'scheduled') return st;
         if ((st === 'running' || st === 'queued') && realConvoCount && realConvoCount > 0) {
           const ta = job.total_agents || 0;
           const ca = job.completed_agents || 0;
@@ -1567,7 +1937,7 @@
         if (totalConvos === 0) { el.style.display = 'none'; return; }
         el.style.display = 'grid';
         el.innerHTML =
-          kpi('Total Batches', jobs.length, jobs.filter(j => deriveStatus(j, (resultCountsByJob[j.id]||{}).count) === 'completed').length + ' completed', '#645CFE', icons.bar)
+          kpi('Total Batches', jobs.length, jobs.filter(j => deriveStatus(j, (resultCountsByJob[j.id]||{}).count) === 'completed').length + ' completed', '#059669', icons.bar)
           + kpi('All Conversations', totalConvos.toLocaleString(), totalPassed + ' passed \u00b7 ' + totalFailed + ' failed', '#3b82f6', icons.chat)
           + kpi('Overall Pass Rate', overallPassRate + '%', '', overallPassRate >= 80 ? '#10b981' : overallPassRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, overallPassRate >= 80 ? '#166534' : overallPassRate >= 50 ? '#854d0e' : '#b91c1c')
           + kpi('Overall Avg Score', overallAvg != null ? overallAvg + '%' : '\u2014', totalErrors > 0 ? totalErrors.toLocaleString() + ' total errors' : '', '#10b981', icons.target, overallAvg != null ? scoreColor(overallAvg) : undefined);
@@ -1638,7 +2008,10 @@
             pctLabel = realConvoCount + ' processed';
           } else {
             pct = 0;
-            pctLabel = 'Starting\u2026';
+            // If job has been running for a while, show "Running…" so user knows it's not stuck (progress updates when each agent completes)
+            const created = job.created_at ? new Date(job.created_at).getTime() : 0;
+            const runningAwhile = created && (Date.now() - created > 90 * 1000);
+            pctLabel = (st === 'running' && runningAwhile) ? 'Running\u2026' : 'Starting\u2026';
           }
 
           // Score ring data
@@ -1657,10 +2030,15 @@
           // LEFT: Info + Metrics + Pass/Fail Bar
           h += '<div class="maar-batch-main">';
 
-          // Top: title + status
+          // Top: title + status + cancel (when active)
           h += '<div class="maar-batch-top">';
           h += '  <h3 class="maar-batch-title">Batch ' + esc(job.id.slice(0, 8)) + '\u2026</h3>';
-          h += '  <span class="maar-pill ' + pillClass(st) + '">' + statusLabel(st) + '</span>';
+          h += '  <div class="maar-batch-top-actions">';
+          h += '    <span class="maar-pill ' + pillClass(st) + '">' + statusLabel(st) + '</span>';
+          if (st === 'running' || st === 'queued' || st === 'scheduled') {
+            h += '  <button type="button" class="maar-cancel-btn" data-cancel-jid="' + esc(job.id) + '">Cancel</button>';
+          }
+          h += '  </div>';
           h += '</div>';
 
           // Meta
@@ -1677,11 +2055,22 @@
             h += '  <div class="maar-batch-progress-bar"><div class="maar-progress"><div class="maar-progress-fill' + (pctIndeterminate ? ' active' : '') + '" style="width:' + pct + '%;"></div></div></div>';
             h += '  <div class="maar-batch-progress-pct">' + esc(pctLabel) + '</div>';
             h += '</div>';
+            if (st === 'running' && ca === 0 && ta > 0) {
+              h += '<div style="margin-top:4px;font-size:0.7rem;color:var(--color-text-tertiary,#9ca3af);">Progress updates when each agent finishes; results appear as conversations are audited.</div>';
+            }
+          }
+
+          // Scheduled info
+          if (st === 'scheduled') {
+            h += '<div style="margin:8px 0;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;display:flex;align-items:center;gap:8px;">';
+            h += '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+            h += '  <span style="font-size:0.78rem;color:#92400e;font-weight:500;">Queued \u2014 will start automatically when a running audit completes.</span>';
+            h += '</div>';
           }
 
           // Metrics row with icons
           h += '<div class="maar-batch-metrics">';
-          h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#645CFE15; color:#645CFE;">' + icons.users + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + realAgentCount + '</span><span class="maar-bm-lbl">Agents</span></div></div>';
+          h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#05966915; color:#059669;">' + icons.users + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + realAgentCount + '</span><span class="maar-bm-lbl">Agents</span></div></div>';
           h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#3b82f615; color:#3b82f6;">' + icons.chat + '</div><div class="maar-bm-text"><span class="maar-bm-val">' + (bestConvoCount != null ? bestConvoCount : '\u2014') + '</span><span class="maar-bm-lbl">Conversations</span></div></div>';
           if (realConvoCount && realConvoCount > 0) {
             h += '  <div class="maar-bm"><div class="maar-bm-icon" style="background:#10b98115; color:#10b981;">' + icons.check + '</div><div class="maar-bm-text"><span class="maar-bm-val" style="color:#166534;">' + realPassed + '</span><span class="maar-bm-lbl">Passed</span></div></div>';
@@ -1745,7 +2134,28 @@
         $('batches-list').innerHTML = h;
 
         $('batches-list').querySelectorAll('.maar-batch').forEach(card => {
-          card.addEventListener('click', () => goToBatch(card.getAttribute('data-jid')));
+          card.addEventListener('click', (e) => {
+            // Don't navigate if cancel button was clicked
+            if (e.target.closest('.maar-cancel-btn')) return;
+            goToBatch(card.getAttribute('data-jid'));
+          });
+        });
+
+        // Cancel buttons
+        $('batches-list').querySelectorAll('.maar-cancel-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const jid = btn.getAttribute('data-cancel-jid');
+            if (!jid) return;
+            const ok = await cancelJob(jid);
+            if (ok) {
+              $('batches-loading').style.display = 'flex';
+              $('batches-loading').querySelector('span').textContent = 'Refreshing…';
+              $('batches-list').style.display = 'none';
+              try { await loadBatchesWithFilters(); } catch (ex) { console.error(ex); }
+              $('batches-loading').style.display = 'none';
+            }
+          });
         });
       }
 
@@ -1757,6 +2167,7 @@
         $('batch-error-bar').innerHTML = '';
         $('batch-agents').innerHTML = '';
         $('batch-agents-title').style.display = 'none';
+        $('batch-cancel-bar').style.display = 'none';
         $('batch-loading').style.display = 'block';
 
         try {
@@ -1764,25 +2175,113 @@
           if (!res) { res = await api('/api/massive-ai-audit/jobs/' + encodeURIComponent(jobId) + '/assignments'); cache[jobId] = res; }
           curResults = res || [];
           $('batch-loading').style.display = 'none';
-          renderBatchDetail(curResults);
+
+          // Fetch full job detail (includes payload_snapshot for agent info)
+          let jobDetail = allJobs.find(j => j.id === jobId);
+          try {
+            const full = await api('/api/massive-ai-audit/jobs/' + encodeURIComponent(jobId));
+            if (full && full.id) jobDetail = full;
+          } catch (_e) { /* fallback to allJobs entry */ }
+          const job = jobDetail;
+          const cancelBar = $('batch-cancel-bar');
+          const resultCount = (curResults || []).length;
+          const effectiveStatus = deriveStatus(job, resultCount);
+          const showCancelBar = job && ['running', 'queued', 'scheduled'].includes(effectiveStatus);
+          if (showCancelBar) {
+            const statusMsg = job.status === 'scheduled'
+              ? 'Queued — will start when a slot is free.'
+              : effectiveStatus === 'running'
+                ? 'Running. You can cancel to free a slot.'
+                : 'Queued. You can cancel to free a slot.';
+            cancelBar.innerHTML = '<div class="maar-cancel-bar-compact">'
+              + '<span class="maar-cancel-bar-text">' + statusMsg + '</span>'
+              + '<button type="button" id="batch-cancel-btn" class="maar-cancel-bar-btn">Cancel batch</button>'
+              + '</div>';
+            cancelBar.style.display = 'block';
+            $('batch-cancel-btn').addEventListener('click', async () => {
+              const ok = await cancelJob(jobId);
+              if (ok) {
+                try {
+                  const path = buildJobsUrl();
+                  const fresh = await api(path);
+                  allJobs = fresh || [];
+                  await fetchAllJobResults(allJobs);
+                } catch (ex) { console.error(ex); }
+                cancelBar.style.display = 'none';
+                cancelBar.innerHTML = '';
+                await loadBatch(jobId);
+              }
+            });
+          } else {
+            cancelBar.style.display = 'none';
+            cancelBar.innerHTML = '';
+          }
+
+          setBatchHeaderStatus(job ? effectiveStatus : null);
+
+          await renderBatchDetail(curResults, job);
         } catch (e) {
           $('batch-loading').style.display = 'none';
           $('batch-agents').innerHTML = '<div class="maar-empty"><p class="maar-empty-title">Failed to load</p><p>' + esc(e.message) + '</p></div>';
         }
       }
 
-      function renderBatchDetail(results) {
+      async function renderBatchDetail(results, job) {
         if (!results.length) {
+          // No results yet — show agent cards from payload_snapshot if available
+          const agents = job && job.payload_snapshot && Array.isArray(job.payload_snapshot.agents)
+            ? job.payload_snapshot.agents : [];
+          if (agents.length > 0) {
+            $('batch-kpis').innerHTML = '';
+            $('batch-agents-title').style.display = 'flex';
+            let ah = '';
+            agents.forEach(function(ag) {
+              const name = ag.name || ag.email || 'Unknown';
+              const email = ag.email || '';
+              const ini = initials(name);
+              ah += '<div class="maar-agent" style="opacity:0.85;cursor:default;">';
+              ah += '  <div class="maar-agent-header">';
+              ah += '    <div class="maar-agent-avatar" style="background:#f3f4f6;color:#9ca3af;">' + esc(ini) + '</div>';
+              ah += '    <div class="maar-agent-info">';
+              ah += '      <div class="maar-agent-name">' + esc(name) + '</div>';
+              if (email) ah += '      <div class="maar-agent-email">' + esc(email) + '</div>';
+              ah += '    </div>';
+              ah += '  </div>';
+              ah += '  <div class="maar-agent-stats">';
+              ah += '    <div class="maar-agent-stat"><span class="maar-agent-stat-val">\u2014</span><span class="maar-agent-stat-lbl">Convos</span></div>';
+              ah += '    <div class="maar-agent-stat"><span class="maar-agent-stat-val">\u2014</span><span class="maar-agent-stat-lbl">Avg Score</span></div>';
+              ah += '    <div class="maar-agent-stat"><span class="maar-agent-stat-val">\u2014</span><span class="maar-agent-stat-lbl">Pass Rate</span></div>';
+              ah += '    <div class="maar-agent-stat"><span class="maar-agent-stat-val">\u2014</span><span class="maar-agent-stat-lbl">Errors</span></div>';
+              ah += '  </div>';
+              const statusLabel = job.status === 'scheduled' ? 'Scheduled' : job.status === 'queued' ? 'Queued' : 'Pending';
+              const statusColor = job.status === 'scheduled' ? '#d97706' : '#6b7280';
+              ah += '  <div style="margin-top:8px;padding:6px 10px;background:#f9fafb;border-radius:6px;text-align:center;">';
+              ah += '    <span style="font-size:0.72rem;font-weight:500;color:' + statusColor + ';">' + esc(statusLabel) + ' \u2014 waiting for audit to start</span>';
+              ah += '  </div>';
+              ah += '</div>';
+            });
+            $('batch-agents').innerHTML = ah;
+            return;
+          }
           $('batch-kpis').innerHTML = '';
           $('batch-agents').innerHTML = '<div class="maar-empty"><p class="maar-empty-title">No results yet</p><p>This batch hasn\'t produced results yet. Check back if it\'s still running.</p></div>';
           return;
         }
 
-        // Group by agent
+        // Group by agent (fetch Intercom admins for alias display)
+        await ensureIntercomAdmins();
         const agentMap = {};
         results.forEach(r => {
           const k = r.employee_email || r.employee_name || 'unknown';
-          if (!agentMap[k]) agentMap[k] = { name: r.employee_name || r.employee_email || 'Unknown', email: r.employee_email || '', convos: [] };
+          if (!agentMap[k]) {
+            const email = r.employee_email || '';
+            agentMap[k] = {
+              name: r.employee_name || r.employee_email || 'Unknown',
+              email,
+              alias: getIntercomAlias(email) || null,
+              convos: []
+            };
+          }
           agentMap[k].convos.push(r);
         });
 
@@ -1801,7 +2300,7 @@
 
         // KPI row
         let kh = '';
-        kh += kpi('Agents', Object.keys(agentMap).length, '', '#645CFE', icons.users);
+        kh += kpi('Agents', Object.keys(agentMap).length, '', '#059669', icons.users);
         kh += kpi('Conversations', n, '', '#3b82f6', icons.chat);
         kh += kpi('Avg Score', avg != null ? avg + '%' : '\u2014', minScore != null ? 'Min ' + minScore + '% \u00b7 Max ' + maxScore + '%' : '', '#10b981', icons.target, avg != null ? scoreColor(avg) : undefined);
         kh += kpi('Pass Rate', passRate + '%', passed + ' passed \u00b7 ' + failed + ' failed', passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444', icons.check, passRate >= 80 ? '#166534' : passRate >= 50 ? '#854d0e' : '#b91c1c');
@@ -1861,6 +2360,7 @@
           ah += '  <div class="maar-agent-info">';
           ah += '    <p class="maar-agent-name">' + esc(ag.name) + '</p>';
           if (ag.email && ag.email !== ag.name) ah += '    <p class="maar-agent-email">' + esc(ag.email) + '</p>';
+          if (ag.alias && ag.alias !== ag.name) ah += '    <p class="maar-agent-alias" title="Intercom display name">Intercom: ' + esc(ag.alias) + '</p>';
           ah += '  </div>';
           ah += '  <div class="maar-agent-score-ring">';
           ah += '    <svg viewBox="0 0 44 44"><circle class="maar-agent-score-ring-bg" cx="22" cy="22" r="' + radius + '"/><circle class="maar-agent-score-ring-fg" cx="22" cy="22" r="' + radius + '" stroke="' + ringColor + '" stroke-dasharray="' + circ.toFixed(2) + '" stroke-dashoffset="' + dashOffset.toFixed(2) + '"/></svg>';
@@ -2011,13 +2511,16 @@
        * ═══════════════════════════════════════════════════════ */
       const overlay = $('maar-overlay');
 
-      function openModal(result) {
+      async function openModal(result) {
+        await ensureIntercomAdmins();
         const agent = result.employee_name || result.employee_email || 'Unknown';
+        const alias = getIntercomAlias(result.employee_email || '');
         $('modal-title').textContent = 'Conversation ' + (result.conversation_id ? truncId(result.conversation_id) : '');
 
         const cid = result.conversation_id || '';
         const cLink = cid ? '<a href="https://app.intercom.com/a/inbox/_/inbox/conversation/' + encodeURIComponent(cid) + '" target="_blank" rel="noopener">Open in Intercom</a>' : '';
         let sp = ['Agent: <strong>' + esc(agent) + '</strong>'];
+        if (alias && alias !== agent) sp.push('Intercom: <strong>' + esc(alias) + '</strong>');
         if (cLink) sp.push(cLink);
         sp.push('Date: ' + esc(fmtDate(result.audit_date || result.created_at)));
         $('modal-sub').innerHTML = sp.join('<span style="color:var(--color-text-tertiary,#9ca3af); margin:0 0.4rem;">\u00b7</span>');
@@ -2074,18 +2577,78 @@
           h += '<div class="maar-ai-notes">' + esc(result.ai_notes) + '</div></div>';
         }
 
+        _currentModalResult = result;
+        _currentModalBodyHtml = h;
+        const modalEl = $('maar-modal');
+        modalEl.classList.remove('expanded');
         $('modal-body').innerHTML = h;
+        const expandBtn = $('modal-expand-btn');
+        const backBtn = $('modal-back-btn');
+        if (cid) { expandBtn.classList.remove('hidden'); expandBtn.disabled = false; } else { expandBtn.classList.add('hidden'); }
+        backBtn.classList.add('hidden');
         overlay.style.display = 'flex';
         requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('open')));
       }
 
+      let _currentModalResult = null;
+      let _currentModalBodyHtml = '';
+
+      async function expandModal() {
+        const result = _currentModalResult;
+        const cid = result?.conversation_id || '';
+        if (!cid || !_currentModalBodyHtml) return;
+        const modalEl = $('maar-modal');
+        modalEl.classList.add('expanded');
+        $('modal-body').innerHTML =
+          '<div class="maar-modal-body-inner expanded">' +
+          '<div class="maar-expanded-left">' +
+          '<div class="maar-expanded-conversation-wrap">' +
+          '<div style="font-size:0.75rem; font-weight:600; color:var(--color-text-secondary,#6b7280); margin-bottom:0.5rem;">Conversation</div>' +
+          '<div id="maar-expanded-conversation-container"></div>' +
+          '</div></div>' +
+          '<div class="maar-expanded-splitter"></div>' +
+          '<div class="maar-expanded-right">' + _currentModalBodyHtml + '</div>' +
+          '</div>';
+        $('modal-expand-btn').classList.add('hidden');
+        $('modal-back-btn').classList.remove('hidden');
+        try {
+          const { ConversationPanel } = await import('/js/features/audit-form/presentation/components/conversation-panel.js');
+          const panel = new ConversationPanel({
+            containerId: 'maar-expanded-conversation-container',
+            showInfoGrid: false,
+            showAttributes: false
+          });
+          await panel.init();
+          await panel.loadConversation(cid);
+        } catch (err) {
+          console.error('[maar] Failed to load conversation panel:', err);
+          const wrap = document.querySelector('.maar-expanded-left .maar-expanded-conversation-wrap');
+          if (wrap) {
+            const container = document.getElementById('maar-expanded-conversation-container');
+            if (container) container.innerHTML = '<div style="padding:1rem; color:#b91c1c; font-size:0.875rem;">Failed to load conversation. Check console.</div>';
+          }
+        }
+      }
+
+      function collapseModal() {
+        const modalEl = $('maar-modal');
+        modalEl.classList.remove('expanded');
+        $('modal-body').innerHTML = _currentModalBodyHtml;
+        $('modal-expand-btn').classList.remove('hidden');
+        $('modal-back-btn').classList.add('hidden');
+      }
+
       function closeModal() {
+        const modalEl = $('maar-modal');
+        if (modalEl.classList.contains('expanded')) collapseModal();
         overlay.classList.remove('open');
         overlay.classList.add('closing');
         setTimeout(() => { overlay.style.display = 'none'; overlay.classList.remove('closing'); }, 200);
       }
 
       $('modal-close').addEventListener('click', closeModal);
+      $('modal-expand-btn').addEventListener('click', () => expandModal());
+      $('modal-back-btn').addEventListener('click', collapseModal);
       overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
       document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal(); });
 
@@ -2231,19 +2794,37 @@
         const jid = urlParams.get('id');
         if (jid) await goToBatch(jid);
 
-        // Filter Apply / Clear
+        // Filter Apply / Clear — use button loading state + compact loading strip (fixed placement)
+        function setFilterLoading(loading) {
+          const applyBtn = $('filter-apply');
+          const clearBtn = $('filter-clear');
+          if (applyBtn) {
+            applyBtn.classList.toggle('is-loading', loading);
+            applyBtn.disabled = loading;
+            const text = applyBtn.querySelector('.maar-btn-text');
+            if (text) text.textContent = loading ? 'Applying…' : 'Apply';
+          }
+          if (clearBtn) clearBtn.disabled = loading;
+          const strip = $('batches-loading');
+          if (strip) {
+            strip.style.display = loading ? 'flex' : 'none';
+            const stripText = strip.querySelector('span');
+            if (stripText) stripText.textContent = loading ? 'Loading…' : 'Loading batches…';
+          }
+          if (!loading) return;
+          $('batches-list').style.display = 'none';
+          $('page-summary').style.display = 'none';
+        }
         if ($('filter-apply')) {
           $('filter-apply').addEventListener('click', async () => {
-            $('batches-loading').style.display = 'block';
-            $('batches-list').style.display = 'none';
-            $('page-summary').style.display = 'none';
+            setFilterLoading(true);
             try {
               await loadBatchesWithFilters();
             } catch (e) {
               errEl.textContent = e?.message || 'Filter failed';
               errEl.style.display = 'block';
             }
-            $('batches-loading').style.display = 'none';
+            setFilterLoading(false);
           });
         }
         if ($('filter-clear')) {
@@ -2252,25 +2833,26 @@
             if ($('filter-status')) $('filter-status').value = '';
             if ($('filter-from-date')) $('filter-from-date').value = '';
             if ($('filter-to-date')) $('filter-to-date').value = '';
-            $('batches-loading').style.display = 'block';
-            $('batches-list').style.display = 'none';
-            $('page-summary').style.display = 'none';
+            setFilterLoading(true);
             try {
               await loadBatchesWithFilters();
             } catch (e) {
               errEl.textContent = e?.message || 'Failed to load';
               errEl.style.display = 'block';
             }
-            $('batches-loading').style.display = 'none';
+            setFilterLoading(false);
           });
         }
 
-        // Poll running jobs — use derived status to detect truly active jobs; refetch with current filters
-        const hasActive = allJobs.some(j => {
-          const rc = resultCountsByJob[j.id];
-          return deriveStatus(j, rc ? rc.count : null) === 'running' || deriveStatus(j, rc ? rc.count : null) === 'queued';
-        });
-        if (hasActive) {
+        // Poll running/queued/scheduled jobs — use derived status to detect truly active jobs; refetch with current filters
+        function hasActiveJobs(jobs) {
+          return jobs.some(j => {
+            const rc = resultCountsByJob[j.id];
+            const st = deriveStatus(j, rc ? rc.count : null);
+            return st === 'running' || st === 'queued' || st === 'scheduled';
+          });
+        }
+        if (hasActiveJobs(allJobs)) {
           let timer = setInterval(async () => {
             try {
               const path = buildJobsUrl();
@@ -2280,13 +2862,9 @@
 
               if ($('v-batches').classList.contains('active')) renderBatches(allJobs);
               if (curJobId && $('v-batch').classList.contains('active')) { await loadBatch(curJobId); }
-              const stillActive = allJobs.some(j => {
-                const rc2 = resultCountsByJob[j.id];
-                return deriveStatus(j, rc2 ? rc2.count : null) === 'running' || deriveStatus(j, rc2 ? rc2.count : null) === 'queued';
-              });
-              if (!stillActive) { clearInterval(timer); console.log('[MassiveAI] Poll stopped — all jobs completed'); }
+              if (!hasActiveJobs(allJobs)) { clearInterval(timer); console.log('[MassiveAI] Poll stopped — all jobs completed'); }
             } catch (e) { console.error('Poll error', e); }
-          }, 30000);
+          }, 15000);
         }
       } catch (e) {
         $('batches-loading').style.display = 'none';

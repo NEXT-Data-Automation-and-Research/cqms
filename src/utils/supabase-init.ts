@@ -146,12 +146,14 @@ async function performInitialization(): Promise<any> {
     supabaseLogger.debug('Environment variables fetched from server');
 
     // Support legacy/alternative key names in the server response.
-    const supabaseUrl =
+    let supabaseUrl =
       env.SUPABASE_URL ||
       env.NEXT_PUBLIC_SUPABASE_URL ||
       env.VITE_SUPABASE_URL ||
       env.PUBLIC_SUPABASE_URL ||
       (typeof window !== 'undefined' ? localStorage.getItem('supabase_url') : null);
+    // Normalize: no trailing slash (requesting base URL returns 404 / "requested path is invalid")
+    if (supabaseUrl) supabaseUrl = String(supabaseUrl).replace(/\/+$/, '');
     const supabaseAnonKey =
       env.SUPABASE_ANON_KEY ||
       env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||

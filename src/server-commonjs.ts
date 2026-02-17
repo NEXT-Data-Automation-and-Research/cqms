@@ -232,7 +232,10 @@ const apiLimiter = rateLimit({
    */
   skip: (req) => {
     const fullPath = `${req.baseUrl}${req.path}`; // e.g. /api + /env => /api/env
-    return rateLimitExemptPaths.includes(fullPath) || rateLimitExemptPaths.includes(req.path);
+    if (rateLimitExemptPaths.includes(fullPath) || rateLimitExemptPaths.includes(req.path)) return true;
+    // Massive AI audit page calls jobs list, job detail, assignments, creators; auth + concurrency limit apply
+    if (fullPath.startsWith('/api/massive-ai-audit')) return true;
+    return false;
   }, // Skip rate limiting for exempt paths
 });
 
@@ -710,7 +713,7 @@ app.get('/api/env', (req: express.Request, res: express.Response): void => {
   const hasSupabaseKey = !!supabaseKey;
   
   if (hasSupabaseUrl && supabaseUrl) {
-    safeEnv.SUPABASE_URL = supabaseUrl;
+    safeEnv.SUPABASE_URL = String(supabaseUrl).replace(/\/+$/, '');
   }
   if (hasSupabaseKey && supabaseKey) {
     safeEnv.SUPABASE_ANON_KEY = supabaseKey;

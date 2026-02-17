@@ -1289,12 +1289,18 @@ export class AIAuditView {
     }
 
     try {
-      const { data, error } = await apiClient.postWithResult<{ success?: boolean; job_id?: string; status?: string; total_agents?: number }>(
+      const { data, error } = await apiClient.postWithResult<{ success?: boolean; job_id?: string; status?: string; total_agents?: number; scheduled?: boolean }>(
         '/api/massive-ai-audit/start',
         payload
       );
 
       if (error) {
+        // Concurrency limit hit — show schedule dialog
+        if (error.status === 429) {
+          logInfo('[AIAuditView] Concurrency limit reached, showing schedule dialog');
+          this.showScheduleDialog(payload, selectedPeople, submitBtn);
+          return;
+        }
         const msg = typeof error.message === 'string' ? error.message : 'Failed to start audit';
         logError('[AIAuditView] Start API error:', error);
         alert(msg);
@@ -1309,6 +1315,10 @@ export class AIAuditView {
       if (jobId) {
         this.closeModal();
         const resultUrl = `/src/features/massive-ai-audit/presentation/massive-ai-audit-result.html?id=${encodeURIComponent(jobId)}`;
+        // If it was scheduled (queued for later), show a brief message before navigating
+        if (data?.scheduled) {
+          alert('Your audit has been queued and will start automatically when a running audit completes.');
+        }
         window.location.href = resultUrl;
       } else {
         this.closeModal();
@@ -1322,6 +1332,100 @@ export class AIAuditView {
         submitBtn.textContent = 'Run AI Audit';
       }
     }
+  }
+
+  /**
+   * Show a dialog when the concurrency limit is reached:
+   *  - Cancel: close the dialog and re-enable the submit button.
+   *  - Schedule for later: re-send the same payload with schedule_for_later=true so the
+   *    job is queued and auto-starts when a running audit finishes.
+   */
+  private showScheduleDialog(
+    payload: Record<string, unknown>,
+    selectedPeople: Person[],
+    submitBtn: HTMLButtonElement | null
+  ): void {
+    // Remove any existing schedule dialog
+    document.getElementById('scheduleAuditDialog')?.remove();
+
+    const dialog = document.createElement('div');
+    dialog.id = 'scheduleAuditDialog';
+    dialog.style.cssText = 'position:fixed;inset:0;z-index:200000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);padding:1rem;';
+
+    dialog.innerHTML = `
+      <div style="background:#fff;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-width:480px;width:100%;padding:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="width:44px;height:44px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#111827;">Concurrency Limit Reached</h3>
+        </div>
+        <p style="margin:0 0 20px;font-size:0.875rem;color:#4b5563;line-height:1.6;">
+          <strong>2 massive AI audits are already running.</strong> More than two massive AI audits running at the same time is not allowed.<br><br>
+          You can <strong>cancel</strong> and try again later, or <strong>schedule it</strong> so it starts automatically when a running audit completes.
+        </p>
+        <div style="display:flex;justify-content:flex-end;gap:10px;">
+          <button id="scheduleDialogCancel" style="padding:8px 18px;font-size:0.8rem;font-weight:500;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;cursor:pointer;">
+            Cancel
+          </button>
+          <button id="scheduleDialogQueue" style="padding:8px 18px;font-size:0.8rem;font-weight:600;border:none;border-radius:8px;background:#111827;color:#fff;cursor:pointer;">
+            Schedule for Later
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(dialog);
+
+    const closeDialog = () => {
+      dialog.remove();
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Run Massive AI Audit';
+      }
+    };
+
+    dialog.querySelector('#scheduleDialogCancel')?.addEventListener('click', closeDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeDialog(); });
+
+    dialog.querySelector('#scheduleDialogQueue')?.addEventListener('click', async () => {
+      const queueBtn = dialog.querySelector('#scheduleDialogQueue') as HTMLButtonElement;
+      if (queueBtn) { queueBtn.disabled = true; queueBtn.textContent = 'Scheduling...'; }
+
+      try {
+        const { data: schedData, error: schedError } = await apiClient.postWithResult<{
+          success?: boolean; job_id?: string; status?: string; scheduled?: boolean; total_agents?: number;
+        }>('/api/massive-ai-audit/start', { ...payload, schedule_for_later: true });
+
+        if (schedError) {
+          const msg = typeof schedError.message === 'string' ? schedError.message : 'Failed to schedule audit';
+          logError('[AIAuditView] Schedule API error:', schedError);
+          alert(msg);
+          if (queueBtn) { queueBtn.disabled = false; queueBtn.textContent = 'Schedule for Later'; }
+          return;
+        }
+
+        dialog.remove();
+
+        const jobId = schedData?.job_id;
+        if (jobId) {
+          this.closeModal();
+          alert('Your audit has been queued and will start automatically when a running audit completes.');
+          window.location.href = `/src/features/massive-ai-audit/presentation/massive-ai-audit-result.html?id=${encodeURIComponent(jobId)}`;
+        } else {
+          this.closeModal();
+          alert('Audit scheduled. It will start automatically when a slot opens.');
+        }
+      } catch (err) {
+        logError('[AIAuditView] Schedule error:', err);
+        alert(`Failed to schedule: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        if (queueBtn) { queueBtn.disabled = false; queueBtn.textContent = 'Schedule for Later'; }
+      }
+    });
   }
 
   private closeModal(): void {
