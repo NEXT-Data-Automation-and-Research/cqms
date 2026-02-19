@@ -261,6 +261,15 @@ export class ReversalService {
    * Get reversal workflow state
    */
   getReversalWorkflowState(reversal: ReversalWithAuditData): ReversalWorkflowStateType {
+    // Priority 0: If a final decision was made (approved/rejected), workflow is complete - don't show pending
+    const approved = reversal.reversal_approved;
+    const hasFinalDecision = approved !== null && approved !== undefined;
+    if (hasFinalDecision) {
+      if (approved === true || approved === 'true' || approved === 1 || approved === '1')
+        return 'approved';
+      if (approved === false || approved === 'false' || approved === 0 || approved === '0')
+        return 'rejected';
+    }
     // Priority 1: Use workflow state from new structure if available
     if (reversal.reversal_workflow_state) {
       return reversal.reversal_workflow_state;
@@ -281,14 +290,7 @@ export class ReversalService {
     if (ackStatus === 'acknowledged' || ackStatus.includes('acknowledged'))
       return 'acknowledged';
 
-    // Priority 3: Fallback to old logic using reversal_approved
-    const approved = reversal.reversal_approved;
-    if (approved === null || approved === undefined) return 'submitted';
-    if (approved === true || approved === 'true' || approved === 1 || approved === '1')
-      return 'approved';
-    if (approved === false || approved === 'false' || approved === 0 || approved === '0')
-      return 'rejected';
-
+    // Priority 3: Fallback (reversal_approved already handled at top; if we reach here it's unset)
     return 'submitted';
   }
 

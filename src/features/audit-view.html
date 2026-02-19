@@ -1301,18 +1301,15 @@ function getReversalWorkflowState(audit) {
             return null; // No reversal requested, no workflow state
         }
         
+        // Priority 0: If a final decision was made (approved/rejected), reversal is complete - don't show pending
+        const reversalApproved = audit?.reversal_approved;
+        const hasFinalDecision = reversalApproved !== null && reversalApproved !== undefined;
+        if (hasFinalDecision) {
+            if (reversalApproved === true || reversalApproved === 'true' || reversalApproved === 1 || reversalApproved === '1') return 'approved';
+            if (reversalApproved === false || reversalApproved === 'false' || reversalApproved === 0 || reversalApproved === '0') return 'rejected';
+        }
         // Priority 1: Check if workflow state was already loaded from reversal_workflow_states (cached on audit object)
         if (audit.reversal_workflow_state) {
-            // Check if reversal was rejected - override workflow state if rejected
-            const reversalApproved = audit?.reversal_approved;
-            const isRejected = reversalApproved === false || reversalApproved === 'false' || reversalApproved === 0 || reversalApproved === '0';
-            const reversalRespondedAt = audit?.reversal_responded_at || audit?.reversalRespondedAt;
-            
-            // If reversal was rejected and responded to, override qa_review/cqc_review state to rejected
-            if (isRejected && reversalRespondedAt && (audit.reversal_workflow_state === 'qa_review' || audit.reversal_workflow_state === 'cqc_review')) {
-                return 'rejected';
-            }
-            
             return audit.reversal_workflow_state;
         }
         

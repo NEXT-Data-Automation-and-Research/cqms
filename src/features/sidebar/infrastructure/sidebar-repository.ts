@@ -244,15 +244,16 @@ export class SidebarRepository {
       // Normalize email for comparison
       const normalizedEmail = employeeEmail.toLowerCase().trim()
 
-      // Get all reversal requests for this employee
+      // Get all reversal requests for this employee that are still pending (no final decision)
       // Include reversals where:
       // 1. requested_by_email matches (they submitted the reversal), OR
       // 2. employee_email matches (the reversal is for their audit)
-      // Use Supabase's or() filter to combine both conditions
+      // Only count those with final_decision = null so completed reversals don't show as pending
       const { data: reversalRequests, error: requestsError } = await supabaseClient
         .from('reversal_requests')
         .select('id')
         .or(`requested_by_email.eq.${normalizedEmail},employee_email.eq.${normalizedEmail}`)
+        .is('final_decision', null)
 
       if (requestsError) {
         // Handle table not found gracefully
