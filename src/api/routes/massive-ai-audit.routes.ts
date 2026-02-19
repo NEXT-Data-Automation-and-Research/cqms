@@ -481,6 +481,468 @@ router.get('/jobs', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Reque
 });
 
 /**
+ * GET /api/massive-ai-audit/scorecards
+ * Returns scorecards that appear in visible massive AI audit jobs (for filter dropdown).
+ */
+router.get('/scorecards', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const { data: jobs, error: jobsErr } = await supabase
+      .from('massive_ai_audit_jobs')
+      .select('scorecard_id')
+      .not('scorecard_id', 'is', null);
+    if (jobsErr) {
+      res.status(500).json({ error: jobsErr.message });
+      return;
+    }
+    const ids = [...new Set((jobs ?? []).map((j: { scorecard_id: string }) => j.scorecard_id).filter(Boolean))];
+    if (ids.length === 0) {
+      res.status(200).json([]);
+      return;
+    }
+    const { data: scorecards, error: scErr } = await supabase
+      .from('scorecards')
+      .select('id, name')
+      .in('id', ids)
+      .order('name');
+    if (scErr) {
+      res.status(500).json({ error: scErr.message });
+      return;
+    }
+    res.status(200).json(scorecards ?? []);
+  } catch (error: unknown) {
+    logger.error('massive-ai-audit scorecards error', error);
+    res.status(500).json({
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
+    });
+  }
+});
+
+/**
+ * Aggregate errors from parameters_result (same shape as frontend errorsFrom).
+ */
+function aggregateErrorsFromParams(params: unknown): { total: number; criticalFail: number; critical: number; significant: number; major: number; minor: number } {
+  const out = { total: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+  if (!Array.isArray(params)) return out;
+  (params as Array<{ measurement?: number; error_category?: string; is_fail_all?: boolean }>).forEach((p) => {
+    const m = Number(p?.measurement) || 0;
+    if (m > 0) {
+      out.total += m;
+      const cat = String(p?.error_category || '').toLowerCase();
+      if (p?.is_fail_all) out.criticalFail += m;
+      else if (cat.includes('critical')) out.critical += m;
+      else if (cat.includes('significant')) out.significant += m;
+      else if (cat.includes('major')) out.major += m;
+      else if (cat.includes('minor')) out.minor += m;
+      else out.significant += m;
+    }
+  });
+  return out;
+}
+
+/**
+ * GET /api/massive-ai-audit/analytics
+ * Aggregated stats, trend by day, and top failing parameters. Same query params as GET /jobs.
+ */
+router.get('/analytics', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    const createdBy = typeof req.query.created_by === 'string' ? req.query.created_by.trim() : undefined;
+    const status = typeof req.query.status === 'string' ? req.query.status.trim() : undefined;
+    const scorecardId = typeof req.query.scorecard_id === 'string' ? req.query.scorecard_id.trim() : undefined;
+    const fromDate = typeof req.query.from_date === 'string' ? req.query.from_date.trim() : undefined;
+    const toDate = typeof req.query.to_date === 'string' ? req.query.to_date.trim() : undefined;
+
+    let jobsQuery = supabase
+      .from('massive_ai_audit_jobs')
+      .select('id, start_date, end_date');
+    if (createdBy) jobsQuery = jobsQuery.eq('created_by', createdBy);
+    if (status && ['queued', 'running', 'completed', 'failed', 'cancelled', 'scheduled'].includes(status)) {
+      jobsQuery = jobsQuery.eq('status', status);
+    }
+    if (scorecardId) jobsQuery = jobsQuery.eq('scorecard_id', scorecardId);
+    if (fromDate && /^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+      jobsQuery = jobsQuery.gte('created_at', fromDate + 'T00:00:00.000Z');
+    }
+    if (toDate && /^\d{4}-\d{2}-\d{2}$/.test(toDate)) {
+      jobsQuery = jobsQuery.lte('created_at', toDate + 'T23:59:59.999Z');
+    }
+
+    const { data: jobs, error: jobsError } = await jobsQuery;
+
+    if (jobsError) {
+      res.status(500).json({ error: jobsError.message });
+      return;
+    }
+
+    const jobIds = (jobs ?? []).map((j: { id: string }) => j.id);
+
+    // Map job_id -> conversation date range (start_date) so the trend
+    // reflects when conversations happened, not when the audit batch ran.
+    const jobStartDateMap = new Map<string, string>();
+    for (const j of (jobs ?? []) as Array<{ id: string; start_date?: string; end_date?: string }>) {
+      if (j.start_date) jobStartDateMap.set(j.id, String(j.start_date).slice(0, 10));
+    }
+    if (jobIds.length === 0) {
+      res.status(200).json({
+        summary: { totalConversations: 0, passed: 0, failed: 0, passRatePct: 0, avgScore: null, totalErrors: 0, criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 },
+        trend: [],
+        topFailingParameters: [],
+        byEmployee: [],
+        byScorecard: [],
+        scoreDistribution: [],
+        severityBreakdown: { criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 },
+        errorCountDistribution: [],
+        failAllStats: { totalConversationsWithFailAll: 0, failAllRatePct: 0, failAllCriteria: [] },
+        criteriaDetails: [],
+        riskMatrix: [],
+      });
+      return;
+    }
+
+    const admin = getServerSupabase();
+    const RESULTS_PAGE = 1000;
+    let results: Array<Record<string, unknown>> = [];
+    let rFrom = 0;
+
+    while (true) {
+      const { data: rPage, error: rErr } = await admin
+        .from('massive_ai_audit_results')
+        .select('id, job_id, final_score, pass_fail, parameters_result, created_at, audit_date, employee_email, employee_name, scorecard_id')
+        .in('job_id', jobIds)
+        .order('created_at', { ascending: false })
+        .range(rFrom, rFrom + RESULTS_PAGE - 1);
+
+      if (rErr) {
+        res.status(500).json({ error: rErr.message });
+        return;
+      }
+      const rows = (rPage ?? []) as Array<Record<string, unknown>>;
+      results = results.concat(rows);
+      if (rows.length < RESULTS_PAGE) break;
+      rFrom += RESULTS_PAGE;
+    }
+
+    type DayKey = string;
+    type DayBucket = {
+      total: number;
+      passed: number;
+      failed: number;
+      scoreSum: number;
+      scoreCount: number;
+      totalErrors: number;
+      criteriaCount: Map<string, number>;
+    };
+    const trendByDay = new Map<DayKey, DayBucket>();
+    let summaryPassed = 0;
+    let summaryFailed = 0;
+    let summaryScoreSum = 0;
+    let summaryScoreCount = 0;
+    let summaryTotalErrors = 0;
+    const summaryErr = { criticalFail: 0, critical: 0, significant: 0, major: 0, minor: 0 };
+    const paramFailCount = new Map<string, { count: number; measurement: number }>();
+    type AgentBucket = { total: number; passed: number; failed: number; scoreSum: number; scoreCount: number; totalErrors: number; failAllCount: number; displayName?: string };
+    const byEmployeeMap = new Map<string, AgentBucket>();
+    const byScorecardMap = new Map<string, AgentBucket>();
+    const scoreDistBuckets = new Array(10).fill(0);
+    const errorCountDist = new Map<number, number>();
+    let failAllConversations = 0;
+    const failAllCriteriaMap = new Map<string, number>();
+    type CriteriaDetail = { timesEvaluated: number; timesFailed: number; totalMeasurement: number; penaltySum: number; penaltyCount: number; severity: string };
+    const criteriaDetailMap = new Map<string, CriteriaDetail>();
+
+    for (const r of results) {
+      // Use the job's start_date (conversation period) for trending, not audit run date
+      const jobId = r.job_id as string;
+      const jobDate = jobId ? jobStartDateMap.get(jobId) : undefined;
+      const day = jobDate || (r.audit_date ? String(r.audit_date).slice(0, 10) : '') || (r.created_at ? String(r.created_at).slice(0, 10) : '');
+      if (day) {
+        if (!trendByDay.has(day)) {
+          trendByDay.set(day, { total: 0, passed: 0, failed: 0, scoreSum: 0, scoreCount: 0, totalErrors: 0, criteriaCount: new Map() });
+        }
+        const bucket = trendByDay.get(day)!;
+        bucket.total += 1;
+        if (r.pass_fail === 'passed') bucket.passed += 1;
+        if (r.pass_fail === 'failed') bucket.failed += 1;
+        const sc = r.final_score != null ? Number(r.final_score) : null;
+        if (sc != null) {
+          bucket.scoreSum += sc;
+          bucket.scoreCount += 1;
+        }
+        const e = aggregateErrorsFromParams(r.parameters_result);
+        bucket.totalErrors += e.total;
+        const params = Array.isArray(r.parameters_result) ? r.parameters_result : [];
+        (params as Array<{ error_name?: string; measurement?: number }>).forEach((p) => {
+          const m = Number(p?.measurement) || 0;
+          if (m > 0) {
+            const name = String(p?.error_name || 'Parameter').trim() || 'Parameter';
+            bucket.criteriaCount.set(name, (bucket.criteriaCount.get(name) || 0) + m);
+          }
+        });
+      }
+
+      if (r.pass_fail === 'passed') summaryPassed += 1;
+      if (r.pass_fail === 'failed') summaryFailed += 1;
+      const sc = r.final_score != null ? Number(r.final_score) : null;
+      if (sc != null) {
+        summaryScoreSum += sc;
+        summaryScoreCount += 1;
+      }
+      const err = aggregateErrorsFromParams(r.parameters_result);
+      summaryTotalErrors += err.total;
+      summaryErr.criticalFail += err.criticalFail;
+      summaryErr.critical += err.critical;
+      summaryErr.significant += err.significant;
+      summaryErr.major += err.major;
+      summaryErr.minor += err.minor;
+
+      const params = Array.isArray(r.parameters_result) ? r.parameters_result : [];
+      (params as Array<{ error_name?: string; measurement?: number }>).forEach((p) => {
+        const m = Number(p?.measurement) || 0;
+        if (m > 0) {
+          const name = String(p?.error_name || 'Parameter').trim() || 'Parameter';
+          if (!paramFailCount.has(name)) paramFailCount.set(name, { count: 0, measurement: 0 });
+          const entry = paramFailCount.get(name)!;
+          entry.count += 1;
+          entry.measurement += m;
+        }
+      });
+
+      // Score distribution histogram (10 buckets: 0-10, 10-20, ... 90-100)
+      if (sc != null) {
+        const bucketIdx = Math.min(9, Math.max(0, Math.floor(sc / 10)));
+        scoreDistBuckets[bucketIdx] += 1;
+      }
+
+      // Error count distribution per conversation
+      const convErrorCount = err.total;
+      const errKey = Math.min(convErrorCount, 5);
+      errorCountDist.set(errKey, (errorCountDist.get(errKey) || 0) + 1);
+
+      // Fail-all tracking
+      let convHasFailAll = false;
+      const allParams = Array.isArray(r.parameters_result) ? r.parameters_result : [];
+      (allParams as Array<{ error_name?: string; measurement?: number; is_fail_all?: boolean; penalty_points?: number; error_category?: string }>).forEach((p) => {
+        const m = Number(p?.measurement) || 0;
+        const name = String(p?.error_name || 'Parameter').trim() || 'Parameter';
+        // Criteria details: track every evaluated criteria
+        if (!criteriaDetailMap.has(name)) {
+          criteriaDetailMap.set(name, { timesEvaluated: 0, timesFailed: 0, totalMeasurement: 0, penaltySum: 0, penaltyCount: 0, severity: String(p?.error_category || '').toLowerCase() });
+        }
+        const cd = criteriaDetailMap.get(name)!;
+        cd.timesEvaluated += 1;
+        if (m > 0) {
+          cd.timesFailed += 1;
+          cd.totalMeasurement += m;
+        }
+        const pp = Number(p?.penalty_points) || 0;
+        if (pp > 0) {
+          cd.penaltySum += pp;
+          cd.penaltyCount += 1;
+        }
+        if (!cd.severity && p?.error_category) cd.severity = String(p.error_category).toLowerCase();
+
+        if (p?.is_fail_all && m > 0) {
+          convHasFailAll = true;
+          failAllCriteriaMap.set(name, (failAllCriteriaMap.get(name) || 0) + m);
+        }
+      });
+      if (convHasFailAll) failAllConversations += 1;
+
+      const empKey = (String(r.employee_email || r.employee_name || '').trim() || 'Unknown').toLowerCase();
+      if (!byEmployeeMap.has(empKey)) {
+        byEmployeeMap.set(empKey, {
+          total: 0,
+          passed: 0,
+          failed: 0,
+          scoreSum: 0,
+          scoreCount: 0,
+          totalErrors: 0,
+          failAllCount: 0,
+          displayName: String(r.employee_name || r.employee_email || 'Unknown').trim() || 'Unknown',
+        });
+      }
+      const empBucket = byEmployeeMap.get(empKey)!;
+      empBucket.total += 1;
+      if (r.pass_fail === 'passed') empBucket.passed += 1;
+      if (r.pass_fail === 'failed') empBucket.failed += 1;
+      const rSc = r.final_score != null ? Number(r.final_score) : null;
+      if (rSc != null) {
+        empBucket.scoreSum += rSc;
+        empBucket.scoreCount += 1;
+      }
+      const rErr = aggregateErrorsFromParams(r.parameters_result);
+      empBucket.totalErrors += rErr.total;
+      if (convHasFailAll) empBucket.failAllCount += 1;
+
+      const scId = String(r.scorecard_id || '').trim() || 'unknown';
+      if (!byScorecardMap.has(scId)) {
+        byScorecardMap.set(scId, { total: 0, passed: 0, failed: 0, scoreSum: 0, scoreCount: 0, totalErrors: 0, failAllCount: 0 });
+      }
+      const scBucket = byScorecardMap.get(scId)!;
+      scBucket.total += 1;
+      if (r.pass_fail === 'passed') scBucket.passed += 1;
+      if (r.pass_fail === 'failed') scBucket.failed += 1;
+      if (rSc != null) {
+        scBucket.scoreSum += rSc;
+        scBucket.scoreCount += 1;
+      }
+      scBucket.totalErrors += rErr.total;
+    }
+
+    const totalConv = results.length;
+    const passRatePct = totalConv > 0 ? Math.round((summaryPassed / totalConv) * 100) : 0;
+    const avgScore = summaryScoreCount > 0 ? Math.round(summaryScoreSum / summaryScoreCount) : null;
+
+    const trend = Array.from(trendByDay.entries())
+      .map(([date, b]) => {
+        const criteria = Array.from(b.criteriaCount.entries())
+          .map(([errorName, count]) => ({ errorName, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+        return {
+          date,
+          total: b.total,
+          passed: b.passed,
+          failed: b.failed,
+          passRatePct: b.total > 0 ? Math.round((b.passed / b.total) * 100) : 0,
+          avgScore: b.scoreCount > 0 ? Math.round(b.scoreSum / b.scoreCount) : null,
+          totalErrors: b.totalErrors,
+          criteria,
+        };
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const topFailingParameters = Array.from(paramFailCount.entries())
+      .map(([errorName, v]) => ({ errorName, count: v.count, totalMeasurement: v.measurement }))
+      .sort((a, b) => b.totalMeasurement - a.totalMeasurement)
+      .slice(0, 20);
+
+    const byEmployee = Array.from(byEmployeeMap.entries())
+      .map(([key, b]) => ({
+        employeeKey: key,
+        employeeName: b.displayName || key,
+        total: b.total,
+        passed: b.passed,
+        failed: b.failed,
+        passRatePct: b.total > 0 ? Math.round((b.passed / b.total) * 100) : 0,
+        avgScore: b.scoreCount > 0 ? Math.round(b.scoreSum / b.scoreCount) : null,
+        totalErrors: b.totalErrors,
+        avgErrorsPerConvo: b.total > 0 ? Math.round((b.totalErrors / b.total) * 10) / 10 : 0,
+        failAllCount: b.failAllCount,
+      }))
+      .sort((a, b) => b.failed - a.failed || b.totalErrors - a.totalErrors)
+      .slice(0, 50);
+
+    const scorecardIds = [...new Set(byScorecardMap.keys())].filter((id) => id !== 'unknown');
+    let scorecardNames: Record<string, string> = {};
+    if (scorecardIds.length > 0) {
+      const { data: scRows } = await admin
+        .from('scorecards')
+        .select('id, name')
+        .in('id', scorecardIds);
+      (scRows ?? []).forEach((row: { id: string; name?: string }) => {
+        scorecardNames[row.id] = row.name || row.id;
+      });
+    }
+
+    const byScorecard = Array.from(byScorecardMap.entries())
+      .map(([scorecardId, b]) => ({
+        scorecardId,
+        scorecardName: scorecardNames[scorecardId] || scorecardId || 'Unknown',
+        total: b.total,
+        passed: b.passed,
+        failed: b.failed,
+        passRatePct: b.total > 0 ? Math.round((b.passed / b.total) * 100) : 0,
+        avgScore: b.scoreCount > 0 ? Math.round(b.scoreSum / b.scoreCount) : null,
+        totalErrors: b.totalErrors,
+      }))
+      .sort((a, b) => b.failed - a.failed || b.totalErrors - a.totalErrors);
+
+    const scoreDistribution = scoreDistBuckets.map((count, i) => ({
+      bucket: `${i * 10}-${(i + 1) * 10}`,
+      count,
+    }));
+
+    const errorCountDistribution = [];
+    for (let k = 0; k <= 5; k++) {
+      errorCountDistribution.push({ errors: k === 5 ? '5+' : k, count: errorCountDist.get(k) || 0 });
+    }
+
+    const failAllStats = {
+      totalConversationsWithFailAll: failAllConversations,
+      failAllRatePct: totalConv > 0 ? Math.round((failAllConversations / totalConv) * 1000) / 10 : 0,
+      failAllCriteria: Array.from(failAllCriteriaMap.entries())
+        .map(([errorName, count]) => ({ errorName, count }))
+        .sort((a, b) => b.count - a.count),
+    };
+
+    const criteriaDetails = Array.from(criteriaDetailMap.entries())
+      .map(([errorName, cd]) => ({
+        errorName,
+        timesEvaluated: cd.timesEvaluated,
+        timesFailed: cd.timesFailed,
+        failureRatePct: cd.timesEvaluated > 0 ? Math.round((cd.timesFailed / cd.timesEvaluated) * 1000) / 10 : 0,
+        avgPenaltyPoints: cd.penaltyCount > 0 ? Math.round((cd.penaltySum / cd.penaltyCount) * 10) / 10 : 0,
+        totalMeasurement: cd.totalMeasurement,
+        severity: cd.severity || 'unknown',
+      }))
+      .sort((a, b) => b.failureRatePct - a.failureRatePct || b.totalMeasurement - a.totalMeasurement);
+
+    const riskMatrix = criteriaDetails
+      .filter((c) => c.timesFailed > 0)
+      .map((c) => ({
+        errorName: c.errorName,
+        frequency: c.timesFailed,
+        avgPenaltyPoints: c.avgPenaltyPoints,
+        severity: c.severity,
+      }));
+
+    res.status(200).json({
+      summary: {
+        totalConversations: totalConv,
+        passed: summaryPassed,
+        failed: summaryFailed,
+        passRatePct,
+        avgScore,
+        totalErrors: summaryTotalErrors,
+        criticalFail: summaryErr.criticalFail,
+        critical: summaryErr.critical,
+        significant: summaryErr.significant,
+        major: summaryErr.major,
+        minor: summaryErr.minor,
+      },
+      trend,
+      topFailingParameters,
+      byEmployee,
+      byScorecard,
+      scoreDistribution,
+      severityBreakdown: summaryErr,
+      errorCountDistribution,
+      failAllStats,
+      criteriaDetails,
+      riskMatrix,
+    });
+  } catch (error: unknown) {
+    logger.error('massive-ai-audit analytics error', error);
+    res.status(500).json({
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
+    });
+  }
+});
+
+/**
  * GET /api/massive-ai-audit/results
  * Lists massive AI audit results for jobs visible to the current user.
  * Query params: created_by, status, scorecard_id, from_date, to_date (same as GET /jobs).
@@ -872,6 +1334,66 @@ router.get('/my-results', verifyAuth, requireRole(...ALLOWED_ROLES), async (req:
   } catch (error: unknown) {
     logger.error('massive-ai-audit my-results error', error);
     res.status(500).json({
+      error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
+    });
+  }
+});
+
+/**
+ * POST /api/massive-ai-audit/jobs/:id/complete
+ * Mark a running or queued job as completed (user-facing).
+ */
+router.post('/jobs/:id/complete', verifyAuth, requireRole(...ALLOWED_ROLES), async (req: Request, res: Response): Promise<void> => {
+  try {
+    const supabaseReq = req as SupabaseRequest;
+    const supabase = supabaseReq.supabase;
+    if (!supabase) {
+      res.status(401).json({ success: false, error: 'Not authenticated' });
+      return;
+    }
+
+    const id = req.params.id;
+    if (!id) {
+      res.status(400).json({ success: false, error: 'Job id required' });
+      return;
+    }
+
+    const { data: job, error: accessErr } = await supabase
+      .from('massive_ai_audit_jobs')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (accessErr || !job) {
+      res.status(404).json({ success: false, error: 'Job not found' });
+      return;
+    }
+
+    if (!['running', 'queued'].includes(job.status)) {
+      res.status(400).json({ success: false, error: `Job is already ${job.status}` });
+      return;
+    }
+
+    const admin = getServerSupabase();
+    const { error: updErr } = await admin
+      .from('massive_ai_audit_jobs')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', id)
+      .in('status', ['running', 'queued']);
+
+    if (updErr) {
+      logger.error('massive-ai-audit complete failed', { id, error: updErr });
+      res.status(500).json({ success: false, error: updErr.message });
+      return;
+    }
+
+    logger.info('massive-ai-audit: job marked complete', { jobId: id, previousStatus: job.status });
+    res.status(200).json({ success: true, status: 'completed' });
+    setImmediate(() => startNextScheduledJob());
+  } catch (error: unknown) {
+    logger.error('massive-ai-audit complete error', error);
+    res.status(500).json({
+      success: false,
       error: error instanceof Error ? sanitizeErrorMessage(error, process.env.NODE_ENV === 'production') : 'Server error',
     });
   }

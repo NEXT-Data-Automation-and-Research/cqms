@@ -25,19 +25,11 @@
 
     /* ── Sticky Navigation Bar ────────────────────────────────── */
     .maar-nav-bar {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--color-background, #ffffff);
-      border-bottom: 1px solid var(--color-border-light, #e5e7eb);
-      margin: -1.5rem -2rem 1.25rem;
-      padding: 0.75rem 2rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      backdrop-filter: blur(8px);
-      background: rgba(255,255,255,0.92);
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid #e5e7eb;
+      margin: -1.5rem -2rem 1.25rem; padding: 0.75rem 2rem;
+      display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+      background: #fff;
       transition: box-shadow 0.2s ease;
     }
     [data-theme="dark"] .maar-nav-bar {
@@ -45,7 +37,7 @@
       border-bottom-color: var(--color-border-light, #374151);
     }
     .maar-nav-bar.scrolled {
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
     }
     .maar-back-btn {
       display: none;
@@ -114,22 +106,13 @@
       flex-wrap: wrap;
     }
     .maar-header h1 {
-      margin: 0;
-      font-size: 1.375rem;
-      font-weight: 700;
-      color: var(--color-text-primary, #1f2937);
-      line-height: 1.3;
-      letter-spacing: -0.02em;
+      margin: 0; font-size: 1.375rem; font-weight: 700;
+      color: #111827; line-height: 1.3; letter-spacing: -0.02em;
     }
     .maar-header-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.5rem;
-      font-size: 0.6875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      border-radius: 4px;
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.5rem; font-size: 0.6875rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em; border-radius: 4px;
     }
     .maar-header-pill.completed { background: #d1fae5; color: #065f46; }
     .maar-header-pill.running { background: #dbeafe; color: #1e40af; }
@@ -187,89 +170,64 @@
     @media (max-width: 768px) { .maar-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
     .maar-kpi {
-      background: var(--color-background, #ffffff);
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-xl, 0.75rem);
-      padding: 1.125rem 1.25rem;
-      position: relative;
-      overflow: hidden;
-      transition: box-shadow 0.2s ease, border-color 0.2s ease;
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1rem 1.15rem;
+      position: relative; overflow: hidden;
+      transition: box-shadow 0.2s;
     }
-    .maar-kpi:hover {
-      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
+    .maar-kpi::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
     }
-    .maar-kpi-accent {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      border-radius: var(--radius-xl, 0.75rem) var(--radius-xl, 0.75rem) 0 0;
-    }
-    .maar-kpi-icon {
-      width: 2.25rem;
-      height: 2.25rem;
-      border-radius: var(--radius-lg, 0.5rem);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 0.75rem;
-      flex-shrink: 0;
-    }
-    .maar-kpi-icon svg { width: 1.125rem; height: 1.125rem; }
+    .maar-kpi:nth-child(1)::before { background: #6366f1; }
+    .maar-kpi:nth-child(2)::before { background: #10b981; }
+    .maar-kpi:nth-child(3)::before { background: #0ea5e9; }
+    .maar-kpi:nth-child(4)::before { background: #f59e0b; }
+    .maar-kpi:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .maar-kpi-accent { display: none; }
+    .maar-kpi-icon { display: none; }
     .maar-kpi-label {
-      font-size: 0.6875rem;
-      font-weight: 600;
-      color: var(--color-text-secondary, #6b7280);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 0.25rem;
+      font-size: 0.675rem; font-weight: 600; color: #6b7280;
+      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.25rem;
     }
-    .maar-kpi-val {
-      font-size: clamp(1.25rem, 2vw, 1.75rem);
-      font-weight: 700;
-      color: var(--color-text-primary, #1f2937);
-      line-height: 1.2;
-      margin-bottom: 0.15rem;
+    .maar-kpi-value, .maar-kpi-val {
+      font-size: 1.5rem; font-weight: 700; color: #111827;
+      line-height: 1.15; margin-bottom: 0.1rem;
+      font-variant-numeric: tabular-nums;
     }
-    .maar-kpi-sub {
-      font-size: 0.75rem;
-      color: var(--color-text-tertiary, #9ca3af);
-      line-height: 1.35;
+    .maar-kpi-sublabel, .maar-kpi-sub {
+      font-size: 0.72rem; color: #9ca3af; line-height: 1.35;
     }
+    .maar-kpi-delta {
+      display: inline-flex; align-items: center; gap: 0.2rem;
+      font-size: 0.7rem; font-weight: 600; margin-top: 0.2rem;
+      padding: 0.1rem 0.4rem; border-radius: 4px;
+    }
+    .maar-kpi-delta.up { color: #059669; background: #ecfdf5; }
+    .maar-kpi-delta.down { color: #dc2626; background: #fef2f2; }
+    .maar-kpi-delta.neutral { color: #6b7280; background: #f3f4f6; }
 
     /* ── Status Pill ──────────────────────────────────────────── */
     .maar-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.6rem;
-      border-radius: var(--radius-full, 9999px);
-      font-size: 0.6875rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      white-space: nowrap;
+      display: inline-flex; align-items: center;
+      padding: 0.2rem 0.65rem; border-radius: 9999px;
+      font-size: 0.6875rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
     }
-    .maar-pill-queued    { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-secondary, #6b7280); }
-    .maar-pill-running   { background: var(--color-info-light, #dbeafe); color: var(--color-info-dark, #1e40af); }
-    .maar-pill-completed { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
-    .maar-pill-failed    { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
-    .maar-pill-cancelled { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+    .maar-pill-queued    { background: #f3f4f6; color: #6b7280; }
+    .maar-pill-running   { background: #dbeafe; color: #1e40af; }
+    .maar-pill-completed { background: #d1fae5; color: #065f46; }
+    .maar-pill-failed    { background: #fee2e2; color: #991b1b; }
+    .maar-pill-cancelled { background: #f3f4f6; color: #9ca3af; }
     .maar-pill-scheduled { background: #fef3c7; color: #92400e; }
-    .maar-pill-passed    { background: var(--color-success-light, #d1fae5); color: var(--color-success-dark, #065f46); }
-    .maar-pill-failed-pf { background: var(--color-error-light, #fee2e2); color: var(--color-error-dark, #991b1b); }
-    .maar-pill-na        { background: var(--color-background-tertiary, #f3f4f6); color: var(--color-text-tertiary, #9ca3af); }
+    .maar-pill-passed    { background: #d1fae5; color: #065f46; }
+    .maar-pill-failed-pf { background: #fee2e2; color: #991b1b; }
+    .maar-pill-na        { background: #f3f4f6; color: #9ca3af; }
 
     /* ── Score Badge ──────────────────────────────────────────── */
     .maar-score {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 2.75rem;
-      padding: 0.2rem 0.55rem;
-      font-size: 0.8125rem;
-      font-weight: 700;
-      border-radius: var(--radius-md, 0.375rem);
+      display: inline-flex; align-items: center; justify-content: center;
+      min-width: 2.75rem; padding: 0.25rem 0.6rem;
+      font-size: 0.8125rem; font-weight: 800; border-radius: 8px;
     }
     .maar-score-high { background: #dcfce7; color: #166534; }
     .maar-score-mid  { background: #fef9c3; color: #854d0e; }
@@ -277,15 +235,12 @@
 
     /* ── Progress Bar ────────────────────────────────────────── */
     .maar-progress {
-      height: 0.375rem;
-      background: var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-full, 9999px);
-      overflow: hidden;
+      height: 0.375rem; background: #e5e7eb;
+      border-radius: 9999px; overflow: hidden;
     }
     .maar-progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--maar-green-500, #059669), var(--maar-green-400, #34d399));
-      border-radius: var(--radius-full, 9999px);
+      background: #059669; border-radius: 9999px;
       transition: width 0.5s ease;
     }
     .maar-progress-fill.active {
@@ -299,34 +254,389 @@
     }
 
     /* ═══════ VIEW 1: Batch Cards ═══════════════════════════ */
+    /* ── Tab bar ─────────────────────────────────────────────── */
+    .maar-tab-bar {
+      display: flex; gap: 0;
+      margin-bottom: 1rem;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .maar-tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.8125rem; font-weight: 600;
+      color: #6b7280; background: none;
+      border: none; border-bottom: 2px solid transparent;
+      margin-bottom: -2px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      font-family: inherit;
+    }
+    .maar-tab:hover { color: #111827; }
+    .maar-tab.active {
+      color: #059669;
+      border-bottom-color: #059669;
+    }
+
+    /* ── Insights / Analytics ─────────────────────────────────── */
+    .maar-insights {
+      margin: 0 0 1.5rem; padding: 0;
+      display: none;
+    }
+    .maar-insights.visible { display: block; }
+    .maar-insights .maar-chart-row > * { min-width: 0; }
+    .maar-insights-title {
+      font-size: 1rem; font-weight: 700;
+      color: #111827; margin: 0 0 0.75rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .maar-insights-summary {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem; margin-bottom: 1.25rem;
+    }
+    @media (max-width: 768px) { .maar-insights-summary { grid-template-columns: repeat(2, 1fr); } }
+
+    /* ── Smart Insights Panel ── */
+    .maar-smart-insights {
+      background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .maar-smart-insights-title {
+      font-size: 0.8125rem; font-weight: 700; color: #92400e;
+      margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.4rem;
+      min-width: 0;
+    }
+    .maar-smart-insights-title .si-icon {
+      flex-shrink: 0; width: 1rem; height: 1rem; min-width: 1rem; max-width: 1rem; max-height: 1rem;
+    }
+    .maar-smart-insights-list {
+      list-style: none; padding: 0; margin: 0;
+    }
+    .maar-smart-insights-list li {
+      font-size: 0.8rem; color: #78350f; line-height: 1.5;
+      padding: 0.3rem 0; border-bottom: 1px solid #fef3c7;
+      display: flex; gap: 0.5rem; align-items: flex-start;
+    }
+    .maar-smart-insights-list li:last-child { border-bottom: none; }
+    .si-icon {
+      flex-shrink: 0; width: 1rem; height: 1rem; min-width: 1rem; min-height: 1rem;
+    }
+    .maar-smart-insights-list .si-icon {
+      margin-top: 2px;
+    }
+    .maar-smart-insights.type-positive { background: #ecfdf5; border-color: #d1fae5; }
+    .maar-smart-insights.type-positive .maar-smart-insights-title { color: #065f46; }
+    .maar-smart-insights.type-positive .maar-smart-insights-list li { color: #064e3b; border-bottom-color: #d1fae5; }
+
+    /* ── Team Health Bar ── */
+    .maar-team-health {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .maar-team-health h4 {
+      font-size: 0.8125rem; font-weight: 700; color: #111827; margin: 0 0 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .maar-team-bar {
+      display: flex; height: 28px; border-radius: 6px; overflow: hidden;
+      margin-bottom: 0.6rem; background: #f3f4f6;
+    }
+    .maar-team-bar-seg { display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; color: #fff; min-width: 0;
+      transition: width 0.4s ease;
+    }
+    .maar-team-bar-seg.top { background: #059669; }
+    .maar-team-bar-seg.avg { background: #f59e0b; }
+    .maar-team-bar-seg.low { background: #ef4444; }
+    .maar-team-bar-legend {
+      display: flex; gap: 1.25rem; font-size: 0.75rem; color: #6b7280;
+    }
+    .maar-team-bar-legend span {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+    }
+    .maar-team-bar-legend .dot {
+      width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+    }
+
+    /* ── Compliance Dashboard ── */
+    .maar-compliance {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .maar-compliance h4 {
+      font-size: 0.8125rem; font-weight: 700; color: #111827; margin: 0 0 0.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .maar-compliance-stats {
+      display: flex; gap: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap;
+    }
+    .maar-compliance-stat {
+      display: flex; flex-direction: column;
+    }
+    .maar-compliance-stat-val {
+      font-size: 1.25rem; font-weight: 700; color: #111827;
+      font-variant-numeric: tabular-nums;
+    }
+    .maar-compliance-stat-label {
+      font-size: 0.675rem; color: #6b7280; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .maar-compliance-list {
+      list-style: none; padding: 0; margin: 0;
+    }
+    .maar-compliance-list li {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.4rem 0; border-bottom: 1px solid #f3f4f6;
+      font-size: 0.8rem;
+    }
+    .maar-compliance-list li:last-child { border-bottom: none; }
+    .maar-compliance-list .c-name { color: #374151; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .maar-compliance-list .c-count { font-weight: 700; color: #dc2626; font-variant-numeric: tabular-nums; }
+
+    /* ── Focus Areas ── */
+    .maar-focus-areas {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+      padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    }
+    .maar-focus-areas h4 {
+      font-size: 0.8125rem; font-weight: 700; color: #111827; margin: 0 0 0.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .maar-focus-areas-desc {
+      font-size: 0.78rem; color: #6b7280; margin: 0 0 0.75rem; line-height: 1.45;
+    }
+    .maar-focus-item {
+      display: flex; gap: 0.75rem; padding: 0.65rem 0;
+      border-bottom: 1px solid #f3f4f6; align-items: flex-start;
+    }
+    .maar-focus-item:last-child { border-bottom: none; }
+    .maar-focus-num {
+      width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; color: #fff; background: #ef4444;
+    }
+    .maar-focus-num.n2 { background: #f59e0b; }
+    .maar-focus-num.n3 { background: #6b7280; }
+    .maar-focus-body { flex: 1; min-width: 0; }
+    .maar-focus-name { font-size: 0.8125rem; font-weight: 600; color: #111827; }
+    .maar-focus-detail { font-size: 0.75rem; color: #6b7280; margin-top: 0.1rem; line-height: 1.4; }
+    .maar-focus-bar { height: 4px; border-radius: 2px; background: #f3f4f6; margin-top: 0.35rem; }
+    .maar-focus-bar-fill { height: 100%; border-radius: 2px; }
+    .maar-trend-card {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.25rem;
+    }
+    .maar-trend-card h4 {
+      margin: 0 0 0.15rem; font-size: 0.875rem; font-weight: 700; color: #111827;
+    }
+    .maar-trend-chart { width: 100%; height: 240px; min-height: 200px; }
+    .maar-trend-legend {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem;
+      margin-top: 0.75rem; padding-top: 0.5rem;
+      border-top: 1px solid #f3f4f6; font-size: 0.75rem; color: #6b7280;
+    }
+    .maar-trend-legend span { display: inline-flex; align-items: center; gap: 0.35rem; font-weight: 500; }
+    .maar-top-params-card {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1rem 1.25rem;
+    }
+    .maar-top-params-card h4 {
+      margin: 0 0 0.75rem; font-size: 0.875rem; font-weight: 700; color: #111827;
+    }
+    .maar-top-params-table {
+      width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8125rem;
+    }
+    .maar-top-params-table th,
+    .maar-top-params-table td {
+      padding: 0.55rem 0.85rem; text-align: left; border-bottom: 1px solid #f1f5f9;
+    }
+    .maar-top-params-table th {
+      font-weight: 600; color: #64748b; background: #f8fafc; font-size: 0.7rem;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .maar-top-params-table th:first-child { border-radius: 8px 0 0 0; }
+    .maar-top-params-table th:last-child { border-radius: 0 8px 0 0; }
+    .maar-top-params-table tr:last-child td { border-bottom: none; }
+    .maar-top-params-table .maar-param-sev { font-weight: 700; color: #dc2626; }
+
+    /* ── Tooltip ───────────────────────────────────────────── */
+    #maar-tooltip {
+      position: fixed; z-index: 9999; pointer-events: none;
+      background: #1e293b; color: #f1f5f9;
+      font-size: 0.75rem; line-height: 1.5;
+      padding: 0.5rem 0.75rem; border-radius: 6px; max-width: 280px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      opacity: 0; transform: translateY(4px);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    #maar-tooltip.visible { opacity: 1; transform: translateY(0); }
+    #maar-tooltip .tip-title { font-weight: 700; font-size: 0.8rem; margin-bottom: 0.15rem; color: #fff; }
+    #maar-tooltip .tip-val { font-weight: 700; color: #34d399; font-size: 0.85rem; }
+    #maar-tooltip .tip-sub { color: #94a3b8; margin-top: 0.1rem; font-size: 0.7rem; }
+
+    /* ── Info button ─────────────────────────────────────────── */
+    .maar-chart-hdr { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.15rem; }
+    .maar-chart-hdr h4 { margin: 0; font-size: 0.8125rem; font-weight: 700; color: #111827; }
+    .maar-info-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #f3f4f6; border: none;
+      color: #9ca3af; font-size: 9px; font-weight: 700;
+      cursor: help; padding: 0; transition: all 0.15s; flex-shrink: 0;
+    }
+    .maar-info-btn:hover { background: #e5e7eb; color: #6b7280; }
+
+    /* ── Chart layout ────────────────────────────────────────── */
+    .maar-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; min-width: 0; }
+    .maar-chart-row > * { min-width: 0; }
+    @media (max-width: 768px) { .maar-chart-row { grid-template-columns: 1fr; } }
+    .maar-chart-card, .maar-chart-card-full {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1.25rem; overflow: hidden;
+    }
+    .maar-chart-card-full { margin-bottom: 1.25rem; }
+    .maar-trend-desc { font-size: 0.78rem; color: #9ca3af; line-height: 1.4; margin: 0.1rem 0 0.6rem; }
+
+    /* ── SVG hover ────────────────────────────────────────────── */
+    svg rect[data-tip], svg path[data-tip], svg circle[data-tip] {
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    svg rect[data-tip]:hover { opacity: 0.8; }
+    svg path[data-tip]:hover { opacity: 0.8; }
+    svg circle[data-tip]:hover { opacity: 0.8; }
+    svg .maar-hover-dot { opacity: 0; transition: opacity 0.15s; }
+    svg .maar-hover-dot:hover { opacity: 1; }
+
+    /* ── (animations removed for cleaner feel) ── */
+
+    /* ── Health summary card ──────────────────────────────────── */
+    .maar-health-card {
+      display: flex; align-items: center; gap: 1.5rem;
+      border-radius: 10px; padding: 1.25rem 1.5rem;
+      margin-bottom: 1.25rem; border: 1px solid #e5e7eb;
+      background: #fff;
+    }
+    .maar-health-card.health-strong { border-left: 4px solid #059669; }
+    .maar-health-card.health-moderate { border-left: 4px solid #f59e0b; }
+    .maar-health-card.health-developing { border-left: 4px solid #6366f1; }
+    .maar-health-left { flex-shrink: 0; text-align: center; min-width: 80px; }
+    .maar-health-gauge { width: 72px; height: 72px; }
+    .maar-health-center { flex: 1; min-width: 0; }
+    .maar-health-title { font-size: 1.125rem; font-weight: 700; color: #111827; margin: 0 0 0.15rem; }
+    .maar-health-subtitle { font-size: 0.8rem; color: #6b7280; line-height: 1.5; margin: 0; }
+    .maar-health-metrics { display: flex; gap: 1.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+    .maar-health-metric { display: flex; flex-direction: column; }
+    .maar-health-metric-val { font-size: 1rem; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+    .maar-health-metric-label { font-size: 0.65rem; color: #6b7280; font-weight: 500; text-transform: uppercase; letter-spacing: 0.03em; }
+
+    /* ── Sortable table (refined) ─────────────────────────────── */
+    .maar-sortable-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    .maar-sortable-table th, .maar-sortable-table td {
+      padding: 0.55rem 0.75rem; text-align: left;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .maar-sortable-table th {
+      font-weight: 600; color: #6b7280; cursor: pointer;
+      user-select: none; white-space: nowrap; font-size: 0.7rem;
+      letter-spacing: 0.03em; text-transform: uppercase;
+      border-bottom-color: #e5e7eb;
+    }
+    .maar-sortable-table th:hover { color: #374151; }
+    .maar-sortable-table th .maar-sort-arrow {
+      display: inline-block; margin-left: 0.2rem; font-size: 0.6rem; color: #d1d5db;
+    }
+    .maar-sortable-table th .maar-sort-arrow.active { color: #059669; }
+    .maar-sortable-table tbody tr { transition: background 0.1s; }
+    .maar-sortable-table tbody tr:hover { background: #f9fafb; }
+    .maar-sortable-table tr:last-child td { border-bottom: none; }
+    .maar-sortable-table .maar-cell-bar-wrap { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .maar-sortable-table .maar-cell-minibar { display: inline-block; height: 5px; border-radius: 3px; min-width: 2px; }
+    .maar-sortable-table .maar-cell-num { font-variant-numeric: tabular-nums; }
+    .maar-sortable-table .maar-cell-lo { color: #ef4444; font-weight: 600; }
+    .maar-sortable-table .maar-cell-mid { color: #d97706; font-weight: 600; }
+    .maar-sortable-table .maar-cell-hi { color: #059669; font-weight: 600; }
+    .maar-sortable-table .maar-cell-flag { color: #ef4444; font-weight: 600; }
+    .maar-table-scroll { overflow-x: auto; }
+
+    /* ── Collapsible panels ──────────────────────────────────── */
+    .maar-detail-panel {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px; margin-bottom: 0.75rem;
+      background: #fff; overflow: hidden;
+    }
+    .maar-detail-panel summary {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.85rem 1.25rem; cursor: pointer;
+      font-size: 0.8125rem; font-weight: 700; color: #111827;
+      list-style: none; user-select: none;
+      transition: background 0.1s;
+    }
+    .maar-detail-panel summary::-webkit-details-marker { display: none; }
+    .maar-detail-panel summary .maar-chevron {
+      width: 16px; height: 16px; flex-shrink: 0;
+      color: #9ca3af; transition: transform 0.2s;
+    }
+    .maar-detail-panel[open] summary .maar-chevron { transform: rotate(90deg); color: #6366f1; }
+    .maar-detail-panel summary:hover { background: #f9fafb; }
+    .maar-detail-panel summary .maar-panel-badge {
+      margin-left: auto; font-size: 0.675rem; font-weight: 600;
+      padding: 0.15rem 0.5rem; border-radius: 4px;
+      background: #f3f4f6; color: #6b7280;
+    }
+    .maar-detail-panel summary .maar-panel-desc {
+      font-size: 0.75rem; font-weight: 400; color: #9ca3af;
+    }
+    .maar-detail-panel .maar-panel-body {
+      padding: 0.5rem 1.25rem 1.25rem;
+      border-top: 1px solid #f3f4f6;
+    }
+
+    /* ── Quick insights row ───────────────────────────────────── */
+    .maar-quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
+    @media (max-width: 768px) { .maar-quick-row { grid-template-columns: 1fr; } }
+    .maar-quick-box {
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1rem 1.25rem; overflow: hidden;
+    }
+    .maar-quick-box h4 { margin: 0 0 0.6rem; font-size: 0.8125rem; font-weight: 700; color: #111827; }
+    .maar-top5-list { list-style: none; padding: 0; margin: 0; }
+    .maar-top5-list li {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid #f3f4f6; font-size: 0.8125rem;
+    }
+    .maar-top5-list li:last-child { border-bottom: none; }
+    .maar-top5-rank {
+      width: 20px; height: 20px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700; flex-shrink: 0;
+      background: #f3f4f6; color: #374151;
+    }
+    .maar-top5-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #374151; font-weight: 500; }
+    .maar-top5-val { font-weight: 700; font-variant-numeric: tabular-nums; flex-shrink: 0; color: #dc2626; font-size: 0.8125rem; }
+
+    .maar-bar-chart-wrap { width: 100%; min-height: 200px; }
+
     .maar-batch-list {
       display: flex;
       flex-direction: column;
       gap: 0.875rem;
     }
     .maar-batch {
-      background: var(--color-background, #ffffff);
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-xl, 0.75rem);
-      overflow: hidden;
-      cursor: pointer;
-      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; overflow: hidden; cursor: pointer;
+      transition: box-shadow 0.2s, border-color 0.2s;
     }
     .maar-batch:hover {
-      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
-      border-color: var(--maar-green-400, #34d399);
-      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-color: #d1d5db;
     }
     .maar-batch-accent {
-      height: 4px;
-      width: 100%;
+      height: 4px; width: 100%;
     }
-    .maar-batch-accent-completed { background: linear-gradient(90deg, #10b981, #34d399); }
-    .maar-batch-accent-running   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-    .maar-batch-accent-queued    { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
-    .maar-batch-accent-failed    { background: linear-gradient(90deg, #ef4444, #f87171); }
-    .maar-batch-accent-cancelled { background: linear-gradient(90deg, #9ca3af, #d1d5db); }
-    .maar-batch-accent-scheduled { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+    .maar-batch-accent-completed { background: #10b981; }
+    .maar-batch-accent-running   { background: #3b82f6; }
+    .maar-batch-accent-queued    { background: #9ca3af; }
+    .maar-batch-accent-failed    { background: #ef4444; }
+    .maar-batch-accent-cancelled { background: #9ca3af; }
+    .maar-batch-accent-scheduled { background: #f59e0b; }
     .maar-batch-body {
       padding: 1.25rem 1.5rem;
     }
@@ -377,6 +687,23 @@
     .maar-cancel-btn:hover {
       color: var(--color-text-secondary, #6b7280);
     }
+    .maar-complete-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: #059669;
+      background: #d1fae5;
+      border: 1px solid #10b981;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .maar-complete-btn:hover {
+      background: #a7f3d0;
+      color: #047857;
+    }
     .maar-batch-top .maar-cancel-btn { margin-top: 0; }
     .maar-batch-progress-row {
       display: flex;
@@ -420,6 +747,19 @@
       white-space: nowrap;
     }
     .maar-cancel-bar-compact .maar-cancel-bar-btn:hover { background: #fef2f2; }
+    .maar-cancel-bar-compact .maar-complete-bar-btn {
+      flex-shrink: 0;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border: 1px solid #10b981;
+      border-radius: 4px;
+      background: #d1fae5;
+      color: #059669;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .maar-cancel-bar-compact .maar-complete-bar-btn:hover { background: #a7f3d0; }
     .maar-batch-kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
@@ -644,15 +984,11 @@
 
     /* ═══════ VIEW 2: Agent Cards ══════════════════════════ */
     .maar-section-title {
-      font-size: 0.9375rem;
-      font-weight: 700;
-      color: var(--color-text-primary, #1f2937);
-      margin: 0 0 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      font-size: 0.9375rem; font-weight: 700;
+      color: #1e293b; margin: 0 0 1rem;
+      display: flex; align-items: center; gap: 0.5rem;
     }
-    .maar-section-title svg { width: 1.125rem; height: 1.125rem; color: var(--maar-green-500, #059669); }
+    .maar-section-title svg { width: 1.125rem; height: 1.125rem; color: #6366f1; }
 
     .maar-agents-grid {
       display: grid;
@@ -662,20 +998,14 @@
     @media (max-width: 640px) { .maar-agents-grid { grid-template-columns: 1fr; } }
 
     .maar-agent {
-      background: var(--color-background, #ffffff);
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-xl, 0.75rem);
-      padding: 1.25rem;
-      cursor: pointer;
-      transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 0.875rem;
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; padding: 1.25rem;
+      cursor: pointer; transition: box-shadow 0.2s, border-color 0.2s;
+      display: flex; flex-direction: column; gap: 0.875rem;
     }
     .maar-agent:hover {
-      box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
-      border-color: var(--maar-green-400, #34d399);
-      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-color: #d1d5db;
     }
     .maar-agent-top {
       display: flex;
@@ -748,8 +1078,8 @@
       gap: 0.5rem;
     }
     .maar-agent-stat {
-      background: var(--color-background-secondary, #f9fafb);
-      border-radius: var(--radius-md, 0.375rem);
+      background: #f9fafb;
+      border-radius: 6px;
       padding: 0.5rem 0.375rem;
       text-align: center;
     }
@@ -873,24 +1203,18 @@
     }
     .maar-search:focus { border-color: var(--maar-green-500, #059669); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12); }
     .maar-select {
-      padding: 0.55rem 0.875rem;
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-lg, 0.5rem);
-      font-size: 0.8125rem;
-      font-family: inherit;
-      background: var(--color-background, #ffffff);
-      color: var(--color-text-primary, #1f2937);
-      outline: none;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #e5e7eb; border-radius: 6px;
+      font-size: 0.8125rem; font-family: inherit;
+      background: #fff; color: #1f2937;
+      outline: none; transition: border-color 0.15s;
       cursor: pointer;
       transition: border-color 0.15s;
     }
-    .maar-select:focus { border-color: var(--maar-green-500, #059669); }
+    .maar-select:focus { border-color: #059669; }
     .maar-filters-wrap {
-      margin-bottom: 0.75rem;
-      padding: 0.5rem 0.75rem;
-      background: var(--color-background-secondary, #f9fafb);
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-lg, 0.5rem);
+      margin-bottom: 0.75rem; padding: 0.5rem 0.75rem;
+      background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px;
     }
     .maar-filters-bar {
       display: flex;
@@ -920,33 +1244,26 @@
       margin-left: 0.15rem;
     }
     .maar-filter-btn {
-      padding: 0.35rem 0.75rem;
-      border-radius: var(--radius-md, 0.375rem);
-      font-size: 0.8125rem;
-      font-weight: 600;
-      border: none;
-      cursor: pointer;
-      background: var(--maar-green-500, #059669);
-      color: #fff;
+      padding: 0.35rem 0.75rem; border-radius: 6px;
+      font-size: 0.8125rem; font-weight: 600; border: none;
+      cursor: pointer; background: #059669; color: #fff;
       transition: background 0.15s;
     }
-    .maar-filter-btn:hover:not(:disabled) { background: var(--maar-green-600, #047857); }
-    .maar-filter-btn:disabled { opacity: 0.8; cursor: not-allowed; }
+    .maar-filter-btn:hover:not(:disabled) { background: #047857; }
+    .maar-filter-btn:disabled { opacity: 0.7; cursor: not-allowed; }
     .maar-filter-btn { display: inline-flex; align-items: center; justify-content: center; }
     .maar-filter-btn .maar-btn-spinner { display: none; width: 0.875rem; height: 0.875rem; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: maar-spin 0.6s linear infinite; flex-shrink: 0; }
     .maar-filter-btn.is-loading .maar-btn-spinner { display: inline-block; }
     .maar-filter-btn .maar-btn-text { margin-left: 0; }
     .maar-filter-btn.is-loading .maar-btn-text { margin-left: 0.35rem; }
-    .maar-filter-btn-secondary { background: var(--color-background, #fff); color: var(--color-text-secondary, #6b7280); border: 1px solid var(--color-border-light, #e5e7eb); }
-    .maar-filter-btn-secondary:hover:not(:disabled) { background: var(--color-background-secondary, #f9fafb); border-color: var(--color-border, #d1d5db); }
+    .maar-filter-btn-secondary { background: #fff; color: #6b7280; border: 1px solid #e5e7eb; }
+    .maar-filter-btn-secondary:hover:not(:disabled) { background: #f9fafb; border-color: #d1d5db; }
     .maar-filters-bar .maar-select { padding: 0.4rem 0.6rem; font-size: 0.75rem; min-height: 0; }
     .maar-filters-bar .maar-filter-btn { font-size: 0.75rem; }
 
     .maar-table-card {
-      background: var(--color-background, #ffffff);
-      border: 1px solid var(--color-border-light, #e5e7eb);
-      border-radius: var(--radius-xl, 0.75rem);
-      overflow: hidden;
+      background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 10px; overflow: hidden;
     }
     .maar-table {
       width: 100%;
@@ -1009,25 +1326,19 @@
 
     /* ═══════ Detail Modal ═════════════════════════════════ */
     .maar-overlay {
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       z-index: var(--z-modal, 1050);
       background: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem 1rem;
-      overflow-y: auto;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-      backdrop-filter: blur(2px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem 1rem; overflow-y: auto;
+      opacity: 0; transition: opacity 0.2s ease;
     }
     .maar-overlay.open { opacity: 1; }
     .maar-overlay.closing { opacity: 0; }
     .maar-modal {
-      background: var(--color-background, #ffffff);
-      border-radius: var(--radius-xl, 0.75rem);
-      box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0,0,0,0.1));
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
       width: 100%;
       max-width: 56rem;
       max-height: min(90vh, 42rem);
@@ -1406,7 +1717,55 @@
       <!-- Global Error -->
       <div id="maar-error" class="maar-error-banner"></div>
 
-      <!-- ═══════ VIEW 1: Batches ═══════════════════════════ -->
+      <!-- Tab bar: Batches | Overview & trends -->
+      <div class="maar-tab-bar" id="maar-tab-bar">
+        <button type="button" class="maar-tab active" id="tab-batches" data-tab="batches" aria-selected="true">Batches</button>
+        <button type="button" class="maar-tab" id="tab-overview" data-tab="overview" aria-selected="false">Overview &amp; trends</button>
+      </div>
+
+      <!-- Shared filters (used by both Batches and Overview) -->
+      <div class="maar-filters-wrap" id="batches-filters" style="display:none;">
+        <div class="maar-filters-bar">
+          <div class="maar-filter-group">
+            <label class="maar-filter-lbl" for="filter-created-by">Run by</label>
+            <select class="maar-select" id="filter-created-by">
+              <option value="">All</option>
+            </select>
+          </div>
+          <div class="maar-filter-group">
+            <label class="maar-filter-lbl" for="filter-status">Status</label>
+            <select class="maar-select" id="filter-status">
+              <option value="">All</option>
+              <option value="queued">Queued</option>
+              <option value="running">Running</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="maar-filter-group">
+            <label class="maar-filter-lbl" for="filter-scorecard">Scorecard</label>
+            <select class="maar-select" id="filter-scorecard">
+              <option value="">All</option>
+            </select>
+          </div>
+          <div class="maar-filter-group maar-filter-group-dates">
+            <label class="maar-filter-lbl" for="filter-from-date">From</label>
+            <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
+          </div>
+          <div class="maar-filter-group">
+            <label class="maar-filter-lbl" for="filter-to-date">To</label>
+            <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
+          </div>
+          <div class="maar-filter-actions">
+            <button type="button" class="maar-filter-btn" id="filter-apply"><span class="maar-btn-spinner"></span><span class="maar-btn-text">Apply</span></button>
+            <button type="button" class="maar-filter-btn maar-filter-btn-secondary" id="filter-clear">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════ VIEW: Batches ═══════════════════════════════ -->
       <div class="maar-view active" id="v-batches">
         <div id="batches-empty" class="maar-empty" style="display:none;">
           <div class="maar-empty-icon">
@@ -1415,46 +1774,139 @@
           <p class="maar-empty-title">No audit batches yet</p>
           <p>Start a massive AI audit from Audit Distribution to see batches here.</p>
         </div>
-        <div class="maar-filters-wrap" id="batches-filters" style="display:none;">
-          <div class="maar-filters-bar">
-            <div class="maar-filter-group">
-              <label class="maar-filter-lbl" for="filter-created-by">Run by</label>
-              <select class="maar-select" id="filter-created-by">
-                <option value="">All</option>
-              </select>
-            </div>
-            <div class="maar-filter-group">
-              <label class="maar-filter-lbl" for="filter-status">Status</label>
-              <select class="maar-select" id="filter-status">
-                <option value="">All</option>
-                <option value="queued">Queued</option>
-                <option value="running">Running</option>
-                <option value="scheduled">Scheduled</option>
-                <option value="completed">Completed</option>
-                <option value="failed">Failed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-            <div class="maar-filter-group maar-filter-group-dates">
-              <label class="maar-filter-lbl" for="filter-from-date">From</label>
-              <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
-            </div>
-            <div class="maar-filter-group">
-              <label class="maar-filter-lbl" for="filter-to-date">To</label>
-              <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
-            </div>
-            <div class="maar-filter-actions">
-              <button type="button" class="maar-filter-btn" id="filter-apply"><span class="maar-btn-spinner"></span><span class="maar-btn-text">Apply</span></button>
-              <button type="button" class="maar-filter-btn maar-filter-btn-secondary" id="filter-clear">Clear</button>
-            </div>
-          </div>
-        </div>
         <div id="batches-loading" class="maar-loading-strip">
           <div class="maar-loading-spinner" aria-hidden="true"></div>
           <span>Loading batches&hellip;</span>
         </div>
         <div id="page-summary" class="maar-page-summary" style="display:none;"></div>
         <div id="batches-list" class="maar-batch-list" style="display:none;"></div>
+      </div>
+
+      <!-- ═══════ Global tooltip ═══════════════════════════════ -->
+      <div id="maar-tooltip"></div>
+
+      <!-- ═══════ VIEW: Overview & trends ═══════════════════════ -->
+      <div class="maar-view" id="v-overview">
+        <div id="overview-loading" class="maar-loading-strip" style="display:none;">
+          <div class="maar-loading-spinner" aria-hidden="true"></div>
+          <span>Loading overview&hellip;</span>
+        </div>
+        <div id="maar-insights" class="maar-insights">
+
+          <!-- ── AT A GLANCE (always visible) ── -->
+          <div id="maar-health-card" class="maar-health-card" style="display:none;"></div>
+          <div id="maar-insights-summary" class="maar-insights-summary"></div>
+
+          <!-- ── SMART INSIGHTS (auto-generated recommendations) ── -->
+          <div id="maar-smart-insights" class="maar-smart-insights" style="display:none;"></div>
+
+          <!-- ── SECONDARY INSIGHTS ROW (team health + compliance + focus) ── -->
+          <div class="maar-chart-row" id="maar-secondary-row" style="display:none;">
+            <div id="maar-team-health" class="maar-team-health" style="display:none;"></div>
+            <div id="maar-compliance" class="maar-compliance" style="display:none;"></div>
+          </div>
+          <div id="maar-focus-areas" class="maar-focus-areas" style="display:none;"></div>
+
+          <!-- ── QUALITY TREND ── -->
+          <div class="maar-chart-card-full">
+            <div class="maar-chart-hdr">
+              <h4>Quality by conversation period</h4>
+              <button class="maar-info-btn" data-tip="<div class='tip-title'>Reading this chart</div>Each data point represents the conversation period of an audit batch.<br>Solid line = pass rate. Dashed line = average score.<br><div class='tip-sub'>Hover the dots for details on each period.</div>" aria-label="Chart info">?</button>
+            </div>
+            <p class="maar-trend-desc">Based on when conversations took place, not when the audit ran. Hover data points for details.</p>
+            <div id="maar-score-trend-chart" class="maar-trend-chart"></div>
+            <div id="maar-score-trend-legend" class="maar-trend-legend"></div>
+          </div>
+
+          <!-- ── QUICK INSIGHTS ── -->
+          <div class="maar-quick-row">
+            <div class="maar-quick-box">
+              <h4>Error breakdown by severity <button class="maar-info-btn" data-tip="Shows the proportion of errors across severity levels. Hover each slice for details." aria-label="Info">?</button></h4>
+              <div id="maar-severity-donut-chart" style="min-height:180px;"></div>
+            </div>
+            <div class="maar-quick-box">
+              <h4>Most common criteria issues <button class="maar-info-btn" data-tip="The 5 criteria with the highest failure rate, based on how often they are triggered relative to how often they are checked." aria-label="Info">?</button></h4>
+              <ol class="maar-top5-list" id="maar-top5-criteria"></ol>
+            </div>
+          </div>
+
+          <!-- ── EXPANDABLE DETAIL SECTIONS ── -->
+
+          <details class="maar-detail-panel" id="panel-employees">
+            <summary>
+              <svg class="maar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Performance by agent
+              <span class="maar-panel-desc">Individual breakdown per team member</span>
+              <span class="maar-panel-badge" id="panel-emp-badge"></span>
+            </summary>
+            <div class="maar-panel-body">
+              <p class="maar-trend-desc">Click any column header to sort. The mini bars show relative standing within the team.</p>
+              <div class="maar-table-scroll" id="maar-employee-table-wrap"></div>
+            </div>
+          </details>
+
+          <details class="maar-detail-panel" id="panel-scorecards">
+            <summary>
+              <svg class="maar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Scorecard comparison
+              <span class="maar-panel-desc">Pass rate by audit criteria set</span>
+              <span class="maar-panel-badge" id="panel-sc-badge"></span>
+            </summary>
+            <div class="maar-panel-body">
+              <p class="maar-trend-desc">Each bar shows the pass rate for a scorecard. Hover for more detail.</p>
+              <div id="maar-by-scorecard-chart" class="maar-bar-chart-wrap"></div>
+            </div>
+          </details>
+
+          <details class="maar-detail-panel" id="panel-distributions">
+            <summary>
+              <svg class="maar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Distributions &amp; patterns
+              <span class="maar-panel-desc">Score spread, error frequency, and criteria risk</span>
+            </summary>
+            <div class="maar-panel-body" style="padding-top:0.75rem;">
+              <div class="maar-chart-row">
+                <div>
+                  <div class="maar-chart-hdr"><h4>Score distribution</h4><button class="maar-info-btn" data-tip="Each bar shows how many conversations scored in that range." aria-label="Info">?</button></div>
+                  <div id="maar-score-dist-chart" style="min-height:200px;"></div>
+                </div>
+                <div>
+                  <div class="maar-chart-hdr"><h4>Errors per conversation</h4><button class="maar-info-btn" data-tip="Shows how errors are distributed across conversations." aria-label="Info">?</button></div>
+                  <div id="maar-error-dist-chart" style="min-height:200px;"></div>
+                </div>
+              </div>
+              <div class="maar-chart-row" style="margin-top:0.5rem;">
+                <div>
+                  <div class="maar-chart-hdr"><h4>Priority matrix</h4><button class="maar-info-btn" data-tip="Each dot is a criteria. Position shows frequency vs. severity. Upper-right items have the highest combined impact." aria-label="Info">?</button></div>
+                  <div id="maar-risk-matrix-chart" style="min-height:200px;"></div>
+                </div>
+                <div>
+                  <div class="maar-chart-hdr"><h4>Daily error breakdown</h4><button class="maar-info-btn" data-tip="Each bar is one day. Colored segments represent different criteria." aria-label="Info">?</button></div>
+                  <div id="maar-trend-chart" class="maar-trend-chart" style="min-height:200px;"></div>
+                  <div id="maar-trend-legend" class="maar-trend-legend"></div>
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <details class="maar-detail-panel" id="panel-criteria">
+            <summary>
+              <svg class="maar-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+              Criteria details
+              <span class="maar-panel-desc">Failure rates, severity, and penalty breakdown</span>
+              <span class="maar-panel-badge" id="panel-crit-badge"></span>
+            </summary>
+            <div class="maar-panel-body">
+              <p class="maar-trend-desc">Click headers to sort. Failure rate shows how often a criteria is triggered relative to how often it is evaluated.</p>
+              <div class="maar-table-scroll" id="maar-criteria-table-wrap"></div>
+            </div>
+          </details>
+
+        </div>
+        <div id="overview-empty" class="maar-empty" style="display:none;">
+          <p class="maar-empty-title">No data for this filter</p>
+          <p>Apply a date range and filters, then click Apply to see the overview.</p>
+        </div>
       </div>
 
       <!-- ═══════ VIEW 2: Batch Detail ══════════════════════ -->
@@ -1644,12 +2096,25 @@
         }
       }
 
+      /** Mark a job as completed (running/queued) */
+      async function completeJob(jobId) {
+        if (!confirm('Mark this audit batch as complete? Progress will be frozen and the batch will show as completed.')) return false;
+        try {
+          await apiPost('/api/massive-ai-audit/jobs/' + encodeURIComponent(jobId) + '/complete');
+          return true;
+        } catch (e) {
+          alert('Failed to mark complete: ' + (e.message || 'Unknown error'));
+          return false;
+        }
+      }
+
       /* ═══════════════════════════════════════════════════════
        *  State
        * ═══════════════════════════════════════════════════════ */
       let allJobs = [], curJobId = null, curResults = [], curAgentKey = null, curAgentConvos = [], curAgentName = null;
       const cache = {};
       let navDepth = 0; // 0=batches, 1=batch detail, 2=agent convos
+      let lastAnalytics = null; // cached for Overview tab
       /** Intercom admin email -> name (alias) from Intercom API */
       let intercomAdminByEmail = null;
       async function ensureIntercomAdmins() {
@@ -2037,6 +2502,9 @@
           h += '    <span class="maar-pill ' + pillClass(st) + '">' + statusLabel(st) + '</span>';
           if (st === 'running' || st === 'queued' || st === 'scheduled') {
             h += '  <button type="button" class="maar-cancel-btn" data-cancel-jid="' + esc(job.id) + '">Cancel</button>';
+            if (st === 'running' || st === 'queued') {
+              h += '  <button type="button" class="maar-complete-btn" data-complete-jid="' + esc(job.id) + '">Mark complete</button>';
+            }
           }
           h += '  </div>';
           h += '</div>';
@@ -2135,8 +2603,8 @@
 
         $('batches-list').querySelectorAll('.maar-batch').forEach(card => {
           card.addEventListener('click', (e) => {
-            // Don't navigate if cancel button was clicked
-            if (e.target.closest('.maar-cancel-btn')) return;
+            // Don't navigate if cancel or complete button was clicked
+            if (e.target.closest('.maar-cancel-btn') || e.target.closest('.maar-complete-btn')) return;
             goToBatch(card.getAttribute('data-jid'));
           });
         });
@@ -2148,6 +2616,22 @@
             const jid = btn.getAttribute('data-cancel-jid');
             if (!jid) return;
             const ok = await cancelJob(jid);
+            if (ok) {
+              $('batches-loading').style.display = 'flex';
+              $('batches-loading').querySelector('span').textContent = 'Refreshing…';
+              $('batches-list').style.display = 'none';
+              try { await loadBatchesWithFilters(); } catch (ex) { console.error(ex); }
+              $('batches-loading').style.display = 'none';
+            }
+          });
+        });
+        // Mark complete buttons
+        $('batches-list').querySelectorAll('.maar-complete-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const jid = btn.getAttribute('data-complete-jid');
+            if (!jid) return;
+            const ok = await completeJob(jid);
             if (ok) {
               $('batches-loading').style.display = 'flex';
               $('batches-loading').querySelector('span').textContent = 'Refreshing…';
@@ -2193,11 +2677,30 @@
               : effectiveStatus === 'running'
                 ? 'Running. You can cancel to free a slot.'
                 : 'Queued. You can cancel to free a slot.';
+            const showComplete = effectiveStatus === 'running' || effectiveStatus === 'queued';
             cancelBar.innerHTML = '<div class="maar-cancel-bar-compact">'
               + '<span class="maar-cancel-bar-text">' + statusMsg + '</span>'
+              + '<div style="display:flex;gap:0.5rem;">'
+              + (showComplete ? '<button type="button" id="batch-complete-btn" class="maar-complete-bar-btn">Mark complete</button>' : '')
               + '<button type="button" id="batch-cancel-btn" class="maar-cancel-bar-btn">Cancel batch</button>'
-              + '</div>';
+              + '</div></div>';
             cancelBar.style.display = 'block';
+            if (showComplete && $('batch-complete-btn')) {
+              $('batch-complete-btn').addEventListener('click', async () => {
+                const ok = await completeJob(jobId);
+                if (ok) {
+                  try {
+                    const path = buildJobsUrl();
+                    const fresh = await api(path);
+                    allJobs = fresh || [];
+                    await fetchAllJobResults(allJobs);
+                  } catch (ex) { console.error(ex); }
+                  cancelBar.style.display = 'none';
+                  cancelBar.innerHTML = '';
+                  await loadBatch(jobId);
+                }
+              });
+            }
             $('batch-cancel-btn').addEventListener('click', async () => {
               const ok = await cancelJob(jobId);
               if (ok) {
@@ -2738,9 +3241,10 @@
       function getFilterParams() {
         const createdBy = ($('filter-created-by') && $('filter-created-by').value) ? $('filter-created-by').value.trim() : '';
         const status = ($('filter-status') && $('filter-status').value) ? $('filter-status').value.trim() : '';
+        const scorecardId = ($('filter-scorecard') && $('filter-scorecard').value) ? $('filter-scorecard').value.trim() : '';
         const fromDate = ($('filter-from-date') && $('filter-from-date').value) ? $('filter-from-date').value.trim() : '';
         const toDate = ($('filter-to-date') && $('filter-to-date').value) ? $('filter-to-date').value.trim() : '';
-        return { createdBy, status, fromDate, toDate };
+        return { createdBy, status, scorecardId, fromDate, toDate };
       }
 
       function buildJobsUrl() {
@@ -2748,10 +3252,23 @@
         const params = new URLSearchParams();
         if (p.createdBy) params.set('created_by', p.createdBy);
         if (p.status) params.set('status', p.status);
-        if (p.fromDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(p.fromDate)) params.set('from_date', p.fromDate);
-        if (p.toDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(p.toDate)) params.set('to_date', p.toDate);
+        if (p.scorecardId) params.set('scorecard_id', p.scorecardId);
+        if (p.fromDate && /^\d{4}-\d{2}-\d{2}$/.test(p.fromDate)) params.set('from_date', p.fromDate);
+        if (p.toDate && /^\d{4}-\d{2}-\d{2}$/.test(p.toDate)) params.set('to_date', p.toDate);
         const q = params.toString();
         return '/api/massive-ai-audit/jobs' + (q ? '?' + q : '');
+      }
+
+      function buildAnalyticsUrl() {
+        const p = getFilterParams();
+        const params = new URLSearchParams();
+        if (p.createdBy) params.set('created_by', p.createdBy);
+        if (p.status) params.set('status', p.status);
+        if (p.scorecardId) params.set('scorecard_id', p.scorecardId);
+        if (p.fromDate && /^\d{4}-\d{2}-\d{2}$/.test(p.fromDate)) params.set('from_date', p.fromDate);
+        if (p.toDate && /^\d{4}-\d{2}-\d{2}$/.test(p.toDate)) params.set('to_date', p.toDate);
+        const q = params.toString();
+        return '/api/massive-ai-audit/analytics' + (q ? '?' + q : '');
       }
 
       async function loadBatchesWithFilters() {
@@ -2761,11 +3278,817 @@
         await fetchAllJobResults(allJobs);
         renderBatches(allJobs);
         $('batches-filters').style.display = 'flex';
+        try {
+          const analyticsPath = buildAnalyticsUrl();
+          const analytics = await api(analyticsPath);
+          lastAnalytics = analytics;
+          renderInsights(analytics);
+        } catch (e) { console.warn('[MassiveAI] Analytics fetch failed', e); lastAnalytics = null; renderInsights(null); }
+      }
+
+      async function loadOverview() {
+        const loadingEl = $('overview-loading');
+        const emptyEl = $('overview-empty');
+        if (loadingEl) loadingEl.style.display = 'flex';
+        if (emptyEl) emptyEl.style.display = 'none';
+        try {
+          const analytics = await api(buildAnalyticsUrl());
+          lastAnalytics = analytics;
+          renderInsights(analytics);
+        } catch (e) { console.warn('[MassiveAI] Overview fetch failed', e); lastAnalytics = null; renderInsights(null); }
+        if (loadingEl) loadingEl.style.display = 'none';
+      }
+
+      function switchTab(tabName) {
+        const tabBatches = $('tab-batches');
+        const tabOverview = $('tab-overview');
+        if (tabName === 'overview') {
+          showView('v-overview');
+          if (tabBatches) { tabBatches.classList.remove('active'); tabBatches.setAttribute('aria-selected', 'false'); }
+          if (tabOverview) { tabOverview.classList.add('active'); tabOverview.setAttribute('aria-selected', 'true'); }
+          if (!lastAnalytics) loadOverview();
+          scrollTop();
+        } else {
+          goToBatches(true);
+          if (tabOverview) { tabOverview.classList.remove('active'); tabOverview.setAttribute('aria-selected', 'false'); }
+          if (tabBatches) { tabBatches.classList.add('active'); tabBatches.setAttribute('aria-selected', 'true'); }
+        }
+      }
+
+      /* ═══════════════════════════════════════════════════════
+       *  Tooltip system
+       * ═══════════════════════════════════════════════════════ */
+      var _tipEl = $('maar-tooltip');
+      function showTip(html, e) {
+        if (!_tipEl || !html) return;
+        _tipEl.innerHTML = html;
+        _tipEl.classList.add('visible');
+        moveTip(e);
+      }
+      function moveTip(e) {
+        if (!_tipEl) return;
+        var x = e.clientX + 12, y = e.clientY + 12;
+        var tw = _tipEl.offsetWidth, th = _tipEl.offsetHeight;
+        if (x + tw > window.innerWidth - 8) x = e.clientX - tw - 12;
+        if (y + th > window.innerHeight - 8) y = e.clientY - th - 12;
+        _tipEl.style.left = x + 'px'; _tipEl.style.top = y + 'px';
+      }
+      function hideTip() { if (_tipEl) _tipEl.classList.remove('visible'); }
+
+      document.addEventListener('mouseover', function(e) {
+        var el = e.target.closest('[data-tip]');
+        if (el) showTip(el.getAttribute('data-tip'), e);
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (_tipEl && _tipEl.classList.contains('visible')) moveTip(e);
+      });
+      document.addEventListener('mouseout', function(e) {
+        var el = e.target.closest('[data-tip]');
+        if (el) hideTip();
+      });
+
+      /* ═══════════════════════════════════════════════════════
+       *  Number formatting
+       * ═══════════════════════════════════════════════════════ */
+      function fmtN(n) { if (n == null) return '\u2014'; return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+
+      /* ═══════════════════════════════════════════════════════
+       *  Overview render functions
+       * ═══════════════════════════════════════════════════════ */
+      var _empSortCol = 'failed', _empSortAsc = false;
+      var _critSortCol = 'failureRatePct', _critSortAsc = false;
+      var _lastInsightsData = null;
+
+      var _panelRendered = {};
+
+      function renderInsights(data) {
+        _lastInsightsData = data;
+        _panelRendered = {};
+        var block = $('maar-insights');
+        var summaryEl = $('maar-insights-summary');
+        var healthCard = $('maar-health-card');
+        var overviewEmpty = $('overview-empty');
+        if (!data || !data.summary) { block.classList.remove('visible'); if (overviewEmpty) overviewEmpty.style.display = 'block'; return; }
+        var s = data.summary;
+        if (s.totalConversations === 0) { block.classList.remove('visible'); if (overviewEmpty) overviewEmpty.style.display = 'block'; return; }
+        block.classList.add('visible');
+        if (overviewEmpty) overviewEmpty.style.display = 'none';
+
+        /* ── Health card (professional gauge + metrics) ── */
+        var pct = s.passRatePct || 0;
+        var hLevel = 'strong', hCls = 'health-strong', hTitle = 'Strong Performance', hNote = 'Quality levels are on track. Continuing regular monitoring is recommended.';
+        if (pct < 50 || (s.avgScore != null && s.avgScore < 50)) {
+          hLevel = 'developing'; hCls = 'health-developing'; hTitle = 'Developing';
+          hNote = 'There is opportunity to strengthen quality further. The details below can help identify focus areas.';
+        } else if (pct < 80 || (s.avgScore != null && s.avgScore < 70)) {
+          hLevel = 'moderate'; hCls = 'health-moderate'; hTitle = 'Moderate';
+          hNote = 'Quality is at an acceptable level with room for growth. Review the trends and breakdowns for specifics.';
+        }
+        var gaugeColor = hLevel === 'strong' ? '#10b981' : hLevel === 'moderate' ? '#f59e0b' : '#6366f1';
+        if (healthCard) {
+          healthCard.style.display = 'flex';
+          healthCard.className = 'maar-health-card ' + hCls;
+          healthCard.innerHTML = ''
+            + '<div class="maar-health-left">'
+            + '<svg class="maar-health-gauge" viewBox="0 0 80 80">'
+            + '<circle cx="40" cy="40" r="32" fill="none" stroke="#e5e7eb" stroke-width="7"/>'
+            + '<circle cx="40" cy="40" r="32" fill="none" stroke="' + gaugeColor + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (pct / 100 * 201.1).toFixed(1) + ' 201.1" transform="rotate(-90 40 40)" style="transition:stroke-dasharray 0.6s ease;"/>'
+            + '<text x="40" y="37" text-anchor="middle" font-size="15" font-weight="700" fill="#111827">' + pct + '%</text>'
+            + '<text x="40" y="49" text-anchor="middle" font-size="7.5" fill="#9ca3af" font-weight="500">pass rate</text>'
+            + '</svg></div>'
+            + '<div class="maar-health-center">'
+            + '<p class="maar-health-title">' + esc(hTitle) + '</p>'
+            + '<p class="maar-health-subtitle">' + esc(hNote) + '</p>'
+            + '<div class="maar-health-metrics">'
+            + '<div class="maar-health-metric"><span class="maar-health-metric-val">' + fmtN(s.totalConversations) + '</span><span class="maar-health-metric-label">Audited</span></div>'
+            + '<div class="maar-health-metric"><span class="maar-health-metric-val">' + (s.avgScore != null ? s.avgScore + '%' : '\u2014') + '</span><span class="maar-health-metric-label">Avg score</span></div>'
+            + '<div class="maar-health-metric"><span class="maar-health-metric-val">' + fmtN(s.totalErrors) + '</span><span class="maar-health-metric-label">Total issues</span></div>'
+            + '<div class="maar-health-metric"><span class="maar-health-metric-val">' + fmtN(s.passed) + '</span><span class="maar-health-metric-label">Passed</span></div>'
+            + '</div></div>';
+        }
+
+        /* ── Period comparison from trend data ── */
+        var trendArr = data.trend || [];
+        var halfIdx = Math.floor(trendArr.length / 2);
+        var prevHalf = trendArr.slice(0, halfIdx);
+        var currHalf = trendArr.slice(halfIdx);
+        function avgOfArr(arr, key) {
+          if (!arr.length) return null;
+          var sum = 0, cnt = 0;
+          arr.forEach(function(t) { if (t[key] != null) { sum += t[key]; cnt++; } });
+          return cnt > 0 ? Math.round(sum / cnt) : null;
+        }
+        function sumOfArr(arr, key) { return arr.reduce(function(s, t) { return s + (t[key] || 0); }, 0); }
+        var prevPR = avgOfArr(prevHalf, 'passRatePct');
+        var currPR = avgOfArr(currHalf, 'passRatePct');
+        var prevAS = avgOfArr(prevHalf, 'avgScore');
+        var currAS = avgOfArr(currHalf, 'avgScore');
+        var prevErrs = sumOfArr(prevHalf, 'totalErrors');
+        var currErrs = sumOfArr(currHalf, 'totalErrors');
+        var prevTotal = sumOfArr(prevHalf, 'total');
+        var currTotal = sumOfArr(currHalf, 'total');
+        var hasDelta = trendArr.length >= 4;
+
+        function deltaHtml(curr, prev, suffix, invertColor) {
+          if (!hasDelta || curr == null || prev == null) return '';
+          var diff = curr - prev;
+          if (diff === 0) return '<div class="maar-kpi-delta neutral">\u2014 no change</div>';
+          var isGood = invertColor ? diff < 0 : diff > 0;
+          var cls = isGood ? 'up' : 'down';
+          var arrow = diff > 0 ? '\u25B2' : '\u25BC';
+          return '<div class="maar-kpi-delta ' + cls + '">' + arrow + ' ' + Math.abs(diff) + (suffix || '') + ' vs prior period</div>';
+        }
+
+        /* ── KPI cards ── */
+        function kpi(label, val, sub, tip, deltaStr) {
+          return '<div class="maar-kpi" data-tip="' + esc(tip || '') + '"><div class="maar-kpi-label">' + esc(label) + '</div><div class="maar-kpi-value">' + esc(String(val)) + '</div>' + (sub ? '<div class="maar-kpi-sublabel">' + esc(sub) + '</div>' : '') + (deltaStr || '') + '</div>';
+        }
+        summaryEl.innerHTML = ''
+          + kpi('Conversations', fmtN(s.totalConversations), fmtN(s.passed) + ' passed, ' + fmtN(s.failed) + ' did not pass', 'Total conversations audited in the selected date range.', deltaHtml(currTotal, prevTotal, ''))
+          + kpi('Pass rate', s.passRatePct + '%', 'of all audited', 'Percentage of conversations that met all criteria thresholds.', deltaHtml(currPR, prevPR, '%'))
+          + kpi('Avg score', s.avgScore != null ? s.avgScore + '%' : '\u2014', 'across all results', 'Average quality score across all audited conversations.', deltaHtml(currAS, prevAS, '%'))
+          + kpi('Total issues', fmtN(s.totalErrors), fmtN(s.criticalFail + s.critical) + ' critical \u00b7 ' + fmtN(s.significant + s.major + s.minor) + ' other', 'Total quality issues identified across all conversations.', deltaHtml(currErrs, prevErrs, '', true));
+
+        /* ── Always-visible charts ── */
+        renderScoreTrendLines($('maar-score-trend-chart'), data.trend || []);
+        renderSeverityDonut($('maar-severity-donut-chart'), data.severityBreakdown || {});
+
+        /* ── Top 5 criteria list ── */
+        var top5El = $('maar-top5-criteria');
+        var cd = data.criteriaDetails || [];
+        var top5 = cd.filter(function(c) { return c.timesFailed > 0; }).sort(function(a, b) { return b.failureRatePct - a.failureRatePct; }).slice(0, 5);
+        if (top5.length === 0) {
+          top5El.innerHTML = '<li style="color:#9ca3af;padding:0.5rem 0;">No criteria issues identified in this range.</li>';
+        } else {
+          top5El.innerHTML = top5.map(function(c, i) {
+            return '<li data-tip="' + esc(c.errorName + ': triggered in ' + c.failureRatePct + '% of evaluations (' + fmtN(c.timesFailed) + ' of ' + fmtN(c.timesEvaluated) + '). Severity: ' + (c.severity || 'unclassified')) + '">'
+              + '<span class="maar-top5-rank">' + (i + 1) + '</span>'
+              + '<span class="maar-top5-name">' + esc(c.errorName) + '</span>'
+              + '<span class="maar-top5-val">' + c.failureRatePct + '%</span>'
+              + '</li>';
+          }).join('');
+        }
+
+        /* ── Panel badges ── */
+        var empBadge = $('panel-emp-badge');
+        if (empBadge && data.byEmployee) empBadge.textContent = data.byEmployee.length + ' agents';
+        var scBadge = $('panel-sc-badge');
+        if (scBadge && data.byScorecard) scBadge.textContent = data.byScorecard.length + ' scorecards';
+        var critBadge = $('panel-crit-badge');
+        if (critBadge && cd.length) critBadge.textContent = cd.length + ' criteria';
+
+        /* ── Smart Insights (auto-generated) ── */
+        renderSmartInsights(data, s, cd, trendArr);
+
+        /* ── Team Health Distribution ── */
+        renderTeamHealth(data.byEmployee || []);
+
+        /* ── Compliance Dashboard ── */
+        renderComplianceDash(data.failAllStats || {}, s, data.byEmployee || []);
+
+        /* ── Top Focus Areas ── */
+        renderFocusAreas(cd, s);
+
+        var secRow = $('maar-secondary-row');
+        if (secRow) secRow.style.display = 'grid';
+
+        /* ── Lazy-render panels ── */
+        renderPanelIfOpen('panel-employees');
+        renderPanelIfOpen('panel-scorecards');
+        renderPanelIfOpen('panel-distributions');
+        renderPanelIfOpen('panel-criteria');
+      }
+
+      function renderPanelIfOpen(panelId) {
+        var panel = $(panelId);
+        if (!panel || !panel.open || _panelRendered[panelId]) return;
+        _panelRendered[panelId] = true;
+        var data = _lastInsightsData;
+        if (!data) return;
+        if (panelId === 'panel-employees') renderEmployeeTable($('maar-employee-table-wrap'), data.byEmployee || []);
+        if (panelId === 'panel-scorecards') renderByScorecardChart($('maar-by-scorecard-chart'), data.byScorecard || []);
+        if (panelId === 'panel-distributions') {
+          renderScoreDistribution($('maar-score-dist-chart'), data.scoreDistribution || []);
+          renderErrorCountDistribution($('maar-error-dist-chart'), data.errorCountDistribution || []);
+          renderRiskMatrix($('maar-risk-matrix-chart'), data.riskMatrix || []);
+          renderTrendChart($('maar-trend-chart'), data.trend || []);
+        }
+        if (panelId === 'panel-criteria') renderCriteriaTable($('maar-criteria-table-wrap'), data.criteriaDetails || []);
+      }
+
+      // Listen for panel opens to lazy-render
+      ['panel-employees', 'panel-scorecards', 'panel-distributions', 'panel-criteria'].forEach(function(id) {
+        var el = $(id);
+        if (el) el.addEventListener('toggle', function() { renderPanelIfOpen(id); });
+      });
+
+      /* ════ NEW: Smart Insights Engine ════ */
+      function renderSmartInsights(data, s, cd, trendArr) {
+        var el = $('maar-smart-insights');
+        if (!el) return;
+        var insights = [];
+        var iconWarn = '<svg class="si-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#92400e" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="5" x2="8" y2="8.5"/><circle cx="8" cy="11" r="0.5" fill="#92400e"/></svg>';
+        var iconOk = '<svg class="si-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#065f46" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><polyline points="5.5,8 7.5,10 10.5,6"/></svg>';
+        var iconInfo = '<svg class="si-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#92400e" stroke-width="1.5"><circle cx="8" cy="8" r="6.5"/><line x1="8" y1="7.5" x2="8" y2="11"/><circle cx="8" cy="5.5" r="0.5" fill="#92400e"/></svg>';
+        var isPositive = true;
+
+        if (s.passRatePct < 50) {
+          insights.push(iconWarn + '<span>Pass rate is at <strong>' + s.passRatePct + '%</strong>. Review the criteria breakdown below to identify primary drivers.</span>');
+          isPositive = false;
+        } else if (s.passRatePct < 70) {
+          insights.push(iconInfo + '<span>Pass rate of <strong>' + s.passRatePct + '%</strong> has room for growth. The focus areas below highlight where to concentrate effort.</span>');
+          isPositive = false;
+        }
+
+        var emps = data.byEmployee || [];
+        var lowEmps = emps.filter(function(e) { return e.total >= 3 && e.passRatePct < 50; });
+        if (lowEmps.length > 0) {
+          insights.push(iconWarn + '<span><strong>' + lowEmps.length + ' agent' + (lowEmps.length > 1 ? 's' : '') + '</strong> ' + (lowEmps.length > 1 ? 'have' : 'has') + ' a pass rate below 50%. Targeted coaching may help.</span>');
+          isPositive = false;
+        }
+
+        var failAll = data.failAllStats || {};
+        if (failAll.failAllRatePct > 10) {
+          insights.push(iconWarn + '<span>Compliance violation rate is <strong>' + failAll.failAllRatePct + '%</strong>. Review auto-fail criteria in the compliance section.</span>');
+          isPositive = false;
+        }
+
+        if (cd.length > 0) {
+          var topCrit = cd.filter(function(c) { return c.timesFailed > 0; }).sort(function(a, b) { return b.timesFailed - a.timesFailed; });
+          if (topCrit.length > 0) {
+            var totalFails = topCrit.reduce(function(s, c) { return s + c.timesFailed; }, 0);
+            var top1Pct = totalFails > 0 ? Math.round(topCrit[0].timesFailed / totalFails * 100) : 0;
+            if (top1Pct >= 25) {
+              insights.push(iconInfo + '<span>"<strong>' + esc(topCrit[0].errorName) + '</strong>" accounts for ' + top1Pct + '% of all issues. Addressing this could meaningfully improve quality.</span>');
+              isPositive = false;
+            }
+          }
+        }
+
+        if (trendArr.length >= 4) {
+          var halfIdx = Math.floor(trendArr.length / 2);
+          var earlyAvg = 0, lateAvg = 0, eC = 0, lC = 0;
+          trendArr.forEach(function(t, i) {
+            if (t.passRatePct != null) {
+              if (i < halfIdx) { earlyAvg += t.passRatePct; eC++; }
+              else { lateAvg += t.passRatePct; lC++; }
+            }
+          });
+          earlyAvg = eC > 0 ? earlyAvg / eC : 0;
+          lateAvg = lC > 0 ? lateAvg / lC : 0;
+          var trendDiff = Math.round(lateAvg - earlyAvg);
+          if (trendDiff >= 5) {
+            insights.push(iconOk + '<span>Quality is <strong>trending upward</strong> (+' + trendDiff + '% pass rate in the recent period).</span>');
+          } else if (trendDiff <= -5) {
+            insights.push(iconWarn + '<span>Quality has <strong>declined</strong> (' + trendDiff + '% pass rate) in the recent period. Consider reviewing recent changes.</span>');
+            isPositive = false;
+          }
+        }
+
+        if (s.passRatePct >= 80 && insights.length === 0) {
+          insights.push(iconOk + '<span>Quality is strong at <strong>' + s.passRatePct + '%</strong> pass rate. Continue regular monitoring.</span>');
+        }
+
+        if (insights.length === 0) { el.style.display = 'none'; return; }
+        el.style.display = 'block';
+        el.className = 'maar-smart-insights' + (isPositive ? ' type-positive' : '');
+        el.innerHTML = '<div class="maar-smart-insights-title">'
+          + (isPositive ? iconOk : iconWarn)
+          + ' Insights</div>'
+          + '<ul class="maar-smart-insights-list">' + insights.map(function(t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
+      }
+
+      /* ════ NEW: Team Health Distribution ════ */
+      function renderTeamHealth(byEmployee) {
+        var el = $('maar-team-health');
+        if (!el) return;
+        var qualified = byEmployee.filter(function(e) { return e.total >= 2; });
+        if (qualified.length < 2) { el.style.display = 'none'; return; }
+        var top = 0, avg = 0, low = 0;
+        qualified.forEach(function(e) {
+          var pr = e.passRatePct != null ? e.passRatePct : 0;
+          if (pr >= 80) top++;
+          else if (pr >= 50) avg++;
+          else low++;
+        });
+        var total = qualified.length;
+        var topPct = Math.round(top / total * 100);
+        var avgPct = Math.round(avg / total * 100);
+        var lowPct = 100 - topPct - avgPct;
+
+        el.style.display = 'block';
+        el.innerHTML = '<h4>'
+          + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+          + 'Team health (' + total + ' agents)'
+          + '<button class="maar-info-btn" data-tip="Shows how agents are distributed across performance tiers based on pass rate. Top: \u226580%, Average: 50-79%, Needs coaching: &lt;50%." aria-label="Info">?</button>'
+          + '</h4>'
+          + '<div class="maar-team-bar">'
+          + (topPct > 0 ? '<div class="maar-team-bar-seg top" style="width:' + topPct + '%;">' + (topPct >= 12 ? top : '') + '</div>' : '')
+          + (avgPct > 0 ? '<div class="maar-team-bar-seg avg" style="width:' + avgPct + '%;">' + (avgPct >= 12 ? avg : '') + '</div>' : '')
+          + (lowPct > 0 ? '<div class="maar-team-bar-seg low" style="width:' + lowPct + '%;">' + (lowPct >= 12 ? low : '') + '</div>' : '')
+          + '</div>'
+          + '<div class="maar-team-bar-legend">'
+          + '<span><span class="dot" style="background:#059669;"></span>Top performers: ' + top + ' (' + topPct + '%)</span>'
+          + '<span><span class="dot" style="background:#f59e0b;"></span>Average: ' + avg + ' (' + avgPct + '%)</span>'
+          + '<span><span class="dot" style="background:#ef4444;"></span>Needs coaching: ' + low + ' (' + lowPct + '%)</span>'
+          + '</div>';
+      }
+
+      /* ════ NEW: Compliance Dashboard ════ */
+      function renderComplianceDash(failAllStats, s, byEmployee) {
+        var el = $('maar-compliance');
+        if (!el) return;
+        var fa = failAllStats;
+        if (!fa || !fa.failAllCriteria || fa.failAllCriteria.length === 0) {
+          if (s.totalConversations > 0) {
+            el.style.display = 'block';
+            el.innerHTML = '<h4>'
+              + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9,12 11,14 15,10"/></svg>'
+              + 'Compliance status</h4>'
+              + '<p style="font-size:0.8rem;color:#059669;font-weight:600;margin:0;">No compliance violations detected in this period.</p>';
+            return;
+          }
+          el.style.display = 'none';
+          return;
+        }
+        var violationRate = fa.failAllRatePct || 0;
+        var violationColor = violationRate > 10 ? '#dc2626' : violationRate > 5 ? '#f59e0b' : '#059669';
+
+        var topAgents = byEmployee.filter(function(e) { return e.failAllCount > 0; })
+          .sort(function(a, b) { return b.failAllCount - a.failAllCount; })
+          .slice(0, 3);
+
+        el.style.display = 'block';
+        var h = '<h4>'
+          + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + violationColor + '" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+          + 'Compliance status'
+          + '<button class="maar-info-btn" data-tip="Compliance criteria trigger an automatic fail. This section shows how often they occur and which criteria are involved." aria-label="Info">?</button>'
+          + '</h4>';
+        h += '<div class="maar-compliance-stats">';
+        h += '<div class="maar-compliance-stat"><span class="maar-compliance-stat-val" style="color:' + violationColor + ';">' + violationRate + '%</span><span class="maar-compliance-stat-label">Violation rate</span></div>';
+        h += '<div class="maar-compliance-stat"><span class="maar-compliance-stat-val">' + fmtN(fa.totalConversationsWithFailAll) + '</span><span class="maar-compliance-stat-label">Affected conversations</span></div>';
+        h += '</div>';
+
+        if (fa.failAllCriteria.length > 0) {
+          h += '<ul class="maar-compliance-list">';
+          fa.failAllCriteria.slice(0, 5).forEach(function(c) {
+            h += '<li><span class="c-name">' + esc(c.errorName) + '</span><span class="c-count">' + fmtN(c.count) + ' triggers</span></li>';
+          });
+          h += '</ul>';
+        }
+        if (topAgents.length > 0) {
+          h += '<div style="margin-top:0.6rem;padding-top:0.5rem;border-top:1px solid #f3f4f6;">';
+          h += '<div style="font-size:0.7rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.35rem;">Most affected agents</div>';
+          h += '<ul class="maar-compliance-list">';
+          topAgents.forEach(function(a) {
+            h += '<li><span class="c-name">' + esc((a.employeeName || a.employeeKey || '').slice(0, 30)) + '</span><span class="c-count">' + a.failAllCount + ' violations</span></li>';
+          });
+          h += '</ul></div>';
+        }
+        el.innerHTML = h;
+      }
+
+      /* ════ NEW: Top Focus Areas ════ */
+      function renderFocusAreas(criteriaDetails, s) {
+        var el = $('maar-focus-areas');
+        if (!el) return;
+        var cd = (criteriaDetails || []).filter(function(c) { return c.timesFailed > 0 && c.timesEvaluated > 0; });
+        if (cd.length < 1) { el.style.display = 'none'; return; }
+
+        var totalFails = cd.reduce(function(s, c) { return s + c.timesFailed; }, 0);
+        var sorted = cd.slice().sort(function(a, b) {
+          return (b.timesFailed * (b.avgPenaltyPoints || 1)) - (a.timesFailed * (a.avgPenaltyPoints || 1));
+        });
+        var top3 = sorted.slice(0, 3);
+        var top3Fails = top3.reduce(function(s, c) { return s + c.timesFailed; }, 0);
+        var top3Pct = totalFails > 0 ? Math.round(top3Fails / totalFails * 100) : 0;
+
+        el.style.display = 'block';
+        var h = '<h4>'
+          + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+          + 'Priority focus areas'
+          + '<button class="maar-info-btn" data-tip="Criteria ranked by combined impact (frequency \u00d7 penalty). Addressing these will have the biggest effect on overall quality." aria-label="Info">?</button>'
+          + '</h4>';
+        h += '<p class="maar-focus-areas-desc">These ' + top3.length + ' criteria account for <strong>' + top3Pct + '%</strong> of all triggered issues. Addressing them could meaningfully improve pass rates.</p>';
+        top3.forEach(function(c, i) {
+          var impactPct = totalFails > 0 ? Math.round(c.timesFailed / totalFails * 100) : 0;
+          var barColor = i === 0 ? '#ef4444' : i === 1 ? '#f59e0b' : '#6b7280';
+          h += '<div class="maar-focus-item">';
+          h += '<div class="maar-focus-num' + (i === 1 ? ' n2' : i === 2 ? ' n3' : '') + '">' + (i + 1) + '</div>';
+          h += '<div class="maar-focus-body">';
+          h += '<div class="maar-focus-name">' + esc(c.errorName) + '</div>';
+          h += '<div class="maar-focus-detail">Triggered ' + fmtN(c.timesFailed) + ' times (' + c.failureRatePct + '% failure rate) \u00b7 ' + impactPct + '% of total issues \u00b7 Severity: ' + esc(c.severity || 'unclassified') + '</div>';
+          h += '<div class="maar-focus-bar"><div class="maar-focus-bar-fill" style="width:' + impactPct + '%;background:' + barColor + ';"></div></div>';
+          h += '</div></div>';
+        });
+        el.innerHTML = h;
+      }
+
+      /* 3. Score + Pass Rate Trend Lines with hover dots */
+      function renderScoreTrendLines(container, trend) {
+        if (!container) return;
+        var legendEl = $('maar-score-trend-legend');
+        if (!trend || trend.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No trend data available yet.</p>'; if (legendEl) legendEl.innerHTML = ''; return; }
+        var pad = { top: 20, right: 20, bottom: 36, left: 48 };
+        var w = Math.max(300, (container.clientWidth || 600) - pad.left - pad.right);
+        var h = Math.max(160, 220);
+        function toY(v) { return pad.top + h - (v / 100) * h; }
+        var pathPR = '', pathAS = '';
+        var dots = [];
+        trend.forEach(function(t, i) {
+          var x = pad.left + (trend.length === 1 ? w / 2 : (i / (trend.length - 1)) * w);
+          pathPR += (i === 0 ? 'M' : 'L') + x.toFixed(1) + ',' + toY(t.passRatePct).toFixed(1);
+          if (t.avgScore != null) pathAS += (pathAS ? 'L' : 'M') + x.toFixed(1) + ',' + toY(t.avgScore).toFixed(1);
+          var dateLabel = t.date ? t.date.slice(5, 7) + '/' + t.date.slice(8, 10) : '';
+          dots.push({ x: x, t: t, dateLabel: dateLabel });
+        });
+        var totalW = pad.left + w + pad.right, totalH = pad.top + h + pad.bottom;
+        var svg = '<svg width="100%" height="' + totalH + '" viewBox="0 0 ' + totalW + ' ' + totalH + '">';
+        svg += '<defs><linearGradient id="gradPR" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#10b981" stop-opacity="0.12"/><stop offset="100%" stop-color="#10b981" stop-opacity="0.01"/></linearGradient></defs>';
+        for (var i = 0; i <= 4; i++) {
+          var y = pad.top + h - (i / 4) * h;
+          svg += '<line x1="' + pad.left + '" y1="' + y + '" x2="' + (pad.left + w) + '" y2="' + y + '" stroke="#e2e8f0" stroke-width="1"/>';
+          svg += '<text x="' + (pad.left - 8) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="#94a3b8" font-weight="500">' + (i * 25) + '%</text>';
+        }
+        svg += '<line x1="' + pad.left + '" y1="' + (pad.top + h) + '" x2="' + (pad.left + w) + '" y2="' + (pad.top + h) + '" stroke="#e5e7eb"/>';
+        trend.forEach(function(t, i) { var x = pad.left + (trend.length === 1 ? w / 2 : (i / (trend.length - 1)) * w); var l = t.date ? (t.date.slice(5, 7) + '/' + t.date.slice(8, 10)) : ''; if (l && (trend.length < 20 || i % Math.ceil(trend.length / 15) === 0)) svg += '<text x="' + x + '" y="' + (pad.top + h + 22) + '" text-anchor="middle" font-size="10" fill="#9ca3af">' + l + '</text>'; });
+        var firstX = dots.length > 0 ? dots[0].x : pad.left;
+        var lastX = dots.length > 0 ? dots[dots.length - 1].x : pad.left + w;
+        if (pathPR) svg += '<path d="' + pathPR + 'L' + lastX.toFixed(1) + ',' + (pad.top + h) + 'L' + firstX.toFixed(1) + ',' + (pad.top + h) + 'Z" fill="url(#gradPR)"/>';
+        svg += '<path d="' + pathPR + '" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+        if (pathAS) svg += '<path d="' + pathAS + '" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,3"/>';
+        dots.forEach(function(d) {
+          var tipPR = "<div class='tip-title'>" + esc(d.dateLabel) + "</div><div class='tip-val'>Pass rate: " + d.t.passRatePct + "%</div><div class='tip-sub'>Avg score: " + (d.t.avgScore != null ? d.t.avgScore + '%' : '\u2014') + " \u00b7 " + fmtN(d.t.total) + " conversations \u00b7 " + fmtN(d.t.totalErrors) + " issues</div>";
+          svg += '<circle class="maar-hover-dot" cx="' + d.x.toFixed(1) + '" cy="' + toY(d.t.passRatePct).toFixed(1) + '" r="5" fill="#fff" stroke="#10b981" stroke-width="2" data-tip="' + esc(tipPR) + '"/>';
+          if (d.t.avgScore != null) svg += '<circle class="maar-hover-dot" cx="' + d.x.toFixed(1) + '" cy="' + toY(d.t.avgScore).toFixed(1) + '" r="4" fill="#fff" stroke="#6366f1" stroke-width="2" data-tip="' + esc(tipPR) + '"/>';
+        });
+        svg += '</svg>';
+        container.innerHTML = svg;
+        if (legendEl) legendEl.innerHTML = '<span><span style="display:inline-block;width:14px;height:2px;background:#10b981;border-radius:1px;"></span> Pass rate</span><span><span style="display:inline-block;width:14px;height:0;border-bottom:1.5px dashed #6366f1;"></span> Avg score</span>';
+      }
+
+      /* 4a. Score Distribution Histogram */
+      function renderScoreDistribution(container, dist) {
+        if (!container) return;
+        if (!dist || dist.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No score data available.</p>'; return; }
+        var totalConv = dist.reduce(function(s, d) { return s + d.count; }, 0);
+        var maxCount = Math.max(1, Math.max.apply(null, dist.map(function(d) { return d.count; })));
+        var pad = { top: 14, right: 10, bottom: 32, left: 36 };
+        var barGap = 4;
+        var n = dist.length;
+        var barW = Math.max(16, ((container.clientWidth || 300) - pad.left - pad.right - (n - 1) * barGap) / n);
+        var w = pad.left + n * barW + (n - 1) * barGap + pad.right;
+        var h = 160;
+        var baseY = pad.top + h;
+        var svg = '<svg width="100%" height="' + (baseY + pad.bottom) + '" viewBox="0 0 ' + w + ' ' + (baseY + pad.bottom) + '">';
+        svg += '<line x1="' + pad.left + '" y1="' + baseY + '" x2="' + (w - pad.right) + '" y2="' + baseY + '" stroke="#e5e7eb"/>';
+        for (var si = 0; si <= 4; si++) { var v = Math.round((si / 4) * maxCount); var y = baseY - (v / maxCount) * h; svg += '<text x="' + (pad.left - 4) + '" y="' + (y + 4) + '" text-anchor="end" font-size="9" fill="#9ca3af">' + v + '</text>'; }
+        var labels = ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100'];
+        var barPalette = ['#ef4444','#ef4444','#f87171','#fb923c','#fbbf24','#facc15','#a3e635','#4ade80','#34d399','#10b981'];
+        dist.forEach(function(d, i) {
+          var x = pad.left + i * (barW + barGap);
+          var barH = (d.count / maxCount) * h;
+          var color = barPalette[i] || '#93c5fd';
+          var pctOfTotal = totalConv > 0 ? Math.round(d.count / totalConv * 100) : 0;
+          var tip = "<div class='tip-title'>Score range: " + (labels[i] || d.bucket) + "%</div><div class='tip-val'>" + fmtN(d.count) + " conversations</div><div class='tip-sub'>" + pctOfTotal + "% of total</div>";
+          svg += '<rect x="' + x.toFixed(1) + '" y="' + (baseY - barH).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, barH).toFixed(1) + '" fill="' + color + '" rx="3" data-tip="' + esc(tip) + '"/>';
+          svg += '<text x="' + (x + barW / 2) + '" y="' + (baseY + 14) + '" text-anchor="middle" font-size="8" fill="#9ca3af">' + (labels[i] || d.bucket) + '</text>';
+          if (d.count > 0) svg += '<text x="' + (x + barW / 2) + '" y="' + (baseY - barH - 3) + '" text-anchor="middle" font-size="9" fill="#374151" font-weight="600">' + d.count + '</text>';
+        });
+        svg += '</svg>';
+        container.innerHTML = svg;
+      }
+
+      /* 4b. Severity Breakdown Donut */
+      function renderSeverityDonut(container, sev) {
+        if (!container) return;
+        var items = [
+          { label: 'Fail-all', value: sev.criticalFail || 0, color: '#991b1b', desc: 'Automatic failures due to compliance criteria' },
+          { label: 'Critical', value: sev.critical || 0, color: '#dc2626', desc: 'High-priority quality concerns' },
+          { label: 'Significant', value: sev.significant || 0, color: '#f97316', desc: 'Important areas that benefit from attention' },
+          { label: 'Major', value: sev.major || 0, color: '#f59e0b', desc: 'Moderate-priority quality items' },
+          { label: 'Minor', value: sev.minor || 0, color: '#10b981', desc: 'Low-priority observations' }
+        ];
+        var total = items.reduce(function(s, i) { return s + i.value; }, 0);
+        if (total === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No issues identified in this range.</p>'; return; }
+        var cx = 100, cy = 90, r = 70, ir = 45;
+        var svg = '<svg width="100%" height="200" viewBox="0 0 200 200">';
+        var angle = -90;
+        items.forEach(function(item) {
+          if (item.value === 0) return;
+          var sweep = (item.value / total) * 360;
+          var startRad = angle * Math.PI / 180;
+          var endRad = (angle + sweep) * Math.PI / 180;
+          var largeArc = sweep > 180 ? 1 : 0;
+          var x1 = cx + r * Math.cos(startRad), y1 = cy + r * Math.sin(startRad);
+          var x2 = cx + r * Math.cos(endRad), y2 = cy + r * Math.sin(endRad);
+          var ix1 = cx + ir * Math.cos(endRad), iy1 = cy + ir * Math.sin(endRad);
+          var ix2 = cx + ir * Math.cos(startRad), iy2 = cy + ir * Math.sin(startRad);
+          var pct = Math.round(item.value / total * 100);
+          var tip = "<div class='tip-title'>" + esc(item.label) + "</div><div class='tip-val'>" + fmtN(item.value) + " (" + pct + "%)</div><div class='tip-sub'>" + esc(item.desc) + "</div>";
+          svg += '<path d="M' + x1.toFixed(2) + ',' + y1.toFixed(2) + ' A' + r + ',' + r + ' 0 ' + largeArc + ',1 ' + x2.toFixed(2) + ',' + y2.toFixed(2) + ' L' + ix1.toFixed(2) + ',' + iy1.toFixed(2) + ' A' + ir + ',' + ir + ' 0 ' + largeArc + ',0 ' + ix2.toFixed(2) + ',' + iy2.toFixed(2) + 'Z" fill="' + item.color + '" data-tip="' + esc(tip) + '"/>';
+          angle += sweep;
+        });
+        svg += '<text x="' + cx + '" y="' + (cy - 4) + '" text-anchor="middle" font-size="18" font-weight="700" fill="#111827">' + fmtN(total) + '</text>';
+        svg += '<text x="' + cx + '" y="' + (cy + 12) + '" text-anchor="middle" font-size="9" fill="#9ca3af">total issues</text>';
+        svg += '</svg>';
+        var legend = '<div style="display:flex;flex-wrap:wrap;gap:0.4rem 1rem;margin-top:0.5rem;font-size:0.75rem;">';
+        items.forEach(function(item) { if (item.value > 0) legend += '<span style="display:inline-flex;align-items:center;gap:0.3rem;" data-tip="' + esc(item.desc) + '"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:' + item.color + ';"></span>' + esc(item.label) + ': ' + fmtN(item.value) + '</span>'; });
+        legend += '</div>';
+        container.innerHTML = svg + legend;
+      }
+
+      /* 5a. Error Count Distribution */
+      function renderErrorCountDistribution(container, dist) {
+        if (!container) return;
+        if (!dist || dist.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No data available.</p>'; return; }
+        var totalConv = dist.reduce(function(s, d) { return s + d.count; }, 0);
+        var maxCount = Math.max(1, Math.max.apply(null, dist.map(function(d) { return d.count; })));
+        var pad = { top: 14, right: 10, bottom: 36, left: 36 };
+        var barGap = 10;
+        var n = dist.length;
+        var barW = Math.max(28, ((container.clientWidth || 300) - pad.left - pad.right - (n - 1) * barGap) / n);
+        var w = pad.left + n * barW + (n - 1) * barGap + pad.right;
+        var h = 160;
+        var baseY = pad.top + h;
+        var svg = '<svg width="100%" height="' + (baseY + pad.bottom) + '" viewBox="0 0 ' + w + ' ' + (baseY + pad.bottom) + '">';
+        svg += '<line x1="' + pad.left + '" y1="' + baseY + '" x2="' + (w - pad.right) + '" y2="' + baseY + '" stroke="#e5e7eb"/>';
+        var errLabels = ['No issues', '1 issue', '2 issues', '3 issues', '4 issues', '5+ issues'];
+        var barColors = ['#10b981', '#4ade80', '#fbbf24', '#fb923c', '#ef4444', '#dc2626'];
+        dist.forEach(function(d, i) {
+          var x = pad.left + i * (barW + barGap);
+          var barH = (d.count / maxCount) * h;
+          var color = barColors[i] || '#c4b5fd';
+          var pctOfTotal = totalConv > 0 ? Math.round(d.count / totalConv * 100) : 0;
+          var tip = "<div class='tip-title'>" + (errLabels[i] || d.errors + ' issues') + "</div><div class='tip-val'>" + fmtN(d.count) + " conversations (" + pctOfTotal + "%)</div>";
+          svg += '<rect x="' + x.toFixed(1) + '" y="' + (baseY - barH).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, barH).toFixed(1) + '" fill="' + color + '" rx="3" data-tip="' + esc(tip) + '"/>';
+          svg += '<text x="' + (x + barW / 2) + '" y="' + (baseY + 14) + '" text-anchor="middle" font-size="10" font-weight="600" fill="#374151">' + d.errors + '</text>';
+          if (d.count > 0) svg += '<text x="' + (x + barW / 2) + '" y="' + (baseY - barH - 4) + '" text-anchor="middle" font-size="10" fill="#374151" font-weight="600">' + d.count + '</text>';
+        });
+        svg += '<text x="' + (pad.left + (n * (barW + barGap)) / 2) + '" y="' + (baseY + 30) + '" text-anchor="middle" font-size="9" fill="#9ca3af">issues per conversation</text>';
+        svg += '</svg>';
+        container.innerHTML = svg;
+      }
+
+      /* 5b. Priority Matrix scatter */
+      function renderRiskMatrix(container, riskMatrix) {
+        if (!container) return;
+        if (!riskMatrix || riskMatrix.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No criteria data available.</p>'; return; }
+        var maxFreq = Math.max(1, Math.max.apply(null, riskMatrix.map(function(r) { return r.frequency; })));
+        var maxPen = Math.max(1, Math.max.apply(null, riskMatrix.map(function(r) { return r.avgPenaltyPoints || 0; })));
+        var pad = { top: 20, right: 16, bottom: 32, left: 44 };
+        var w = Math.max(200, (container.clientWidth || 300) - pad.left - pad.right);
+        var h = 160;
+        var baseY = pad.top + h;
+        var svg = '<svg width="100%" height="' + (baseY + pad.bottom) + '" viewBox="0 0 ' + (pad.left + w + pad.right) + ' ' + (baseY + pad.bottom) + '">';
+        var midX = pad.left + w / 2, midY = pad.top + h / 2;
+        svg += '<rect x="' + midX + '" y="' + pad.top + '" width="' + (w / 2) + '" height="' + (h / 2) + '" fill="#fef2f2" rx="4"/>';
+        svg += '<rect x="' + pad.left + '" y="' + midY + '" width="' + (w / 2) + '" height="' + (h / 2) + '" fill="#f0fdf4" rx="4"/>';
+        svg += '<line x1="' + pad.left + '" y1="' + baseY + '" x2="' + (pad.left + w) + '" y2="' + baseY + '" stroke="#d1d5db"/>';
+        svg += '<line x1="' + pad.left + '" y1="' + pad.top + '" x2="' + pad.left + '" y2="' + baseY + '" stroke="#d1d5db"/>';
+        svg += '<line x1="' + midX + '" y1="' + pad.top + '" x2="' + midX + '" y2="' + baseY + '" stroke="#e5e7eb" stroke-dasharray="4,3"/>';
+        svg += '<line x1="' + pad.left + '" y1="' + midY + '" x2="' + (pad.left + w) + '" y2="' + midY + '" stroke="#e5e7eb" stroke-dasharray="4,3"/>';
+        svg += '<text x="' + (pad.left + w - 2) + '" y="' + (baseY + 16) + '" text-anchor="end" font-size="9" fill="#9ca3af">Frequency \u2192</text>';
+        svg += '<text x="' + (pad.left + 2) + '" y="' + (pad.top + 10) + '" font-size="9" fill="#9ca3af">\u2191 Impact</text>';
+        svg += '<text x="' + (pad.left + w - 4) + '" y="' + (pad.top + 14) + '" text-anchor="end" font-size="8" fill="#dc2626">Higher combined impact</text>';
+        svg += '<text x="' + (pad.left + 4) + '" y="' + (baseY - 4) + '" font-size="8" fill="#10b981">Lower combined impact</text>';
+        var sevColor = { critical: '#dc2626', significant: '#f97316', major: '#f59e0b', minor: '#10b981' };
+        var sevLabel = { critical: 'Critical', significant: 'Significant', major: 'Major', minor: 'Minor' };
+        riskMatrix.forEach(function(r) {
+          var x = pad.left + (r.frequency / maxFreq) * w * 0.9 + w * 0.05;
+          var p = r.avgPenaltyPoints || 0;
+          var y = baseY - (p / maxPen) * h * 0.9 - h * 0.05;
+          var color = sevColor[r.severity] || '#94a3b8';
+          var radius = Math.min(12, Math.max(5, 5 + r.frequency / maxFreq * 7));
+          var tip = "<div class='tip-title'>" + esc(r.errorName) + "</div><div class='tip-val'>Occurs " + fmtN(r.frequency) + " times \u00b7 " + p + " penalty pts</div><div class='tip-sub'>Severity: " + esc(sevLabel[r.severity] || r.severity) + "</div>";
+          svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + radius.toFixed(1) + '" fill="' + color + '" fill-opacity="0.5" stroke="' + color + '" stroke-width="1.5" data-tip="' + esc(tip) + '"/>';
+        });
+        svg += '</svg>';
+        container.innerHTML = svg;
+      }
+
+      /* 6. Stacked bar daily error breakdown */
+      function renderTrendChart(container, trend) {
+        if (!container) return;
+        var legendEl = $('maar-trend-legend');
+        if (!trend || trend.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No trend data available.</p>'; if (legendEl) legendEl.innerHTML = ''; return; }
+        var maxErrors = Math.max(1, Math.max.apply(null, trend.map(function(t) { return t.totalErrors || 0; })));
+        var padding = { top: 12, right: 12, bottom: 36, left: 44 };
+        var barGap = 6, n = trend.length;
+        var barW = n ? Math.max(8, ((container.clientWidth || 400) - padding.left - padding.right - (n - 1) * barGap) / n) : 20;
+        var w = padding.left + n * barW + (n - 1) * barGap + padding.right;
+        var h = Math.max(140, 170);
+        var baseY = padding.top + h;
+        function yForErrors(err) { return baseY - (err / maxErrors) * h; }
+        var criteriaTotals = {};
+        trend.forEach(function(t) { (t.criteria || []).forEach(function(c) { criteriaTotals[c.errorName] = (criteriaTotals[c.errorName] || 0) + c.count; }); });
+        var criteriaOrder = Object.keys(criteriaTotals).sort(function(a, b) { return (criteriaTotals[b] || 0) - (criteriaTotals[a] || 0); });
+        var palette = ['#ef4444','#f97316','#f59e0b','#10b981','#0ea5e9','#6366f1','#8b5cf6','#ec4899','#14b8a6','#06b6d4','#94a3b8'];
+        var colorByCriteria = {};
+        criteriaOrder.forEach(function(name, i) { colorByCriteria[name] = palette[i % palette.length]; });
+        var svg = '<svg class="maar-trend-chart" width="100%" height="100%" viewBox="0 0 ' + w + ' ' + (padding.top + h + padding.bottom) + '">';
+        svg += '<line x1="' + padding.left + '" y1="' + baseY + '" x2="' + (w - padding.right) + '" y2="' + baseY + '" stroke="#e2e8f0"/>';
+        svg += '<line x1="' + padding.left + '" y1="' + padding.top + '" x2="' + padding.left + '" y2="' + baseY + '" stroke="#e2e8f0"/>';
+        var ySteps = maxErrors <= 5 ? Math.ceil(maxErrors) : 5;
+        for (var si = 0; si <= ySteps; si++) { var step = Math.round((si / ySteps) * maxErrors); svg += '<text x="' + (padding.left - 6) + '" y="' + (yForErrors(step) + 4) + '" text-anchor="end" font-size="10" fill="#94a3b8">' + step + '</text>'; }
+        trend.forEach(function(t, i) {
+          var x = padding.left + i * (barW + barGap);
+          var label = t.date ? (t.date.slice(5, 7) + '/' + t.date.slice(8, 10)) : '';
+          if (label && (n < 20 || i % Math.ceil(n / 15) === 0)) svg += '<text x="' + (x + barW / 2) + '" y="' + (baseY + 18) + '" text-anchor="middle" font-size="10" fill="#9ca3af">' + label + '</text>';
+          var acc = 0;
+          (t.criteria || []).forEach(function(c) {
+            var segH = (c.count / maxErrors) * h; if (segH < 0.5) return;
+            var y = baseY - acc - segH; acc += segH;
+            var color = colorByCriteria[c.errorName] || '#94a3b8';
+            var tip = "<div class='tip-title'>" + (label || 'Day') + " \u2014 " + esc(c.errorName) + "</div><div class='tip-val'>" + c.count + " occurrences</div>";
+            svg += '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, segH).toFixed(1) + '" fill="' + color + '" rx="3" data-tip="' + esc(tip) + '"/>';
+          });
+          if (t.totalErrors > 0 && (!t.criteria || t.criteria.length === 0)) { var segH = (t.totalErrors / maxErrors) * h; svg += '<rect x="' + x.toFixed(1) + '" y="' + (baseY - segH).toFixed(1) + '" width="' + barW.toFixed(1) + '" height="' + Math.max(1, segH).toFixed(1) + '" fill="#94a3b8" data-tip="' + esc(label + ': ' + t.totalErrors + ' issues') + '"/>'; }
+        });
+        svg += '</svg>';
+        container.innerHTML = svg;
+        if (legendEl && criteriaOrder.length > 0) legendEl.innerHTML = criteriaOrder.slice(0, 12).map(function(name) { return '<span data-tip="' + esc(name) + '"><span style="display:inline-block;width:8px;height:8px;background:' + (colorByCriteria[name] || '#94a3b8') + ';border-radius:2px;vertical-align:middle;"></span> ' + esc(name.length > 24 ? name.slice(0, 24) + '\u2026' : name) + '</span>'; }).join('');
+        else if (legendEl) legendEl.innerHTML = '';
+      }
+
+      /* 7. Employee Performance Table */
+      function renderEmployeeTable(container, byEmployee) {
+        if (!container) return;
+        if (!byEmployee || byEmployee.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No agent data in this range.</p>'; return; }
+        var sorted = byEmployee.slice().sort(function(a, b) {
+          var av = a[_empSortCol], bv = b[_empSortCol];
+          if (av == null) av = -Infinity; if (bv == null) bv = -Infinity;
+          return _empSortAsc ? (av > bv ? 1 : av < bv ? -1 : 0) : (bv > av ? 1 : bv < av ? -1 : 0);
+        });
+        function arrow(col) { return '<span class="maar-sort-arrow' + (_empSortCol === col ? ' active' : '') + '">' + (_empSortCol === col ? (_empSortAsc ? '\u25B2' : '\u25BC') : '\u25BC') + '</span>'; }
+        function pctClass(v) { return v >= 80 ? 'maar-cell-hi' : v >= 50 ? 'maar-cell-mid' : 'maar-cell-lo'; }
+        function miniBar(pct, color) { return '<span class="maar-cell-bar-wrap"><span class="maar-cell-minibar" style="width:' + Math.max(2, pct * 0.6) + 'px;background:' + color + ';"></span></span>'; }
+        var colTips = {
+          employeeName: 'Agent name',
+          total: 'Total conversations audited',
+          passRatePct: 'Percentage of conversations that met all criteria thresholds',
+          avgScore: 'Average quality score across all audited conversations',
+          totalErrors: 'Total quality issues identified',
+          avgErrorsPerConvo: 'Average issues per conversation',
+          failAllCount: 'Conversations with automatic compliance flags'
+        };
+        var h = '<table class="maar-sortable-table" id="maar-emp-table"><thead><tr>';
+        h += '<th data-col="employeeName" data-tip="' + esc(colTips.employeeName) + '">Agent ' + arrow('employeeName') + '</th>';
+        h += '<th data-col="total" data-tip="' + esc(colTips.total) + '">Audited ' + arrow('total') + '</th>';
+        h += '<th data-col="passRatePct" data-tip="' + esc(colTips.passRatePct) + '">Pass rate ' + arrow('passRatePct') + '</th>';
+        h += '<th data-col="avgScore" data-tip="' + esc(colTips.avgScore) + '">Avg score ' + arrow('avgScore') + '</th>';
+        h += '<th data-col="totalErrors" data-tip="' + esc(colTips.totalErrors) + '">Issues ' + arrow('totalErrors') + '</th>';
+        h += '<th data-col="avgErrorsPerConvo" data-tip="' + esc(colTips.avgErrorsPerConvo) + '">Issues/convo ' + arrow('avgErrorsPerConvo') + '</th>';
+        h += '<th data-col="failAllCount" data-tip="' + esc(colTips.failAllCount) + '">Auto-flags ' + arrow('failAllCount') + '</th>';
+        h += '</tr></thead><tbody>';
+        sorted.forEach(function(emp, idx) {
+          var pr = emp.passRatePct != null ? emp.passRatePct : 0;
+          var as = emp.avgScore != null ? emp.avgScore : 0;
+          var prColor = pr >= 80 ? '#10b981' : pr >= 50 ? '#f59e0b' : '#ef4444';
+          var asColor = as >= 80 ? '#10b981' : as >= 50 ? '#f59e0b' : '#ef4444';
+          h += '<tr>';
+          h += '<td>' + (idx + 1) + '. ' + esc((emp.employeeName || emp.employeeKey || '').slice(0, 30)) + '</td>';
+          h += '<td class="maar-cell-num">' + fmtN(emp.total) + '</td>';
+          h += '<td class="maar-cell-num ' + pctClass(pr) + '">' + miniBar(pr, prColor) + ' ' + pr + '%</td>';
+          h += '<td class="maar-cell-num ' + pctClass(as) + '">' + miniBar(as, asColor) + ' ' + (emp.avgScore != null ? as + '%' : '\u2014') + '</td>';
+          h += '<td class="maar-cell-num">' + fmtN(emp.totalErrors) + '</td>';
+          h += '<td class="maar-cell-num">' + (emp.avgErrorsPerConvo || 0) + '</td>';
+          h += '<td class="maar-cell-num' + (emp.failAllCount > 0 ? ' maar-cell-flag' : '') + '">' + (emp.failAllCount || 0) + '</td>';
+          h += '</tr>';
+        });
+        h += '</tbody></table>';
+        container.innerHTML = h;
+        container.querySelectorAll('th[data-col]').forEach(function(th) {
+          th.addEventListener('click', function() {
+            var col = th.getAttribute('data-col');
+            if (_empSortCol === col) _empSortAsc = !_empSortAsc; else { _empSortCol = col; _empSortAsc = false; }
+            renderEmployeeTable(container, byEmployee);
+          });
+        });
+      }
+
+      /* 8. Scorecard comparison bar chart */
+      function renderByScorecardChart(container, byScorecard) {
+        if (!container) return;
+        if (!byScorecard || byScorecard.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No scorecard data available.</p>'; return; }
+        var rowH = 28, labelW = 160;
+        var barW = Math.max(120, (container.clientWidth || 300) - labelW - 100);
+        var h = byScorecard.length * rowH + 10;
+        var svg = '<svg width="100%" height="' + Math.max(h, 120) + '" viewBox="0 0 ' + (labelW + barW + 100) + ' ' + h + '" preserveAspectRatio="xMinYMin meet" style="overflow:visible;">';
+        byScorecard.forEach(function(sc, i) {
+          var y = 8 + i * rowH;
+          var pct = sc.passRatePct != null ? sc.passRatePct : 0;
+          var barLen = (pct / 100) * barW;
+          var color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+          var name = (sc.scorecardName || sc.scorecardId || '').slice(0, 28);
+          if ((sc.scorecardName || sc.scorecardId || '').length > 28) name += '\u2026';
+          var tip = "<div class='tip-title'>" + esc(sc.scorecardName || sc.scorecardId) + "</div><div class='tip-val'>" + pct + "% pass rate</div><div class='tip-sub'>" + fmtN(sc.total) + " conversations \u00b7 " + fmtN(sc.passed) + " passed \u00b7 " + fmtN(sc.failed) + " did not pass \u00b7 " + fmtN(sc.totalErrors) + " issues</div>";
+          svg += '<text x="0" y="' + (y + 14) + '" font-size="11" fill="#374151">' + esc(name) + '</text>';
+          svg += '<rect x="' + labelW + '" y="' + (y - 6) + '" width="' + barW + '" height="16" fill="#f3f4f6" rx="3"/>';
+          svg += '<rect x="' + labelW + '" y="' + (y - 6) + '" width="' + Math.max(0, barLen) + '" height="16" fill="' + color + '" rx="3" data-tip="' + esc(tip) + '"/>';
+          svg += '<text x="' + (labelW + barW + 6) + '" y="' + (y + 5) + '" font-size="10" fill="#6b7280">' + pct + '%</text>';
+        });
+        svg += '</svg>';
+        container.innerHTML = svg;
+      }
+
+      /* 9. Criteria Details Table */
+      function renderCriteriaTable(container, criteriaDetails) {
+        if (!container) return;
+        if (!criteriaDetails || criteriaDetails.length === 0) { container.innerHTML = '<p style="color:#9ca3af;font-size:0.875rem;">No criteria data available.</p>'; return; }
+        var sorted = criteriaDetails.slice().sort(function(a, b) {
+          var av = a[_critSortCol], bv = b[_critSortCol];
+          if (av == null) av = -Infinity; if (bv == null) bv = -Infinity;
+          return _critSortAsc ? (av > bv ? 1 : av < bv ? -1 : 0) : (bv > av ? 1 : bv < av ? -1 : 0);
+        });
+        function arrow(col) { return '<span class="maar-sort-arrow' + (_critSortCol === col ? ' active' : '') + '">' + (_critSortCol === col ? (_critSortAsc ? '\u25B2' : '\u25BC') : '\u25BC') + '</span>'; }
+        var sevColors = { critical: '#dc2626', significant: '#f97316', major: '#f59e0b', minor: '#10b981' };
+        var sevBg = { critical: '#fef2f2', significant: '#fff7ed', major: '#fffbeb', minor: '#ecfdf5' };
+        var sevLabel = { critical: 'Critical', significant: 'Significant', major: 'Major', minor: 'Minor', unknown: 'Unclassified' };
+        var colTips = {
+          errorName: 'Name of the quality criteria being evaluated',
+          timesEvaluated: 'Total times this criteria was checked across all conversations',
+          timesFailed: 'Number of times this criteria was triggered',
+          failureRatePct: 'Trigger rate = times triggered / times evaluated',
+          avgPenaltyPoints: 'Average penalty points when this criteria is triggered',
+          severity: 'Severity category of this criteria'
+        };
+        var h = '<table class="maar-sortable-table" id="maar-crit-table"><thead><tr>';
+        h += '<th data-col="errorName" data-tip="' + esc(colTips.errorName) + '">Criteria ' + arrow('errorName') + '</th>';
+        h += '<th data-col="timesEvaluated" data-tip="' + esc(colTips.timesEvaluated) + '">Evaluated ' + arrow('timesEvaluated') + '</th>';
+        h += '<th data-col="timesFailed" data-tip="' + esc(colTips.timesFailed) + '">Triggered ' + arrow('timesFailed') + '</th>';
+        h += '<th data-col="failureRatePct" data-tip="' + esc(colTips.failureRatePct) + '">Rate ' + arrow('failureRatePct') + '</th>';
+        h += '<th data-col="avgPenaltyPoints" data-tip="' + esc(colTips.avgPenaltyPoints) + '">Avg penalty ' + arrow('avgPenaltyPoints') + '</th>';
+        h += '<th data-col="severity" data-tip="' + esc(colTips.severity) + '">Severity ' + arrow('severity') + '</th>';
+        h += '</tr></thead><tbody>';
+        sorted.forEach(function(c) {
+          var rateClass = c.failureRatePct >= 30 ? 'maar-cell-lo' : c.failureRatePct >= 10 ? 'maar-cell-mid' : 'maar-cell-hi';
+          var barColor = c.failureRatePct >= 30 ? '#ef4444' : c.failureRatePct >= 10 ? '#f59e0b' : '#10b981';
+          var sColor = sevColors[c.severity] || '#94a3b8';
+          var sBg = sevBg[c.severity] || '#f3f4f6';
+          h += '<tr>';
+          h += '<td>' + esc(c.errorName.slice(0, 50)) + '</td>';
+          h += '<td class="maar-cell-num">' + fmtN(c.timesEvaluated) + '</td>';
+          h += '<td class="maar-cell-num">' + fmtN(c.timesFailed) + '</td>';
+          h += '<td class="maar-cell-num ' + rateClass + '"><span class="maar-cell-bar-wrap"><span class="maar-cell-minibar" style="width:' + Math.max(2, c.failureRatePct * 0.5) + 'px;background:' + barColor + ';"></span></span> ' + c.failureRatePct + '%</td>';
+          h += '<td class="maar-cell-num">' + c.avgPenaltyPoints + '</td>';
+          h += '<td><span style="display:inline-block;padding:0.15rem 0.5rem;border-radius:6px;font-size:0.7rem;font-weight:600;color:' + sColor + ';background:' + sBg + ';">' + esc(sevLabel[c.severity] || c.severity || 'Unclassified') + '</span></td>';
+          h += '</tr>';
+        });
+        h += '</tbody></table>';
+        container.innerHTML = h;
+        container.querySelectorAll('th[data-col]').forEach(function(th) {
+          th.addEventListener('click', function() {
+            var col = th.getAttribute('data-col');
+            if (_critSortCol === col) _critSortAsc = !_critSortAsc; else { _critSortCol = col; _critSortAsc = false; }
+            renderCriteriaTable(container, criteriaDetails);
+          });
+        });
       }
 
       const errEl = $('maar-error');
       try {
-        // 0. Fetch creators for "Run by" filter
+        // 0. Fetch creators and scorecards for filters
         try {
           const { creators } = await api('/api/massive-ai-audit/creators');
           const sel = $('filter-created-by');
@@ -2778,6 +4101,18 @@
             });
           }
         } catch (e) { console.warn('[MassiveAI] Creators fetch failed', e); }
+        try {
+          const scorecards = await api('/api/massive-ai-audit/scorecards');
+          const scSel = $('filter-scorecard');
+          if (scSel && Array.isArray(scorecards)) {
+            scorecards.forEach(sc => {
+              const opt = document.createElement('option');
+              opt.value = sc.id;
+              opt.textContent = sc.name || sc.id;
+              scSel.appendChild(opt);
+            });
+          }
+        } catch (e) { console.warn('[MassiveAI] Scorecards fetch failed', e); }
 
         // 1. Fetch jobs list (with optional filters from URL or defaults)
         await loadBatchesWithFilters();
@@ -2831,6 +4166,7 @@
           $('filter-clear').addEventListener('click', async () => {
             if ($('filter-created-by')) $('filter-created-by').value = '';
             if ($('filter-status')) $('filter-status').value = '';
+            if ($('filter-scorecard')) $('filter-scorecard').value = '';
             if ($('filter-from-date')) $('filter-from-date').value = '';
             if ($('filter-to-date')) $('filter-to-date').value = '';
             setFilterLoading(true);
@@ -2843,6 +4179,9 @@
             setFilterLoading(false);
           });
         }
+
+        if ($('tab-batches')) $('tab-batches').addEventListener('click', () => switchTab('batches'));
+        if ($('tab-overview')) $('tab-overview').addEventListener('click', () => switchTab('overview'));
 
         // Poll running/queued/scheduled jobs — use derived status to detect truly active jobs; refetch with current filters
         function hasActiveJobs(jobs) {
