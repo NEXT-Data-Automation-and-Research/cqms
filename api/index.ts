@@ -272,6 +272,18 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
+// Serve console-stub.js explicitly so it always returns correct MIME (avoids 404/MIME issues on Vercel)
+app.get('/js/console-stub.js', (req: express.Request, res: express.Response): void => {
+  const stubPath = path.join(__dirname, '../public/js/console-stub.js');
+  if (fs.existsSync(stubPath)) {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.sendFile(stubPath);
+  } else {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.send('(function(){ "use strict"; })();\n');
+  }
+});
+
 // Scorecards page: must be served with injectVersionIntoHTML (Supabase config injection)
 // This route MUST be before app.use('/src', ...) so the page is not served as raw static file
 app.get('/src/features/settings/scorecards/presentation/scorecards.html', (req: express.Request, res: express.Response): void => {
