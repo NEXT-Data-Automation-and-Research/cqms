@@ -1096,6 +1096,16 @@ main.audit-reports-ack-tab #headerActions {
     color: #6b7280;
 }
 
+/* Clickable agent row: light green hover to indicate expand/collapse */
+.ack-agent-row,
+.agents-table .ack-agent-row {
+    transition: background-color 0.2s ease;
+}
+.ack-agent-row:hover,
+.agents-table .ack-agent-row:hover {
+    background-color: rgba(26, 115, 62, 0.08);
+}
+
 /* Row expand icon: same chevron as sort/dropdowns; right when collapsed, down when expanded; vertically centered in agent cell via flex */
 .ack-expand-icon,
 .agents-table .ack-expand-icon {

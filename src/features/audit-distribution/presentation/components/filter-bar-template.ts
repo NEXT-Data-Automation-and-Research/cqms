@@ -32,6 +32,11 @@ export function getCompactExpandedFilterHTML(
   const departmentSelected = filterValuesToArray(currentFilters.department);
   const countrySelected = filterValuesToArray(currentFilters.country);
   const isActiveValue = (currentFilters.is_active as 'all' | 'active' | 'inactive') || 'all';
+  const groupByValue = (currentFilters.groupBy as string) || 'none';
+  const qualitySupervisorValue = (currentFilters.qualitySupervisor as string) || '';
+  const teamSupervisorValue = (currentFilters.teamSupervisor as string) || '';
+  const qualitySupervisors = [...new Set(employees.map((e: any) => e.quality_mentor).filter(isValidValue))].sort();
+  const teamSupervisors = [...new Set(employees.map((e: any) => e.team_supervisor).filter(isValidValue))].sort();
 
   const roleMultiSelect = createPeopleMultiSelectHTML({
     id: 'peopleRoleFilter',
@@ -104,6 +109,40 @@ export function getCompactExpandedFilterHTML(
             <option value="all" ${isActiveValue === 'all' ? 'selected' : ''}>All</option>
             <option value="active" ${isActiveValue === 'active' ? 'selected' : ''}>Active</option>
             <option value="inactive" ${isActiveValue === 'inactive' ? 'selected' : ''}>Inactive</option>
+          </select>
+        </div>
+        <div class="people-status-cell flex flex-col gap-0.5 min-w-0">
+          <label for="filterGroupBy" class="block text-xs font-medium text-gray-600">Group by</label>
+          <select id="filterGroupBy" class="people-filter-input text-sm border border-gray-300 rounded-lg px-2.5 py-2 h-9 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0">
+            <option value="none" ${groupByValue === 'none' ? 'selected' : ''}>None</option>
+            <option value="channel" ${groupByValue === 'channel' ? 'selected' : ''}>Channel</option>
+            <option value="team" ${groupByValue === 'team' ? 'selected' : ''}>Team</option>
+            <option value="quality_mentor" ${groupByValue === 'quality_mentor' ? 'selected' : ''}>Quality Mentor</option>
+            <option value="team_supervisor" ${groupByValue === 'team_supervisor' ? 'selected' : ''}>Team Supervisor</option>
+            <option value="department" ${groupByValue === 'department' ? 'selected' : ''}>Department</option>
+            <option value="country" ${groupByValue === 'country' ? 'selected' : ''}>Country</option>
+          </select>
+        </div>
+        <div class="people-status-cell flex flex-col gap-0.5 min-w-0">
+          <label for="filterQualitySupervisor" class="block text-xs font-medium text-gray-600">Quality Mentor</label>
+          <select id="filterQualitySupervisor" class="people-filter-input text-sm border border-gray-300 rounded-lg px-2.5 py-2 h-9 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0">
+            <option value="">All</option>
+            ${qualitySupervisors.map((qs: string) => {
+              const emp = employees.find((e: any) => e.email === qs);
+              const displayName = emp?.name || qs;
+              return `<option value="${escapeHtml(qs)}" ${qualitySupervisorValue === qs ? 'selected' : ''}>${escapeHtml(displayName)}</option>`;
+            }).join('')}
+          </select>
+        </div>
+        <div class="people-status-cell flex flex-col gap-0.5 min-w-0">
+          <label for="filterTeamSupervisor" class="block text-xs font-medium text-gray-600">Team Supervisor</label>
+          <select id="filterTeamSupervisor" class="people-filter-input text-sm border border-gray-300 rounded-lg px-2.5 py-2 h-9 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/20 min-w-0">
+            <option value="">All</option>
+            ${teamSupervisors.map((ts: string) => {
+              const emp = employees.find((e: any) => e.email === ts);
+              const displayName = emp?.name || ts;
+              return `<option value="${escapeHtml(ts)}" ${teamSupervisorValue === ts ? 'selected' : ''}>${escapeHtml(displayName)}</option>`;
+            }).join('')}
           </select>
         </div>
         ${hasActiveFilters ? `

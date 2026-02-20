@@ -60,16 +60,6 @@ export class AuditReportsEventHandlers {
       const ackView = document.getElementById('agentAcknowledgementView');
       if (!ackView?.contains(target)) return;
 
-      if (target.closest?.('.ack-view-audits-link')) {
-        const link = target.closest('.ack-view-audits-link') as HTMLElement;
-        const email = link.getAttribute('data-agent-email');
-        if (email) {
-          e.preventDefault();
-          e.stopPropagation();
-          this.controller.toggleAgentExpanded(email);
-        }
-        return;
-      }
       if (target.closest?.('#ackChannelFilterTrigger')) {
         const dd = document.getElementById('ackChannelFilterDropdown');
         const other = document.getElementById('ackSupervisorFilterDropdown');

@@ -688,9 +688,6 @@ export class AuditReportsRenderer {
               <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${r.pending}</td>
               <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-size: 0.8125rem; color: #6b7280;">${escapeHtml(lastAckDisplay)}</td>
               <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-size: 0.8125rem; color: #6b7280;">${escapeHtml(lastLoginDisplay)}</td>
-              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">
-                <a href="#" class="ack-expand-btn ack-view-audits-link" data-agent-email="${escapeHtml(r.agentEmail)}" data-prevent-toggle="1">${isExpanded ? 'Hide' : 'View'} Audits</a>
-              </td>
             </tr>
           `);
           if (isExpanded) {
@@ -732,7 +729,7 @@ export class AuditReportsRenderer {
                 : '';
             rowsHtml.push(`
               <tr class="nested-audits-row" data-nested-for="${escapeHtml(key)}" style="background: #f9fafb;">
-                <td colspan="7" style="padding: 0; border-bottom: 1px solid #e5e7eb;">
+                <td colspan="6" style="padding: 0; border-bottom: 1px solid #e5e7eb;">
                   <div class="nested-audits-container" style="padding: 1rem; max-height: 500px; overflow-y: auto;">
                     <table class="nested-audits-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
                       <thead><tr style="background: #f3f4f6;">
@@ -763,7 +760,6 @@ export class AuditReportsRenderer {
                 <th style="padding: 0.5rem 0.75rem; text-align: left;">Pending Count</th>
                 <th style="padding: 0.5rem 0.75rem; text-align: left;">Last Acknowledged at</th>
                 <th style="padding: 0.5rem 0.75rem; text-align: left;">Last Login</th>
-                <th style="padding: 0.5rem 0.75rem; text-align: left;">Action</th>
               </tr>
             </thead>
             <tbody>${rowsHtml.join('')}</tbody>
