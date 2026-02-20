@@ -4,6 +4,7 @@
  */
 
 import type { AuditReport, AuditStats } from '../domain/entities.js';
+import { isAcknowledgedStatus } from './agent-acknowledgement-stats.js';
 
 /**
  * Normalize passing status
@@ -77,10 +78,9 @@ export function calculateAuditStats(audits: AuditReport[]): AuditStats {
   ).length;
   const reversalRate = total > 0 ? Math.round((reversals / total) * 100) : 0;
 
-  // Calculate acknowledgements
+  // Calculate acknowledgements (align with audit-view: Acknowledged, Acknowledged - after reversal approved/rejected)
   const acknowledged = audits.filter(a => 
-    a.acknowledgementStatus === 'Acknowledged' || 
-    a.acknowledgement_status === 'Acknowledged'
+    isAcknowledgedStatus(a.acknowledgementStatus ?? (a as { acknowledgement_status?: string }).acknowledgement_status)
   ).length;
   const pendingAcknowledgments = total - acknowledged;
 

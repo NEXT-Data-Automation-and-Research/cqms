@@ -107,3 +107,31 @@ export interface PaginationState {
   totalPages: number;
 }
 
+/** Single row for "Acknowledgement by agent" view (matches legacy acknowledgement management) */
+export interface AgentAcknowledgementRow {
+  agentEmail: string;
+  agentName: string;
+  total: number;
+  acknowledged: number;
+  pending: number;
+  ratePercent: number;
+  /** When the agent last logged in (from people.last_login); ISO string or null */
+  lastLoginAt?: string | null;
+  /** Channel from people (e.g. for filter) */
+  channel?: string | null;
+  /** Team supervisor email from people */
+  teamSupervisor?: string | null;
+  /** Most recent acknowledgement timestamp (from acknowledged audits); ISO string or null */
+  lastAcknowledgedAt?: string | null;
+}
+
+/** Aggregated stats for the Acknowledgement by agent dashboard section */
+export interface AgentAcknowledgementStats {
+  total: number;
+  acknowledged: number;
+  pending: number;
+  ratePercent: number;
+  byAgent: AgentAcknowledgementRow[];
+  pendingAudits: AuditReport[];
+}
+

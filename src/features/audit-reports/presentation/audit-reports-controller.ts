@@ -14,8 +14,9 @@ import type {
   DateRange,
   PaginationState
 } from '../domain/entities.js';
-import type { AuditReportsState } from '../domain/types.js';
+import type { AuditReportsState, AuditReportsViewMode } from '../domain/types.js';
 import type { ScorecardInfo } from '../infrastructure/audit-reports-repository.js';
+import { calculateAgentAcknowledgementStats } from '../application/agent-acknowledgement-stats.js';
 
 export class AuditReportsController {
   private service: AuditReportsService;
@@ -42,6 +43,16 @@ export class AuditReportsController {
   private currentUserEmail: string = '';
   private currentUserRole: string = '';
   private showAllAudits: boolean = false; // Default to false (safer - will be set correctly by applyRoleBasedSettings)
+  private viewMode: AuditReportsViewMode = 'audits';
+  private agentAckStats: import('../domain/entities.js').AgentAcknowledgementStats | null = null;
+  // Acknowledgement-by-agent tab state (legacy-style filters, sort, expand)
+  private ackSearchQuery = '';
+  private ackChannelFilter: string[] = [];
+  private ackSupervisorFilter: string[] = [];
+  private ackSort: { field: 'count' | 'name'; direction: 'asc' | 'desc' } = { field: 'count', direction: 'desc' };
+  private expandedAgentEmails = new Set<string>();
+  /** Supervisor email -> display name (from people) for ack table */
+  private supervisorNameMap = new Map<string, string>();
 
   constructor(service: AuditReportsService) {
     this.service = service;
@@ -54,6 +65,7 @@ export class AuditReportsController {
    */
   initialize(): void {
     logInfo('Initializing audit reports controller...');
+    this.restoreViewModeFromHash();
     this.initializeUserInfo();
     this.renderer.initializeUI();
     // Render filter panel (visible by default to match live site)
@@ -337,17 +349,19 @@ export class AuditReportsController {
       // Apply filters first
       this.applyFilters();
 
-      // Calculate stats from filtered audits
+      // Calculate stats from filtered audits (main list uses date range; ack tab uses lifetime)
       this.stats = this.service.calculateStats(this.filteredAudits);
+      this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
 
       // Update pagination
       this.updatePagination();
 
       // Render
-      this.renderer.renderStats(this.stats);
-      this.renderer.renderAudits(this.filteredAudits, this.pagination, this.hasActiveFilters());
-      this.renderer.renderPagination(this.pagination);
-      
+      this.renderCurrentView();
+      if (this.viewMode === 'ackByAgent') {
+        this.enrichAgentAcknowledgementStats().then(() => this.renderCurrentView());
+      }
+
       // Re-render filter panel to update multi-select options with new audit data
       // All filters are rendered directly in HTML, so just re-render the panel
       this.renderer.renderFilterPanel();
@@ -380,6 +394,13 @@ export class AuditReportsController {
   }
 
   /**
+   * Audits for the Acknowledgement-by-agent tab: same filters as main list but no date range (lifetime data).
+   */
+  private getAuditsForAckView(): AuditReport[] {
+    return this.service.filterAudits(this.audits, this.filters, null);
+  }
+
+  /**
    * Update pagination state
    */
   private updatePagination(): void {
@@ -408,10 +429,9 @@ export class AuditReportsController {
   setFilters(filters: AuditFilters): void {
     this.filters = { ...this.filters, ...filters };
     this.applyFilters();
-    // Recalculate stats based on filtered audits and re-render stats cards
     this.stats = this.service.calculateStats(this.filteredAudits);
-    this.renderer.renderStats(this.stats);
-    this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
+    this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
+    this.renderCurrentView();
   }
 
   /**
@@ -464,11 +484,10 @@ export class AuditReportsController {
     });
     
     this.applyFilters();
-    // Recalculate stats based on filtered audits and re-render stats cards
     this.stats = this.service.calculateStats(this.filteredAudits);
-    this.renderer.renderStats(this.stats);
+    this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
     this.renderer.renderFilterPanel();
-    this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, false);
+    this.renderCurrentView();
   }
 
   /**
@@ -547,10 +566,9 @@ export class AuditReportsController {
     }
     
     this.applyFilters();
-    // Recalculate stats based on filtered audits and re-render stats cards
     this.stats = this.service.calculateStats(this.filteredAudits);
-    this.renderer.renderStats(this.stats);
-    this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
+    this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
+    this.renderCurrentView();
   }
 
   /**
@@ -559,10 +577,186 @@ export class AuditReportsController {
   setSearchQuery(query: string): void {
     this.filters.searchQuery = query || undefined;
     this.applyFilters();
-    // Recalculate stats based on filtered audits and re-render stats cards
     this.stats = this.service.calculateStats(this.filteredAudits);
-    this.renderer.renderStats(this.stats);
-    this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
+    this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
+    this.renderCurrentView();
+  }
+
+  /**
+   * Restore view mode from URL hash on load so we stay on Acknowledgement by agent after reload.
+   */
+  private restoreViewModeFromHash(): void {
+    if (typeof window === 'undefined' || !window.location) return;
+    const hash = (window.location.hash || '').trim().toLowerCase();
+    if (hash === '#ack-by-agent') {
+      this.viewMode = 'ackByAgent';
+    }
+  }
+
+  /**
+   * Persist view mode to URL hash so reload or revisit shows the same tab.
+   */
+  private persistViewModeToHash(mode: AuditReportsViewMode): void {
+    if (typeof window === 'undefined' || !window.history) return;
+    const newHash = mode === 'ackByAgent' ? '#ack-by-agent' : '';
+    const url = window.location.pathname + window.location.search + newHash;
+    window.history.replaceState(null, '', url);
+  }
+
+  /**
+   * Set view mode: 'audits' (default) or 'ackByAgent'
+   */
+  setViewMode(mode: AuditReportsViewMode): void {
+    this.viewMode = mode;
+    this.persistViewModeToHash(mode);
+    this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
+    if (mode === 'ackByAgent') {
+      this.enrichAgentAcknowledgementStats().then(() => this.renderCurrentView());
+      return;
+    }
+    this.renderCurrentView();
+  }
+
+  /**
+   * Enrich agentAckStats.byAgent with lastLoginAt, channel, teamSupervisor from people table;
+   * build supervisorNameMap for supervisor email -> display name.
+   */
+  private async enrichAgentAcknowledgementStats(): Promise<void> {
+    if (!this.agentAckStats?.byAgent?.length) return;
+    const emails = this.agentAckStats.byAgent.map(r => r.agentEmail).filter(Boolean);
+    if (emails.length === 0) return;
+    try {
+      const detailsMap = await this.service.loadPeopleDetailsForAgents(emails);
+      this.agentAckStats.byAgent.forEach(row => {
+        const key = row.agentEmail.trim().toLowerCase();
+        const d = detailsMap.get(key);
+        row.lastLoginAt = d?.lastLogin ?? null;
+        row.channel = d?.channel ?? null;
+        row.teamSupervisor = d?.teamSupervisor ?? null;
+      });
+      // Resolve supervisor emails to names for table display
+      const supervisorEmails = Array.from(
+        new Set(
+          this.agentAckStats!.byAgent
+            .map(r => r.teamSupervisor)
+            .filter((s): s is string => !!s && s.trim() !== '' && s !== '-')
+        )
+      ).map(e => e.trim().toLowerCase());
+      if (supervisorEmails.length > 0) {
+        const supervisorDetails = await this.service.loadPeopleDetailsForAgents(supervisorEmails);
+        this.supervisorNameMap = new Map<string, string>();
+        supervisorDetails.forEach((v, k) => {
+          this.supervisorNameMap.set(k, (v.name && v.name.trim()) || k);
+        });
+      } else {
+        this.supervisorNameMap = new Map();
+      }
+    } catch (e) {
+      logError('enrichAgentAcknowledgementStats failed:', e);
+    }
+  }
+
+  getViewMode(): AuditReportsViewMode {
+    return this.viewMode;
+  }
+
+  /** Filter and sort by-agent rows for ack tab (legacy: only pending > 0, then search/channel/supervisor, then sort). */
+  getAckFilteredRows(): import('../domain/entities.js').AgentAcknowledgementRow[] {
+    if (!this.agentAckStats?.byAgent?.length) return [];
+    const q = this.ackSearchQuery.trim().toLowerCase();
+    const channels = this.ackChannelFilter;
+    const supervisors = this.ackSupervisorFilter;
+    let rows = this.agentAckStats.byAgent.filter(r => r.pending > 0);
+    if (q) {
+      rows = rows.filter(
+        r =>
+          r.agentName.toLowerCase().includes(q) ||
+          r.agentEmail.toLowerCase().includes(q)
+      );
+    }
+    if (channels.length > 0) {
+      rows = rows.filter(r => r.channel && channels.includes(r.channel));
+    }
+    if (supervisors.length > 0) {
+      rows = rows.filter(
+        r =>
+          r.teamSupervisor &&
+          supervisors.some(s => r.teamSupervisor!.toLowerCase() === s.toLowerCase())
+      );
+    }
+    const { field, direction } = this.ackSort;
+    rows = [...rows].sort((a, b) => {
+      let cmp = 0;
+      if (field === 'count') cmp = a.pending - b.pending;
+      else cmp = a.agentName.localeCompare(b.agentName);
+      return direction === 'asc' ? cmp : -cmp;
+    });
+    return rows;
+  }
+
+  getAckExpandedAgentEmails(): Set<string> {
+    return this.expandedAgentEmails;
+  }
+
+  getAckSearchQuery(): string {
+    return this.ackSearchQuery;
+  }
+
+  getAckChannelFilter(): string[] {
+    return this.ackChannelFilter;
+  }
+
+  getAckSupervisorFilter(): string[] {
+    return this.ackSupervisorFilter;
+  }
+
+  getAckSort(): { field: 'count' | 'name'; direction: 'asc' | 'desc' } {
+    return this.ackSort;
+  }
+
+  getSupervisorNameMap(): Map<string, string> {
+    return this.supervisorNameMap;
+  }
+
+  setAckSearchQuery(value: string): void {
+    this.ackSearchQuery = value;
+    if (this.viewMode === 'ackByAgent') this.renderCurrentView();
+  }
+
+  setAckChannelFilter(value: string[]): void {
+    this.ackChannelFilter = value;
+    if (this.viewMode === 'ackByAgent') this.renderCurrentView();
+  }
+
+  setAckSupervisorFilter(value: string[]): void {
+    this.ackSupervisorFilter = value;
+    if (this.viewMode === 'ackByAgent') this.renderCurrentView();
+  }
+
+  setAckSort(field: 'count' | 'name', direction: 'asc' | 'desc'): void {
+    this.ackSort = { field, direction };
+    if (this.viewMode === 'ackByAgent') this.renderCurrentView();
+  }
+
+  toggleAgentExpanded(agentEmail: string): void {
+    const key = agentEmail.trim().toLowerCase();
+    if (this.expandedAgentEmails.has(key)) this.expandedAgentEmails.delete(key);
+    else this.expandedAgentEmails.add(key);
+    if (this.viewMode === 'ackByAgent') this.renderCurrentView();
+  }
+
+  /**
+   * Render either the default audit list or the Acknowledgement by agent view
+   */
+  private renderCurrentView(): void {
+    if (this.viewMode === 'ackByAgent') {
+      this.renderer.renderAgentAcknowledgementView(this.agentAckStats);
+    } else {
+      this.renderer.renderStats(this.stats);
+      this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
+      this.renderer.renderPagination(this.pagination);
+      this.renderer.showAuditsView();
+    }
   }
 
   /**
@@ -725,7 +919,9 @@ export class AuditReportsController {
       pagination: this.pagination,
       isLoading: this.isLoading,
       isSyncing: this.isSyncing,
-      lastSyncTime: this.lastSyncTime
+      lastSyncTime: this.lastSyncTime,
+      viewMode: this.viewMode,
+      agentAckStats: this.agentAckStats
     };
   }
 
@@ -971,10 +1167,9 @@ export class AuditReportsController {
         delete this.filters[filterKey];
       }
       this.applyFilters();
-      // Recalculate stats based on filtered audits and re-render stats cards
       this.stats = this.service.calculateStats(this.filteredAudits);
-      this.renderer.renderStats(this.stats);
-      this.renderer.renderAudits(this.getPaginatedAudits(), this.pagination, this.hasActiveFilters());
+      this.agentAckStats = calculateAgentAcknowledgementStats(this.getAuditsForAckView());
+      this.renderCurrentView();
     }
   }
 }

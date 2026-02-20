@@ -19,6 +19,85 @@ export class AuditReportsEventHandlers {
     // Setup filter event listeners using event delegation (works even if panel rendered later)
     this.setupFilterEventListeners();
 
+    // Tab bar (Audit Reports | Acknowledgement by agent) - same pattern as Auditors Dashboard
+    document.addEventListener('click', (e) => {
+      const target = (e.target as HTMLElement).closest?.('.audit-reports-tab-btn');
+      if (!target) return;
+      const index = (target as HTMLElement).getAttribute('data-tab-index');
+      if (index !== '0' && index !== '1') return;
+      e.preventDefault();
+      const mode = index === '0' ? 'audits' : 'ackByAgent';
+      this.controller.setViewMode(mode);
+    });
+
+    // Acknowledgement-by-agent tab: search, sort, filters, expand
+    document.addEventListener('input', (e) => {
+      const el = e.target as HTMLElement;
+      if (el?.id === 'ackSearchInput') {
+        this.controller.setAckSearchQuery((el as HTMLInputElement).value);
+      }
+    });
+    document.addEventListener('change', (e) => {
+      const el = e.target as HTMLElement;
+      if (el?.id === 'ackSortSelect') {
+        const val = (el as HTMLSelectElement).value;
+        const [field, direction] = val.split('-') as ['count' | 'name', 'asc' | 'desc'];
+        if (field && direction) this.controller.setAckSort(field, direction);
+      }
+      const checkbox = el?.closest?.('[data-ack-filter]');
+      if (checkbox && (el as HTMLInputElement).type === 'checkbox') {
+        const container = (el as HTMLInputElement).closest('[id="ackChannelFilterOptions"], [id="ackSupervisorFilterOptions"]');
+        if (!container) return;
+        const isChannel = container.id === 'ackChannelFilterOptions';
+        const checked = container.querySelectorAll<HTMLInputElement>('input:checked');
+        const values = Array.from(checked).map(c => c.value);
+        if (isChannel) this.controller.setAckChannelFilter(values);
+        else this.controller.setAckSupervisorFilter(values);
+      }
+    });
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const ackView = document.getElementById('agentAcknowledgementView');
+      if (!ackView?.contains(target)) return;
+
+      if (target.closest?.('.ack-view-audits-link')) {
+        const link = target.closest('.ack-view-audits-link') as HTMLElement;
+        const email = link.getAttribute('data-agent-email');
+        if (email) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.controller.toggleAgentExpanded(email);
+        }
+        return;
+      }
+      if (target.closest?.('#ackChannelFilterTrigger')) {
+        const dd = document.getElementById('ackChannelFilterDropdown');
+        const other = document.getElementById('ackSupervisorFilterDropdown');
+        if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+        if (other) other.style.display = 'none';
+        return;
+      }
+      if (target.closest?.('#ackSupervisorFilterTrigger')) {
+        const dd = document.getElementById('ackSupervisorFilterDropdown');
+        const other = document.getElementById('ackChannelFilterDropdown');
+        if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+        if (other) other.style.display = 'none';
+        return;
+      }
+      if (target.closest?.('.ack-multi-select-container')) return;
+      const chDd = document.getElementById('ackChannelFilterDropdown');
+      const supDd = document.getElementById('ackSupervisorFilterDropdown');
+      if (chDd) chDd.style.display = 'none';
+      if (supDd) supDd.style.display = 'none';
+
+      if (target.closest?.('.ack-agent-row')) {
+        const row = target.closest('.ack-agent-row') as HTMLElement;
+        if ((target as HTMLElement).closest('a')) return;
+        const email = row.getAttribute('data-agent-email');
+        if (email) this.controller.toggleAgentExpanded(email);
+      }
+    });
+
     // Scorecard selector - also set up via delegation but keep direct listener as fallback
     const scorecardSelector = document.getElementById('scorecardSelector') as HTMLSelectElement;
     if (scorecardSelector) {

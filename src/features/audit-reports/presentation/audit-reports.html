@@ -442,6 +442,13 @@
         <h1 class="page-heading-global">Audit Reports</h1>
     </div>
 
+    <!-- Tab bar (same style as Auditors Dashboard) -->
+    <div id="auditReportsTabBar" style="position: relative; display: flex; background-color: var(--dark-forest, #1a3d2a); border-radius: 0.4688rem; overflow: hidden; width: 100%; max-width: 28rem; margin: 0.5rem 0 0.75rem 0; padding: 0.2344rem;">
+        <div id="auditReportsTabSlider" style="position: absolute; top: 0.2344rem; height: calc(100% - 0.4688rem); background-color: var(--button-primary, #1A733E); border-radius: 0.2344rem; transition: all 0.3s ease; left: 0.2344rem; width: calc(50% - 0.1563rem);"></div>
+        <button type="button" class="audit-reports-tab-btn active" id="auditReportsTabBtn" data-tab-index="0" style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: 'Poppins', sans-serif; font-size: 0.6rem;">Audit Reports</button>
+        <button type="button" class="audit-reports-tab-btn" id="ackByAgentTabBtn" data-tab-index="1" style="flex: 1; padding: 0.375rem 0.75rem; text-align: center; cursor: pointer; background: none; border: none; color: #ffffff; font-weight: 700; transition: color 0.2s ease; z-index: 2; position: relative; font-family: 'Poppins', sans-serif; font-size: 0.6rem; display: flex; align-items: center; justify-content: center; gap: 0.25rem;">Acknowledgement Reports <span class="ack-tab-beta-chip" style="display: inline-block; padding: 0.0625rem 0.3125rem; border-radius: 0.1875rem; font-size: 0.5rem; font-weight: 600; background: rgba(220,38,38,0.9); color: #ffffff; text-transform: uppercase; letter-spacing: 0.03em;">Beta</span></button>
+    </div>
+
     <!-- Header Actions -->
     <div class="header-actions" id="headerActions" style="justify-content: flex-start; align-items: center;">
         <!-- Week Navigation, Date Picker, Export, Filters, etc. -->
@@ -453,26 +460,66 @@
         <!-- Filters will be rendered by renderer -->
     </div>
 
-    <!-- KPI Cards Grid -->
+    <!-- KPI Cards Grid and list (Tab 0) -->
     <div class="expert-audits-container">
-        <div class="kpi-grid" id="kpiGrid">
-            <!-- KPI cards will be rendered by renderer -->
+        <!-- Tab 0: Audit Reports -->
+        <div id="auditReportsTabPanel" style="width: 100%;">
+            <div class="kpi-grid" id="kpiGrid">
+                <!-- KPI cards will be rendered by renderer -->
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; width: 100%;">
+                <div style="width: 2.5rem; height: 2.5rem; border: 0.25rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
+                <p style="font-size: 0.75rem; color: #6b7280; font-family: 'Poppins', sans-serif; margin: 0;">Loading audits...</p>
+            </div>
+
+            <!-- Audit List -->
+            <div id="auditList" style="display: none; flex-direction: column; gap: 0.375rem; width: 100%;">
+                <!-- Audits will be rendered by renderer -->
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="paginationContainer" style="display: none; margin-top: 1.125rem; padding: 0.75rem; background: var(--background-white); border-radius: 0.375rem; border: 0.0469rem solid var(--border-light); width: 100%;">
+                <!-- Pagination will be rendered by renderer -->
+            </div>
         </div>
 
-        <!-- Loading Indicator -->
-        <div id="loadingIndicator" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; width: 100%;">
-            <div style="width: 2.5rem; height: 2.5rem; border: 0.25rem solid #e5e7eb; border-top-color: #1A733E; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;"></div>
-            <p style="font-size: 0.75rem; color: #6b7280; font-family: 'Poppins', sans-serif; margin: 0;">Loading audits...</p>
-        </div>
-
-        <!-- Audit List -->
-        <div id="auditList" style="display: none; flex-direction: column; gap: 0.375rem; width: 100%;">
-            <!-- Audits will be rendered by renderer -->
-        </div>
-
-        <!-- Pagination Controls -->
-        <div id="paginationContainer" style="display: none; margin-top: 1.125rem; padding: 0.75rem; background: var(--background-white); border-radius: 0.375rem; border: 0.0469rem solid var(--border-light); width: 100%;">
-            <!-- Pagination will be rendered by renderer -->
+        <!-- Tab 1: Acknowledgement Reports (legacy-style) -->
+        <div id="agentAcknowledgementView" style="display: none; width: 100%; margin-top: 0;">
+            <div id="agentAckSummaryStrip" class="agent-ack-summary-strip stats-summary"></div>
+            <div class="ack-table-block">
+            <div id="agentAckFiltersBar" class="ack-filters-bar">
+                <input type="text" id="ackSearchInput" class="ack-search-input" placeholder="Search agent..." title="Search by agent name or email">
+                <div class="ack-multi-select-container">
+                    <button type="button" id="ackChannelFilterTrigger" class="ack-multi-select-trigger">
+                        <span id="ackChannelFilterPlaceholder">Channel</span>
+                        <span class="ack-chevron" aria-hidden="true"></span>
+                    </button>
+                    <div id="ackChannelFilterDropdown" class="ack-multi-select-dropdown" style="display: none;">
+                        <div id="ackChannelFilterOptions"></div>
+                    </div>
+                </div>
+                <div class="ack-multi-select-container">
+                    <button type="button" id="ackSupervisorFilterTrigger" class="ack-multi-select-trigger">
+                        <span id="ackSupervisorFilterPlaceholder">Supervisor</span>
+                        <span class="ack-chevron" aria-hidden="true"></span>
+                    </button>
+                    <div id="ackSupervisorFilterDropdown" class="ack-multi-select-dropdown" style="display: none;">
+                        <div id="ackSupervisorFilterOptions"></div>
+                    </div>
+                </div>
+                <select id="ackSortSelect" class="ack-sort-select">
+                    <option value="count-desc">Pending (High → Low)</option>
+                    <option value="count-asc">Pending (Low → High)</option>
+                    <option value="name-asc">Name (A–Z)</option>
+                    <option value="name-desc">Name (Z–A)</option>
+                </select>
+            </div>
+            <div id="agentAckTableSection" style="margin-bottom: 1.25rem;">
+                <div id="agentAcknowledgementTableWrap" class="ack-table-wrap" style="overflow-x: auto; background: var(--background-white);"></div>
+            </div>
+            </div>
         </div>
     </div>
 </main>

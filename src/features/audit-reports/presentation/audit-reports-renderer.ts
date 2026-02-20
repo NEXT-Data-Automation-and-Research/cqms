@@ -6,12 +6,87 @@
 import { safeSetHTML, escapeHtml } from '../../../utils/html-sanitizer.js';
 import { logError } from '../../../utils/logging-helper.js';
 import type { AuditReportsController } from './audit-reports-controller.js';
-import type { AuditReport, AuditStats, PaginationState } from '../domain/entities.js';
+import type { AuditReport, AuditStats, PaginationState, AgentAcknowledgementStats } from '../domain/entities.js';
+import { isAuditUnderReversal } from '../application/agent-acknowledgement-stats.js';
 import type { ScorecardInfo } from '../infrastructure/audit-reports-repository.js';
 import { renderKPICards, renderKPISkeletons } from './renderers/kpi-renderer.js';
 import { renderAuditList } from './renderers/audit-list-renderer.js';
 import { renderHeaderActions } from './renderers/header-renderer.js';
 import { renderFilterPanel } from './renderers/filter-renderer.js';
+
+/**
+ * Load profile pictures for ack agent avatars (same pattern as audit-list and user management).
+ * Fetches avatar_url from users then people table and injects img into each .ack-agent-avatar.
+ */
+async function loadAckAgentAvatars(container: HTMLElement): Promise<void> {
+  const avatars = container.querySelectorAll<HTMLElement>('.ack-agent-avatar');
+  if (avatars.length === 0) return;
+  const emailToAvatars = new Map<string, HTMLElement[]>();
+  const emails: string[] = [];
+  avatars.forEach((el) => {
+    const email = (el.getAttribute('data-agent-email') || '').trim();
+    if (!email) return;
+    const key = email.toLowerCase();
+    if (!emailToAvatars.has(key)) {
+      emailToAvatars.set(key, []);
+      emails.push(email);
+    }
+    emailToAvatars.get(key)!.push(el);
+  });
+  if (emails.length === 0) return;
+  try {
+    const { getSecureSupabase } = await import('../../../utils/secure-supabase.js');
+    const supabase = await getSecureSupabase(false);
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('email, avatar_url')
+      .in('email', emails);
+    const found = new Set(((usersData || []) as Array<{ email?: string }>).map((u) => (u.email || '').toLowerCase()));
+    const missing = emails.filter((e) => !found.has(e.toLowerCase()));
+    let peopleData: Array<{ email?: string; avatar_url?: string | null }> = [];
+    if (missing.length > 0) {
+      const { data } = await supabase
+        .from('people')
+        .select('email, avatar_url')
+        .in('email', missing);
+      peopleData = (data as Array<{ email?: string; avatar_url?: string | null }>) || [];
+    }
+    const avatarUrlMap = new Map<string, string | null>();
+    (usersData || []).forEach((u: { email?: string; avatar_url?: string | null }) => {
+      const url = u.avatar_url;
+      if (url && String(url).trim() && String(url) !== 'null' && String(url) !== 'undefined') {
+        avatarUrlMap.set((u.email || '').trim().toLowerCase(), url);
+      }
+    });
+    peopleData.forEach((p) => {
+      const url = p.avatar_url;
+      if (url && String(url).trim() && String(url) !== 'null' && String(url) !== 'undefined') {
+        const key = (p.email || '').trim().toLowerCase();
+        if (!avatarUrlMap.has(key)) avatarUrlMap.set(key, url);
+      }
+    });
+    emailToAvatars.forEach((elements, emailKey) => {
+      const url = avatarUrlMap.get(emailKey);
+      if (!url) return;
+      elements.forEach((avatar) => {
+        if (avatar.querySelector('img')) return;
+        const initialsEl = avatar.querySelector('.avatar-initials') as HTMLElement;
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Profile';
+        img.referrerPolicy = 'no-referrer';
+        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block; position: absolute; inset: 0; z-index: 2;';
+        img.onerror = () => img.remove();
+        img.onload = () => {
+          if (initialsEl) initialsEl.style.display = 'none';
+        };
+        avatar.appendChild(img);
+      });
+    });
+  } catch (e) {
+    logError('loadAckAgentAvatars failed:', e);
+  }
+}
 
 export class AuditReportsRenderer {
   constructor(private controller: AuditReportsController) {}
@@ -392,6 +467,310 @@ export class AuditReportsRenderer {
     }
     if (text) {
       safeSetHTML(text, syncing ? 'Syncing...' : 'Sync');
+    }
+  }
+
+  /**
+   * Show the default audits view (Tab 0); hide Acknowledgement by agent tab content and update tab bar.
+   * Show the full header actions bar (date range, quick-date, filter, sync).
+   */
+  showAuditsView(): void {
+    const tabPanel = document.getElementById('auditReportsTabPanel');
+    const ackView = document.getElementById('agentAcknowledgementView');
+    const main = document.querySelector('main');
+    if (tabPanel) tabPanel.style.display = 'block';
+    if (ackView) ackView.style.display = 'none';
+    if (main) main.classList.remove('audit-reports-ack-tab');
+    this.updateAuditReportsTabBar(0);
+  }
+
+  /**
+   * Update tab bar slider and active state (0 = Audit Reports, 1 = Acknowledgement by agent).
+   */
+  updateAuditReportsTabBar(activeIndex: number): void {
+    const tabBar = document.getElementById('auditReportsTabBar');
+    const slider = document.getElementById('auditReportsTabSlider');
+    const tabs = document.querySelectorAll('.audit-reports-tab-btn');
+    if (!tabBar || !slider || tabs.length < 2) return;
+    tabs.forEach((t, i) => {
+      (t as HTMLElement).classList.toggle('active', i === activeIndex);
+    });
+    const padding = 5;
+    const tabCount = 2;
+    const w = tabBar.offsetWidth;
+    if (w > 0) {
+      const tabWidth = (w - padding * 2) / tabCount;
+      slider.style.left = `${padding + activeIndex * tabWidth}px`;
+      slider.style.width = `${tabWidth}px`;
+    } else {
+      slider.style.left = activeIndex === 0 ? '0.2344rem' : '50%';
+      slider.style.width = 'calc(50% - 0.1563rem)';
+    }
+  }
+
+  /**
+   * Render the "Acknowledgement by agent" view (legacy-style): 3 summary cards, filters bar, expandable agents table.
+   * Hide the entire header actions bar (date range, quick-date, filter, sync) via CSS class; this tab uses lifetime data only.
+   */
+  renderAgentAcknowledgementView(stats: AgentAcknowledgementStats | null): void {
+    const tabPanel = document.getElementById('auditReportsTabPanel');
+    const ackView = document.getElementById('agentAcknowledgementView');
+    const loading = document.getElementById('loadingIndicator');
+    const main = document.querySelector('main');
+    if (tabPanel) tabPanel.style.display = 'none';
+    if (ackView) ackView.style.display = 'block';
+    if (loading) loading.style.display = 'none';
+    if (main) main.classList.add('audit-reports-ack-tab');
+    this.updateAuditReportsTabBar(1);
+
+    if (!stats) {
+      const strip = document.getElementById('agentAckSummaryStrip');
+      const tableWrap = document.getElementById('agentAcknowledgementTableWrap');
+      if (strip) safeSetHTML(strip, '');
+      if (tableWrap) safeSetHTML(tableWrap, '<div style="padding: 1rem; color: #6b7280;">No data.</div>');
+      return;
+    }
+
+    const agentsWithPending = stats.byAgent.filter(r => r.pending > 0).length;
+    const summaryStrip = document.getElementById('agentAckSummaryStrip');
+    if (summaryStrip) {
+      summaryStrip.innerHTML = `
+        <div class="ack-stat-card">
+          <div class="ack-stat-label">Total Agents</div>
+          <div class="ack-stat-value">${stats.byAgent.length}</div>
+          <div class="ack-stat-sub">&nbsp;</div>
+        </div>
+        <div class="ack-stat-card ack-stat-card--warning">
+          <div class="ack-stat-label">Total Pending</div>
+          <div class="ack-stat-value">${stats.pending}</div>
+          <div class="ack-stat-sub">&nbsp;</div>
+        </div>
+        <div class="ack-stat-card ack-stat-card--warning">
+          <div class="ack-stat-label">Agents with Pending</div>
+          <div class="ack-stat-value">${agentsWithPending}</div>
+          <div class="ack-stat-sub">&nbsp;</div>
+        </div>
+      `;
+    }
+
+    const formatRelativeOrDate = (iso: string | null | undefined): string => {
+      if (!iso || typeof iso !== 'string') return '—';
+      try {
+        const date = new Date(iso);
+        if (!Number.isFinite(date.getTime())) return '—';
+        const now = Date.now();
+        const diffMs = now - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        const day = date.getDate();
+        const month = date.toLocaleString('en-GB', { month: 'short' });
+        const year = date.getFullYear();
+        const h = date.getHours();
+        const m = date.getMinutes();
+        return `${day}-${month}-${year} ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      } catch {
+        return '—';
+      }
+    };
+    const formatNestedDate = (d: string | undefined): string => {
+      if (!d) return '—';
+      try {
+        const date = new Date(d);
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      } catch {
+        return '—';
+      }
+    };
+
+    const getInitials = (name: string): string => {
+      if (!name || !name.trim()) return '?';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      return name.substring(0, 2).toUpperCase();
+    };
+
+    const filteredRows = this.controller.getAckFilteredRows();
+    const expanded = this.controller.getAckExpandedAgentEmails();
+    const supervisorNameMap = this.controller.getSupervisorNameMap();
+    const getSupervisorName = (email: string | null | undefined): string => {
+      if (!email || email === '-') return '—';
+      return supervisorNameMap.get(email.trim().toLowerCase()) ?? email;
+    };
+
+    const pendingByAgent = new Map<string, AuditReport[]>();
+    for (const a of stats.pendingAudits) {
+      const e = ((a.employeeEmail ?? (a as any).employee_email) ?? '').trim().toLowerCase();
+      if (!e) continue;
+      if (!pendingByAgent.has(e)) pendingByAgent.set(e, []);
+      pendingByAgent.get(e)!.push(a);
+    }
+
+    const searchInput = document.getElementById('ackSearchInput') as HTMLInputElement;
+    const sortSelect = document.getElementById('ackSortSelect') as HTMLSelectElement;
+    if (searchInput) searchInput.value = this.controller.getAckSearchQuery();
+    if (sortSelect) {
+      const s = this.controller.getAckSort();
+      sortSelect.value = `${s.field}-${s.direction}`;
+    }
+
+    const agentsWithPendingList = stats.byAgent.filter(r => r.pending > 0);
+    const channels = [...new Set(agentsWithPendingList.map(r => r.channel).filter((c): c is string => !!c && c !== '-'))].sort();
+    const supervisors = [...new Set(agentsWithPendingList.map(r => r.teamSupervisor).filter((s): s is string => !!s && s !== '-'))].sort(
+      (a, b) => getSupervisorName(a).localeCompare(getSupervisorName(b))
+    );
+
+    const channelOptionsEl = document.getElementById('ackChannelFilterOptions');
+    const supervisorOptionsEl = document.getElementById('ackSupervisorFilterOptions');
+    const currentChannels = this.controller.getAckChannelFilter();
+    const currentSupervisors = this.controller.getAckSupervisorFilter();
+    if (channelOptionsEl) {
+      channelOptionsEl.innerHTML = channels
+        .map(
+          ch =>
+            `<label class="ack-filter-option">
+              <input type="checkbox" data-ack-filter="channel" value="${escapeHtml(ch)}" ${currentChannels.includes(ch) ? 'checked' : ''}>
+              ${escapeHtml(ch)}
+            </label>`
+        )
+        .join('');
+    }
+    if (supervisorOptionsEl) {
+      supervisorOptionsEl.innerHTML = supervisors
+        .map(
+          sup =>
+            `<label class="ack-filter-option">
+              <input type="checkbox" data-ack-filter="supervisor" value="${escapeHtml(sup)}" ${currentSupervisors.includes(sup) ? 'checked' : ''}>
+              ${escapeHtml(getSupervisorName(sup))}
+            </label>`
+        )
+        .join('');
+    }
+
+    const tableWrap = document.getElementById('agentAcknowledgementTableWrap');
+    if (tableWrap) {
+      if (filteredRows.length === 0) {
+        safeSetHTML(
+          tableWrap,
+          '<table class="agents-table" style="width: 100%; border-collapse: collapse;"><tbody><tr><td colspan="7" style="text-align: center; padding: 2rem; color: #6b7280;">No agents found matching your filters</td></tr></tbody></table>'
+        );
+      } else {
+        const rowsHtml: string[] = [];
+        for (const r of filteredRows) {
+          const key = r.agentEmail.trim().toLowerCase();
+          const isExpanded = expanded.has(key);
+          const supervisorName = getSupervisorName(r.teamSupervisor);
+          const lastAckDisplay = formatRelativeOrDate(r.lastAcknowledgedAt ?? null);
+          const lastLoginDisplay = formatRelativeOrDate(r.lastLoginAt ?? null);
+          const channelBadge =
+            r.channel && r.channel !== '-'
+              ? `<span class="channel-badge" style="display: inline-block; padding: 0.25rem 0.5rem; background: #e5e7eb; border-radius: 0.25rem; font-size: 0.75rem;">${escapeHtml(r.channel)}</span>`
+              : '<span style="color: #9ca3af;">—</span>';
+          const initials = getInitials(r.agentName || r.agentEmail || '');
+          rowsHtml.push(`
+            <tr class="ack-agent-row ${isExpanded ? 'expanded' : ''}" data-agent-email="${escapeHtml(r.agentEmail)}" style="cursor: pointer;">
+              <td class="ack-agent-cell" style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                <span class="ack-expand-icon expand-icon" aria-hidden="true"></span>
+                <div class="ack-agent-cell-content">
+                  <div class="ack-agent-avatar" data-agent-email="${escapeHtml(r.agentEmail)}" title="${escapeHtml(r.agentName || r.agentEmail)}">
+                    <span class="avatar-initials">${escapeHtml(initials)}</span>
+                  </div>
+                  <div>
+                    <div class="agent-name-cell">${escapeHtml(r.agentName)}</div>
+                    <div class="agent-email-cell">${escapeHtml(r.agentEmail)}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${channelBadge}</td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-size: 0.8125rem; color: #6b7280;">${escapeHtml(supervisorName)}</td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${r.pending}</td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-size: 0.8125rem; color: #6b7280;">${escapeHtml(lastAckDisplay)}</td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; font-size: 0.8125rem; color: #6b7280;">${escapeHtml(lastLoginDisplay)}</td>
+              <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">
+                <a href="#" class="ack-expand-btn ack-view-audits-link" data-agent-email="${escapeHtml(r.agentEmail)}" data-prevent-toggle="1">${isExpanded ? 'Hide' : 'View'} Audits</a>
+              </td>
+            </tr>
+          `);
+          if (isExpanded) {
+            const audits = (pendingByAgent.get(key) ?? []).slice().sort((a, b) => {
+              const da = new Date(a.submittedAt ?? (a as any).submitted_at ?? 0).getTime();
+              const db = new Date(b.submittedAt ?? (b as any).submitted_at ?? 0).getTime();
+              return db - da;
+            });
+            let nestedRows = '';
+            for (const audit of audits) {
+              const tableName = (audit._scorecard_table ?? '').toString();
+              const viewUrl =
+                audit.id && tableName
+                  ? `/audit-view.html?id=${encodeURIComponent(audit.id)}&table=${encodeURIComponent(tableName)}&mode=view`
+                  : '#';
+              const interactionId =
+                (audit.interactionId ?? (audit as any).interaction_id ?? (audit as any).conversation_id ?? '')
+                  .toString()
+                  .trim() || '—';
+              const score = audit.averageScore ?? (audit as any).average_score ?? '—';
+              const underReversal = isAuditUnderReversal(audit)
+                ? ' <span class="reversal-badge" style="display: inline-block; padding: 0.25rem 0.5rem; background: #fef3c7; color: #92400e; border-radius: 0.25rem; font-size: 0.75rem; margin-left: 0.5rem;">Under Reversal</span>'
+                : '';
+              nestedRows += `
+                <tr>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml((audit.id ?? '').toString())}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml(interactionId)}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml(formatNestedDate(audit.submittedAt ?? (audit as any).submitted_at ?? undefined))}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml((audit._scorecard_name ?? '').toString())}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml(String(score))}${score !== '—' ? '%' : ''}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">Pending${underReversal}</td>
+                  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;"><a href="${viewUrl}" class="ack-view-audit-btn audit-link">View Audit</a></td>
+                </tr>
+              `;
+            }
+            const emptyNested =
+              audits.length === 0
+                ? '<tr><td colspan="7" style="padding: 1rem; text-align: center; color: #6b7280;">No unacknowledged audits for this agent</td></tr>'
+                : '';
+            rowsHtml.push(`
+              <tr class="nested-audits-row" data-nested-for="${escapeHtml(key)}" style="background: #f9fafb;">
+                <td colspan="7" style="padding: 0; border-bottom: 1px solid #e5e7eb;">
+                  <div class="nested-audits-container" style="padding: 1rem; max-height: 500px; overflow-y: auto;">
+                    <table class="nested-audits-table" style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+                      <thead><tr style="background: #f3f4f6;">
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Audit ID</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Interaction ID</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Date</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Scorecard</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Score</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Status</th>
+                        <th style="padding: 0.5rem 0.75rem; text-align: left;">Action</th>
+                      </tr></thead>
+                      <tbody>${nestedRows}${emptyNested}</tbody>
+                    </table>
+                  </div>
+                </td>
+              </tr>
+            `);
+          }
+        }
+        safeSetHTML(
+          tableWrap,
+          `<table class="agents-table" style="width: 100%; border-collapse: collapse; font-size: 0.8125rem;">
+            <thead style="background: #f9fafb;">
+              <tr>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Agent</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Channel</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Team Supervisor</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Pending Count</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Last Acknowledged at</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Last Login</th>
+                <th style="padding: 0.5rem 0.75rem; text-align: left;">Action</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml.join('')}</tbody>
+          </table>`
+        );
+        loadAckAgentAvatars(tableWrap);
+      }
     }
   }
 

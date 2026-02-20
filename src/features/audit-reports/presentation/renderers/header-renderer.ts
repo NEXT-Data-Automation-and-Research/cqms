@@ -11,6 +11,8 @@ export function renderHeaderActions(
   controller: AuditReportsController
 ): void {
   const html = `
+    <!-- Date range section: hidden on Acknowledgement-by-agent tab (lifetime data only) -->
+    <div id="headerDateSection" class="header-date-section">
     <div class="date-picker-dropdown" style="position: relative; z-index: 1001;">
       <button class="action-btn" id="dateBtn">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -36,7 +38,6 @@ export function renderHeaderActions(
         </div>
       </div>
     </div>
-    <!-- Quick Date Buttons - Visible on desktop only -->
     <div class="quick-date-buttons-container">
       <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
       <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
@@ -44,6 +45,7 @@ export function renderHeaderActions(
       <button class="action-btn quick-date-btn" id="lastWeekBtn">Last Week</button>
       <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
       <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
+    </div>
     </div>
     <!-- Export Button - Hidden -->
     <button class="action-btn" id="exportBtn" style="display: none;">

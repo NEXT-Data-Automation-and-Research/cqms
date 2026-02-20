@@ -171,8 +171,8 @@ function setupViewDetailsButtonHandlers(container: HTMLElement, controller: Audi
     container.removeEventListener('click', existingHandler);
   }
   
-  // Create new handler
-  const handler = async (e: Event) => {
+  // Create new handler - navigate to audit view page instead of opening modal
+  const handler = (e: Event) => {
     const target = e.target as HTMLElement;
     const button = target.closest('[data-action="view-details"]') as HTMLButtonElement;
     
@@ -181,31 +181,21 @@ function setupViewDetailsButtonHandlers(container: HTMLElement, controller: Audi
       e.stopPropagation();
       
       const auditId = button.dataset.auditId;
-      if (auditId) {
-        console.log('[AuditReports] View Details button clicked for audit:', auditId);
-        
-        // Always prefer window.auditReportsController as it has the methods attached
-        const globalController = (window as any).auditReportsController;
-        
-        if (globalController?.showAuditModal) {
-          console.log('[AuditReports] Using global controller showAuditModal');
-          try {
-            await globalController.showAuditModal(auditId);
-          } catch (error) {
-            console.error('[AuditReports] Error calling showAuditModal:', error);
-          }
-        } else if ((controller as any).showAuditModal) {
-          console.log('[AuditReports] Using local controller showAuditModal');
-          try {
-            await (controller as any).showAuditModal(auditId);
-          } catch (error) {
-            console.error('[AuditReports] Error calling showAuditModal:', error);
-          }
-        } else {
-          console.error('[AuditReports] showAuditModal method not found on any controller');
-          console.log('[AuditReports] Global controller available:', !!globalController);
-          console.log('[AuditReports] Global controller methods:', globalController ? Object.keys(globalController) : 'N/A');
-        }
+      if (!auditId) return;
+
+      const ctrl = (window as any).auditReportsController ?? controller;
+      const state = ctrl?.getState?.();
+      const audit = state?.audits?.find((a: AuditReport) => a.id === auditId);
+      if (!audit) {
+        alert('Audit not found');
+        return;
+      }
+      const scorecardId = audit._scorecard_id;
+      const tableName = audit._scorecard_table ?? '';
+      if (auditId && scorecardId != null && scorecardId !== '' && tableName !== '') {
+        window.location.href = `/audit-view.html?id=${encodeURIComponent(auditId)}&scorecard=${encodeURIComponent(String(scorecardId))}&table=${encodeURIComponent(tableName)}&mode=view`;
+      } else {
+        alert('Cannot view audit: Missing required information.');
       }
     }
   };

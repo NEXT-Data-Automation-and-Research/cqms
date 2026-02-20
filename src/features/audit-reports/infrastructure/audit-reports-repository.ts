@@ -354,6 +354,77 @@ export class AuditReportsRepository extends BaseRepository {
     });
   }
 
+  /** Result of people lookup for agent enrichment (channel, team_supervisor, last_login, name for supervisor display) */
+  async loadPeopleDetailsForAgents(
+    emails: string[]
+  ): Promise<
+    Map<
+      string,
+      { lastLogin: string | null; channel: string | null; teamSupervisor: string | null; name: string | null }
+    >
+  > {
+    const map = new Map<
+      string,
+      { lastLogin: string | null; channel: string | null; teamSupervisor: string | null; name: string | null }
+    >();
+    const unique = Array.from(new Set(emails.map(e => e?.trim?.()?.toLowerCase()).filter(Boolean))) as string[];
+    if (unique.length === 0) return map;
+    try {
+      let data: Array<{ email: string; last_login: string | null; channel: string | null; team_supervisor: string | null; name?: string | null }> | null = null;
+      const { data: d1, error: e1 } = await this.db
+        .from('people')
+        .select('email, last_login, channel, team_supervisor, name')
+        .in('email', unique)
+        .execute<
+          Array<{ email: string; last_login: string | null; channel: string | null; team_supervisor: string | null; name?: string | null }>
+        >();
+      if (e1?.code === '42703') {
+        const { data: d2, error: e2 } = await this.db
+          .from('people')
+          .select('email, last_login, channel, team_supervisor')
+          .in('email', unique)
+          .execute<Array<{ email: string; last_login: string | null; channel: string | null; team_supervisor: string | null }>>();
+        if (e2) {
+          if (e2.code === 'PGRST116' || e2.code === '42703') return map;
+          logError('loadPeopleDetailsForAgents error:', e2);
+          return map;
+        }
+        data = (d2 || []).map(r => ({ ...r, name: null as string | null }));
+      } else if (e1) {
+        if (e1.code === 'PGRST116') return map;
+        logError('loadPeopleDetailsForAgents error:', e1);
+        return map;
+      } else {
+        data = d1 || [];
+      }
+      (data || []).forEach(row => {
+        const email = (row.email || '').trim().toLowerCase();
+        if (email) {
+          map.set(email, {
+            lastLogin: row.last_login ?? null,
+            channel: row.channel ?? null,
+            teamSupervisor: row.team_supervisor ?? null,
+            name: row.name ?? null
+          });
+        }
+      });
+    } catch (e) {
+      logError('loadPeopleDetailsForAgents exception:', e);
+    }
+    return map;
+  }
+
+  /**
+   * Load last_login for a list of emails from people table (backward-compat).
+   * Prefer loadPeopleDetailsForAgents for new code.
+   */
+  async loadPeopleLastLogin(emails: string[]): Promise<Map<string, string | null>> {
+    const details = await this.loadPeopleDetailsForAgents(emails);
+    const map = new Map<string, string | null>();
+    details.forEach((v, k) => map.set(k, v.lastLogin));
+    return map;
+  }
+
   /**
    * Delete audit from table
    */

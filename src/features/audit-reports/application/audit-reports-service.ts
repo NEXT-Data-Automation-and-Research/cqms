@@ -84,6 +84,27 @@ export class AuditReportsService extends BaseService {
   }
 
   /**
+   * Load people details (last_login, channel, team_supervisor, name) for agent emails (Acknowledgement by agent view).
+   */
+  async loadPeopleDetailsForAgents(
+    emails: string[]
+  ): Promise<
+    Map<
+      string,
+      { lastLogin: string | null; channel: string | null; teamSupervisor: string | null; name: string | null }
+    >
+  > {
+    return this.repository.loadPeopleDetailsForAgents(emails);
+  }
+
+  /**
+   * Load last_login for a list of emails from people table (backward-compat).
+   */
+  async loadPeopleLastLogin(emails: string[]): Promise<Map<string, string | null>> {
+    return this.repository.loadPeopleLastLogin(emails);
+  }
+
+  /**
    * Filter audits based on filters
    */
   filterAudits(

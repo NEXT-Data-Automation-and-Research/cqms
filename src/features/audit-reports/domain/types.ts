@@ -3,9 +3,11 @@
  * Type definitions for audit reports feature
  */
 
-import type { AuditReport, AuditStats, AuditFilters, DateRange, PaginationState } from './entities.js';
+import type { AuditReport, AuditStats, AuditFilters, DateRange, PaginationState, AgentAcknowledgementStats } from './entities.js';
 
 export type AuditReportList = AuditReport[];
+
+export type AuditReportsViewMode = 'audits' | 'ackByAgent';
 
 export type ScorecardId = string | null;
 
@@ -30,6 +32,8 @@ export interface AuditReportsState {
   isLoading: boolean;
   isSyncing: boolean;
   lastSyncTime: Date | null;
+  viewMode: AuditReportsViewMode;
+  agentAckStats: AgentAcknowledgementStats | null;
 }
 
 export interface ExportOptions {
