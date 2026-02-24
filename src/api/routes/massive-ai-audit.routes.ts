@@ -24,6 +24,9 @@ const DELAY_MS = 2000;
 /** Maximum number of massive AI audits that can run concurrently (queued + running). */
 const MAX_CONCURRENT_AUDITS = 2;
 
+/** Jobs in queued/running longer than this are marked failed to free slots (e.g. n8n never reported completion). */
+const STALE_JOB_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 /** In-memory set of cancelled job IDs so the trigger loop can abort early. */
 const cancelledJobIds = new Set<string>();
 
@@ -105,6 +108,42 @@ async function startNextScheduledJob(): Promise<void> {
     });
   } catch (err) {
     logger.error('startNextScheduledJob error', err);
+  }
+}
+
+/**
+ * Mark jobs stuck in queued/running for too long as failed so they stop blocking the concurrency limit.
+ * (e.g. n8n crashed, never called progress API, or server restarted.)
+ */
+async function markStaleRunningJobs(): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - STALE_JOB_THRESHOLD_MS).toISOString();
+    const admin = getServerSupabase();
+    const { data: updated, error } = await admin
+      .from('massive_ai_audit_jobs')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+        error_message:
+          'Marked failed automatically: no progress update within 24 hours (stale job recovery).',
+      })
+      .in('status', ['queued', 'running'])
+      .lt('created_at', cutoff)
+      .select('id');
+
+    if (error) {
+      logger.warn('markStaleRunningJobs failed', { error: error.message });
+      return;
+    }
+    if (updated && updated.length > 0) {
+      logger.info('massive-ai-audit: marked stale jobs as failed', {
+        count: updated.length,
+        jobIds: updated.map((r: { id: string }) => r.id),
+      });
+      setImmediate(() => startNextScheduledJob().catch((e) => logger.error('startNextScheduledJob after stale', e)));
+    }
+  } catch (err) {
+    logger.error('markStaleRunningJobs error', err);
   }
 }
 
@@ -1473,7 +1512,9 @@ router.post('/jobs/:id/cancel', verifyAuth, requireRole(...ALLOWED_ROLES), async
 
 // ── Periodic scheduler: check every 30s for scheduled jobs that can start ──
 const SCHEDULER_INTERVAL_MS = 30_000;
+const STALE_JOBS_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
+let staleJobsTimer: ReturnType<typeof setInterval> | null = null;
 
 function startSchedulerPolling(): void {
   if (schedulerTimer) return;
@@ -1489,6 +1530,21 @@ function startSchedulerPolling(): void {
     );
   }, SCHEDULER_INTERVAL_MS);
   logger.info(`massive-ai-audit: scheduler polling started (every ${SCHEDULER_INTERVAL_MS / 1000}s)`);
+
+  // Run stale-job recovery so stuck queued/running jobs don't block the concurrency limit forever
+  setImmediate(() => {
+    markStaleRunningJobs().catch((err) =>
+      logger.error('massive-ai-audit: initial stale-jobs check error', err)
+    );
+  });
+  staleJobsTimer = setInterval(() => {
+    markStaleRunningJobs().catch((err) =>
+      logger.error('massive-ai-audit: stale-jobs check error', err)
+    );
+  }, STALE_JOBS_CHECK_INTERVAL_MS);
+  logger.info(
+    `massive-ai-audit: stale-job recovery started (every ${STALE_JOBS_CHECK_INTERVAL_MS / 60_000} min, threshold ${STALE_JOB_THRESHOLD_MS / 60 / 60 / 1000}h)`
+  );
 }
 
 // Start polling when module is loaded (i.e. when server boots)
