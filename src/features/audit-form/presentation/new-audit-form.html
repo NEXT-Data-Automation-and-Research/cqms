@@ -2478,7 +2478,7 @@ function displayPendingAudits() {
         auditCard.innerHTML = `
             <div style="flex: 1; display: flex; align-items: center; gap: 0.4852rem; ${clickHandler ? 'cursor: pointer;' : ''}" ${clickHandler}>
                 <div style="width: 1.6171rem; height: 1.6171rem; border-radius: 0.1617rem; background: #1A733E; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.5659rem; flex-shrink: 0;">
-                    ${getInitials(displayName)}
+                    ${escapeHtml(getInitials(displayName))}
                 </div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 0.3234rem; margin-bottom: 0.1617rem;">
@@ -6162,74 +6162,46 @@ async function fetchConversationsForCurrentUser(selectedDate) {
         return;
     }
     
-    // No cache found, fetch from API
-    console.log('ðŸŒ Fetching from API (no cache found)');
-    
-    // Update progress: Initial
-    updateProgressIndicator(10, 'Pulling from Intercom...');
-    
+    // No cache found, fetch from database
+    console.log('Fetching from database (no cache found)');
+
+    updateProgressIndicator(10, 'Loading from database...');
+
     try {
-        // Build edge function URL
-        const updatedSince = `${selectedDate} 00:00:00`;
-        const updatedBefore = `${selectedDate} 23:59:59`;
-        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}`;
-        
-        console.log('ðŸ"¡ Calling:', edgeFunctionUrl);
-        console.log('📅 Date range:', updatedSince, 'to', updatedBefore);
-        
-        // Get user's JWT token for authenticated request
-        const userToken = await window.getUserJWTToken();
-        if (!userToken) {
-            throw new Error('User authentication required. Please log in again.');
+        const supabaseClient = window.SupabaseConfig?.getClient?.();
+        const client = supabaseClient && typeof supabaseClient.then === 'function' ? await supabaseClient : supabaseClient;
+        if (!client) {
+            throw new Error('Supabase client not available. Please log in again.');
         }
         
-        // Update progress: Searching
-        updateProgressIndicator(20, 'Searching conversations in Intercom...');
+        const updatedSince = `${normalizedDate}T00:00:00.000Z`;
+        const updatedBefore = `${normalizedDate}T23:59:59.999Z`;
         
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${userToken}`,
-                'apikey': supabaseAnonKey,
-                'Accept': 'application/json'
+        updateProgressIndicator(30, 'Querying conversations...');
+        
+        const { data: rows, error } = await client
+            .from('conversations')
+            .select('id, payload')
+            .eq('admin_id', normalizedAdminId)
+            .gte('updated_at', updatedSince)
+            .lte('updated_at', updatedBefore)
+            .order('updated_at', { ascending: false });
+        
+        if (error) {
+            throw new Error(error.message || 'Database query failed');
+        }
+        
+        updateProgressIndicator(70, 'Processing conversations...');
+        
+        let conversations = (rows || []).map(r => {
+            const p = r.payload;
+            if (p && typeof p === 'object') {
+                return { ...p, id: p.id != null ? p.id : r.id };
             }
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-            throw new Error(errorMsg);
-        }
-
-        // Update progress: Processing
-        updateProgressIndicator(70, 'Processing participation data...');
+            return { id: r.id, payload: p };
+        }).filter(c => c && c.id);
         
-        const data = await response.json();
-        
-        // Extract conversations from response first to validate
-        let conversations = [];
-        if (data && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        }
-        
-        const participationCount = data.participation_count || 0;
-        
-        // Only cache if we have valid data
-        if (data && conversations.length >= 0) {
-            console.log('ðŸ’¾ Attempting to cache data...', { adminId: normalizedAdminId, date: normalizedDate, conversationCount: conversations.length });
-            const cacheResult = await cacheConversations(normalizedAdminId, normalizedDate, data);
-            if (cacheResult) {
-                console.log('âœ… Cache saved successfully');
-            } else {
-                console.warn('âš ï¸ Cache save failed or was skipped');
-            }
-        } else {
-            console.warn('âš ï¸ Not caching: invalid or empty data', data);
-        }
-        
-        console.log(`âœ… Fetched ${conversations.length} participated conversations`);
+        console.log('Fetched ' + conversations.length + ' conversations from database');
         
         // Update progress: Complete
         updateProgressIndicator(100, 'Almost done...');
@@ -6884,12 +6856,15 @@ function updatePullConversationsActiveFilters() {
             activeFiltersCount.style.display = 'inline-block';
         }
         
-        activeFiltersTags.innerHTML = activeFilters.map(filter => `
+        activeFiltersTags.innerHTML = activeFilters.map(filter => {
+            const keyEscaped = String(filter.key).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+            return `
             <span style="background: #dbeafe; color: #1e40af; padding: 0.1617rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4447rem; font-weight: 500; display: flex; align-items: center; gap: 0.1617rem;">
                 ${escapeHtml(filter.label)}
-                <button onclick="removePullConversationFilter('${filter.key}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; margin-left: 0.1617rem; font-size: 0.5659rem; line-height: 1; font-weight: bold;" title="Remove filter">✕</button>
+                <button onclick="removePullConversationFilter('${keyEscaped}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; margin-left: 0.1617rem; font-size: 0.5659rem; line-height: 1; font-weight: bold;" title="Remove filter">✕</button>
             </span>
-        `).join('');
+        `;
+        }).join('');
     }
 }
 
@@ -9320,7 +9295,7 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(scorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(scorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + escapeHtml(scoringTypeText || '') + '</span>' : ''}`;
     }
     
     console.log('[renderErrorParameters] About to iterate over', params.length, 'parameters');
@@ -9412,13 +9387,13 @@ function renderErrorParameters() {
         
         rowDiv.innerHTML = `
             <div style="font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0; overflow: hidden;">
-                <span style="font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};">${paramIcon}</span> ${param.error_name}
+                <span style="font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};">${paramIcon}</span> ${escapeHtml(param.error_name || '')}
             </div>
             <div style="display: flex; justify-content: center; font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0;">
                 ${param.penalty_points}
             </div>
             <div style="display: flex; justify-content: center; min-width: 0;">
-                <span style="background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;">${severityLabel}</span>
+                <span style="background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;">${escapeHtml(severityLabel || '')}</span>
             </div>
             <div style="display: flex; justify-content: center; min-width: 0;">
                 ${inputHtml}
@@ -10753,7 +10728,7 @@ function initSearchableEmployeeDropdown() {
             const dept = opt.dataset.department || '';
             const meta = [channel, dept].filter(Boolean).join(' · ');
             const isSelected = opt.value === currentValue;
-            return `<div class="employee-search-item${isSelected ? ' selected' : ''}" data-index="${idx}" data-value="${opt.value}">
+            return `<div class="employee-search-item${isSelected ? ' selected' : ''}" data-index="${idx}" data-value="${escapeHtml(opt.value || '')}">
                 <span class="employee-name">${escapeHtml(name)}</span>
                 ${meta ? `<span class="employee-meta">${escapeHtml(email)}${meta ? ' · ' + escapeHtml(meta) : ''}</span>` : `<span class="employee-meta">${escapeHtml(email)}</span>`}
             </div>`;

@@ -31,6 +31,7 @@
     "src/server-commonjs.ts",
     "src/setup-env.ts",
     "src/features/home/old.home/**/*",
-    "src/edge-functions/**/*"
+    "src/edge-functions/**/*",
+    "supabase/functions/**/*"
   ]
 }

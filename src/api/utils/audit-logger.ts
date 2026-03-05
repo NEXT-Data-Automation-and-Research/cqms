@@ -144,10 +144,22 @@ export async function logSecurityEvent(
         .limit(1);
 
       if (error) {
-        logger.debug('Could not write to security_events (table may not exist):', error.message);
+        const msg = (error?.message ?? String(error)).toLowerCase();
+        const isNetwork = msg.includes('fetch failed') || msg.includes('failed to fetch') || msg.includes('econnrefused') || msg.includes('enotfound');
+        logger.debug(
+          isNetwork
+            ? 'Could not write to security_events (Supabase unreachable):'
+            : 'Could not write to security_events (table may not exist):',
+          error.message
+        );
       }
-    } catch (dbError) {
-      logger.debug('Security event database write failed (non-critical):', dbError);
+    } catch (dbError: any) {
+      const msg = (dbError?.message ?? String(dbError)).toLowerCase();
+      const isNetwork = msg.includes('fetch failed') || msg.includes('failed to fetch') || msg.includes('econnrefused') || msg.includes('enotfound');
+      logger.debug(
+        isNetwork ? 'Security event write failed (Supabase unreachable, non-critical):' : 'Security event database write failed (non-critical):',
+        dbError
+      );
     }
   } catch (error) {
     logger.warn('Security event logging failed (non-critical):', error);

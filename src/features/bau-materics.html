@@ -1282,13 +1282,13 @@ function renderMetricsTable(days, metrics) {
             const dayHeader = document.createElement('th');
             dayHeader.className = 'day-header';
             dayHeader.style.background = '#374151';
-            dayHeader.innerHTML = `<div style="font-weight: 600;">Day ${day.dayIndex}</div>`;
+            dayHeader.innerHTML = `<div style="font-weight: 600;">Day ${escapeHtml(String(day.dayIndex))}</div>`;
             dayHeadersRow.appendChild(dayHeader);
             
             const dateHeader = document.createElement('th');
             dateHeader.className = 'day-header';
             dateHeader.style.background = '#374151';
-            dateHeader.innerHTML = `<div style="font-weight: 600;">${day.dayName}</div><div style="font-size: 0.75rem; font-weight: 400; margin-top: 0.25rem;">${day.month}/${day.dayNum}/${day.year}</div>`;
+            dateHeader.innerHTML = `<div style="font-weight: 600;">${escapeHtml(day.dayName || '')}</div><div style="font-size: 0.75rem; font-weight: 400; margin-top: 0.25rem;">${escapeHtml(String(day.month))}/${escapeHtml(String(day.dayNum))}/${escapeHtml(String(day.year))}</div>`;
             dateHeadersRow.appendChild(dateHeader);
         });
     

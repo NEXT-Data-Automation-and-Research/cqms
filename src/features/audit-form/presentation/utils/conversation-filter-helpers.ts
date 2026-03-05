@@ -14,11 +14,9 @@ export class ConversationFilterHelpers {
     return conversations.filter(conv => {
       let subject = conv.source?.subject || conv.source?.body?.substring(0, 50) || '';
       
-      // Remove HTML tags if present
-      if (subject.includes('<')) {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = subject;
-        subject = tempDiv.textContent || tempDiv.innerText || subject;
+      // Remove HTML tags if present (strip tags without using innerHTML to avoid XSS)
+      if (subject && typeof subject === 'string' && subject.includes('<')) {
+        subject = subject.replace(/<[^>]*>/g, '').trim() || subject;
       }
       
       const subjectLower = subject.toLowerCase().trim();

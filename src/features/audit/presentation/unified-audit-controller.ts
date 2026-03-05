@@ -10,6 +10,7 @@ import {
   ReversalSection,
   ActionButtons
 } from '../../audit-form/presentation/components/index.js';
+import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import { getAuditDataService } from '../../audit-form/domain/services/audit-data-service.js';
 import { getPermissionService, type AuditPermissions } from '../../audit-form/domain/services/permission-service.js';
 import type { AuditFormMode } from '../../audit-form/domain/types.js';
@@ -375,7 +376,7 @@ export class UnifiedAuditController {
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
         </svg>
         <h2 style="font-size: 1.5rem; color: #374151; margin-bottom: 0.5rem; font-family: 'Poppins', sans-serif;">Error Loading Audit</h2>
-        <p style="color: #6b7280; font-family: 'Poppins', sans-serif; text-align: center; max-width: 400px;">${message}</p>
+        <p style="color: #6b7280; font-family: 'Poppins', sans-serif; text-align: center; max-width: 400px;">${escapeHtml(message)}</p>
         <button 
           onclick="window.history.back()"
           style="margin-top: 1.5rem; padding: 0.75rem 1.5rem; background: #1A733E; color: white; border: none; border-radius: 0.5rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer;"

@@ -13,6 +13,7 @@ import rateLimit from 'express-rate-limit';
 import { createLogger } from '../src/utils/logger.js';
 import { injectVersionIntoHTML, getAppVersion } from '../src/utils/html-processor.js';
 import { getRouteMappings } from '../src/core/routing/route-mapper.js';
+import { INPUT_LIMITS } from '../src/api/utils/validation.js';
 
 // Load environment variables
 dotenv.config();
@@ -492,7 +493,7 @@ app.get('/dashboard.html', (req: express.Request, res: express.Response): void =
 });
 
 // Parse JSON bodies
-app.use(express.json());
+app.use(express.json({ limit: INPUT_LIMITS.PAYLOAD_MAX_BYTES }));
 
 // CSRF Protection
 import { csrfProtection, csrfToken } from '../src/api/middleware/csrf.middleware.js';

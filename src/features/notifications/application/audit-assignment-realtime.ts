@@ -11,6 +11,7 @@
 
 import { getSupabase, initSupabase } from '../../../utils/supabase-init.js';
 import { verifyAuth } from '../../../utils/authenticated-supabase-auth.js';
+import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 const CHANNEL_NAME = 'audit-assignments-changes';
@@ -83,7 +84,7 @@ function showAssignmentToast(employeeName?: string | null): void {
             font-size: 13px;
             color: rgba(255, 255, 255, 0.85);
             line-height: 1.4;
-          ">You have been assigned an audit for <strong>${displayName}</strong></div>
+          ">You have been assigned an audit for <strong>${escapeHtml(displayName)}</strong></div>
         </div>
         <button onclick="
           this.closest('#audit-assignment-toast').classList.add('hiding');

@@ -7,6 +7,7 @@ import type { EventController } from '../application/event-controller.js';
 import type { EventStateManager } from '../application/event-state.js';
 import type { EventRenderer } from './event-renderer.js';
 import { logError, logInfo } from '../../../utils/logging-helper.js';
+import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import { EventModalManager } from './event-modal-manager.js';
 import { ParticipantManager } from './participant-manager.js';
 
@@ -305,14 +306,14 @@ export class EventEventHandlers {
 
     content.innerHTML = `
       <div>
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">Events on ${formattedDate}</h3>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Events on ${escapeHtml(formattedDate)}</h3>
         <div class="space-y-3">
           ${dayEvents.map(event => `
-            <div class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer" data-action="view-event" data-event-id="${event.id}">
+            <div class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer" data-action="view-event" data-event-id="${escapeHtml(String(event.id))}">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
-                  <h4 class="text-sm font-semibold text-gray-900">${event.title}</h4>
-                  <p class="text-xs text-gray-600 mt-1">${event.start_time || 'N/A'} - ${event.end_time || 'N/A'}</p>
+                  <h4 class="text-sm font-semibold text-gray-900">${escapeHtml(event.title || '')}</h4>
+                  <p class="text-xs text-gray-600 mt-1">${escapeHtml(event.start_time || 'N/A')} - ${escapeHtml(event.end_time || 'N/A')}</p>
                 </div>
                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>

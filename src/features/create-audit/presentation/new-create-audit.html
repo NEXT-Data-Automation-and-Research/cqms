@@ -3613,11 +3613,12 @@ function buildConversationLinkHTML(audit) {
             </span>`;
         } else {
             // Just show conversation ID as text with copy button
+            const convIdEscaped = String(conversationId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
             html = `<span style="display: inline-flex; align-items: center; gap: 0.2425rem; margin-left: 0.3234rem;">
                 <span style="font-size: 0.4043rem; color: #6b7280;">Conv:</span>
-                <span style="font-family: 'Poppins', sans-serif; font-size: 0.4043rem; color: #2563eb; font-weight: 500;">${conversationId}</span>
+                <span style="font-family: 'Poppins', sans-serif; font-size: 0.4043rem; color: #2563eb; font-weight: 500;">${escapeHtml(conversationId)}</span>
                 <button 
-                    onclick="event.stopPropagation(); copyToClipboard('${conversationId}', this);" 
+                    onclick="event.stopPropagation(); copyToClipboard('${convIdEscaped}', this);" 
                     style="padding: 0.0808rem; background: transparent; border: none; cursor: pointer; color: #6b7280; transition: all 0.2s; display: flex; align-items: center; justify-content: center;"
                     onmouseover="this.style.color='#2563eb'"
                     onmouseout="this.style.color='#6b7280'"
@@ -5242,7 +5243,7 @@ function createGroupedAuditCard(group, isAgent, isExpanded) {
                 <div class="group-header-content" style="display: flex; align-items: center; gap: 0.4852rem; flex: 1; cursor: pointer; padding: 0.3234rem 0.4852rem; position: relative; z-index: 3;" data-toggle-group="true">
                     ${expandButtonHTML}
                     <div style="width: 1.6171rem; height: 1.6171rem; border-radius: 0.1617rem; background: #1A733E; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.5659rem; flex-shrink: 0;">
-                        ${getInitials(displayName)}
+                        ${escapeHtml(getInitials(displayName))}
                     </div>
                     <div style="flex: 1; min-width: 0;">
                         <div style="display: flex; align-items: center; gap: 0.3234rem; flex-wrap: wrap;">
@@ -5421,7 +5422,7 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
     if (isNested) {
         // conversationId is already defined at the top of the function
         const workspaceId = window.intercomConfig?.appId || 'aphmhtyj';
-        const conversationUrl = conversationId ? `https://app.intercom.com/a/inbox/${workspaceId}/inbox/conversation/${conversationId}?view` : '';
+        const conversationUrl = conversationId ? `https://app.intercom.com/a/inbox/${workspaceId}/inbox/conversation/${encodeURIComponent(conversationId)}?view` : '';
         
         // Format assignment ID (show first 8 chars for display)
         const assignmentIdDisplay = audit.id ? `#${String(audit.id).substring(0, 8).toUpperCase()}` : '#N/A';
@@ -5459,7 +5460,7 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
                         <input 
                             type="text" 
                             id="conversationIdInput_${audit.id}"
-                            value="${conversationId || ''}"
+                            value="${escapeHtml(conversationId || '')}"
                             placeholder="Enter conversation ID"
                             data-audit-id="${audit.id}"
                             ${conversationId ? 'readonly' : ''}
@@ -5524,7 +5525,7 @@ function createIndividualAuditCardHTML(audit, isAgent, isNested) {
         <div class="nested-audit-card" data-audit-id="${audit.id}" style="${cardStyle} display: flex; align-items: stretch; min-height: 2.5rem; ${clickHandler ? 'cursor: pointer;' : ''}" ${clickHandler}>
             <div style="flex: 1; display: flex; align-items: center; gap: 0.4852rem; padding: 0.3234rem 0.4852rem;">
                 <div style="width: 1.6171rem; height: 1.6171rem; border-radius: 0.1617rem; background: #1A733E; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.5659rem; flex-shrink: 0;">
-                    ${getInitials(displayName)}
+                    ${escapeHtml(getInitials(displayName))}
                 </div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 0.3234rem; margin-bottom: 0.0808rem; flex-wrap: wrap;">
@@ -7429,7 +7430,7 @@ window.searchIntercomAdmins = async function() {
                         <div style="flex: 1;">
                             <div style="font-size: 0.4852rem; font-weight: 600; color: #374151; margin-bottom: 0.1617rem;">${escapeHtml(adminName)}</div>
                             <div style="font-size: 0.4043rem; color: #6b7280;">${escapeHtml(adminEmail)}</div>
-                            <div style="font-size: 0.4043rem; color: #9ca3af; margin-top: 0.1617rem;">ID: ${adminId}</div>
+                            <div style="font-size: 0.4043rem; color: #9ca3af; margin-top: 0.1617rem;">ID: ${escapeHtml(adminId)}</div>
                         </div>
                         <div style="color: #1A733E; font-size: 0.4043rem; font-weight: 500;">Select →</div>
                     </div>
@@ -8242,19 +8243,11 @@ async function fetchConversationsForDateRange(startDate, endDate) {
     if (errorDiv) errorDiv.style.display = 'none';
     if (listDiv) listDiv.style.display = 'none';
     
-    // Get Supabase configuration with fallbacks
+    // Get Supabase configuration and client (fetch from database, not Intercom)
     const config = await ensureSupabaseConfig();
-    const supabaseUrl = config.url;
-    const supabaseAnonKey = config.anonKey;
-    
-    // Test connectivity first
-    updateProgressIndicator(5, 'Testing connection...');
-    const isConnected = await testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey);
-    if (!isConnected) {
-        showPullConversationsError(`Cannot connect to edge function. Please check:
-1. Your internet connection
-2. Edge function URL: ${supabaseUrl}/functions/v1/intercom-proxy
-3. Browser console (F12) for detailed error messages`);
+    const supabaseClient = config.getClient && config.getClient();
+    if (!supabaseClient) {
+        showPullConversationsError('Supabase client not available. Please log in again.');
         if (loadingDiv) loadingDiv.style.display = 'none';
         return;
     }
@@ -8282,119 +8275,41 @@ async function fetchConversationsForDateRange(startDate, endDate) {
         }
     }
     
-    // Format dates for API (add time component)
-    const updatedSince = `${normalizedStartDate} 00:00:00`;
-    const updatedBefore = `${normalizedEndDate} 23:59:59`;
+    // Fetch from database by admin_id and time range
+    console.log('📂 Fetching from database for date range:', normalizedStartDate, 'to', normalizedEndDate);
     
-    // No cache for date ranges - always fetch from API
-    console.log('🌐 Fetching from API for date range:', normalizedStartDate, 'to', normalizedEndDate);
-    
-    // Update progress: Initial
-    updateProgressIndicator(10, 'Pulling from Intercom...');
+    updateProgressIndicator(10, 'Loading from database...');
     
     try {
-        // Validate configuration first
-        if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error('Supabase configuration is missing. Please refresh the page.');
+        const updatedSince = `${normalizedStartDate}T00:00:00.000Z`;
+        const updatedBefore = `${normalizedEndDate}T23:59:59.999Z`;
+        
+        updateProgressIndicator(30, 'Querying conversations...');
+        
+        const { data: rows, error } = await supabaseClient
+            .from('conversations')
+            .select('id, payload')
+            .eq('admin_id', normalizedAdminId)
+            .gte('updated_at', updatedSince)
+            .lte('updated_at', updatedBefore)
+            .order('updated_at', { ascending: false });
+        
+        if (error) {
+            throw new Error(error.message || 'Database query failed');
         }
         
-        // Build edge function URL with date range
-        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}`;
+        updateProgressIndicator(70, 'Processing conversations...');
         
-        console.log('📡 Calling edge function:', edgeFunctionUrl);
-        console.log('📡 Supabase URL:', supabaseUrl);
-        console.log('📡 Admin ID:', pullConversationsAdminId);
-        console.log('📡 Date range:', updatedSince, 'to', updatedBefore);
-        console.log('📡 Anon key present:', !!supabaseAnonKey);
-        console.log('📡 Anon key length:', supabaseAnonKey ? supabaseAnonKey.length : 0);
-        
-        // Update progress: Searching
-        updateProgressIndicator(20, 'Searching conversations in Intercom...');
-        
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
-        
-        let response;
-        try {
-            response = await fetch(edgeFunctionUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${supabaseAnonKey}`,
-                    'apikey': supabaseAnonKey,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                signal: controller.signal,
-                mode: 'cors', // Explicitly enable CORS
-                credentials: 'omit' // Don't send cookies
-            });
-            
-            console.log('📡 Response received:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            
-            console.error('❌ Fetch error details:', {
-                name: fetchError.name,
-                message: fetchError.message,
-                stack: fetchError.stack,
-                url: edgeFunctionUrl,
-                supabaseUrl: supabaseUrl,
-                hasAnonKey: !!supabaseAnonKey
-            });
-            
-            // Handle timeout and network errors
-            if (fetchError.name === 'AbortError') {
-                throw new Error('Request timed out. The Intercom API is taking too long to respond. Please try again or check your internet connection.');
-            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION') || fetchError.message.includes('NetworkError') || fetchError.message.includes('Network request failed')) {
-                // More detailed error message with troubleshooting
-                const errorMsg = `Connection failed. Details:
-- Edge Function URL: ${edgeFunctionUrl}
-- Supabase URL: ${supabaseUrl}
-- Anon Key: ${supabaseAnonKey ? 'Present (' + supabaseAnonKey.length + ' chars)' : 'Missing'}
-
-Please check:
-1. Your internet connection
-2. Open browser console (F12) for detailed logs
-3. Try accessing: ${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins
-4. Check if the edge function is deployed and active
-
-Error: ${fetchError.message}`;
-                throw new Error(errorMsg);
-            } else {
-                throw new Error(`Network error: ${fetchError.message}`);
+        // Map DB rows to conversation objects (payload may be the full Intercom-shaped object)
+        let conversations = (rows || []).map(r => {
+            const p = r.payload;
+            if (p && typeof p === 'object') {
+                return { ...p, id: p.id != null ? p.id : r.id };
             }
-        }
+            return { id: r.id, payload: p };
+        }).filter(c => c && c.id);
         
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-            throw new Error(errorMsg);
-        }
-
-        // Update progress: Processing
-        updateProgressIndicator(70, 'Processing participation data...');
-        
-        const data = await response.json();
-        
-        // Extract conversations from response
-        let conversations = [];
-        if (data && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        }
-        
-        const participationCount = data.participation_count || 0;
-        
-        console.log(`✅ Fetched ${conversations.length} conversations from API`);
+        console.log(`✅ Fetched ${conversations.length} conversations from database`);
         console.log('📋 First conversation sample:', conversations[0] ? Object.keys(conversations[0]) : 'No conversations');
         
         // Update progress: Complete
@@ -8465,19 +8380,11 @@ async function fetchConversationsForCurrentUser(selectedDate) {
     if (errorDiv) errorDiv.style.display = 'none';
     if (listDiv) listDiv.style.display = 'none';
     
-    // Get Supabase configuration with fallbacks
+    // Get Supabase client (fetch from database when cache misses)
     const config = await ensureSupabaseConfig();
-    const supabaseUrl = config.url;
-    const supabaseAnonKey = config.anonKey;
-    
-    // Test connectivity first
-    updateProgressIndicator(5, 'Testing connection...');
-    const isConnected = await testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey);
-    if (!isConnected) {
-        showPullConversationsError(`Cannot connect to edge function. Please check:
-1. Your internet connection
-2. Edge function URL: ${supabaseUrl}/functions/v1/intercom-proxy
-3. Browser console (F12) for detailed error messages`);
+    const supabaseClient = config.getClient && config.getClient();
+    if (!supabaseClient) {
+        showPullConversationsError('Supabase client not available. Please log in again.');
         if (loadingDiv) loadingDiv.style.display = 'none';
         return;
     }
@@ -8570,128 +8477,40 @@ async function fetchConversationsForCurrentUser(selectedDate) {
         return;
     }
     
-    // No cache found, fetch from API
-    console.log('🌐 Fetching from API (no cache found)');
+    // No cache found, fetch from database
+    console.log('📂 Fetching from database for date:', normalizedDate);
     
-    // Update progress: Initial
-    updateProgressIndicator(10, 'Pulling from Intercom...');
+    updateProgressIndicator(10, 'Loading from database...');
     
     try {
-        // Validate configuration first
-        if (!supabaseUrl || !supabaseAnonKey) {
-            throw new Error('Supabase configuration is missing. Please refresh the page.');
+        const updatedSince = `${normalizedDate}T00:00:00.000Z`;
+        const updatedBefore = `${normalizedDate}T23:59:59.999Z`;
+        
+        updateProgressIndicator(30, 'Querying conversations...');
+        
+        const { data: rows, error } = await supabaseClient
+            .from('conversations')
+            .select('id, payload')
+            .eq('admin_id', normalizedAdminId)
+            .gte('updated_at', updatedSince)
+            .lte('updated_at', updatedBefore)
+            .order('updated_at', { ascending: false });
+        
+        if (error) {
+            throw new Error(error.message || 'Database query failed');
         }
         
-        // Build edge function URL
-        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_date=${encodeURIComponent(selectedDate)}`;
+        updateProgressIndicator(70, 'Processing conversations...');
         
-        console.log('📡 Calling edge function:', edgeFunctionUrl);
-        console.log('📡 Supabase URL:', supabaseUrl);
-        console.log('📡 Admin ID:', pullConversationsAdminId);
-        console.log('📡 Selected date:', selectedDate);
-        console.log('📡 Anon key present:', !!supabaseAnonKey);
-        console.log('📡 Anon key length:', supabaseAnonKey ? supabaseAnonKey.length : 0);
-        
-        // Update progress: Searching
-        updateProgressIndicator(20, 'Searching conversations in Intercom...');
-        
-        // Create AbortController for timeout handling
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
-        
-        let response;
-        try {
-            response = await fetch(edgeFunctionUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${supabaseAnonKey}`,
-                    'apikey': supabaseAnonKey,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                },
-                signal: controller.signal,
-                mode: 'cors', // Explicitly enable CORS
-                credentials: 'omit' // Don't send cookies
-            });
-            
-            console.log('📡 Response received:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-        } catch (fetchError) {
-            clearTimeout(timeoutId);
-            
-            console.error('❌ Fetch error details:', {
-                name: fetchError.name,
-                message: fetchError.message,
-                stack: fetchError.stack,
-                url: edgeFunctionUrl,
-                supabaseUrl: supabaseUrl,
-                hasAnonKey: !!supabaseAnonKey
-            });
-            
-            // Handle timeout and network errors
-            if (fetchError.name === 'AbortError') {
-                throw new Error('Request timed out. The Intercom API is taking too long to respond. Please try again or check your internet connection.');
-            } else if (fetchError.message.includes('Failed to fetch') || fetchError.message.includes('ERR_CONNECTION') || fetchError.message.includes('NetworkError') || fetchError.message.includes('Network request failed')) {
-                // More detailed error message with troubleshooting
-                const errorMsg = `Connection failed. Details:
-- Edge Function URL: ${edgeFunctionUrl}
-- Supabase URL: ${supabaseUrl}
-- Anon Key: ${supabaseAnonKey ? 'Present (' + supabaseAnonKey.length + ' chars)' : 'Missing'}
-
-Please check:
-1. Your internet connection
-2. Open browser console (F12) for detailed logs
-3. Try accessing: ${supabaseUrl}/functions/v1/intercom-proxy?endpoint=admins
-4. Check if the edge function is deployed and active
-
-Error: ${fetchError.message}`;
-                throw new Error(errorMsg);
-            } else {
-                throw new Error(`Network error: ${fetchError.message}`);
+        let conversations = (rows || []).map(r => {
+            const p = r.payload;
+            if (p && typeof p === 'object') {
+                return { ...p, id: p.id != null ? p.id : r.id };
             }
-        }
+            return { id: r.id, payload: p };
+        }).filter(c => c && c.id);
         
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            const errorMsg = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-            throw new Error(errorMsg);
-        }
-
-        // Update progress: Processing
-        updateProgressIndicator(70, 'Processing participation data...');
-        
-        const data = await response.json();
-        
-        // Extract conversations from response first to validate
-        let conversations = [];
-        if (data && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
-            conversations = data.conversations;
-        }
-        
-        const participationCount = data.participation_count || 0;
-        
-        // Only cache if we have valid data
-        if (data && conversations.length >= 0) {
-            console.log('💾 Attempting to cache data...', { adminId: normalizedAdminId, date: normalizedDate, conversationCount: conversations.length });
-            const cacheResult = await cacheConversations(normalizedAdminId, normalizedDate, data);
-            if (cacheResult) {
-                console.log('✅ Cache saved successfully');
-            } else {
-                console.warn('⚠️ Cache save failed or was skipped');
-            }
-        } else {
-            console.warn('⚠️ Not caching: invalid or empty data', data);
-        }
-        
-        console.log(`✅ Fetched ${conversations.length} participated conversations`);
+        console.log(`✅ Fetched ${conversations.length} conversations from database`);
         
         // Update progress: Complete
         updateProgressIndicator(100, 'Almost done...');
@@ -9438,6 +9257,7 @@ async function displayPullConversationsList(conversations) {
             aiErrorCountHtml = `<span style="color: ${errorColor}; font-weight: 600; font-size: 0.6069rem;">${aiErrorCount}</span>`;
         }
         
+        const copyBtnConvIdEscaped = conversationId && conversationId !== 'N/A' ? String(conversationId).replace(/\\/g, '\\\\').replace(/'/g, "\\'") : '';
         row.innerHTML = `
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">
                 <input type="checkbox" class="conversation-checkbox" data-conversation-id="${conversation.id}" style="cursor: pointer;">
@@ -9448,8 +9268,8 @@ async function displayPullConversationsList(conversations) {
             </td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle;">
                 <div style="display: flex; align-items: center; gap: 0.25rem;">
-                    <span style="font-family: 'Poppins', sans-serif; font-size: 0.5252rem; color: #6b7280;">${conversationId && conversationId !== 'N/A' ? conversationId : 'N/A'}</span>
-                    ${conversationId && conversationId !== 'N/A' ? `<button onclick="event.stopPropagation(); copyToClipboard('${conversationId}', this);" style="padding: 0.08rem; background: transparent; border: none; cursor: pointer; color: #6b7280; transition: all 0.2s;" onmouseover="this.style.color='#1A733E';" onmouseout="this.style.color='#6b7280';" title="Copy ID">
+                    <span style="font-family: 'Poppins', sans-serif; font-size: 0.5252rem; color: #6b7280;">${conversationId && conversationId !== 'N/A' ? escapeHtml(conversationId) : 'N/A'}</span>
+                    ${conversationId && conversationId !== 'N/A' ? `<button onclick="event.stopPropagation(); copyToClipboard('${copyBtnConvIdEscaped}', this);" style="padding: 0.08rem; background: transparent; border: none; cursor: pointer; color: #6b7280; transition: all 0.2s;" onmouseover="this.style.color='#1A733E';" onmouseout="this.style.color='#6b7280';" title="Copy ID">
                         <svg style="width: 0.65rem; height: 0.65rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
@@ -11383,9 +11203,10 @@ async function displayAIAuditConversations() {
         const checkboxDisabled = isAlreadyAIAudited ? 'disabled' : '';
         const checkboxStyle = isAlreadyAIAudited ? 'cursor: not-allowed; opacity: 0.5;' : 'cursor: pointer;';
         
+        const aiRowConvIdEscaped = String(conversationId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         row.innerHTML = `
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">
-                <input type="checkbox" class="ai-audit-conversation-checkbox" data-conversation-id="${conversationId}" ${isSelected && !isAlreadyAIAudited ? 'checked' : ''} ${checkboxDisabled} style="${checkboxStyle}" onclick="event.stopPropagation(); if (!this.disabled) toggleAIAuditConversation('${conversationId}')">
+                <input type="checkbox" class="ai-audit-conversation-checkbox" data-conversation-id="${escapeHtml(conversationId)}" ${isSelected && !isAlreadyAIAudited ? 'checked' : ''} ${checkboxDisabled} style="${checkboxStyle}" onclick="event.stopPropagation(); if (!this.disabled) toggleAIAuditConversation('${aiRowConvIdEscaped}')">
             </td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle;">
                 <div style="font-weight: 500; color: #111827; font-size: 0.6069rem; line-height: 1.2;">${escapeHtml(clientName)}</div>
@@ -11393,7 +11214,7 @@ async function displayAIAuditConversations() {
             </td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle;">
                 <div style="display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap;">
-                    <span style="font-family: 'Poppins', sans-serif; font-size: 0.5252rem; color: #6b7280;">${conversationId !== 'N/A' ? conversationId : 'N/A'}</span>
+                    <span style="font-family: 'Poppins', sans-serif; font-size: 0.5252rem; color: #6b7280;">${conversationId !== 'N/A' ? escapeHtml(conversationId) : 'N/A'}</span>
                     ${aiStatusBadge}
                 </div>
             </td>
@@ -13260,152 +13081,44 @@ async function fetchEmployeeConversationsProgressively(adminId, updatedSince, up
     }
 
     try {
-        // Step 1: Fast initial load - fetch first 150 conversations immediately
-        let startingAfter = null;
-        let hasMore = true;
-        let pageCount = 0;
-        const maxPages = 100; // Safety limit
-
-        while (hasMore && pageCount < maxPages) {
-            pageCount++;
-            
-            // Build API URL - only include date range and per_page limit (no filters - done client-side)
-            let edgeFunctionUrl = `${window.SupabaseConfig?.url || ''}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(adminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}&per_page=${maxConversationsToFetch}`;
-            
-            // Add pagination cursor if we have one (validate and encode properly)
-            if (startingAfter) {
-                // Ensure cursor is a valid string and properly encoded
-                const cursorValue = String(startingAfter).trim();
-                if (cursorValue && cursorValue.length > 0) {
-                    edgeFunctionUrl += `&starting_after=${encodeURIComponent(cursorValue)}`;
-                } else {
-                    console.warn('⚠️ Invalid cursor value, skipping pagination');
-                    hasMore = false;
-                    break;
-                }
-            }
-
-            if (pageCount === 1) {
-                console.log('═══════════════════════════════════════════════════════');
-                console.log('🚀 FETCHING CONVERSATIONS (Client-side filtering)');
-                console.log('═══════════════════════════════════════════════════════');
-                console.log('📋 Active filters (will apply after fetch):', JSON.stringify(activeFilters, null, 2));
-                console.log('🔗 API URL:', edgeFunctionUrl);
-                console.log('📅 Date range:', updatedSince, 'to', updatedBefore);
-                console.log('👤 Admin ID:', adminId);
-                console.log('═══════════════════════════════════════════════════════');
-            } else {
-                console.log(`🔄 Background fetch: Loading page ${pageCount}...`);
-            }
-
-            let response;
-            try {
-                // Use longer timeout for conversation fetching (60 seconds, with retries up to 120s)
-                response = await fetchWithRetry(edgeFunctionUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${window.SupabaseConfig?.anonKey || ''}`,
-                        'apikey': window.SupabaseConfig?.anonKey || '',
-                        'Accept': 'application/json'
-                    }
-                }, 3, 2000, 60000); // maxRetries=3, retryDelay=2s, timeout=60s
-            } catch (fetchError) {
-                // If it's a network error on subsequent pages, log but don't fail completely
-                if (pageCount > 1) {
-                    console.warn(`⚠️ Failed to fetch page ${pageCount}, but continuing with ${allEmployeeConversations.length} conversations already loaded:`, fetchError.message);
-                    hasMore = false;
-                    break;
-                }
-                throw fetchError;
-            }
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMsg = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
-                
-                // If it's a 400/404 on subsequent pages, might be invalid cursor - stop pagination
-                if (pageCount > 1 && (response.status === 400 || response.status === 404)) {
-                    console.warn(`⚠️ Invalid cursor on page ${pageCount}, stopping pagination. Loaded ${allEmployeeConversations.length} conversations.`);
-                    hasMore = false;
-                    break;
-                }
-                
-                throw new Error(errorMsg);
-            }
-
-            const data = await response.json();
-            
-            // Extract conversations from response
-            let pageConversations = [];
-            if (data && Array.isArray(data.conversations)) {
-                pageConversations = data.conversations;
-            } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
-                pageConversations = data.conversations;
-            } else if (data && data.conversations && Array.isArray(data.conversations)) {
-                pageConversations = data.conversations;
-            }
-
-            if (pageConversations.length > 0) {
-                // Add conversations to raw array (unfiltered) - store in global variable
-                rawEmployeeConversations = rawEmployeeConversations.concat(pageConversations);
-                
-                // Update count to show progress (raw count during loading)
-                const countSpan = document.getElementById('conversationsCount');
-                if (countSpan) {
-                    countSpan.textContent = rawEmployeeConversations.length;
-                }
-                
-                // Don't display during progressive loading - wait until all data is fetched
-                console.log(`📥 Page ${pageCount} loaded: ${pageConversations.length} conversations (Total fetched: ${rawEmployeeConversations.length})`);
-            }
-
-            // Check if there are more pages to fetch
-            hasMore = false;
-            startingAfter = null;
-
-            if (data.pages && data.pages.next) {
-                const next = data.pages.next;
-                if (typeof next === 'string') {
-                    try {
-                        if (next.includes('?')) {
-                            const urlParts = next.split('?');
-                            const urlParams = new URLSearchParams(urlParts[1]);
-                            startingAfter = urlParams.get('starting_after');
-                        } else {
-                            // If it's just a cursor string, use it directly
-                            startingAfter = next;
-                        }
-                        
-                        // Validate cursor value
-                        if (startingAfter && typeof startingAfter === 'string' && startingAfter.trim().length > 0) {
-                            startingAfter = startingAfter.trim();
-                        } else {
-                            startingAfter = null;
-                        }
-                    } catch (e) {
-                        console.warn('⚠️ Error parsing next URL:', e);
-                        startingAfter = null;
-                    }
-                } else if (next && typeof next === 'object') {
-                    startingAfter = next.starting_after || next.cursor || null;
-                    // Validate cursor value
-                    if (startingAfter && typeof startingAfter === 'string' && startingAfter.trim().length > 0) {
-                        startingAfter = startingAfter.trim();
-                    } else {
-                        startingAfter = null;
-                    }
-                }
-                hasMore = !!startingAfter;
-            }
-
-            // Stop if no more conversations or invalid cursor
-            if (pageConversations.length === 0 || !startingAfter) {
-                hasMore = false;
-                break;
-            }
+        // Fetch all conversations from database by admin_id and date range (no pagination)
+        const supabaseClient = window.SupabaseConfig?.getClient && window.SupabaseConfig.getClient();
+        if (!supabaseClient) {
+            throw new Error('Supabase client not available. Please log in again.');
         }
 
-        console.log(`✅ All conversations loaded: ${rawEmployeeConversations.length} total conversations fetched`);
+        const updatedSinceIso = updatedSince.includes('T') ? updatedSince : `${updatedSince.replace(' ', 'T')}.000Z`;
+        const updatedBeforeIso = updatedBefore.includes('T') ? updatedBefore : `${updatedBefore.replace(' ', 'T')}.999Z`;
+
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('🚀 FETCHING CONVERSATIONS FROM DATABASE (Client-side filtering)');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('📋 Active filters (will apply after fetch):', JSON.stringify(activeFilters, null, 2));
+        console.log('📅 Date range:', updatedSinceIso, 'to', updatedBeforeIso);
+        console.log('👤 Admin ID:', adminId);
+        console.log('═══════════════════════════════════════════════════════');
+
+        const { data: rows, error } = await supabaseClient
+            .from('conversations')
+            .select('id, payload')
+            .eq('admin_id', String(adminId).trim())
+            .gte('updated_at', updatedSinceIso)
+            .lte('updated_at', updatedBeforeIso)
+            .order('updated_at', { ascending: false });
+
+        if (error) {
+            throw new Error(error.message || 'Database query failed');
+        }
+
+        rawEmployeeConversations = (rows || []).map(r => {
+            const p = r.payload;
+            if (p && typeof p === 'object') {
+                return { ...p, id: p.id != null ? p.id : r.id };
+            }
+            return { id: r.id, payload: p };
+        }).filter(c => c && c.id);
+
+        console.log(`✅ Loaded ${rawEmployeeConversations.length} conversations from database`);
         
         // Apply final client-side filtering and sorting to all raw conversations
         const filteredConversations = applyClientSideFilters(rawEmployeeConversations, activeFilters);
@@ -13837,6 +13550,8 @@ function displayEmployeeConversations() {
             productTypeBadge = '<span style="color: #9ca3af; font-size: 0.75rem;">—</span>';
         }
 
+        const copyConvIdEscaped = String(conversationId).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const conversationIdEncoded = encodeURIComponent(conversation.id);
         row.innerHTML = `
             <td style="padding: 0.625rem 0.75rem; vertical-align: middle;">
                 <div style="font-weight: 500; color: #111827; font-size: 0.875rem; line-height: 1.4;">${escapeHtml(clientName)}</div>
@@ -13845,11 +13560,11 @@ function displayEmployeeConversations() {
             <td style="padding: 0.625rem 0.75rem; vertical-align: middle;">
                 <div 
                     style="font-family: 'Poppins', sans-serif; font-size: 0.8125rem; color: #4b5563; font-weight: 500; cursor: pointer; user-select: all; transition: color 0.2s;"
-                        onclick="event.stopPropagation(); copyConversationId('${conversationId}', this);"
+                        onclick="event.stopPropagation(); copyConversationId('${copyConvIdEscaped}', this);"
                     title="Click to copy conversation ID"
                     onmouseover="this.style.color='#1A733E'"
                     onmouseout="this.style.color='#4b5563'"
-                >${conversationId}</div>
+                >${escapeHtml(conversationId)}</div>
             </td>
             <td style="padding: 0.625rem 0.75rem; vertical-align: middle;">
                 <div style="max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.875rem; color: #374151; line-height: 1.4;" title="${escapeHtml(subject)}">${escapeHtml(subjectDisplay)}</div>
@@ -13862,7 +13577,7 @@ function displayEmployeeConversations() {
             <td style="padding: 0.625rem 0.75rem; vertical-align: middle; font-size: 0.875rem; color: #6b7280; white-space: nowrap;">${createdDate}</td>
             <td style="padding: 0.625rem 0.75rem; vertical-align: middle;">
                 <button 
-                    onclick="event.stopPropagation(); window.open('audit-view.html?conversation_id=${conversation.id}', '_blank');"
+                    onclick="event.stopPropagation(); window.open('audit-view.html?conversation_id=${conversationIdEncoded}', '_blank');"
                     style="padding: 0.375rem 0.75rem; font-size: 0.8125rem; font-weight: 500; color: #1A733E; background: #d1fae5; border: none; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; white-space: nowrap;"
                     onmouseover="this.style.background='#a7f3d0'"
                     onmouseout="this.style.background='#d1fae5'"
@@ -15151,7 +14866,7 @@ function updateFeedbackBoxesForParameter(fieldId, fieldType, paramType) {
                 rows="1" 
                 class="w-full px-2 py-1 bg-white text-sm focus:outline-none resize-none" 
                 style="font-family: 'Poppins', sans-serif; font-size: 0.5659rem; line-height: 1.2; min-height: 1rem; max-height: 50rem; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; border: 0.0625rem solid #d1d5db; border-radius: 0.1617rem; padding: 0.2425rem 0.3234rem;"
-            >${existingFeedbacks[i] || ''}</textarea>
+            >${escapeHtml(existingFeedbacks[i] || '')}</textarea>
         `;
         feedbackContainer.appendChild(feedbackDiv);
         
@@ -15308,7 +15023,7 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(currentScorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(currentScorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + escapeHtml(scoringTypeText || '') + '</span>' : ''}`;
     }
     
     currentParameters.forEach(param => {

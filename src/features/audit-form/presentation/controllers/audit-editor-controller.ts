@@ -6,7 +6,7 @@
 
 import { logInfo, logError, logWarn } from '../../../../utils/logging-helper.js';
 import { getSupabaseClient } from '../utils/supabase-client-helper.js';
-import { safeSetHTML, escapeHtml } from '../../../../utils/html-sanitizer.js';
+import { safeSetHTML, escapeHtml, sanitizeHTML } from '../../../../utils/html-sanitizer.js';
 import { getQuillManager } from '../utils/quill-manager.js';
 
 export class AuditEditorController {
@@ -413,9 +413,9 @@ export class AuditEditorController {
           if (quillManager.hasEditor(quillId)) {
             const quill = quillManager.getEditor(quillId);
             if (feedbackText.trim().startsWith('<')) {
-              quill.root.innerHTML = feedbackText;
+              quill.root.innerHTML = sanitizeHTML(feedbackText, false);
             } else {
-              quill.root.innerHTML = `<p>${feedbackText}</p>`;
+              quill.root.innerHTML = `<p>${escapeHtml(feedbackText)}</p>`;
             }
           }
         });

@@ -1257,6 +1257,7 @@ export class ConversationsPanel {
         </button>
       ` : '';
       
+      const idForClipboard = String(conv.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       return `
         <div class="conversation-card ${isSelected ? 'conversation-card-selected' : ''}" data-conversation-id="${this.escapeHtml(conv.id)}">
           <!-- Card Header -->
@@ -1266,7 +1267,7 @@ export class ConversationsPanel {
                      value="${this.escapeHtml(conv.id)}" ${isSelected ? 'checked' : ''} />
               <div class="conversation-id-tile flex items-center gap-1.5 group cursor-pointer flex-shrink-0" 
                    title="Click to copy conversation ID: ${this.escapeHtml(conv.id)}"
-                   onclick="navigator.clipboard.writeText('${this.escapeHtml(conv.id)}').then(() => { const el = event.currentTarget.querySelector('.copy-indicator'); if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '📋'; }, 2000); } })">
+                   onclick="navigator.clipboard.writeText('${idForClipboard}').then(() => { const el = event.currentTarget.querySelector('.copy-indicator'); if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '📋'; }, 2000); } })">
                 <span class="text-white/80 text-xs font-mono font-semibold hover:text-white transition-colors">${this.escapeHtml(shortId)}</span>
                 <span class="copy-indicator text-white/40 group-hover:text-white/70 text-xs transition-colors" title="Click to copy">📋</span>
               </div>

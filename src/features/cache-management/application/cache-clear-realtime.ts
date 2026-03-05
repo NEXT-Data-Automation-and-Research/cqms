@@ -11,6 +11,7 @@
 
 import { getSupabase, initSupabase } from '../../../utils/supabase-init.js';
 import { verifyAuth } from '../../../utils/authenticated-supabase-auth.js';
+import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 const CHANNEL_NAME = 'cache-versions-changes';
@@ -147,9 +148,9 @@ function showImpersonationCacheClearNotification(data: {
           Platform Cache Clear - Impersonation Ending
         </div>
         <div style="font-size: 12px; opacity: 0.9; margin-top: 2px;">
-          You are impersonating ${data.targetEmail}. Exiting impersonation and clearing cache...
+          You are impersonating ${escapeHtml(data.targetEmail)}. Exiting impersonation and clearing cache...
         </div>
-        ${data.reason ? `<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Reason: ${data.reason}</div>` : ''}
+        ${data.reason ? `<div style="font-size: 11px; opacity: 0.8; margin-top: 4px;">Reason: ${escapeHtml(data.reason)}</div>` : ''}
       </div>
     </div>
   `;
@@ -255,7 +256,7 @@ function showForcedCacheClearNotification(data: {
   
   addCacheClearStyles();
   
-  const reasonText = data.reason ? `<div style="font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 4px;">Reason: ${data.reason}</div>` : '';
+  const reasonText = data.reason ? `<div style="font-size: 11px; color: rgba(255,255,255,0.8); margin-top: 4px;">Reason: ${escapeHtml(data.reason)}</div>` : '';
   
   // Create notification element
   const notificationDiv = document.createElement('div');
@@ -314,7 +315,7 @@ function showSkippableCacheClearModal(data: {
     addCacheClearStyles();
     
     const reasonText = data.reason 
-      ? `<p style="font-size: 13px; color: #6b7280; margin: 0 0 16px 0; padding: 10px 12px; background: #f9fafb; border-radius: 6px;"><strong>Update:</strong> ${data.reason}</p>` 
+      ? `<p style="font-size: 13px; color: #6b7280; margin: 0 0 16px 0; padding: 10px 12px; background: #f9fafb; border-radius: 6px;"><strong>Update:</strong> ${escapeHtml(data.reason)}</p>` 
       : '';
     
     // Create modal overlay
@@ -1102,7 +1103,7 @@ function showImpersonationEndedNotification(targetEmail: string, endedAt: string
             Impersonation Session Ended
           </div>
           <div style="font-size: 12px; opacity: 0.9; line-height: 1.4;">
-            Your impersonation of <strong>${targetEmail}</strong> was automatically ended at ${formattedTime} due to a platform-wide cache clear.
+            Your impersonation of <strong>${escapeHtml(targetEmail)}</strong> was automatically ended at ${escapeHtml(formattedTime)} due to a platform-wide cache clear.
           </div>
         </div>
         <button id="close-impersonation-notice" style="

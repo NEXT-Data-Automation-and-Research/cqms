@@ -517,7 +517,7 @@ export class ReversalController {
       <div class="reversal-card" data-id="${reversal.id}">
         <div class="reversal-card-left">
           <!-- Avatar -->
-          <div class="reversal-avatar">${initials}</div>
+          <div class="reversal-avatar">${this.escapeHtml(initials)}</div>
           
           <!-- Info Section -->
           <div class="reversal-card-info">

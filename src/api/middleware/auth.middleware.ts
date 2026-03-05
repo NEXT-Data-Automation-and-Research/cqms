@@ -13,6 +13,7 @@ import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { getServerSupabase } from '../../core/config/server-supabase.js';
 import { createLogger } from '../../utils/logger.js';
+import { logSecurityEvent } from '../utils/audit-logger.js';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -122,6 +123,7 @@ export const verifyAuth: RequestHandler = async (
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logSecurityEvent('login_failure', req, { reason: 'missing_or_invalid_auth_header' }).catch(() => {});
       res.status(401).json({ error: 'Missing or invalid authorization header' });
       return;
     }
@@ -151,7 +153,18 @@ export const verifyAuth: RequestHandler = async (
     }
 
     if (error || !user) {
+      const msg = (error?.message ?? '').toLowerCase();
+      const isFetchFailed = msg.includes('fetch failed') || msg.includes('failed to fetch') || msg.includes('network');
+      if (isFetchFailed) {
+        logger.warn('Cannot reach Supabase (auth):', error?.message);
+        res.status(503).json({
+          error: 'Service temporarily unavailable',
+          detail: 'Cannot reach Supabase. Check SUPABASE_URL and network (DNS/firewall).',
+        });
+        return;
+      }
       logger.warn('Invalid token:', error?.message);
+      logSecurityEvent('login_failure', req, { reason: 'invalid_or_expired_token', detail: error?.message }).catch(() => {});
       res.status(401).json({ error: 'Invalid or expired token' });
       return;
     }

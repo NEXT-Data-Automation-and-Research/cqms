@@ -10,6 +10,7 @@
 
 import { getSupabase, initSupabase } from '../../../utils/supabase-init.js';
 import { verifyAuth } from '../../../utils/authenticated-supabase-auth.js';
+import { escapeHtml } from '../../../utils/html-sanitizer.js';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 const CHANNEL_NAME = 'platform-notifications-changes';
@@ -87,9 +88,14 @@ function showPlatformNotificationToast(notification: {
   
   const accentColor = typeAccents[notification.type] || typeAccents.info;
   
+  // Only allow http/https URLs for action link (prevent javascript: etc.)
+  const safeActionUrl = notification.action_url && /^https?:\/\//i.test(notification.action_url)
+    ? notification.action_url
+    : null;
+  
   // Create action button HTML if there's an action URL
-  const actionButtonHtml = notification.action_url ? `
-    <a href="${notification.action_url}" target="_blank" style="
+  const actionButtonHtml = safeActionUrl ? `
+    <a href="${escapeHtml(safeActionUrl)}" target="_blank" rel="noopener noreferrer" style="
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -103,7 +109,7 @@ function showPlatformNotificationToast(notification: {
       font-weight: 500;
       transition: background 0.15s;
     " onmouseover="this.style.background='#0d5e3a'" 
-       onmouseout="this.style.background='#1a733e'">${notification.action_label || 'View'} →</a>
+       onmouseout="this.style.background='#1a733e'">${escapeHtml(notification.action_label || 'View')} →</a>
   ` : '';
   
   // Create toast element - clean, minimal design
@@ -145,12 +151,12 @@ function showPlatformNotificationToast(notification: {
             color: #111827;
             margin-bottom: 2px;
             line-height: 1.3;
-          ">${notification.title}</div>
+          ">${escapeHtml(notification.title)}</div>
           <div style="
             font-size: 12px;
             color: #6b7280;
             line-height: 1.4;
-          ">${notification.message.length > 100 ? notification.message.substring(0, 100) + '...' : notification.message}</div>
+          ">${escapeHtml(notification.message.length > 100 ? notification.message.substring(0, 100) + '...' : notification.message)}</div>
           ${actionButtonHtml}
         </div>
         <button onclick="
