@@ -71,6 +71,8 @@ public/js/**/*.js
 public/js/**/*.js.map
 # Exception: console-stub.js is source (not compiled), needed for production
 !public/js/console-stub.js
+# Exception: date-range-picker.js is source (not compiled), needed for production
+!public/js/date-range-picker.js
 
 # TypeScript source maps (server builds)
 *.map
