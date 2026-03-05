@@ -5429,7 +5429,7 @@ function renderBatchItem(update) {
   const ackChip = isAcked
     ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold bg-primary/10 text-primary">✓ Acknowledged</span>'
     : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold bg-yellow-100 text-yellow-800">⏱ Acknowledgement Pending</span>';
-  const auditorLabel = update.auditorName ? `by ${escapeHtml(update.auditorName)}` : '';
+  const auditorLabel = ''; // Hide auditor name from agent/employee view
 
   // Build individual audit rows (hidden by default)
   const auditRows = (update.auditData || []).map((audit, idx) => renderBatchAuditRow(audit, idx, update)).join('');

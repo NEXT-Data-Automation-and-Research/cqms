@@ -159,6 +159,9 @@ export function renderAuditList(
   
   // Setup event delegation for View Details buttons
   setupViewDetailsButtonHandlers(container, controller);
+  
+  // Setup event delegation for Delete buttons
+  setupDeleteButtonHandlers(container, controller);
 }
 
 /**
@@ -204,6 +207,87 @@ function setupViewDetailsButtonHandlers(container: HTMLElement, controller: Audi
   (container as any).__viewDetailsHandler = handler;
   
   // Add event listener with capture phase to ensure it runs before any blocking handlers
+  container.addEventListener('click', handler, { capture: true });
+}
+
+/**
+ * Setup event delegation for Delete button clicks
+ */
+function setupDeleteButtonHandlers(container: HTMLElement, controller: AuditReportsController): void {
+  const existingHandler = (container as any).__deleteAuditHandler;
+  if (existingHandler) {
+    container.removeEventListener('click', existingHandler);
+  }
+
+  const handler = async (e: Event) => {
+    const target = e.target as HTMLElement;
+    const button = target.closest('[data-action="delete-audit"]') as HTMLButtonElement;
+
+    if (button) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const auditId = button.dataset.auditId;
+      if (!auditId) return;
+
+      const ctrl = (window as any).auditReportsController ?? controller;
+      const state = ctrl?.getState?.();
+      const audit = state?.audits?.find((a: AuditReport) => a.id === auditId);
+      if (!audit) {
+        alert('Audit not found');
+        return;
+      }
+
+      const employeeName = audit.employeeName || audit.employee_name || 'Unknown';
+      const interactionId = audit.interactionId || audit.interaction_id || 'N/A';
+
+      if ((window as any).confirmationDialog) {
+        const confirmed = await (window as any).confirmationDialog.show({
+          title: 'Delete Audit?',
+          message: `Are you sure you want to delete this audit?\n\nEmployee: ${employeeName}\nInteraction ID: ${interactionId}\n\nThis action cannot be undone.`,
+          confirmText: 'Delete',
+          cancelText: 'Cancel',
+          type: 'warning'
+        });
+
+        if (confirmed) {
+          try {
+            await ctrl.deleteAudit(audit);
+            if ((window as any).confirmationDialog) {
+              await (window as any).confirmationDialog.show({
+                title: 'Success!',
+                message: 'Audit deleted successfully.',
+                confirmText: 'OK',
+                type: 'success'
+              });
+            }
+          } catch (error) {
+            console.error('Error deleting audit:', error);
+            if ((window as any).confirmationDialog) {
+              await (window as any).confirmationDialog.show({
+                title: 'Error',
+                message: 'Failed to delete audit. Please try again.',
+                confirmText: 'OK',
+                type: 'error'
+              });
+            }
+          }
+        }
+      } else {
+        if (confirm(`Are you sure you want to delete this audit?\n\nEmployee: ${employeeName}\nInteraction ID: ${interactionId}\n\nThis action cannot be undone.`)) {
+          try {
+            await ctrl.deleteAudit(audit);
+            alert('Audit deleted successfully.');
+          } catch (error) {
+            console.error('Error deleting audit:', error);
+            alert('Failed to delete audit. Please try again.');
+          }
+        }
+      }
+    }
+  };
+
+  (container as any).__deleteAuditHandler = handler;
   container.addEventListener('click', handler, { capture: true });
 }
 
@@ -687,6 +771,21 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
             style="position: relative; z-index: 10; pointer-events: auto;"
           >
             View Details
+          </button>
+          
+          <!-- Delete Button -->
+          <button 
+            data-action="delete-audit"
+            data-audit-id="${auditId}"
+            class="btn-delete-audit"
+            style="position: relative; z-index: 10; pointer-events: auto; display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.375rem 0.75rem; background-color: #dc2626; color: #fff; border: none; border-radius: 0.375rem; font-size: 0.75rem; font-weight: 600; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s ease; white-space: nowrap;"
+            onmouseover="this.style.backgroundColor='#b91c1c'"
+            onmouseout="this.style.backgroundColor='#dc2626'"
+          >
+            <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            Delete
           </button>
         </div>
       </div>
