@@ -316,7 +316,7 @@ export class ConversationsPanel {
     const dateRangePickerContainer = this.container.querySelector('#conversationDateRangePickerContainer') as HTMLElement;
     if (dateRangePickerContainer) {
       (async () => {
-        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
         new DateRangePicker(dateRangePickerContainer, {
           mode: 'range',
           initialStartDate: startDate?.value || null,

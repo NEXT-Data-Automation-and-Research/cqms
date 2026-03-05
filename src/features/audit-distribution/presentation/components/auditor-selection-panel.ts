@@ -462,7 +462,7 @@ export class AuditorSelectionPanel {
     const pickerContainer = this.container.querySelector('#scheduledDatePickerContainer') as HTMLElement;
     if (pickerContainer) {
       (async () => {
-        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
         new DateRangePicker(pickerContainer, {
           mode: 'single',
           initialDate: dateInput?.value || null,

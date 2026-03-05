@@ -394,7 +394,7 @@ export class AssignedAuditsTable {
     if (reassignPickerContainer) {
       const reassignDateInput = this.container.querySelector('#reassignDateInput') as HTMLInputElement;
       (async () => {
-        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
         new DateRangePicker(reassignPickerContainer, {
           mode: 'single',
           initialDate: reassignDateInput?.value || null,

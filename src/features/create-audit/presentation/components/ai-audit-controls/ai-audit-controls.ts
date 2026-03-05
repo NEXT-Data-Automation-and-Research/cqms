@@ -79,7 +79,7 @@ export class AIAuditControls {
     if (pickerContainer) {
       const dateInput = this.container.querySelector('#aiAuditDate') as HTMLInputElement;
       (async () => {
-        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
         new DateRangePicker(pickerContainer, {
           mode: 'single',
           initialDate: dateInput?.value || null,

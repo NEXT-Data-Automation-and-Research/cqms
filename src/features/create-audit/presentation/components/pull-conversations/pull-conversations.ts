@@ -52,7 +52,7 @@ export class PullConversations {
       const startInput = this.container.querySelector('#conversationStartDate') as HTMLInputElement;
       const endInput = this.container.querySelector('#conversationEndDate') as HTMLInputElement;
       (async () => {
-        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
         new DateRangePicker(pickerContainer, {
           mode: 'range',
           initialStartDate: startInput?.value || null,
