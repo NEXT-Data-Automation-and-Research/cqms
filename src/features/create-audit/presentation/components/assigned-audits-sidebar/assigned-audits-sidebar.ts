@@ -615,18 +615,10 @@ export class AssignedAuditsSidebar {
     return div.innerHTML;
   }
 
-  /**
-   * Decode HTML entities without using innerHTML (avoids XSS when text is from URL/API).
-   */
   private decodeHtmlEntities(text: string): string {
-    if (!text || typeof text !== 'string') return text;
-    return text
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-      .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
   }
 
   getSelectedEmployee(): EmployeeAuditSummary | null {

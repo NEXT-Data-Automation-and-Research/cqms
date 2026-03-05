@@ -43,35 +43,9 @@
       <h1 class="page-heading-global">Performance Dashboard</h1>
       <!-- Filter bar (same style as Audit Reports) -->
       <div class="header-actions qms-header-actions" id="qmsHeaderActions">
-        <div class="date-picker-dropdown">
-          <button type="button" class="action-btn" id="qmsDateBtn" aria-label="Date range">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-            <span id="qmsDateBtnText">Date Range</span>
-            <svg style="width: 9px; height: 9px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-          </button>
-          <div class="date-dropdown-menu" id="qmsDateDropdown">
-            <div class="filter-group">
-              <label class="filter-label">Start Date</label>
-              <input type="date" class="filter-input" id="qmsStartDate">
-            </div>
-            <div class="filter-group">
-              <label class="filter-label">End Date</label>
-              <input type="date" class="filter-input" id="qmsEndDate">
-            </div>
-            <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-              <button type="button" class="action-btn" style="flex: 1;" id="qmsApplyDate">Apply</button>
-              <button type="button" class="action-btn" style="flex: 1;" id="qmsClearDate">Clear</button>
-            </div>
-          </div>
-        </div>
-        <div class="quick-date-buttons-container">
-          <button type="button" class="action-btn quick-date-btn" id="qmsTodayBtn">Today</button>
-          <button type="button" class="action-btn quick-date-btn" id="qmsYesterdayBtn">Yesterday</button>
-          <button type="button" class="action-btn quick-date-btn" id="qmsThisWeekBtn">This Week</button>
-          <button type="button" class="action-btn quick-date-btn" id="qmsLastWeekBtn">Last Week</button>
-          <button type="button" class="action-btn quick-date-btn active" id="qmsThisMonthBtn">This Month</button>
-          <button type="button" class="action-btn quick-date-btn" id="qmsLastMonthBtn">Last Month</button>
-        </div>
+        <input type="hidden" id="qmsStartDate">
+        <input type="hidden" id="qmsEndDate">
+        <div id="analyticDatePickerContainer"></div>
         <button type="button" class="action-btn" id="qmsExport" title="Export" aria-label="Export report">
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           <span>Export</span>
@@ -330,78 +304,54 @@
         const { start, end } = getStartEndForRange(range);
         window.__qmsStartDate = start;
         window.__qmsEndDate = end;
-        document.querySelectorAll('.qms-header-actions .quick-date-btn').forEach((b) => b.classList.remove('active'));
-        const id = {
-          today: 'qmsTodayBtn',
-          yesterday: 'qmsYesterdayBtn',
-          thisWeek: 'qmsThisWeekBtn',
-          lastWeek: 'qmsLastWeekBtn',
-          thisMonth: 'qmsThisMonthBtn',
-          lastMonth: 'qmsLastMonthBtn'
-        }[range];
-        if (id) document.getElementById(id)?.classList.add('active');
+        // Sync hidden inputs
+        const startEl = document.getElementById('qmsStartDate');
+        const endEl = document.getElementById('qmsEndDate');
+        if (startEl) startEl.value = start.toISOString().slice(0, 10);
+        if (endEl) endEl.value = end.toISOString().slice(0, 10);
+        // Sync DateRangePicker display
+        if (window._analyticDatePicker) {
+            window._analyticDatePicker.setRange(start, end);
+        }
         renderDateBtnText();
         load();
       }
 
       function renderDateBtnText() {
-        const start = window.__qmsStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const end = window.__qmsEndDate || new Date();
-        const el = document.getElementById('qmsDateBtnText');
-        if (el) el.textContent = formatDateRange(start, end);
+        // DateRangePicker handles its own label; keep this as a no-op for backward compat
       }
 
-      function openDateDropdown() {
-        const start = window.__qmsStartDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const end = window.__qmsEndDate || new Date();
-        const startEl = document.getElementById('qmsStartDate');
-        const endEl = document.getElementById('qmsEndDate');
-        if (startEl) startEl.value = start.toISOString().slice(0, 10);
-        if (endEl) endEl.value = end.toISOString().slice(0, 10);
-        document.getElementById('qmsDateDropdown')?.classList.add('active');
-      }
-
-      function closeDateDropdown() {
-        document.getElementById('qmsDateDropdown')?.classList.remove('active');
-      }
-
-      document.getElementById('qmsDateBtn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const menu = document.getElementById('qmsDateDropdown');
-        if (menu?.classList.contains('active')) closeDateDropdown();
-        else openDateDropdown();
-      });
-
-      document.getElementById('qmsApplyDate')?.addEventListener('click', () => {
-        const startEl = document.getElementById('qmsStartDate');
-        const endEl = document.getElementById('qmsEndDate');
-        if (startEl?.value) window.__qmsStartDate = new Date(startEl.value + 'T00:00:00');
-        if (endEl?.value) window.__qmsEndDate = new Date(endEl.value + 'T23:59:59');
-        document.querySelectorAll('.qms-header-actions .quick-date-btn').forEach((b) => b.classList.remove('active'));
-        activeQuickRange = null;
-        closeDateDropdown();
-        renderDateBtnText();
-        load();
-      });
-
-      document.getElementById('qmsClearDate')?.addEventListener('click', () => {
-        setQuickRange('thisMonth');
-        closeDateDropdown();
-      });
-
-      ['qmsTodayBtn', 'qmsYesterdayBtn', 'qmsThisWeekBtn', 'qmsLastWeekBtn', 'qmsThisMonthBtn', 'qmsLastMonthBtn'].forEach((id, i) => {
-        const range = ['today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth'][i];
-        document.getElementById(id)?.addEventListener('click', () => setQuickRange(range));
-      });
-
-      document.addEventListener('click', (e) => {
-        if (!document.getElementById('qmsHeaderActions')?.contains(e.target)) closeDateDropdown();
-      });
-
+      // Initialize date range state
       (function initDateRange() {
         const { start, end } = getStartEndForRange('thisMonth');
         window.__qmsStartDate = start;
         window.__qmsEndDate = end;
+      })();
+
+      // Initialize DateRangePicker
+      (async function initAnalyticDatePicker() {
+        try {
+          const { DateRangePicker } = await import('/js/date-range-picker.js');
+          const container = document.getElementById('analyticDatePickerContainer');
+          if (container) {
+            window._analyticDatePicker = new DateRangePicker(container, {
+              mode: 'range',
+              label: 'Date Range',
+              defaultPreset: 'thisMonth',
+              onApply: function(range) {
+                window.__qmsStartDate = range.from;
+                window.__qmsEndDate = range.to;
+                activeQuickRange = null;
+                // Sync hidden inputs for backward compat
+                const startEl = document.getElementById('qmsStartDate');
+                const endEl = document.getElementById('qmsEndDate');
+                if (startEl) startEl.value = range.from.toISOString().slice(0, 10);
+                if (endEl) endEl.value = range.to.toISOString().slice(0, 10);
+                load();
+              }
+            });
+          }
+        } catch(e) { console.error('Failed to load DateRangePicker:', e); }
       })();
 
       document.getElementById('qmsExport').addEventListener('click', () => {

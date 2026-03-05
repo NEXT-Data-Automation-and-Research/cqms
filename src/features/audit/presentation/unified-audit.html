@@ -214,7 +214,8 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 0.3234rem; margin-top: 0.3234rem;">
                             <span style="font-size: 0.4447rem; color: #6b7280;">Date:</span>
-                            <input type="date" id="interactionDate" name="interactionDate" required style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif;">
+                            <input type="hidden" id="interactionDate" name="interactionDate" required>
+                            <div id="unifiedInteractionDatePickerContainer" style="display:inline-block;"></div>
                             <span style="font-size: 0.4447rem; color: #6b7280; margin-left: 0.3234rem;">Client:</span>
                             <input type="email" id="clientEmail" name="clientEmail" placeholder="client@..." style="padding: 0.1617rem 0.3234rem; border: 0.0304rem solid #d1d5db; border-radius: 0.1617rem; font-size: 0.4852rem; font-family: 'Poppins', sans-serif; min-width: 4rem;">
                         </div>
@@ -524,6 +525,24 @@
     } else {
         initialize();
     }
+</script>
+<script type="module">
+  try {
+    const { DateRangePicker } = await import('/js/date-range-picker.js');
+    const c = document.getElementById('unifiedInteractionDatePickerContainer');
+    if (c) {
+      new DateRangePicker(c, {
+        mode: 'single',
+        label: 'Select Date',
+        onApply: function(r) {
+          var d = r.from;
+          var v = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+          var h = document.getElementById('interactionDate');
+          if (h) { h.value = v; h.dispatchEvent(new Event('change', {bubbles:true})); }
+        }
+      });
+    }
+  } catch(e) { console.error('DateRangePicker load error:', e); }
 </script>
 </body>
 </html>

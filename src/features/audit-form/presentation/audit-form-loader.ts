@@ -7,9 +7,11 @@
 import { DatabaseFactory } from '../../../infrastructure/database-factory.js';
 import { AuditFormRepository } from '../infrastructure/audit-form-repository.js';
 import { AuditFormService } from '../application/audit-form-service.js';
+import { AuditQueueService } from '../application/audit-queue-service.js';
 import { ScorecardController, setGlobalScorecardController } from './controllers/scorecard-controller.js';
 import { AssignmentController } from './controllers/assignment-controller.js';
 import { AuditFormController } from './controllers/audit-form-controller.js';
+import { QueueIndicator } from './components/queue-indicator.js';
 import { logInfo, logError } from '../../../utils/logging-helper.js';
 import { waitForSupabaseReady } from './utils/supabase-client-helper.js';
 import { loadChannels, loadEmployees, loadAllDropdowns } from './utils/dropdown-loader.js';
@@ -20,6 +22,8 @@ export class AuditFormLoader {
   private assignmentController: AssignmentController | null = null;
   private formController: AuditFormController | null = null;
   private service: AuditFormService | null = null;
+  private queueService: AuditQueueService | null = null;
+  private queueIndicator: QueueIndicator | null = null;
 
   /**
    * Initialize the audit form
@@ -126,6 +130,47 @@ export class AuditFormLoader {
     }
     this.formController = new AuditFormController(this.service, form);
     this.formController.initialize();
+
+    // Initialize audit queue
+    this.queueService = new AuditQueueService();
+    this.formController.setQueueService(this.queueService);
+
+    // Mount queue indicator above form actions bar
+    const formActionsBar = form.querySelector('#auditQueueIndicator')?.parentElement
+      || form.querySelector('[style*="border-top"][style*="background-color: #f9fafb"]')
+      || form.lastElementChild;
+    if (formActionsBar) {
+      this.queueIndicator = new QueueIndicator({
+        queueService: this.queueService,
+        onSubmitAll: () => this.formController!.submitAllQueued()
+      });
+      this.queueIndicator.mount(formActionsBar as HTMLElement);
+    }
+
+    // Wire add-to-queue button
+    const addToQueueBtn = document.getElementById('addToQueueBtn') as HTMLButtonElement;
+    if (addToQueueBtn) {
+      addToQueueBtn.addEventListener('click', async () => {
+        addToQueueBtn.disabled = true;
+        addToQueueBtn.textContent = 'Adding...';
+        addToQueueBtn.style.opacity = '0.6';
+        try {
+          await this.formController!.addCurrentAuditToQueue();
+        } finally {
+          addToQueueBtn.disabled = false;
+          addToQueueBtn.textContent = '+ Add to Queue';
+          addToQueueBtn.style.opacity = '1';
+        }
+      });
+    }
+
+    // Warn on page unload if queue is not empty
+    window.addEventListener('beforeunload', (e) => {
+      if (this.queueService && this.queueService.getQueueCount() > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
   }
 
   /**

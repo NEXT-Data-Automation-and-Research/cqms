@@ -473,9 +473,8 @@
             <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
                 <div style="display: flex; flex-direction: column; gap: 0.375rem;">
                     <label class="filter-label">Select Date</label>
-                    <input type="date" id="specificDate" class="filter-select" 
-                           style="width: auto; min-width: 10rem;"
-                           onchange="checkDateActivity()">
+                    <input type="hidden" id="specificDate">
+                    <div id="specificDatePickerContainer" style="width: auto; min-width: 10rem;"></div>
                 </div>
                 <div style="display: flex; align-items: flex-end; gap: 0.5rem;">
                     <button class="action-btn" onclick="setDateToToday()">Today</button>
@@ -1698,6 +1697,34 @@
                 deptSelect.value = currentDept;
             }
         }
+    </script>
+
+    <!-- DateRangePicker initialization for specificDate field -->
+    <script type="module">
+        (async () => {
+            const { DateRangePicker } = await import('/js/date-range-picker.js');
+            const container = document.getElementById('specificDatePickerContainer');
+            const hiddenInput = document.getElementById('specificDate');
+            if (!container || !hiddenInput) return;
+
+            function formatDate(d) {
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}-${mm}-${dd}`;
+            }
+
+            new DateRangePicker(container, {
+                mode: 'single',
+                label: 'Select Date',
+                onApply: ({ from }) => {
+                    hiddenInput.value = formatDate(from);
+                    if (typeof checkDateActivity === 'function') {
+                        checkDateActivity();
+                    }
+                }
+            });
+        })();
     </script>
 </body>
 </html>

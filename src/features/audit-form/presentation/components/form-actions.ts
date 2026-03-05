@@ -6,6 +6,7 @@
 export interface FormActionsConfig {
   onCancel?: () => void;
   onSubmit?: () => void;
+  onAddToQueue?: () => void;
   onValidationStatusChange?: (status: string) => void;
 }
 
@@ -51,6 +52,7 @@ export class FormActions {
         </div>
         <div style="display: flex; gap: 0.4852rem;">
           <button type="button" id="cancelBtn" style="padding: 0.4852rem 1.2937rem; background-color: white; color: #374151; border: 0.0405rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">Cancel</button>
+          <button type="button" id="addToQueueBtn" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(37, 99, 235, 0.2);">+ Add to Queue</button>
           <button type="submit" id="submitAuditBtn" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(26, 115, 62, 0.2); position: relative;">✓ Submit Audit</button>
         </div>
       </div>
@@ -75,6 +77,13 @@ export class FormActions {
       submitBtn.addEventListener('click', (e) => {
         e.preventDefault();
         this.config.onSubmit?.();
+      });
+    }
+
+    const addToQueueBtn = document.getElementById('addToQueueBtn') as HTMLButtonElement;
+    if (addToQueueBtn && this.config.onAddToQueue) {
+      addToQueueBtn.addEventListener('click', () => {
+        this.config.onAddToQueue?.();
       });
     }
 
@@ -104,6 +113,33 @@ export class FormActions {
    */
   getSubmitButton(): HTMLButtonElement | null {
     return document.getElementById('submitAuditBtn') as HTMLButtonElement;
+  }
+
+  /**
+   * Get add to queue button
+   */
+  getAddToQueueButton(): HTMLButtonElement | null {
+    return document.getElementById('addToQueueBtn') as HTMLButtonElement;
+  }
+
+  /**
+   * Set add-to-queue button loading state
+   */
+  setAddToQueueLoading(loading: boolean): void {
+    const btn = this.getAddToQueueButton();
+    if (btn) {
+      if (loading) {
+        btn.disabled = true;
+        btn.textContent = 'Adding...';
+        btn.style.opacity = '0.6';
+        btn.style.cursor = 'not-allowed';
+      } else {
+        btn.disabled = false;
+        btn.textContent = '+ Add to Queue';
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+      }
+    }
   }
 
   /**

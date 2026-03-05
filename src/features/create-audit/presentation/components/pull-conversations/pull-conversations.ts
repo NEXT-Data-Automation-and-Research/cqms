@@ -22,15 +22,11 @@ export class PullConversations {
       <div class="glass-card rounded-xl p-4">
         <h3 class="text-base font-bold text-white mb-4">Pull Conversations from Intercom</h3>
         <div class="space-y-4">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-white/80 mb-2">Start Date</label>
-              <input type="date" id="conversationStartDate" class="form-input w-full" />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-white/80 mb-2">End Date</label>
-              <input type="date" id="conversationEndDate" class="form-input w-full" />
-            </div>
+          <div>
+            <label class="block text-sm font-medium text-white/80 mb-2">Date Range</label>
+            <input type="hidden" id="conversationStartDate" />
+            <input type="hidden" id="conversationEndDate" />
+            <div id="pullConversationsDateRangePickerContainer"></div>
           </div>
           <button type="button" id="pullConversationsBtn" 
                   class="w-full px-4 py-2 bg-gradient-to-r from-primary to-primary-dark text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity">
@@ -48,6 +44,25 @@ export class PullConversations {
     const btn = this.container.querySelector('#pullConversationsBtn') as HTMLButtonElement;
     if (btn) {
       btn.addEventListener('click', () => this.pullConversations());
+    }
+
+    // Initialize DateRangePicker in RANGE mode
+    const pickerContainer = this.container.querySelector('#pullConversationsDateRangePickerContainer') as HTMLElement;
+    if (pickerContainer) {
+      const startInput = this.container.querySelector('#conversationStartDate') as HTMLInputElement;
+      const endInput = this.container.querySelector('#conversationEndDate') as HTMLInputElement;
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(pickerContainer, {
+          mode: 'range',
+          initialStartDate: startInput?.value || null,
+          initialEndDate: endInput?.value || null,
+          onApply: (start: string, end: string) => {
+            if (startInput) startInput.value = start;
+            if (endInput) endInput.value = end;
+          }
+        });
+      })();
     }
   }
 

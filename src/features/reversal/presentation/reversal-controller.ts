@@ -148,14 +148,17 @@ export class ReversalController {
       
       // Set up event listeners
       this.attachEventListeners();
-      
+
+      // Initialize DateRangePicker components
+      await this.initDateRangePickers();
+
       // Update week display
       this.updateWeekDisplay();
-      
+
       // Load reversals first so we never show "no pending" before data has loaded
       await this.loadReversals();
-      
-      // Apply default date filter (this month) after data is loaded
+
+      // Apply default date filter (this month) via the header picker
       this.setThisMonthFilter();
       
       console.log('[ReversalController] Initialization complete');
@@ -517,7 +520,7 @@ export class ReversalController {
       <div class="reversal-card" data-id="${reversal.id}">
         <div class="reversal-card-left">
           <!-- Avatar -->
-          <div class="reversal-avatar">${this.escapeHtml(initials)}</div>
+          <div class="reversal-avatar">${initials}</div>
           
           <!-- Info Section -->
           <div class="reversal-card-info">
@@ -597,6 +600,90 @@ export class ReversalController {
   }
 
   /**
+   * Initialize DateRangePicker components for header and filter panel
+   */
+  private async initDateRangePickers(): Promise<void> {
+    try {
+      const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
+
+      // Header date range picker
+      const headerContainer = document.getElementById('headerDatePickerContainer');
+      if (headerContainer) {
+        (this as any)._headerDatePicker = new DateRangePicker(headerContainer, {
+          mode: 'range',
+          label: 'Date Range',
+          defaultPreset: 'thisMonth',
+          onApply: ({ from, to }: { from: Date; to: Date }) => {
+            const fmt = (d: Date) => d.toISOString().split('T')[0];
+            const startVal = fmt(from);
+            const endVal = to ? fmt(to) : startVal;
+
+            // Sync hidden inputs
+            const sd = document.getElementById('startDate') as HTMLInputElement;
+            const ed = document.getElementById('endDate') as HTMLInputElement;
+            if (sd) sd.value = startVal;
+            if (ed) ed.value = endVal;
+
+            this.filterState.startDate = startVal;
+            this.filterState.endDate = endVal;
+            this.applyFilters();
+            this.renderReversalList();
+          },
+          onClear: () => {
+            const sd = document.getElementById('startDate') as HTMLInputElement;
+            const ed = document.getElementById('endDate') as HTMLInputElement;
+            if (sd) sd.value = '';
+            if (ed) ed.value = '';
+
+            this.filterState.startDate = '';
+            this.filterState.endDate = '';
+            this.applyFilters();
+            this.renderReversalList();
+          }
+        });
+      }
+
+      // Filter panel date range picker
+      const filterContainer = document.getElementById('filterDatePickerContainer');
+      if (filterContainer) {
+        (this as any)._filterDatePicker = new DateRangePicker(filterContainer, {
+          mode: 'range',
+          label: 'Filter Date Range',
+          onApply: ({ from, to }: { from: Date; to: Date }) => {
+            const fmt = (d: Date) => d.toISOString().split('T')[0];
+            const fromVal = fmt(from);
+            const toVal = to ? fmt(to) : fromVal;
+
+            // Sync hidden inputs
+            const df = document.getElementById('dateFromFilter') as HTMLInputElement;
+            const dt = document.getElementById('dateToFilter') as HTMLInputElement;
+            if (df) df.value = fromVal;
+            if (dt) dt.value = toVal;
+
+            this.filterState.dateFrom = fromVal;
+            this.filterState.dateTo = toVal;
+            this.applyFilters();
+            this.renderReversalList();
+          },
+          onClear: () => {
+            const df = document.getElementById('dateFromFilter') as HTMLInputElement;
+            const dt = document.getElementById('dateToFilter') as HTMLInputElement;
+            if (df) df.value = '';
+            if (dt) dt.value = '';
+
+            this.filterState.dateFrom = '';
+            this.filterState.dateTo = '';
+            this.applyFilters();
+            this.renderReversalList();
+          }
+        });
+      }
+    } catch (e) {
+      console.error('[ReversalController] Failed to load DateRangePicker:', e);
+    }
+  }
+
+  /**
    * Attach event listeners
    */
   private attachEventListeners(): void {
@@ -628,83 +715,12 @@ export class ReversalController {
       this.renderReversalList();
     });
     
-    // Date filters
-    const dateFromFilter = document.getElementById('dateFromFilter') as HTMLInputElement;
-    const dateToFilter = document.getElementById('dateToFilter') as HTMLInputElement;
-    
-    dateFromFilter?.addEventListener('change', (e) => {
-      this.filterState.dateFrom = (e.target as HTMLInputElement).value;
-      this.applyFilters();
-      this.renderReversalList();
-    });
-    
-    dateToFilter?.addEventListener('change', (e) => {
-      this.filterState.dateTo = (e.target as HTMLInputElement).value;
-      this.applyFilters();
-      this.renderReversalList();
-    });
-    
     // Clear filters button
     const clearFiltersBtn = document.getElementById('clearFilters');
     clearFiltersBtn?.addEventListener('click', () => this.clearFilters());
-    
-    // Week navigation
-    const prevWeekBtn = document.getElementById('prevWeekBtn');
-    const nextWeekBtn = document.getElementById('nextWeekBtn');
-    
-    prevWeekBtn?.addEventListener('click', () => this.navigateWeek(-1));
-    nextWeekBtn?.addEventListener('click', () => this.navigateWeek(1));
-    
-    // Quick date filters
-    const todayBtn = document.getElementById('todayBtn');
-    const yesterdayBtn = document.getElementById('yesterdayBtn');
-    const thisMonthBtn = document.getElementById('thisMonthBtn');
-    const lastMonthBtn = document.getElementById('lastMonthBtn');
-    
-    todayBtn?.addEventListener('click', () => this.setTodayFilter());
-    yesterdayBtn?.addEventListener('click', () => this.setYesterdayFilter());
-    thisMonthBtn?.addEventListener('click', () => this.setThisMonthFilter());
-    lastMonthBtn?.addEventListener('click', () => this.setLastMonthFilter());
-    
-    // Date range picker
-    const dateBtn = document.getElementById('dateBtn');
-    const dateDropdown = document.getElementById('dateDropdown');
-    const applyDateBtn = document.getElementById('applyDateBtn');
-    const clearDateBtn = document.getElementById('clearDateBtn');
-    
-    dateBtn?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      dateDropdown?.classList.toggle('hidden');
-    });
-    
-    applyDateBtn?.addEventListener('click', () => {
-      const startDate = (document.getElementById('startDate') as HTMLInputElement)?.value;
-      const endDate = (document.getElementById('endDate') as HTMLInputElement)?.value;
-      
-      this.filterState.startDate = startDate;
-      this.filterState.endDate = endDate;
-      
-      this.applyFilters();
-      this.renderReversalList();
-      
-      dateDropdown?.classList.add('hidden');
-      this.updateDateButtonText();
-    });
-    
-    clearDateBtn?.addEventListener('click', () => {
-      this.filterState.startDate = '';
-      this.filterState.endDate = '';
-      
-      (document.getElementById('startDate') as HTMLInputElement).value = '';
-      (document.getElementById('endDate') as HTMLInputElement).value = '';
-      
-      this.applyFilters();
-      this.renderReversalList();
-      
-      dateDropdown?.classList.add('hidden');
-      this.updateDateButtonText();
-    });
-    
+
+    // Week navigation buttons removed - elements no longer exist
+
     // Export button
     const exportBtn = document.getElementById('exportBtn');
     exportBtn?.addEventListener('click', () => this.exportReversals());
@@ -723,13 +739,6 @@ export class ReversalController {
       this.loadReversals();
     });
     
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.date-picker-dropdown')) {
-        dateDropdown?.classList.add('hidden');
-      }
-    });
   }
 
   /**
@@ -771,10 +780,18 @@ export class ReversalController {
     if (typeFilter) typeFilter.value = '';
     if (dateFromFilter) dateFromFilter.value = '';
     if (dateToFilter) dateToFilter.value = '';
-    
+
+    // Reset DateRangePicker visual states
+    if ((this as any)._headerDatePicker) (this as any)._headerDatePicker.setRange(null, null);
+    if ((this as any)._filterDatePicker) (this as any)._filterDatePicker.setRange(null, null);
+
+    const startDateEl = document.getElementById('startDate') as HTMLInputElement;
+    const endDateEl = document.getElementById('endDate') as HTMLInputElement;
+    if (startDateEl) startDateEl.value = '';
+    if (endDateEl) endDateEl.value = '';
+
     this.applyFilters();
     this.renderReversalList();
-    this.updateQuickDateButtons('');
   }
 
   /**

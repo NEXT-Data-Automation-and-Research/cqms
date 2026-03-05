@@ -302,7 +302,7 @@ export class EventModalManager {
           <div class="flex items-center gap-2 mb-4">
             <h3 class="text-lg font-semibold text-gray-900">${escapeHtml(event.title)}</h3>
             <span class="px-2 py-1 rounded text-xs font-semibold ${typeColors[event.type] || 'bg-gray-100 text-gray-800'}">
-              ${escapeHtml(typeLabels[event.type] || event.type)}
+              ${typeLabels[event.type] || event.type}
             </span>
           </div>
         </div>
@@ -314,7 +314,7 @@ export class EventModalManager {
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-500 mb-1">Time</label>
-            <p class="text-sm text-gray-900">${escapeHtml(event.start_time || 'N/A')} - ${escapeHtml(event.end_time || 'N/A')}</p>
+            <p class="text-sm text-gray-900">${event.start_time || 'N/A'} - ${event.end_time || 'N/A'}</p>
           </div>
         </div>
         
@@ -697,10 +697,9 @@ export class EventModalManager {
     optionsList.innerHTML = values.map(value => {
       // Count members in this group
       const memberCount = state.users.filter(user => (user as any)[field] === value).length;
-      const fieldForJs = String(field).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-      const valueForJs = String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      
       return `
-        <button type="button" onclick="window.eventHandlers?.addGroupMembers('${fieldForJs}', '${valueForJs}')" class="w-full text-left px-4 py-3 hover:bg-gray-50 border border-gray-200 rounded transition-colors">
+        <button type="button" onclick="window.eventHandlers?.addGroupMembers('${escapeHtml(field)}', '${escapeHtml(value)}')" class="w-full text-left px-4 py-3 hover:bg-gray-50 border border-gray-200 rounded transition-colors">
           <div class="flex items-center justify-between">
             <div class="flex-1">
               <div class="font-medium text-sm text-gray-900">${escapeHtml(value)}</div>

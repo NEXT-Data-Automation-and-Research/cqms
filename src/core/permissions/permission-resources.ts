@@ -36,6 +36,7 @@ export const PAGE_RESOURCES = {
   NOTIFICATION_TEST: 'notification-test',
   SANDBOX: 'sandbox',
   AUDIT_FORM: 'audit-form',
+  AUDIT_QUEUE: 'audit-queue',
 } as const;
 
 export type PageResourceSlug = (typeof PAGE_RESOURCES)[keyof typeof PAGE_RESOURCES];
@@ -76,6 +77,7 @@ export const ALL_RESOURCES_FOR_UI: Array<{ value: string; label: string; type: P
   { value: PAGE_RESOURCES.NOTIFICATION_TEST, label: 'Notification Test', type: 'page' },
   { value: PAGE_RESOURCES.SANDBOX, label: 'Sandbox', type: 'page' },
   { value: PAGE_RESOURCES.AUDIT_FORM, label: 'Audit Form', type: 'page' },
+  { value: PAGE_RESOURCES.AUDIT_QUEUE, label: 'Audit Queue', type: 'page' },
   { value: FEATURE_RESOURCES.USER_IMPERSONATION, label: 'View as User (API)', type: 'api_endpoint' },
   { value: FEATURE_RESOURCES.PEOPLE_LIST, label: 'People/User Management (API)', type: 'api_endpoint' },
   { value: FEATURE_RESOURCES.PERMISSION_MANAGEMENT, label: 'Permission Management (API)', type: 'api_endpoint' },
@@ -109,6 +111,7 @@ export function getPageResourceBySlug(slug: string): string | null {
     'notification-test': PAGE_RESOURCES.NOTIFICATION_TEST,
     sandbox: PAGE_RESOURCES.SANDBOX,
     'audit-form': PAGE_RESOURCES.AUDIT_FORM,
+    'audit-queue': PAGE_RESOURCES.AUDIT_QUEUE,
   };
   return map[slug.toLowerCase()] ?? null;
 }

@@ -8,7 +8,6 @@ import rateLimit from 'express-rate-limit';
 import { createLogger } from './utils/logger.js';
 import { injectVersionIntoHTML, getAppVersion } from './utils/html-processor.js';
 import { getRouteMappings, getFilePathFromCleanPath } from './core/routing/route-mapper.js';
-import { INPUT_LIMITS } from './api/utils/validation.js';
 
 // Load environment variables
 dotenv.config();
@@ -149,17 +148,6 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   next();
 });
 
-// ✅ SECURITY: HTTPS redirect in production (enforce HTTPS)
-const isProduction = (process.env.NODE_ENV || 'development') === 'production';
-app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (!isProduction) return next();
-  const proto = req.headers['x-forwarded-proto'] ?? (req.socket as any).encrypted ? 'https' : 'http';
-  if (proto === 'https') return next();
-  const host = req.headers.host || req.hostname || 'localhost';
-  const url = req.originalUrl || req.url || '/';
-  res.redirect(301, `https://${host}${url}`);
-});
-
 // ✅ SECURITY: Security headers middleware (helmet)
 // Must be early in middleware chain
 logWithTimestamp('debug', 'Configuring security middleware (helmet)...');
@@ -233,7 +221,7 @@ const rateLimitExemptPaths = [
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 500, // Limit each IP to 500 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -600,14 +588,7 @@ routeMappings.forEach((mapping) => {
 // NOTE: Specific routes above must be defined BEFORE this generic route
 app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void => {
   const htmlPath = req.path.replace('/src/', 'src/');
-  // SECURITY: Prevent path traversal - resolve and ensure path stays under app root
-  const appRoot = path.resolve(path.join(__dirname, '..'));
-  const resolvedPath = path.resolve(path.join(__dirname, '..', path.normalize(htmlPath)));
-  if (!resolvedPath.startsWith(appRoot) || resolvedPath === appRoot) {
-    res.status(404).send('Page not found');
-    return;
-  }
-
+  
   // Skip auth-page.html (handled separately, no auth-checker needed)
   if (htmlPath.includes('auth-page.html')) {
     try {
@@ -615,23 +596,21 @@ app.get(/^\/src\/.*\.html$/, (req: express.Request, res: express.Response): void
       res.send(html);
     } catch (error) {
       logWithTimestamp('error', `Error processing ${htmlPath}:`, error);
-      if (fs.existsSync(resolvedPath)) {
-        res.sendFile(resolvedPath);
-      } else {
-        res.status(404).send('Page not found');
-      }
+      res.sendFile(path.join(__dirname, '..', htmlPath));
     }
     return;
   }
-
+  
   try {
     // This will automatically inject auth-checker via injectVersionIntoHTML
     const html = injectVersionIntoHTML(htmlPath, appVersion);
     res.send(html);
   } catch (error) {
     serverLogger.error(`Error processing ${htmlPath}:`, error);
-    if (fs.existsSync(resolvedPath)) {
-      res.sendFile(resolvedPath);
+    // Fallback: try to serve file directly (auth-checker middleware will inject it)
+    const filePath = path.join(__dirname, '..', htmlPath);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
     } else {
       res.status(404).send('Page not found');
     }
@@ -643,8 +622,8 @@ app.get('/dashboard.html', (req: express.Request, res: express.Response): void =
   res.redirect('/home');
 });
 
-// Parse JSON bodies with size limit to prevent DoS (INPUT_LIMITS.PAYLOAD_MAX_BYTES = 1MB)
-app.use(express.json({ limit: INPUT_LIMITS.PAYLOAD_MAX_BYTES }));
+// Parse JSON bodies
+app.use(express.json());
 
 // ✅ SECURITY: CSRF Protection
 import { csrfProtection, csrfToken } from './api/middleware/csrf.middleware.js';

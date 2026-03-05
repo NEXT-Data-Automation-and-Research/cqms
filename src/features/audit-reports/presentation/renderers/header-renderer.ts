@@ -13,39 +13,9 @@ export function renderHeaderActions(
   const html = `
     <!-- Date range section: hidden on Acknowledgement-by-agent tab (lifetime data only) -->
     <div id="headerDateSection" class="header-date-section">
-    <div class="date-picker-dropdown" style="position: relative; z-index: 1001;">
-      <button class="action-btn" id="dateBtn">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-        </svg>
-        <span id="dateBtnText">Date Range</span>
-        <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
-      </button>
-      <div class="date-dropdown-menu" id="dateDropdown">
-        <div class="filter-group">
-          <label class="filter-label">Start Date</label>
-          <input type="date" class="filter-input" id="startDate">
-        </div>
-        <div class="filter-group">
-          <label class="filter-label">End Date</label>
-          <input type="date" class="filter-input" id="endDate">
-        </div>
-        <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-          <button class="action-btn" style="flex: 1;" id="applyDateFilter">Apply</button>
-          <button class="action-btn" style="flex: 1;" id="clearDateFilter">Clear</button>
-        </div>
-      </div>
-    </div>
-    <div class="quick-date-buttons-container">
-      <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
-      <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
-      <button class="action-btn quick-date-btn" id="thisWeekBtn">This Week</button>
-      <button class="action-btn quick-date-btn" id="lastWeekBtn">Last Week</button>
-      <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
-      <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
-    </div>
+    <input type="hidden" id="startDate">
+    <input type="hidden" id="endDate">
+    <div id="reportsDatePickerContainer"></div>
     </div>
     <!-- Export Button - Hidden -->
     <button class="action-btn" id="exportBtn" style="display: none;">

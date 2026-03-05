@@ -5,10 +5,12 @@
  */
 
 import { AuditFormService } from '../../application/audit-form-service.js';
+import { AuditQueueService } from '../../application/audit-queue-service.js';
 import { safeSetHTML } from '../../../../utils/html-sanitizer.js';
 import { logInfo, logError, logWarn } from '../../../../utils/logging-helper.js';
 import { getSupabaseClient } from '../utils/supabase-client-helper.js';
 import type { AuditFormData, Scorecard, ScorecardParameter } from '../../domain/entities.js';
+import type { QueuedAuditDisplayData } from '../../domain/queue-types.js';
 
 interface FormSubmissionState {
   isSubmitting: boolean;
@@ -22,11 +24,19 @@ export class AuditFormController {
     currentScorecard: null,
     currentParameters: []
   };
+  private queueService: AuditQueueService | null = null;
 
   constructor(
     private service: AuditFormService,
     private form: HTMLFormElement
   ) {}
+
+  /**
+   * Set the queue service for batch audit support
+   */
+  setQueueService(queueService: AuditQueueService): void {
+    this.queueService = queueService;
+  }
 
   /**
    * Initialize form submission handler and real-time validation
@@ -196,7 +206,46 @@ export class AuditFormController {
   }
 
   /**
-   * Handle form submission
+   * Validate scorecard, Supabase readiness, collect form data, validate it, and prepare the payload.
+   * Returns the collected audit data and prepared payload, or throws/shows dialog and returns null.
+   */
+  private async validateAndPrepare(): Promise<{ auditData: Partial<AuditFormData>; payload: Partial<AuditFormData> } | null> {
+    // Validate scorecard selection
+    if (!this.state.currentScorecard || !this.state.currentParameters || this.state.currentParameters.length === 0) {
+      await this.showErrorDialog('Choose a scorecard', 'Select a scorecard first so we know which criteria to use for this audit.', 'warning');
+      return null;
+    }
+
+    // Wait for Supabase client
+    const supabase = await this.waitForSupabaseClient();
+    if (!supabase) {
+      await this.showErrorDialog(
+        'Something went wrong',
+        'The page didn\'t load fully. Refresh the page and try again.'
+      );
+      return null;
+    }
+
+    logInfo('Supabase client is ready');
+    logInfo('Target table:', this.state.currentScorecard.tableName);
+
+    // Collect and validate form data
+    const auditData = await this.collectFormData();
+
+    // Validate form data
+    const validationErrors = this.validateFormData(auditData);
+    if (validationErrors.length > 0) {
+      await this.showValidationErrors(validationErrors);
+      return null;
+    }
+
+    // Prepare payload
+    const payload = this.prepareAuditPayload(auditData);
+    return { auditData, payload };
+  }
+
+  /**
+   * Handle form submission (single audit — existing flow)
    */
   private async handleSubmit(e: Event): Promise<void> {
     logInfo('Form submit event fired');
@@ -223,11 +272,9 @@ export class AuditFormController {
     this.state.isSubmitting = true;
 
     try {
-      // Validate scorecard selection
-      if (!this.state.currentScorecard || !this.state.currentParameters || this.state.currentParameters.length === 0) {
-        await this.showErrorDialog('Choose a scorecard', 'Select a scorecard first so we know which criteria to use for this audit.', 'warning');
-        this.state.isSubmitting = false;
-        // Re-enable button on error
+      const result = await this.validateAndPrepare();
+      if (!result) {
+        // Validation failed — re-enable button
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = originalButtonText;
@@ -237,50 +284,14 @@ export class AuditFormController {
         return;
       }
 
-      // Wait for Supabase client
-      const supabase = await this.waitForSupabaseClient();
-      if (!supabase) {
-        await this.showErrorDialog(
-          'Something went wrong',
-          'The page didn’t load fully. Refresh the page and try again.'
-        );
-        this.state.isSubmitting = false;
-        // Re-enable button on error
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = originalButtonText;
-          submitButton.style.opacity = '1';
-          submitButton.style.cursor = 'pointer';
-        }
-        return;
-      }
-
-      logInfo('Supabase client is ready');
-      logInfo('Saving to table:', this.state.currentScorecard.tableName);
-
-      // Collect and validate form data
-      const auditData = await this.collectFormData();
-      
-      // Validate form data
-      const validationErrors = this.validateFormData(auditData);
-      if (validationErrors.length > 0) {
-        await this.showValidationErrors(validationErrors);
-        this.state.isSubmitting = false;
-        // Re-enable button on validation error
-        if (submitButton) {
-          submitButton.disabled = false;
-          submitButton.textContent = originalButtonText;
-          submitButton.style.opacity = '1';
-          submitButton.style.cursor = 'pointer';
-        }
-        return;
-      }
+      const { auditData, payload } = result;
 
       // Save audit
-      await this.saveAudit(auditData);
+      await this.service.saveAudit(this.state.currentScorecard!.tableName, payload);
+      logInfo('Audit saved successfully');
 
       // Send notifications (non-blocking)
-      this.sendNotifications(auditData, this.state.currentScorecard).catch(err => {
+      this.sendNotifications(auditData, this.state.currentScorecard!).catch(err => {
         logError('Error sending notifications:', err);
       });
 
@@ -291,7 +302,7 @@ export class AuditFormController {
       this.handleSubmissionSuccess();
     } catch (error) {
       logError('Error submitting audit form:', error);
-      await this.showErrorDialog('Submission didn’t go through', 'Something went wrong. Please try again.');
+      await this.showErrorDialog('Submission didn\'t go through', 'Something went wrong. Please try again.');
       // Re-enable button on error
       const submitButton = this.form.querySelector('button[type="submit"]') as HTMLButtonElement;
       if (submitButton) {
@@ -300,6 +311,106 @@ export class AuditFormController {
         submitButton.style.opacity = '1';
         submitButton.style.cursor = 'pointer';
       }
+    } finally {
+      this.state.isSubmitting = false;
+    }
+  }
+
+  /**
+   * Add the current audit form data to the queue (does not save to DB)
+   */
+  async addCurrentAuditToQueue(): Promise<boolean> {
+    if (!this.queueService) {
+      logError('Queue service not available');
+      return false;
+    }
+
+    if (this.state.isSubmitting) {
+      logWarn('Operation already in progress');
+      return false;
+    }
+
+    this.state.isSubmitting = true;
+
+    try {
+      const result = await this.validateAndPrepare();
+      if (!result) {
+        return false;
+      }
+
+      const { auditData, payload } = result;
+
+      const displayData: QueuedAuditDisplayData = {
+        employeeName: (auditData as any).employeeName || '',
+        employeeEmail: (auditData as any).employeeEmail || '',
+        interactionId: (auditData as any).interactionId || '',
+        channel: (auditData as any).channel || '',
+        averageScore: (auditData as any).averageScore ? parseFloat((auditData as any).averageScore) : null,
+        passingStatus: (auditData as any).passingStatus || '',
+        totalErrorsCount: (auditData as any).totalErrorsCount ? parseInt((auditData as any).totalErrorsCount) : 0
+      };
+
+      this.queueService.addToQueue({
+        scorecardTableName: this.state.currentScorecard!.tableName,
+        scorecardName: this.state.currentScorecard!.name,
+        scorecardId: this.state.currentScorecard!.id,
+        payload: payload as Record<string, any>,
+        displayData
+      });
+
+      const count = this.queueService.getQueueCount();
+
+      // Dispatch event for UI to update
+      document.dispatchEvent(new CustomEvent('auditQueueUpdated', { detail: { count } }));
+
+      // Show toast
+      if ((window as any).confirmationDialog && typeof (window as any).confirmationDialog.show === 'function') {
+        await (window as any).confirmationDialog.show({
+          title: 'Added to Queue',
+          message: `Audit added to queue (${count} total). Fill the next audit or submit all.`,
+          confirmText: 'OK',
+          type: 'success'
+        });
+      }
+
+      // Reset form for next audit
+      this.form.reset();
+      return true;
+    } catch (error) {
+      logError('Error adding audit to queue:', error);
+      await this.showErrorDialog('Could not add to queue', 'Something went wrong. Please try again.');
+      return false;
+    } finally {
+      this.state.isSubmitting = false;
+    }
+  }
+
+  /**
+   * Submit all queued audits to the database, then navigate to the batch summary page
+   */
+  async submitAllQueued(): Promise<void> {
+    if (!this.queueService) {
+      logError('Queue service not available');
+      return;
+    }
+
+    if (this.queueService.getQueueCount() === 0) {
+      await this.showErrorDialog('Queue is empty', 'Add audits to the queue first before submitting.', 'warning');
+      return;
+    }
+
+    this.state.isSubmitting = true;
+
+    try {
+      const batchResult = await this.queueService.submitAll(this.service);
+
+      logInfo(`Batch submission complete: ${batchResult.successCount} succeeded, ${batchResult.failureCount} failed`);
+
+      // Navigate to summary page
+      window.location.href = '/batch-summary';
+    } catch (error) {
+      logError('Error submitting batch:', error);
+      await this.showErrorDialog('Batch submission failed', 'Something went wrong. Please try again.');
     } finally {
       this.state.isSubmitting = false;
     }
@@ -575,22 +686,7 @@ export class AuditFormController {
     return feedbackField ? (feedbackField.value?.trim().length ?? 0) > 0 : false;
   }
 
-  /**
-   * Save audit to database
-   */
-  private async saveAudit(auditData: Partial<AuditFormData>): Promise<void> {
-    if (!this.state.currentScorecard) {
-      throw new Error('No scorecard selected');
-    }
-
-    // Prepare audit payload
-    const payload = this.prepareAuditPayload(auditData);
-
-    // Save using service
-    await this.service.saveAudit(this.state.currentScorecard.tableName, payload);
-    
-    logInfo('Audit saved successfully');
-  }
+  // saveAudit is handled inline in handleSubmit using this.service.saveAudit() directly
 
   /**
    * Prepare audit payload

@@ -20,8 +20,6 @@ export const INPUT_LIMITS = {
   TYPE: 50,
   AVATAR_URL: 500,
   DESCRIPTION: 2000,
-  /** Max JSON body size for API requests (bytes). Used by express.json() limit. */
-  PAYLOAD_MAX_BYTES: 1024 * 1024, // 1MB
 } as const;
 
 /**

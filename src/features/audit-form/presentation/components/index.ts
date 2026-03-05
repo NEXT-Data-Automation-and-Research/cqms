@@ -16,3 +16,4 @@ export { AuditFormOrchestrator, type AuditFormOrchestratorConfig } from './audit
 export { RatingSection, type RatingSectionConfig } from './rating-section.js';
 export { ReversalSection, type ReversalSectionConfig, type ReversalData } from './reversal-section.js';
 export { ActionButtons, type ActionButtonsConfig } from './action-buttons.js';
+export { QueueIndicator, type QueueIndicatorConfig } from './queue-indicator.js';

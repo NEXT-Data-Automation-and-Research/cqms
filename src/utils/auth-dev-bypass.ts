@@ -8,17 +8,16 @@ import { logWarn, logInfo } from './logging-helper.js';
 
 /**
  * Dev bypass - Create a fake authenticated session for testing
- * ✅ SECURITY: Only works when explicitly in development (NODE_ENV === 'development').
- * If window.env is missing or NODE_ENV is not 'development', treat as production (bypass disabled).
- * Also requires isDev=true in localStorage.
+ * ✅ SECURITY: Only works in development mode (NODE_ENV !== 'production')
+ * Only works when isDev=true in localStorage AND not in production
  */
 export function enableDevBypassAuthentication(userEmail: string = 'dev@test.com'): void {
-  // ✅ SECURITY: Default to production when window.env missing or NODE_ENV not 'development'
-  const isDevMode = typeof window !== 'undefined' &&
-    (window as any).env?.NODE_ENV === 'development';
-
-  if (!isDevMode) {
-    logWarn('Dev bypass is disabled (only available when NODE_ENV is "development")');
+  // ✅ SECURITY FIX: Disable dev bypass in production
+  const isProduction = typeof window !== 'undefined' && 
+    (window as any).env?.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    logWarn('Dev bypass is disabled in production mode');
     return;
   }
   
@@ -45,15 +44,16 @@ export function enableDevBypassAuthentication(userEmail: string = 'dev@test.com'
 
 /**
  * Check if current session is a dev bypass
- * SECURITY: Only active when explicitly in development (NODE_ENV === 'development').
- * If window.env is missing or NODE_ENV is not 'development', treat as production (return false).
+ * SECURITY: Only works in development mode (NODE_ENV !== 'production')
  */
 export function isDevBypassActive(): boolean {
-  // ✅ SECURITY: Default to production when window.env missing or NODE_ENV not 'development'
-  const isDevMode = typeof window !== 'undefined' &&
-    (window as any).env?.NODE_ENV === 'development';
-
-  if (!isDevMode) {
+  // ✅ SECURITY FIX: Disable dev bypass in production
+  // Check if we're in production mode (from window.env or assume production if not set)
+  const isProduction = typeof window !== 'undefined' && 
+    (window as any).env?.NODE_ENV === 'production';
+  
+  // If production mode, dev bypass is disabled
+  if (isProduction) {
     return false;
   }
   

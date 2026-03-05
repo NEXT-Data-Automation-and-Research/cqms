@@ -486,8 +486,11 @@ export async function startImpersonation(targetEmail: string, reason?: string): 
 export async function exitImpersonation(): Promise<void> {
   logInfo('[Impersonation] Exiting impersonation mode - performing complete cleanup...');
   
-  // ✅ FIX: Check if exit is already in progress (prevent double execution)
-  if ((window as any).__exitImpersonationInProgress || sessionStorage.getItem('exitImpersonationInProgress') === 'true') {
+  // Check if exit is already in progress (prevent double execution)
+  // But allow retry if the flag is stale (>30s old — previous attempt likely failed)
+  const exitStartedAt = sessionStorage.getItem('exitImpersonationStartedAt');
+  const exitFlagIsStale = exitStartedAt && (Date.now() - parseInt(exitStartedAt, 10)) > 30000;
+  if (((window as any).__exitImpersonationInProgress || sessionStorage.getItem('exitImpersonationInProgress') === 'true') && !exitFlagIsStale) {
     logInfo('[Impersonation] Exit already in progress, skipping');
     return;
   }
@@ -501,11 +504,12 @@ export async function exitImpersonation(): Promise<void> {
     return;
   }
   
-  // ✅ FIX: Set flag to indicate exit impersonation is in progress
+  // Set flag to indicate exit impersonation is in progress
   // This prevents cache-clear from interfering mid-operation
   (window as any).__exitImpersonationInProgress = true;
   try {
     sessionStorage.setItem('exitImpersonationInProgress', 'true');
+    sessionStorage.setItem('exitImpersonationStartedAt', String(Date.now()));
   } catch {
     // sessionStorage might not be available
   }

@@ -10,42 +10,27 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
-// CORS: use CORS_ALLOWED_ORIGINS (comma-separated) in Supabase secrets. If unset, use * so existing deployments don't break.
-const CORS_ALLOWED_ORIGINS_RAW = Deno.env.get("CORS_ALLOWED_ORIGINS") ?? "";
-const CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS_RAW
-  ? CORS_ALLOWED_ORIGINS_RAW.split(",").map((s) => s.trim()).filter(Boolean)
-  : [];
-const CORS_USE_WILDCARD = CORS_ALLOWED_ORIGINS.length === 0;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("Origin");
-  let allowOrigin = "*";
-  if (!CORS_USE_WILDCARD && CORS_ALLOWED_ORIGINS.length > 0) {
-    if (origin && CORS_ALLOWED_ORIGINS.includes(origin)) allowOrigin = origin;
-    else if (!origin) allowOrigin = CORS_ALLOWED_ORIGINS[0];
-  }
-  return {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
-
-function jsonResp(body: unknown, status: number, req: Request) {
+function jsonResp(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(req) });
-  if (req.method !== "POST") return jsonResp({ success: false, error: "Method not allowed" }, 405, req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return jsonResp({ success: false, error: "Method not allowed" }, 405);
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return jsonResp({ success: false, error: "Invalid JSON" }, 400, req);
+    return jsonResp({ success: false, error: "Invalid JSON" }, 400);
   }
 
   const {
@@ -65,17 +50,14 @@ Deno.serve(async (req: Request) => {
   } = body as Record<string, any>;
 
   // Validate required fields
-  if (!scorecard_id) return jsonResp({ success: false, error: "scorecard_id required" }, 400, req);
-  if (!conversation_id) return jsonResp({ success: false, error: "conversation_id required" }, 400, req);
-  if (!massive_audit_job_id) return jsonResp({ success: false, error: "massive_audit_job_id required" }, 400, req);
+  if (!scorecard_id) return jsonResp({ success: false, error: "scorecard_id required" }, 400);
+  if (!conversation_id) return jsonResp({ success: false, error: "conversation_id required" }, 400);
+  if (!massive_audit_job_id) return jsonResp({ success: false, error: "massive_audit_job_id required" }, 400);
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // SECURITY: Log only non-PII identifiers; do not log employee_email or names
   console.log("[ai-audit-callback] Received:", JSON.stringify({
-    conversation_id,
-    scorecard_id,
-    massive_audit_job_id,
+    conversation_id, scorecard_id, massive_audit_job_id, employee_email,
   }));
 
   // --- Determine pass/fail from scorecard_data ---
@@ -115,17 +97,13 @@ Deno.serve(async (req: Request) => {
 
   if (insertErr) {
     console.error("[ai-audit-callback] massive_ai_audit_results insert error:", insertErr.message);
-    return jsonResp({ success: false, error: "Insert failed: " + insertErr.message }, 500, req);
+    return jsonResp({ success: false, error: "Insert failed: " + insertErr.message }, 500);
   }
 
   console.log("[ai-audit-callback] massive_ai_audit_results inserted:", inserted?.id);
 
-  return jsonResp(
-    {
-      success: true,
-      result_id: inserted?.id,
-    },
-    200,
-    req
-  );
+  return jsonResp({
+    success: true,
+    result_id: inserted?.id,
+  });
 });

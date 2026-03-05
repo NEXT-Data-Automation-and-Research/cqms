@@ -1074,7 +1074,8 @@
                                 <label style="font-size: 0.6094rem; font-weight: 600; color: #374151;">
                                     Schedule Date (Optional):
                                 </label>
-                                <input type="date" id="scheduledDateInput" class="filter-input" onchange="updateScheduledDate(this.value)" style="width: 100%; padding: 0.2812rem 0.375rem; font-size: 0.6094rem;" min="">
+                                <input type="hidden" id="scheduledDateInput">
+                                <div id="scheduledDatePickerContainer" style="width: 100%;"></div>
                                 <div style="display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap;">
                                     <button type="button" class="btn-secondary" onclick="setScheduledDate('today')" style="padding: 0.1875rem 0.375rem; font-size: 0.5156rem;">Today</button>
                                     <button type="button" class="btn-secondary" onclick="setScheduledDate('tomorrow')" style="padding: 0.1875rem 0.375rem; font-size: 0.5156rem;">Tomorrow</button>
@@ -4761,6 +4762,35 @@ function hidePagination() {
     document.getElementById('paginationControlsBottom').style.display = 'none';
 }
 
+</script>
+
+<!-- DateRangePicker initialization for scheduledDateInput field -->
+<script type="module">
+    (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const container = document.getElementById('scheduledDatePickerContainer');
+        const hiddenInput = document.getElementById('scheduledDateInput');
+        if (!container || !hiddenInput) return;
+
+        function formatDate(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
+        new DateRangePicker(container, {
+            mode: 'single',
+            label: 'Schedule Date',
+            onApply: ({ from }) => {
+                const value = formatDate(from);
+                hiddenInput.value = value;
+                if (typeof updateScheduledDate === 'function') {
+                    updateScheduledDate(value);
+                }
+            }
+        });
+    })();
 </script>
 
 </body>

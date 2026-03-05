@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/console-stub.js"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Audit Queue | CQMS</title>
+<meta name="description" content="Quality Management System - Review and Submit Queued Audit Batches">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/sidebar.css">
+<link rel="modulepreload" href="/js/load-sidebar.js">
+<script type="importmap">
+{
+  "imports": {
+    "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+    "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/confirmation-dialog.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Poppins', sans-serif; background: #f3f4f6; color: #1f2937; }
+  .main-content {
+    margin-left: var(--sidebar-collapsed, 3.5rem);
+    transition: margin-left 0.3s ease;
+    padding: 1.5rem; min-height: 100vh;
+  }
+  .queue-card {
+    background: white; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    max-width: 80rem; margin: 0 auto; overflow: hidden;
+  }
+  .queue-page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; gap: 0.75rem;
+  }
+  .queue-page-header h1 { font-size: 1.25rem; font-weight: 700; color: #111827; }
+  .badge { display:inline-flex; align-items:center; padding:0.25rem 0.75rem; border-radius:1rem; font-size:0.75rem; font-weight:600; }
+  .badge-total { background:#eff6ff; color:#1e40af; }
+  .badge-queued { background:#fef3c7; color:#92400e; }
+  .info-banner {
+    background:#eff6ff; border-bottom:1px solid #bfdbfe; padding:0.75rem 1.5rem;
+    font-size:0.8125rem; color:#1e40af; display:flex; align-items:center; gap:0.5rem;
+  }
+  .btn {
+    padding:0.5rem 1.25rem; border-radius:0.375rem; font-size:0.8125rem;
+    font-family:'Poppins',sans-serif; font-weight:600; cursor:pointer;
+    transition:all 0.15s; border:none; text-decoration:none;
+    display:inline-flex; align-items:center; gap:0.25rem;
+  }
+  .btn-primary { background:linear-gradient(135deg,#1A733E 0%,#2d9a5a 100%); color:white; }
+  .btn-secondary { background:white; color:#374151; border:1px solid #d1d5db; }
+  .btn:hover { opacity:0.9; }
+  .btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .empty-state { text-align:center; padding:3rem 1.5rem; color:#6b7280; }
+  .empty-state h2 { font-size:1.125rem; margin-bottom:0.5rem; color:#374151; }
+  .queue-footer {
+    display:flex; gap:0.75rem; justify-content:center; padding:1rem 1.5rem;
+    border-top:1px solid #e5e7eb; background:#f9fafb;
+  }
+
+  /* Batch row */
+  .batch-row { border-bottom:1px solid #e5e7eb; }
+  .batch-row:last-child { border-bottom:none; }
+  .batch-summary {
+    display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1.5rem;
+    cursor:pointer; transition:background 0.15s;
+  }
+  .batch-summary:hover { background:#f9fafb; }
+  .batch-chevron { font-size:0.75rem; color:#6b7280; transition:transform 0.2s; display:inline-block; flex-shrink:0; }
+  .batch-chevron.open { transform:rotate(90deg); }
+  .b-count { background:linear-gradient(135deg,#1e3a5f,#2563eb); color:white; padding:0.15rem 0.5rem; border-radius:1rem; font-size:0.75rem; font-weight:700; flex-shrink:0; }
+  .b-auditor { font-size:0.8125rem; font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:7rem; }
+  .b-label { font-size:0.75rem; color:#6b7280; white-space:nowrap; }
+  .b-score { font-size:0.8125rem; font-weight:700; color:#111827; min-width:3rem; text-align:right; }
+  .b-status-pass { background:#dcfce7; color:#166534; padding:0.125rem 0.5rem; border-radius:0.25rem; font-weight:600; font-size:0.6875rem; }
+  .b-status-fail { background:#fef2f2; color:#991b1b; padding:0.125rem 0.5rem; border-radius:0.25rem; font-weight:600; font-size:0.6875rem; }
+  .b-date { font-size:0.6875rem; color:#9ca3af; white-space:nowrap; }
+  .batch-submit-btn {
+    margin-left:auto; flex-shrink:0; padding:0.35rem 1rem;
+    background:linear-gradient(135deg,#1A733E 0%,#2d9a5a 100%); color:white;
+    border:none; border-radius:0.375rem; font-size:0.75rem; font-family:'Poppins',sans-serif;
+    font-weight:700; cursor:pointer; transition:opacity 0.15s;
+  }
+  .batch-submit-btn:hover { opacity:0.9; }
+  .batch-submit-btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .batch-sendback-btn {
+    flex-shrink:0; padding:0.35rem 0.75rem;
+    background:white; color:#d97706; border:1px solid #fbbf24;
+    border-radius:0.375rem; font-size:0.75rem; font-family:'Poppins',sans-serif;
+    font-weight:600; cursor:pointer; transition:all 0.15s;
+  }
+  .batch-sendback-btn:hover { background:#fffbeb; border-color:#d97706; }
+
+  /* Expanded drill-in */
+  .batch-detail { background:#fafbfc; border-top:1px dashed #d1d5db; padding:1rem 1.5rem; animation:bSlide 0.2s ease; }
+  @keyframes bSlide { from{opacity:0;max-height:0} to{opacity:1;max-height:100rem} }
+  .detail-cards { display:flex; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap; }
+  .d-card { flex:1; min-width:6rem; background:white; border:1px solid #e5e7eb; border-radius:0.375rem; padding:0.5rem 0.75rem; }
+  .d-card-label { font-size:0.625rem; color:#6b7280; text-transform:uppercase; font-weight:600; letter-spacing:0.03em; }
+  .d-card-val { font-size:1.125rem; font-weight:700; color:#111827; }
+
+  /* Individual audit rows */
+  .audit-item { border:1px solid #e5e7eb; border-radius:0.375rem; margin-bottom:0.375rem; background:white; overflow:hidden; }
+  .audit-item-row {
+    display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.75rem;
+    cursor:pointer; transition:background 0.15s; font-size:0.8125rem;
+  }
+  .audit-item-row:hover { background:#f0f7ff; }
+  .a-chevron { font-size:0.625rem; color:#6b7280; transition:transform 0.2s; display:inline-block; flex-shrink:0; }
+  .a-chevron.open { transform:rotate(90deg); }
+  .a-name { font-weight:600; color:#111827; min-width:7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .a-id { color:#6b7280; font-size:0.75rem; min-width:6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .a-sc { color:#374151; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .a-score { font-weight:700; color:#111827; min-width:2.5rem; text-align:right; }
+
+  /* Audit detail panel */
+  .audit-detail { background:#f9fafb; border-top:1px dashed #e5e7eb; padding:0.75rem; animation:bSlide 0.2s ease; }
+  .audit-detail-cards { display:flex; gap:0.375rem; margin-bottom:0.5rem; flex-wrap:wrap; }
+  .ad-card { flex:1; min-width:5rem; background:white; border:1px solid #e5e7eb; border-radius:0.25rem; padding:0.375rem 0.5rem; }
+  .ad-card-label { font-size:0.5625rem; color:#6b7280; text-transform:uppercase; font-weight:600; letter-spacing:0.03em; }
+  .ad-card-val { font-size:0.9375rem; font-weight:700; color:#111827; }
+  .ad-fields { background:white; border:1px solid #e5e7eb; border-radius:0.25rem; padding:0.5rem; }
+  .ad-field { display:flex; gap:0.5rem; padding:0.3rem 0; border-bottom:1px solid #f3f4f6; }
+  .ad-field:last-child { border-bottom:none; }
+  .ad-field-label { font-size:0.75rem; font-weight:600; color:#6b7280; min-width:7.5rem; flex-shrink:0; }
+  .ad-field-val { font-size:0.75rem; color:#111827; }
+
+  /* Conversation section */
+  .convo-section { margin-top:0.75rem; }
+  .convo-load-btn {
+    display:flex; align-items:center; gap:0.5rem; cursor:pointer; padding:0.625rem 0.75rem;
+    background:linear-gradient(135deg,#1e3a5f,#2563eb); color:white; border:none;
+    border-radius:0.375rem; font-size:0.8125rem; font-family:'Poppins',sans-serif;
+    font-weight:600; transition:opacity 0.15s; width:100%;
+  }
+  .convo-load-btn:hover { opacity:0.9; }
+  .convo-load-btn:disabled { opacity:0.6; cursor:not-allowed; }
+  .convo-load-btn svg { flex-shrink:0; }
+  .convo-container {
+    background:#f0f2f5; border:1px solid #e5e7eb; border-radius:0 0 0.375rem 0.375rem;
+    max-height:30rem; overflow-y:auto; display:flex; flex-direction:column; gap:0;
+    scrollbar-width:thin; scrollbar-color:#9ca3af #f0f2f5;
+  }
+  .convo-container::-webkit-scrollbar { width:6px; }
+  .convo-container::-webkit-scrollbar-track { background:#f0f2f5; }
+  .convo-container::-webkit-scrollbar-thumb { background:#9ca3af; border-radius:3px; }
+  /* Chat message styles */
+  .cq-msg { display:flex; align-items:flex-start; gap:0.5rem; padding:0.375rem 0.75rem; width:100%; }
+  .cq-msg-user { justify-content:flex-start; }
+  .cq-msg-agent { justify-content:flex-end; }
+  .cq-avatar {
+    width:1.75rem; height:1.75rem; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-size:0.625rem; font-weight:700; flex-shrink:0;
+    box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  }
+  .cq-bubble {
+    padding:0.5rem 0.75rem; border-radius:0.625rem; font-size:0.8125rem; line-height:1.5;
+    word-wrap:break-word; max-width:75%; box-shadow:0 1px 2px rgba(0,0,0,0.06);
+  }
+  .cq-bubble-user {
+    background:white; color:#111827; border:1px solid #e5e7eb;
+    border-top-left-radius:0.125rem;
+  }
+  .cq-bubble-agent {
+    background:#1A733E; color:white;
+    border-top-right-radius:0.125rem;
+  }
+  .cq-bubble-ai {
+    background:#1d1d1d; color:white;
+    border-top-right-radius:0.125rem;
+  }
+  .cq-bubble-summary {
+    background:#fef3c7; color:#78350f;
+    border-top-right-radius:0.125rem;
+  }
+  .cq-bubble-system {
+    background:#f3f4f6; color:#6b7280; border:1px solid #e5e7eb;
+    border-radius:0.25rem; max-width:85%; font-size:0.75rem; text-align:center;
+    align-self:center; margin:0.25rem auto;
+  }
+  .cq-name { font-size:0.6875rem; font-weight:600; margin-bottom:0.125rem; }
+  .cq-name-user { color:#374151; }
+  .cq-name-agent { color:rgba(255,255,255,0.85); }
+  .cq-time { font-size:0.5625rem; margin-top:0.125rem; opacity:0.7; }
+  .cq-msg-body { white-space:pre-wrap; word-wrap:break-word; }
+  .cq-loading { text-align:center; padding:2rem; color:#6b7280; }
+  .cq-loading-spinner {
+    display:inline-block; width:1.5rem; height:1.5rem; border:3px solid #e5e7eb;
+    border-top-color:#1A733E; border-radius:50%; animation:spin 0.8s linear infinite;
+    margin-bottom:0.5rem;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* Progress */
+  .progress-overlay {
+    position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5);
+    display:flex; align-items:center; justify-content:center; z-index:9999;
+  }
+  .progress-card {
+    background:white; border-radius:0.75rem; padding:2rem; max-width:28rem; width:90%;
+    text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .progress-card h3 { font-size:1rem; font-weight:700; margin-bottom:1rem; color:#111827; }
+  .progress-bar-bg { width:100%; height:0.5rem; background:#e5e7eb; border-radius:1rem; overflow:hidden; margin-bottom:0.75rem; }
+  .progress-bar-fill { height:100%; background:linear-gradient(135deg,#1A733E,#2d9a5a); border-radius:1rem; transition:width 0.3s; width:0%; }
+  .progress-text { font-size:0.8125rem; color:#6b7280; }
+</style>
+</head>
+<body>
+<div class="main-content">
+  <div class="queue-card">
+    <div id="queueContent">
+      <div class="empty-state">
+        <h2>No audit batches in queue</h2>
+        <p>Go to Create Audit, add audits to queue, then click Submit All to send them here.</p>
+        <div style="display:flex;justify-content:center;margin-top:1rem;">
+          <a href="/create-audit" class="btn btn-primary">Go to Create Audit</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="submitProgressOverlay" class="progress-overlay" style="display:none;">
+  <div class="progress-card">
+    <h3>Submitting Audits</h3>
+    <div class="progress-bar-bg"><div id="submitProgressBar" class="progress-bar-fill"></div></div>
+    <p id="submitProgressText" class="progress-text">Preparing...</p>
+  </div>
+</div>
+
+<script type="module" src="/js/auth-checker.js"></script>
+<script type="module" src="/js/load-sidebar.js"></script>
+
+<script type="module">
+  import { isAuthenticated } from '/js/auth-checker.js';
+  import { initSupabase } from '/js/utils/supabase-init.js';
+
+  const BATCHES_KEY = 'cqms_audit_batches';
+  const BATCH_RESULTS_KEY = 'cqms_batch_results';
+  let supabaseClient = null;
+  let expandedBatchId = null;
+  let expandedAuditId = null;
+  let isSuperAdmin = false;
+
+  function esc(t) { const d=document.createElement('div'); d.textContent=t||''; return d.innerHTML; }
+  function getBatches() { try{return JSON.parse(localStorage.getItem(BATCHES_KEY)||'[]');}catch(e){return[];} }
+  function saveBatches(b) { localStorage.setItem(BATCHES_KEY,JSON.stringify(b)); }
+  function fmtDate(iso) {
+    if(!iso) return 'N/A';
+    try { const d=new Date(iso); return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}); }
+    catch(e){return iso;}
+  }
+
+  // Send email notification (same as single audit flow)
+  async function sendEmailNotification(auditPayload, scorecardName) {
+    try {
+      const supabaseUrl = window.env?.SUPABASE_URL || window.SUPABASE_URL;
+      const supabaseAnonKey = window.env?.SUPABASE_ANON_KEY || window.SUPABASE_ANON_KEY;
+      if (!supabaseUrl || !supabaseAnonKey || !auditPayload.employee_email) return;
+      const emailData = {
+        employee_email: auditPayload.employee_email,
+        employee_name: auditPayload.employee_name,
+        auditor_name: auditPayload.auditor_name,
+        auditor_email: auditPayload.auditor_email,
+        audit_id: auditPayload.id,
+        audit_type: auditPayload.audit_type,
+        passing_status: auditPayload.passing_status,
+        average_score: auditPayload.average_score,
+        submitted_at: auditPayload.submitted_at,
+        scorecard_name: scorecardName
+      };
+      await fetch(supabaseUrl + '/functions/v1/send-audit-email', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + supabaseAnonKey, 'apikey': supabaseAnonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailData)
+      });
+    } catch(e) { console.error('Email notification error:', e); }
+  }
+
+  // Send n8n webhook (same as single audit flow)
+  async function sendN8nWebhook(auditPayload, scorecardName, scorecardId, tableName) {
+    try {
+      if (!auditPayload.employee_email) return;
+      const session = supabaseClient ? (await supabaseClient.auth.getSession()).data.session : null;
+      const token = session?.access_token;
+      if (!token) return;
+      const csrfRes = await fetch('/api/csrf', { method:'GET', headers:{'Authorization':'Bearer '+token} });
+      const csrfToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+      const headers = { 'Content-Type':'application/json', 'Accept':'application/json', 'Authorization':'Bearer '+token };
+      if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+      await fetch('/api/webhooks/audit-submission', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          employee_email: auditPayload.employee_email, employee_name: auditPayload.employee_name,
+          auditor_name: auditPayload.auditor_name, auditor_email: auditPayload.auditor_email,
+          audit_id: auditPayload.id, audit_type: auditPayload.audit_type,
+          passing_status: auditPayload.passing_status, average_score: auditPayload.average_score,
+          submitted_at: auditPayload.submitted_at, scorecard_name: scorecardName,
+          scorecard_id: scorecardId, table_name: tableName,
+          base_url: window.location.origin
+        })
+      });
+    } catch(e) { console.error('n8n webhook error:', e); }
+  }
+
+  // Cache for loaded conversations (keyed by interaction ID)
+  const conversationCache = {};
+
+  function buildConversationSection(interactionId, auditId) {
+    if (!interactionId) return '';
+    var cid = 'convo-' + auditId;
+    return '<div class="convo-section">' +
+      '<button type="button" class="convo-load-btn" data-convo-load="' + esc(interactionId) + '" data-convo-target="' + cid + '">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>' +
+        '<span>Load Conversation</span>' +
+        '<span style="font-weight:400;font-size:0.75rem;opacity:0.8;">ID: ' + esc(interactionId) + '</span>' +
+      '</button>' +
+      '<div class="convo-container" id="' + cid + '" style="display:none;"></div>' +
+    '</div>';
+  }
+
+  function stripHtml(html) {
+    if (!html) return '';
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || '';
+  }
+
+  function getInitials(name) {
+    if (!name) return '?';
+    var parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  }
+
+  function renderConversation(container, conversation) {
+    // Extract parts from various possible structures
+    var parts = [];
+    if (conversation.conversation_parts && conversation.conversation_parts.conversation_parts) {
+      parts = conversation.conversation_parts.conversation_parts;
+    } else if (Array.isArray(conversation.conversation_parts)) {
+      parts = conversation.conversation_parts;
+    } else if (conversation.parts && Array.isArray(conversation.parts)) {
+      parts = conversation.parts;
+    }
+
+    if (parts.length === 0) {
+      container.innerHTML = '<div class="cq-loading"><p>No messages found in this conversation.</p></div>';
+      return;
+    }
+
+    // Sort by timestamp
+    var sorted = parts.slice().sort(function(a, b) {
+      var tA = typeof a.created_at === 'number' ? (a.created_at < 1e10 ? a.created_at * 1000 : a.created_at) : new Date(a.created_at).getTime();
+      var tB = typeof b.created_at === 'number' ? (b.created_at < 1e10 ? b.created_at * 1000 : b.created_at) : new Date(b.created_at).getTime();
+      return tA - tB;
+    });
+
+    // System/skip types
+    var systemTypes = ['user_became_idle','close','fin_guidance_applied','conversation_attribute_updated_by_admin','attribute_collected'];
+
+    var html = '';
+    sorted.forEach(function(part) {
+      var body = part.body || '';
+      var author = part.author || {};
+      var authorName = author.name || author.email || 'Unknown';
+      var authorType = author.type || 'unknown';
+      var partType = part.part_type || 'comment';
+
+      // Format timestamp
+      var ts;
+      if (typeof part.created_at === 'number') {
+        ts = new Date(part.created_at < 1e10 ? part.created_at * 1000 : part.created_at);
+      } else {
+        ts = new Date(part.created_at);
+      }
+      var timeStr = ts.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit',hour12:true});
+      var dateStr = ts.toLocaleDateString('en-US', {month:'short',day:'numeric'});
+
+      // Detect message type
+      var isUser = authorType === 'user' || authorType === 'contact';
+      var isAI = authorType === 'bot' || author.from_ai_agent === true || author.is_ai_answer === true || part.from_ai_agent === true || part.is_ai_answer === true;
+      var isSummary = partType === 'conversation_summary';
+      var isSystem = systemTypes.indexOf(partType) !== -1;
+      var isRating = partType === 'conversation_rating_changed' || partType === 'conversation_rating_remark_added';
+
+      // Strip HTML from body
+      var text = stripHtml(body).trim();
+
+      // System messages (centered)
+      if (isSystem || isRating) {
+        if (!text && !isRating) return;
+        var label = partType.replace(/_/g, ' ').replace(/\b\w/g, function(c){return c.toUpperCase();});
+        html += '<div style="display:flex;justify-content:center;padding:0.25rem 0.75rem;">' +
+          '<div class="cq-bubble cq-bubble-system">' +
+            '<div style="font-weight:600;font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.125rem;">' + esc(label) + '</div>' +
+            (text ? '<div>' + esc(text) + '</div>' : '') +
+            '<div class="cq-time">' + timeStr + ' &middot; ' + dateStr + '</div>' +
+          '</div>' +
+        '</div>';
+        return;
+      }
+
+      // Skip empty messages
+      if (!text && !isSummary) return;
+
+      // Determine bubble style
+      var bubbleClass = isSummary ? 'cq-bubble-summary' : (isUser ? 'cq-bubble-user' : (isAI ? 'cq-bubble-ai' : 'cq-bubble-agent'));
+      var msgClass = isUser ? 'cq-msg-user' : 'cq-msg-agent';
+      var nameClass = isUser ? 'cq-name-user' : 'cq-name-agent';
+
+      // Avatar colors
+      var avatarBg = isUser ? 'linear-gradient(135deg,#3b82f6,#60a5fa)' : (isAI ? 'linear-gradient(135deg,#1d1d1d,#374151)' : 'linear-gradient(135deg,#1A733E,#2d9a5a)');
+      var initials = getInitials(authorName);
+      var displayName = isSummary ? 'AI Summary' : authorName;
+
+      if (isUser) {
+        // User: avatar left, bubble right
+        html += '<div class="cq-msg cq-msg-user">' +
+          '<div class="cq-avatar" style="background:' + avatarBg + ';color:white;">' + esc(initials) + '</div>' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-start;max-width:75%;">' +
+            '<div class="cq-name cq-name-user">' + esc(displayName) + '</div>' +
+            '<div class="cq-bubble cq-bubble-user"><div class="cq-msg-body">' + esc(text) + '</div></div>' +
+            '<div class="cq-time">' + timeStr + ' &middot; ' + dateStr + '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        // Agent/AI/Summary: bubble left, avatar right
+        html += '<div class="cq-msg cq-msg-agent">' +
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;max-width:75%;">' +
+            '<div class="cq-name cq-name-agent" style="color:' + (isSummary ? '#92400e' : '#1A733E') + ';">' + esc(displayName) + '</div>' +
+            '<div class="cq-bubble ' + bubbleClass + '"><div class="cq-msg-body">' + esc(text) + '</div></div>' +
+            '<div class="cq-time" style="text-align:right;">' + timeStr + ' &middot; ' + dateStr + '</div>' +
+          '</div>' +
+          '<div class="cq-avatar" style="background:' + avatarBg + ';color:white;">' + esc(initials) + '</div>' +
+        '</div>';
+      }
+    });
+
+    container.innerHTML = html;
+    container.style.display = 'flex';
+    // Scroll to top to show beginning of conversation
+    container.scrollTop = 0;
+  }
+
+  async function loadConversation(interactionId, containerId, btn) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Check cache first
+    if (conversationCache[interactionId]) {
+      renderConversation(container, conversationCache[interactionId]);
+      btn.querySelector('span:first-of-type').textContent = 'Conversation Loaded';
+      btn.disabled = true;
+      return;
+    }
+
+    // Show loading
+    container.style.display = 'flex';
+    container.innerHTML = '<div class="cq-loading"><div class="cq-loading-spinner"></div><p style="font-size:0.8125rem;font-weight:500;">Loading conversation from Intercom...</p><p style="font-size:0.75rem;color:#9ca3af;">ID: ' + esc(interactionId) + '</p></div>';
+    btn.disabled = true;
+    btn.querySelector('span:first-of-type').textContent = 'Loading...';
+
+    try {
+      var supabaseUrl = window.SupabaseConfig?.url || window.supabaseClient?.supabaseUrl || window.env?.SUPABASE_URL || '';
+      var supabaseAnonKey = window.SupabaseConfig?.anonKey || window.supabaseClient?.supabaseKey || window.env?.SUPABASE_ANON_KEY || '';
+
+      if (!supabaseUrl || !supabaseAnonKey) throw new Error('Supabase configuration not found.');
+
+      // Get JWT token
+      var userToken = null;
+      if (supabaseClient) {
+        var sess = await supabaseClient.auth.getSession();
+        userToken = sess.data.session?.access_token || null;
+      }
+      if (!userToken) throw new Error('Authentication required. Please log in again.');
+
+      var url = supabaseUrl + '/functions/v1/intercom-proxy?conversation_id=' + encodeURIComponent(interactionId) + '&display_as=plaintext';
+      var res = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Bearer ' + userToken,
+          'apikey': supabaseAnonKey,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!res.ok) {
+        var errText = await res.text().catch(function(){return '';});
+        var errData;
+        try { errData = JSON.parse(errText); } catch(e) { errData = { error: errText || ('HTTP ' + res.status) }; }
+        throw new Error(errData.error || ('HTTP ' + res.status + ': ' + res.statusText));
+      }
+
+      var conversation = await res.json();
+      conversationCache[interactionId] = conversation;
+      renderConversation(container, conversation);
+      btn.querySelector('span:first-of-type').textContent = 'Conversation Loaded';
+
+    } catch(err) {
+      container.innerHTML = '<div class="cq-loading" style="color:#dc2626;">' +
+        '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin:0 auto 0.5rem;display:block;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '<p style="font-weight:600;font-size:0.8125rem;">Failed to load conversation</p>' +
+        '<p style="font-size:0.75rem;color:#6b7280;">' + esc(err.message) + '</p>' +
+      '</div>';
+      btn.disabled = false;
+      btn.querySelector('span:first-of-type').textContent = 'Retry Load Conversation';
+    }
+  }
+
+  function buildAuditDetail(item) {
+    const d = item.displayData || {};
+    const p = item.payload || {};
+    const ss = (d.passingStatus==='Pass'||d.passingStatus==='Passing') ? 'background:#dcfce7;color:#166534;' : 'background:#fef2f2;color:#991b1b;';
+    let paramHTML = '';
+    if (p) {
+      const skip = ['id','submitted_at','auditor_email','auditor_name','employee_name','employee_email','employee_type','employee_department','interaction_id','interaction_date','audit_type','channel','quarter','week','country_of_employee','client_email','passing_status','validation_status','average_score','critical_errors','critical_fail_error','significant_error','total_errors_count','transcript','error_description','recommendations','acknowledgement_status','audit_start_time','audit_end_time','audit_duration','reversal_requested_at','reversal_responded_at','sla_in_hours','response_from_auditor','reversal_approved','within_auditor_scope','score_before_appeal','score_after_appeal','did_result_in_pass','reversal_type','reversal_metrics_parameters','reversal_justification_from_agent','reversal_attachments','reversal_approved_by','reversal_resolved_by'];
+      Object.keys(p).forEach(function(k) {
+        if (k.startsWith('feedback_')||k.startsWith('_')||skip.indexOf(k)!==-1) return;
+        const v=p[k]; if(v!==null&&v!==undefined&&v!==0) { paramHTML+='<div class="ad-field"><span class="ad-field-label">'+k.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();})+'</span><span class="ad-field-val">'+esc(String(v))+'</span></div>'; }
+      });
+      Object.keys(p).filter(function(k){return k.startsWith('feedback_');}).forEach(function(fk) {
+        const fv=p[fk]; if(fv&&Array.isArray(fv)&&fv.length>0) { fv.forEach(function(fb,fi){ paramHTML+='<div class="ad-field"><span class="ad-field-label">Feedback '+(fi+1)+'</span><span class="ad-field-val">'+fb+'</span></div>'; }); }
+      });
+    }
+    return '<div class="audit-detail">'+
+      '<div class="audit-detail-cards">'+
+        '<div class="ad-card"><div class="ad-card-label">Score</div><div class="ad-card-val">'+(d.averageScore!=null?d.averageScore+'%':'N/A')+'</div></div>'+
+        '<div class="ad-card"><div class="ad-card-label">Status</div><div><span style="padding:0.1rem 0.35rem;border-radius:0.2rem;font-size:0.75rem;font-weight:600;'+ss+'">'+esc(d.passingStatus||'N/A')+'</span></div></div>'+
+        '<div class="ad-card"><div class="ad-card-label">Total Errors</div><div class="ad-card-val" style="color:'+((d.totalErrorsCount||0)>0?'#dc2626':'#16a34a')+';">'+(d.totalErrorsCount||0)+'</div></div>'+
+        '<div class="ad-card"><div class="ad-card-label">Critical</div><div class="ad-card-val" style="color:'+((p.critical_errors||0)>0?'#dc2626':'#16a34a')+';">'+(p.critical_errors||0)+'</div></div>'+
+        '<div class="ad-card"><div class="ad-card-label">Critical Fail</div><div class="ad-card-val" style="color:'+((p.critical_fail_error||0)>0?'#dc2626':'#16a34a')+';">'+(p.critical_fail_error||0)+'</div></div>'+
+      '</div>'+
+      '<div class="ad-fields">'+
+        '<div class="ad-field"><span class="ad-field-label">Employee</span><span class="ad-field-val">'+esc(d.employeeName)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Email</span><span class="ad-field-val">'+esc(d.employeeEmail)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Interaction ID</span><span class="ad-field-val">'+esc(d.interactionId)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Channel</span><span class="ad-field-val">'+esc(d.channel)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Scorecard</span><span class="ad-field-val">'+esc(item.scorecardName)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Audit Type</span><span class="ad-field-val">'+esc(p.audit_type)+'</span></div>'+
+        '<div class="ad-field"><span class="ad-field-label">Queued At</span><span class="ad-field-val">'+(item.queuedAt?fmtDate(item.queuedAt):'N/A')+'</span></div>'+
+        (p.error_description?'<div class="ad-field"><span class="ad-field-label">Error Description</span><span class="ad-field-val">'+esc(p.error_description)+'</span></div>':'')+
+        (p.recommendations?'<div class="ad-field"><span class="ad-field-label">Recommendations</span><span class="ad-field-val">'+esc(p.recommendations)+'</span></div>':'')+
+        paramHTML+
+      '</div>'+
+      buildConversationSection(d.interactionId || p.interaction_id, item.queueId)+
+    '</div>';
+  }
+
+  function renderQueue() {
+    const container = document.getElementById('queueContent');
+    if (!container) return;
+    const batches = getBatches();
+    if (batches.length === 0) {
+      container.innerHTML =
+        '<div class="empty-state">'+
+          '<h2>No audit batches in queue</h2>'+
+          '<p>Go to Create Audit, add audits to queue, then click Submit All to send them here.</p>'+
+          '<div style="display:flex;justify-content:center;margin-top:1rem;">'+
+            '<a href="/create-audit" class="btn btn-primary">Go to Create Audit</a>'+
+          '</div>'+
+        '</div>';
+      return;
+    }
+
+    let totalAudits = 0;
+    batches.forEach(function(b) { totalAudits += (b.auditCount||0); });
+
+    let batchHTML = batches.map(function(batch) {
+      const isOpen = expandedBatchId === batch.batchId;
+      const sClass = batch.overallStatus==='Passing' ? 'b-status-pass' : 'b-status-fail';
+
+      let detailHTML = '';
+      if (isOpen) {
+        const audits = batch.audits || [];
+        let auditRowsHTML = audits.map(function(item, ai) {
+          const d = item.displayData || {};
+          const isAuditOpen = expandedAuditId === item.queueId;
+          const aStatus = (d.passingStatus==='Pass'||d.passingStatus==='Passing') ? 'b-status-pass' : 'b-status-fail';
+          return '<div class="audit-item">'+
+            '<div class="audit-item-row" data-audit-toggle="'+item.queueId+'">'+
+              '<span class="a-chevron'+(isAuditOpen?' open':'')+'">&#9654;</span>'+
+              '<span style="font-size:0.75rem;color:#9ca3af;font-weight:600;min-width:1.25rem;">'+(ai+1)+'</span>'+
+              '<span class="a-name">'+esc(d.employeeName||'Unknown')+'</span>'+
+              '<span class="a-id">'+esc(d.interactionId||'N/A')+'</span>'+
+              '<span class="a-sc">'+esc(item.scorecardName||'')+'</span>'+
+              '<span class="a-score">'+(d.averageScore!=null?d.averageScore+'%':'N/A')+'</span>'+
+              '<span class="'+aStatus+'">'+esc(d.passingStatus||'N/A')+'</span>'+
+            '</div>'+
+            (isAuditOpen ? buildAuditDetail(item) : '')+
+          '</div>';
+        }).join('');
+
+        detailHTML =
+          '<div class="batch-detail">'+
+            '<div class="detail-cards">'+
+              '<div class="d-card"><div class="d-card-label">Avg Score</div><div class="d-card-val">'+(batch.averageScore||'N/A')+'%</div></div>'+
+              '<div class="d-card"><div class="d-card-label">Status</div><div><span class="'+sClass+'" style="font-size:0.75rem;">'+esc(batch.overallStatus)+'</span></div></div>'+
+              '<div class="d-card"><div class="d-card-label">Total Errors</div><div class="d-card-val" style="color:'+(batch.totalErrors>0?'#dc2626':'#16a34a')+';">'+(batch.totalErrors||0)+'</div></div>'+
+              '<div class="d-card"><div class="d-card-label">Critical</div><div class="d-card-val" style="color:'+(batch.totalCritical>0?'#dc2626':'#16a34a')+';">'+(batch.totalCritical||0)+'</div></div>'+
+              '<div class="d-card"><div class="d-card-label">Critical Fail</div><div class="d-card-val" style="color:'+(batch.totalCriticalFail>0?'#dc2626':'#16a34a')+';">'+(batch.totalCriticalFail||0)+'</div></div>'+
+            '</div>'+
+            auditRowsHTML+
+          '</div>';
+      }
+
+      return '<div class="batch-row">'+
+        '<div class="batch-summary" data-batch-toggle="'+batch.batchId+'">'+
+          '<span class="batch-chevron'+(isOpen?' open':'')+'">&#9654;</span>'+
+          '<span class="b-count">'+batch.auditCount+'</span>'+
+          '<span class="b-auditor">'+esc(batch.auditorName||'Unknown Auditor')+'</span>'+
+          '<span class="b-label">'+batch.auditCount+' audit'+(batch.auditCount!==1?'s':'')+'</span>'+
+          '<span class="b-score">'+(batch.averageScore||'N/A')+'%</span>'+
+          '<span class="'+sClass+'">'+esc(batch.overallStatus)+'</span>'+
+          '<span class="b-date">'+fmtDate(batch.createdAt)+'</span>'+
+          (isSuperAdmin ? '<button type="button" class="batch-sendback-btn" data-batch-sendback="'+batch.batchId+'">Send Back</button>' : '')+
+          '<button type="button" class="batch-submit-btn" data-batch-submit="'+batch.batchId+'">Submit ('+batch.auditCount+')</button>'+
+        '</div>'+
+        detailHTML+
+      '</div>';
+    }).join('');
+
+    container.innerHTML =
+      '<div class="queue-page-header">'+
+        '<h1>Audit Queue</h1>'+
+        '<div style="display:flex;gap:0.5rem;align-items:center;">'+
+          '<span class="badge badge-total">'+batches.length+' Batch'+(batches.length!==1?'es':'')+' &middot; '+totalAudits+' Audits</span>'+
+          '<span class="badge badge-queued">Not yet submitted</span>'+
+        '</div>'+
+      '</div>'+
+      '<div class="info-banner">'+
+        '<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>'+
+        '<span>Click a batch to expand and review. Click <strong>Submit</strong> to save to database and notify the agent.</span>'+
+      '</div>'+
+      '<div>'+batchHTML+'</div>'+
+      '<div class="queue-footer">'+
+        '<a href="/create-audit" class="btn btn-secondary">Add More Audits</a>'+
+      '</div>';
+
+    wireEvents();
+  }
+
+  function wireEvents() {
+    const container = document.getElementById('queueContent');
+
+    // Batch toggle (click row to expand, but not when clicking the submit button)
+    container.querySelectorAll('[data-batch-toggle]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        if (e.target.closest('[data-batch-submit]') || e.target.closest('[data-batch-sendback]')) return;
+        const bid = el.getAttribute('data-batch-toggle');
+        expandedAuditId = null;
+        expandedBatchId = (expandedBatchId===bid) ? null : bid;
+        renderQueue();
+      });
+    });
+
+    // Audit toggle
+    container.querySelectorAll('[data-audit-toggle]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        const aid = el.getAttribute('data-audit-toggle');
+        expandedAuditId = (expandedAuditId===aid) ? null : aid;
+        renderQueue();
+      });
+    });
+
+    // Load Conversation buttons
+    container.querySelectorAll('[data-convo-load]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var interactionId = btn.getAttribute('data-convo-load');
+        var targetId = btn.getAttribute('data-convo-target');
+        if (interactionId && targetId) {
+          loadConversation(interactionId, targetId, btn);
+        }
+      });
+    });
+
+    // Submit batch button (on the row)
+    container.querySelectorAll('[data-batch-submit]').forEach(function(btn) {
+      btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const bid = btn.getAttribute('data-batch-submit');
+        const batch = getBatches().find(function(b){return b.batchId===bid;});
+        if (!batch) return;
+        const ok = window.confirmationDialog
+          ? await window.confirmationDialog.show({title:'Submit Batch',message:'Submit '+batch.auditCount+' audit(s) to the database and notify the agent?\n\nThis cannot be undone.',confirmText:'Submit',cancelText:'Cancel',type:'warning'})
+          : confirm('Submit '+batch.auditCount+' audit(s)?');
+        if (ok) await submitBatch(batch);
+      });
+    });
+
+    // Send Back button (Super Admin only)
+    container.querySelectorAll('[data-batch-sendback]').forEach(function(btn) {
+      btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const bid = btn.getAttribute('data-batch-sendback');
+        const batch = getBatches().find(function(b){return b.batchId===bid;});
+        if (!batch) return;
+        const ok = window.confirmationDialog
+          ? await window.confirmationDialog.show({title:'Send Back to Auditor',message:'Send this batch of '+batch.auditCount+' audit(s) back to the auditor?\n\nThey will see the audits in their queue on the Create Audit page and can edit and re-submit.',confirmText:'Send Back',cancelText:'Cancel',type:'warning'})
+          : confirm('Send back '+batch.auditCount+' audit(s) to auditor?');
+        if (!ok) return;
+
+        // Move audits back to individual queue
+        const QUEUE_KEY = 'cqms_audit_queue';
+        let currentQueue = [];
+        try { currentQueue = JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); } catch(e) {}
+        const returnedAudits = batch.audits || [];
+        const combined = currentQueue.concat(returnedAudits);
+        localStorage.setItem(QUEUE_KEY, JSON.stringify(combined));
+
+        // Remove batch
+        saveBatches(getBatches().filter(function(b){return b.batchId!==bid;}));
+        if (expandedBatchId===bid) expandedBatchId=null;
+
+        // Show success
+        if (window.confirmationDialog) {
+          await window.confirmationDialog.show({title:'Batch Sent Back',message:batch.auditCount+' audit(s) sent back to the auditor\'s queue. They can review and re-submit from the Create Audit page.',confirmText:'OK',type:'success'});
+        } else {
+          alert('Batch sent back to auditor.');
+        }
+        renderQueue();
+      });
+    });
+  }
+
+  async function submitBatch(batch) {
+    if (!supabaseClient) { alert('Supabase not ready. Refresh.'); return; }
+    const audits = batch.audits || [];
+    if (audits.length===0) return;
+
+    const overlay = document.getElementById('submitProgressOverlay');
+    const bar = document.getElementById('submitProgressBar');
+    const text = document.getElementById('submitProgressText');
+    overlay.style.display='flex'; bar.style.width='0%';
+
+    const results = [];
+    for (let i=0; i<audits.length; i++) {
+      const item = audits[i];
+      text.textContent = 'Submitting '+(i+1)+' of '+audits.length+'...';
+      bar.style.width = Math.round(((i+1)/audits.length)*100)+'%';
+      try {
+        // Clean payload
+        const clean = Object.assign({}, item.payload);
+        delete clean._scorecard_id;
+        delete clean._scorecard_table;
+
+        const res = await supabaseClient.from(item.scorecardTableName).insert([clean]).select();
+        if (res.error) throw res.error;
+
+        results.push({queueId:item.queueId, displayData:item.displayData, scorecardName:item.scorecardName, success:true});
+
+        // Send email notification to the agent (non-blocking)
+        sendEmailNotification(clean, item.scorecardName);
+        sendN8nWebhook(clean, item.scorecardName, item.scorecardId, item.scorecardTableName);
+
+      } catch(err) {
+        results.push({queueId:item.queueId, displayData:item.displayData, scorecardName:item.scorecardName, success:false, error:err.message||'Error'});
+      }
+    }
+
+    bar.style.width='100%'; text.textContent='Done!';
+
+    const successCount = results.filter(r=>r.success).length;
+    const failureCount = results.filter(r=>!r.success).length;
+
+    // Persist batch to submitted_batches table for agent-side viewing (non-blocking)
+    if (successCount > 0) {
+      try {
+        text.textContent = 'Saving batch record...';
+        var emailSet = {};
+        var uniqueEmails = [];
+        audits.forEach(function(item) {
+          var email = (item.payload && item.payload.employee_email) || (item.displayData && item.displayData.employeeEmail) || '';
+          var lower = email.toLowerCase().trim();
+          if (lower && !emailSet[lower]) { emailSet[lower] = true; uniqueEmails.push(lower); }
+        });
+        var auditDataForStorage = audits.map(function(item) {
+          var cleanP = Object.assign({}, item.payload);
+          delete cleanP.transcript;
+          delete cleanP._scorecard_id;
+          delete cleanP._scorecard_table;
+          return { queueId: item.queueId, scorecardName: item.scorecardName, scorecardTableName: item.scorecardTableName, scorecardId: item.scorecardId, displayData: item.displayData, payload: cleanP };
+        });
+        await supabaseClient.from('submitted_batches').insert([{
+          batch_id: batch.batchId,
+          auditor_name: batch.auditorName || null,
+          auditor_email: batch.auditorEmail || null,
+          employee_emails: uniqueEmails,
+          audit_count: batch.auditCount || audits.length,
+          average_score: batch.averageScore || null,
+          overall_status: batch.overallStatus || null,
+          total_errors: batch.totalErrors || 0,
+          total_critical: batch.totalCritical || 0,
+          total_critical_fail: batch.totalCriticalFail || 0,
+          audit_data: auditDataForStorage,
+          submitted_at: new Date().toISOString()
+        }]);
+      } catch(batchErr) { console.error('Error persisting batch to submitted_batches:', batchErr); }
+    }
+
+    // Remove this batch from storage
+    saveBatches(getBatches().filter(function(b){return b.batchId!==batch.batchId;}));
+
+    // Store results for summary page
+    sessionStorage.setItem(BATCH_RESULTS_KEY, JSON.stringify({
+      results, successCount, failureCount, totalCount:results.length
+    }));
+
+    setTimeout(function(){ window.location.href='/batch-summary'; }, 400);
+  }
+
+  async function init() {
+    try {
+      const client = await initSupabase();
+      if (client) { supabaseClient=client; window.supabaseClient=client; }
+      const auth = await isAuthenticated();
+      if (!auth) { sessionStorage.setItem('redirectAfterLogin',window.location.pathname); window.location.href='/src/auth/presentation/auth-page.html'; return; }
+      // Check if current user is Super Admin
+      try { const ui = JSON.parse(localStorage.getItem('userInfo')||'{}'); isSuperAdmin = (ui.role === 'Super Admin'); } catch(e) {}
+    } catch(e) { console.error('Init error:',e); }
+    renderQueue();
+  }
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+</script>
+</body>
+</html>

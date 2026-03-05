@@ -17,27 +17,48 @@ let bannerInitialized = false;
  * Initialize the impersonation banner
  * Should be called on every page load
  */
-export function initImpersonationBanner(): void {
+export async function initImpersonationBanner(): Promise<void> {
   // Prevent multiple initializations
   if (bannerInitialized) {
     return;
   }
-  
+
   // Check URL for impersonation parameter
   checkImpersonationFromUrl();
-  
+
   // Check if we're in impersonation mode
   if (!isImpersonating()) {
     return;
   }
-  
-  bannerInitialized = true;
-  
+
   const info = getImpersonationInfo();
   if (!info) {
     return;
   }
-  
+
+  // Validate: if the actual Supabase session doesn't match the impersonated target,
+  // the impersonation state is stale (e.g. user logged out and back in as themselves)
+  try {
+    const { getSupabase } = await import('../utils/supabase-init.js');
+    const supabase = getSupabase();
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      const currentEmail = (user?.email || '').toLowerCase().trim();
+      const targetEmail = (info.targetEmail || '').toLowerCase().trim();
+      if (currentEmail && targetEmail && currentEmail !== targetEmail) {
+        logInfo('[ImpersonationBanner] Stale impersonation state detected (current: ' + currentEmail + ', target: ' + targetEmail + '). Clearing.');
+        sessionStorage.removeItem('impersonation_state');
+        sessionStorage.removeItem('exitImpersonationInProgress');
+        sessionStorage.removeItem('exitImpersonationStartedAt');
+        return;
+      }
+    }
+  } catch (e) {
+    logError('[ImpersonationBanner] Error validating impersonation state:', e);
+  }
+
+  bannerInitialized = true;
+
   logInfo('[ImpersonationBanner] Initializing banner for impersonation mode');
   
   // Create banner element

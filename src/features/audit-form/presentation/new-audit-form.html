@@ -1445,6 +1445,7 @@
         </div>
         <div style="display: flex; gap: 0.4852rem;">
         <button type="button" id="cancelBtn" style="padding: 0.4852rem 1.2937rem; background-color: white; color: #374151; border: 0.0405rem solid #d1d5db; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease;">Cancel</button>
+        <button type="button" id="addToQueueBtn" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(37, 99, 235, 0.2);">+ Add to Queue</button>
         <button type="submit" id="submitAuditBtn" style="padding: 0.4852rem 1.2937rem; background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%); color: white; border: none; border-radius: 0.2425rem; font-size: 0.5659rem; font-family: 'Poppins', sans-serif; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 0.0606rem 0.1213rem rgba(26, 115, 62, 0.2); position: relative;">✓ Submit Audit</button>
         </div>
     </div>
@@ -2478,7 +2479,7 @@ function displayPendingAudits() {
         auditCard.innerHTML = `
             <div style="flex: 1; display: flex; align-items: center; gap: 0.4852rem; ${clickHandler ? 'cursor: pointer;' : ''}" ${clickHandler}>
                 <div style="width: 1.6171rem; height: 1.6171rem; border-radius: 0.1617rem; background: #1A733E; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.5659rem; flex-shrink: 0;">
-                    ${escapeHtml(getInitials(displayName))}
+                    ${getInitials(displayName)}
                 </div>
                 <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; align-items: center; gap: 0.3234rem; margin-bottom: 0.1617rem;">
@@ -6162,46 +6163,74 @@ async function fetchConversationsForCurrentUser(selectedDate) {
         return;
     }
     
-    // No cache found, fetch from database
-    console.log('Fetching from database (no cache found)');
-
-    updateProgressIndicator(10, 'Loading from database...');
-
+    // No cache found, fetch from API
+    console.log('ðŸŒ Fetching from API (no cache found)');
+    
+    // Update progress: Initial
+    updateProgressIndicator(10, 'Pulling from Intercom...');
+    
     try {
-        const supabaseClient = window.SupabaseConfig?.getClient?.();
-        const client = supabaseClient && typeof supabaseClient.then === 'function' ? await supabaseClient : supabaseClient;
-        if (!client) {
-            throw new Error('Supabase client not available. Please log in again.');
+        // Build edge function URL
+        const updatedSince = `${selectedDate} 00:00:00`;
+        const updatedBefore = `${selectedDate} 23:59:59`;
+        const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}`;
+        
+        console.log('ðŸ"¡ Calling:', edgeFunctionUrl);
+        console.log('📅 Date range:', updatedSince, 'to', updatedBefore);
+        
+        // Get user's JWT token for authenticated request
+        const userToken = await window.getUserJWTToken();
+        if (!userToken) {
+            throw new Error('User authentication required. Please log in again.');
         }
         
-        const updatedSince = `${normalizedDate}T00:00:00.000Z`;
-        const updatedBefore = `${normalizedDate}T23:59:59.999Z`;
+        // Update progress: Searching
+        updateProgressIndicator(20, 'Searching conversations in Intercom...');
         
-        updateProgressIndicator(30, 'Querying conversations...');
-        
-        const { data: rows, error } = await client
-            .from('conversations')
-            .select('id, payload')
-            .eq('admin_id', normalizedAdminId)
-            .gte('updated_at', updatedSince)
-            .lte('updated_at', updatedBefore)
-            .order('updated_at', { ascending: false });
-        
-        if (error) {
-            throw new Error(error.message || 'Database query failed');
-        }
-        
-        updateProgressIndicator(70, 'Processing conversations...');
-        
-        let conversations = (rows || []).map(r => {
-            const p = r.payload;
-            if (p && typeof p === 'object') {
-                return { ...p, id: p.id != null ? p.id : r.id };
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${userToken}`,
+                'apikey': supabaseAnonKey,
+                'Accept': 'application/json'
             }
-            return { id: r.id, payload: p };
-        }).filter(c => c && c.id);
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+            throw new Error(errorMsg);
+        }
+
+        // Update progress: Processing
+        updateProgressIndicator(70, 'Processing participation data...');
         
-        console.log('Fetched ' + conversations.length + ' conversations from database');
+        const data = await response.json();
+        
+        // Extract conversations from response first to validate
+        let conversations = [];
+        if (data && Array.isArray(data.conversations)) {
+            conversations = data.conversations;
+        } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
+            conversations = data.conversations;
+        }
+        
+        const participationCount = data.participation_count || 0;
+        
+        // Only cache if we have valid data
+        if (data && conversations.length >= 0) {
+            console.log('ðŸ’¾ Attempting to cache data...', { adminId: normalizedAdminId, date: normalizedDate, conversationCount: conversations.length });
+            const cacheResult = await cacheConversations(normalizedAdminId, normalizedDate, data);
+            if (cacheResult) {
+                console.log('âœ… Cache saved successfully');
+            } else {
+                console.warn('âš ï¸ Cache save failed or was skipped');
+            }
+        } else {
+            console.warn('âš ï¸ Not caching: invalid or empty data', data);
+        }
+        
+        console.log(`âœ… Fetched ${conversations.length} participated conversations`);
         
         // Update progress: Complete
         updateProgressIndicator(100, 'Almost done...');
@@ -6856,15 +6885,12 @@ function updatePullConversationsActiveFilters() {
             activeFiltersCount.style.display = 'inline-block';
         }
         
-        activeFiltersTags.innerHTML = activeFilters.map(filter => {
-            const keyEscaped = String(filter.key).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-            return `
+        activeFiltersTags.innerHTML = activeFilters.map(filter => `
             <span style="background: #dbeafe; color: #1e40af; padding: 0.1617rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4447rem; font-weight: 500; display: flex; align-items: center; gap: 0.1617rem;">
                 ${escapeHtml(filter.label)}
-                <button onclick="removePullConversationFilter('${keyEscaped}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; margin-left: 0.1617rem; font-size: 0.5659rem; line-height: 1; font-weight: bold;" title="Remove filter">✕</button>
+                <button onclick="removePullConversationFilter('${filter.key}')" style="background: none; border: none; color: #1e40af; cursor: pointer; padding: 0; margin-left: 0.1617rem; font-size: 0.5659rem; line-height: 1; font-weight: bold;" title="Remove filter">✕</button>
             </span>
-        `;
-        }).join('');
+        `).join('');
     }
 }
 
@@ -9295,7 +9321,7 @@ function renderErrorParameters() {
             scoringTypeText = 'HYBRID';
         }
         
-        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(scorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + escapeHtml(scoringTypeText || '') + '</span>' : ''}`;
+        scorecardDisplay.innerHTML = `<svg style="width: 0.5659rem; height: 0.5659rem; display: inline-block; vertical-align: middle; margin-right: 0.2425rem;" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg> ${escapeHtml(scorecard.name || '')}${scoringTypeText ? ' <span style="background: rgba(255,255,255,0.25); padding: 0.0971rem 0.3234rem; border-radius: 0.1617rem; font-size: 0.4043rem; font-weight: 600; text-transform: uppercase; border: 0.0304rem solid rgba(255,255,255,0.4); margin-left: 0.3234rem; display: inline-flex; align-items: center; gap: 0.1617rem;">' + scoringTypeIcon + ' ' + scoringTypeText + '</span>' : ''}`;
     }
     
     console.log('[renderErrorParameters] About to iterate over', params.length, 'parameters');
@@ -9387,13 +9413,13 @@ function renderErrorParameters() {
         
         rowDiv.innerHTML = `
             <div style="font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0; overflow: hidden;">
-                <span style="font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};">${paramIcon}</span> ${escapeHtml(param.error_name || '')}
+                <span style="font-weight: 700; color: ${paramType === 'error' ? '#dc2626' : '#10b981'};">${paramIcon}</span> ${param.error_name}
             </div>
             <div style="display: flex; justify-content: center; font-size: 0.5659rem; color: #1f2937; font-weight: 600; font-family: 'Poppins', sans-serif; min-width: 0;">
                 ${param.penalty_points}
             </div>
             <div style="display: flex; justify-content: center; min-width: 0;">
-                <span style="background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;">${escapeHtml(severityLabel || '')}</span>
+                <span style="background: ${severityBg}; color: ${severityColor}; padding: 0.1617rem 0.4852rem; border-radius: 0.2425rem; font-size: 0.4852rem; font-weight: 600; font-family: 'Poppins', sans-serif; text-transform: uppercase; letter-spacing: 0.0151rem; white-space: nowrap;">${severityLabel}</span>
             </div>
             <div style="display: flex; justify-content: center; min-width: 0;">
                 ${inputHtml}
@@ -10728,7 +10754,7 @@ function initSearchableEmployeeDropdown() {
             const dept = opt.dataset.department || '';
             const meta = [channel, dept].filter(Boolean).join(' · ');
             const isSelected = opt.value === currentValue;
-            return `<div class="employee-search-item${isSelected ? ' selected' : ''}" data-index="${idx}" data-value="${escapeHtml(opt.value || '')}">
+            return `<div class="employee-search-item${isSelected ? ' selected' : ''}" data-index="${idx}" data-value="${opt.value}">
                 <span class="employee-name">${escapeHtml(name)}</span>
                 ${meta ? `<span class="employee-meta">${escapeHtml(email)}${meta ? ' · ' + escapeHtml(meta) : ''}</span>` : `<span class="employee-meta">${escapeHtml(email)}</span>`}
             </div>`;
@@ -14717,6 +14743,628 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
+        // ============================================================================
+        // Add to Queue functionality (NO database submission - queue only)
+        // Audits are stored in localStorage and reviewed on the /audit-queue page
+        // ============================================================================
+        const QUEUE_STORAGE_KEY = 'cqms_audit_queue';
+
+        function getAuditQueue() {
+            try { return JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) || '[]'); }
+            catch(e) { console.error('Error reading queue:', e); return []; }
+        }
+        function saveAuditQueue(queue) {
+            localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+        }
+        // Track which queue item is expanded for drill-in
+        var _queueExpandedId = null;
+
+        function _escQ(text) {
+            var d = document.createElement('div');
+            d.textContent = text || '';
+            return d.innerHTML;
+        }
+
+        function _buildDetailRow(label, value) {
+            return '<div style="display:flex;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid #f3f4f6;">' +
+                '<span style="font-size:0.75rem;font-weight:600;color:#6b7280;min-width:8rem;flex-shrink:0;">' + label + '</span>' +
+                '<span style="font-size:0.75rem;color:#111827;">' + _escQ(value) + '</span>' +
+            '</div>';
+        }
+
+        function _buildDrillIn(item) {
+            var d = item.displayData || {};
+            var p = item.payload || {};
+            var statusStyle = (d.passingStatus === 'Pass' || d.passingStatus === 'Passing')
+                ? 'background:#dcfce7;color:#166534;' : 'background:#fef2f2;color:#991b1b;';
+
+            // Build parameter details from payload
+            var paramRows = '';
+            if (item.payload) {
+                var feedbackKeys = Object.keys(item.payload).filter(function(k) { return k.startsWith('feedback_'); });
+                var paramKeys = Object.keys(item.payload).filter(function(k) {
+                    return !k.startsWith('feedback_') && !k.startsWith('_') &&
+                        ['submitted_at','auditor_email','auditor_name','employee_name','employee_email',
+                         'employee_type','employee_department','interaction_id','interaction_date','audit_type',
+                         'channel','quarter','week','country_of_employee','client_email','passing_status',
+                         'validation_status','average_score','critical_errors','critical_fail_error',
+                         'significant_error','total_errors_count','transcript','error_description',
+                         'recommendations','acknowledgement_status'].indexOf(k) === -1;
+                });
+                paramKeys.forEach(function(k) {
+                    var val = item.payload[k];
+                    if (val !== null && val !== undefined && val !== 0) {
+                        var label = k.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                        paramRows += _buildDetailRow(label, String(val));
+                    }
+                });
+                // Show feedback entries
+                feedbackKeys.forEach(function(fk) {
+                    var fbVal = item.payload[fk];
+                    if (fbVal && Array.isArray(fbVal) && fbVal.length > 0) {
+                        var label = fk.replace('feedback_', '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                        fbVal.forEach(function(fb, fi) {
+                            paramRows += '<div style="display:flex;gap:0.5rem;padding:0.35rem 0;border-bottom:1px solid #f3f4f6;">' +
+                                '<span style="font-size:0.75rem;font-weight:600;color:#6b7280;min-width:8rem;flex-shrink:0;">Feedback ' + (fi+1) + '</span>' +
+                                '<span style="font-size:0.75rem;color:#111827;">' + fb + '</span>' +
+                            '</div>';
+                        });
+                    }
+                });
+            }
+
+            return '<div style="background:#fafbfc;border-top:1px dashed #d1d5db;padding:0.75rem;animation:queueSlideDown 0.2s ease;">' +
+                // Top summary cards
+                '<div style="display:flex;gap:0.5rem;margin-bottom:0.6rem;flex-wrap:wrap;">' +
+                    '<div style="flex:1;min-width:5.5rem;background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem 0.625rem;">' +
+                        '<div style="font-size:0.625rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.03em;">Score</div>' +
+                        '<div style="font-size:1.125rem;font-weight:700;color:#111827;">' + (d.averageScore != null ? d.averageScore + '%' : 'N/A') + '</div>' +
+                    '</div>' +
+                    '<div style="flex:1;min-width:5.5rem;background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem 0.625rem;">' +
+                        '<div style="font-size:0.625rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.03em;">Status</div>' +
+                        '<div><span style="padding:0.15rem 0.4rem;border-radius:0.25rem;font-size:0.75rem;font-weight:600;' + statusStyle + '">' + _escQ(d.passingStatus||'N/A') + '</span></div>' +
+                    '</div>' +
+                    '<div style="flex:1;min-width:5.5rem;background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem 0.625rem;">' +
+                        '<div style="font-size:0.625rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.03em;">Total Errors</div>' +
+                        '<div style="font-size:1.125rem;font-weight:700;color:' + (d.totalErrorsCount > 0 ? '#dc2626' : '#16a34a') + ';">' + (d.totalErrorsCount||0) + '</div>' +
+                    '</div>' +
+                    '<div style="flex:1;min-width:5.5rem;background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem 0.625rem;">' +
+                        '<div style="font-size:0.625rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.03em;">Critical Errors</div>' +
+                        '<div style="font-size:1.125rem;font-weight:700;color:' + ((p.critical_errors||0) > 0 ? '#dc2626' : '#16a34a') + ';">' + (p.critical_errors||0) + '</div>' +
+                    '</div>' +
+                    '<div style="flex:1;min-width:5.5rem;background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem 0.625rem;">' +
+                        '<div style="font-size:0.625rem;color:#6b7280;text-transform:uppercase;font-weight:600;letter-spacing:0.03em;">Critical Fail</div>' +
+                        '<div style="font-size:1.125rem;font-weight:700;color:' + ((p.critical_fail_error||0) > 0 ? '#dc2626' : '#16a34a') + ';">' + (p.critical_fail_error||0) + '</div>' +
+                    '</div>' +
+                '</div>' +
+                // Detail fields
+                '<div style="background:white;border:1px solid #e5e7eb;border-radius:0.375rem;padding:0.5rem;">' +
+                    _buildDetailRow('Employee', d.employeeName) +
+                    _buildDetailRow('Email', d.employeeEmail) +
+                    _buildDetailRow('Interaction ID', d.interactionId) +
+                    _buildDetailRow('Channel', d.channel) +
+                    _buildDetailRow('Scorecard', item.scorecardName) +
+                    _buildDetailRow('Audit Type', p.audit_type) +
+                    _buildDetailRow('Queued At', item.queuedAt ? new Date(item.queuedAt).toLocaleString() : 'N/A') +
+                    (p.error_description ? _buildDetailRow('Error Description', p.error_description) : '') +
+                    (p.recommendations ? _buildDetailRow('Recommendations', p.recommendations) : '') +
+                    paramRows +
+                '</div>' +
+                // Remove button
+                '<div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">' +
+                    '<button type="button" data-remove-queue="' + item.queueId + '" style="padding:0.35rem 0.75rem;background:white;color:#ef4444;border:1px solid #fecaca;border-radius:0.25rem;font-size:0.75rem;font-family:Poppins,sans-serif;font-weight:500;cursor:pointer;">Remove from Queue</button>' +
+                '</div>' +
+            '</div>';
+        }
+
+        function renderQueueIndicator() {
+            var container = document.getElementById('auditQueueIndicator');
+            var buttonsBar = document.getElementById('addToQueueBtn');
+            if (buttonsBar) buttonsBar = buttonsBar.parentElement;
+            if (!buttonsBar) return;
+            var formActionsArea = buttonsBar.parentElement;
+            if (!formActionsArea) return;
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'auditQueueIndicator';
+                formActionsArea.insertBefore(container, buttonsBar);
+            }
+            var queue = getAuditQueue();
+            if (queue.length === 0) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+            container.style.display = 'block';
+
+            container.innerHTML =
+                '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.625rem 0.875rem;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:white;border-radius:0.5rem;margin-bottom:0.75rem;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' +
+                    '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+                        '<span style="background:rgba(255,255,255,0.25);padding:0.125rem 0.5rem;border-radius:1rem;font-size:0.8125rem;font-weight:700;font-family:Poppins,sans-serif;">' + queue.length + '</span>' +
+                        '<span style="font-size:0.875rem;font-weight:600;font-family:Poppins,sans-serif;">Audit' + (queue.length !== 1 ? 's' : '') + ' in Queue</span>' +
+                        '<span style="font-size:0.6875rem;opacity:0.7;font-family:Poppins,sans-serif;">(not yet submitted)</span>' +
+                    '</div>' +
+                    '<button type="button" id="openQueuePopupBtn" style="padding:0.375rem 1rem;background:rgba(255,255,255,0.95);color:#1e3a5f;border:none;border-radius:0.375rem;font-size:0.8125rem;font-family:Poppins,sans-serif;font-weight:700;cursor:pointer;transition:opacity 0.15s;" onmouseover="this.style.opacity=\'0.9\'" onmouseout="this.style.opacity=\'1\'">Review & Submit (' + queue.length + ')</button>' +
+                '</div>';
+
+            // Wire popup open
+            var openBtn = document.getElementById('openQueuePopupBtn');
+            if (openBtn) {
+                openBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openQueuePopup();
+                });
+            }
+        }
+
+        // ========== Queue Popup (full-page overlay with accordion/drill-in) ==========
+        function openQueuePopup() {
+            // Remove existing popup if any
+            var existing = document.getElementById('queuePopupOverlay');
+            if (existing) existing.remove();
+
+            // Inject animation styles once
+            if (!document.getElementById('queueAnimStyles')) {
+                var styleEl = document.createElement('style');
+                styleEl.id = 'queueAnimStyles';
+                styleEl.textContent =
+                    '@keyframes queueSlideDown{from{opacity:0;max-height:0;padding:0 0.75rem}to{opacity:1;max-height:60rem;padding:0.75rem}}' +
+                    '@keyframes queueFadeIn{from{opacity:0}to{opacity:1}}' +
+                    '@keyframes queueScaleIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}';
+                document.head.appendChild(styleEl);
+            }
+
+            var queue = getAuditQueue();
+
+            // Build accordion rows
+            var accordionHTML = queue.map(function(item, i) {
+                var d = item.displayData || {};
+                var isExpanded = _queueExpandedId === item.queueId;
+                var statusStyle = (d.passingStatus === 'Pass' || d.passingStatus === 'Passing')
+                    ? 'background:#dcfce7;color:#166534;' : 'background:#fef2f2;color:#991b1b;';
+
+                var row = '<div data-queue-row="' + item.queueId + '" style="border-bottom:1px solid #e5e7eb;">' +
+                    '<div data-queue-toggle="' + item.queueId + '" style="display:flex;align-items:center;gap:0.625rem;padding:0.625rem 1rem;cursor:pointer;transition:background 0.15s;' + (isExpanded ? 'background:#f0f7ff;' : '') + '" onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'' + (isExpanded ? '#f0f7ff' : 'white') + '\'">' +
+                        '<span style="font-size:0.75rem;color:#6b7280;transition:transform 0.2s;display:inline-block;' + (isExpanded ? 'transform:rotate(90deg);' : '') + '">&#9654;</span>' +
+                        '<span style="font-size:0.75rem;color:#9ca3af;font-weight:600;min-width:1.5rem;">' + (i+1) + '</span>' +
+                        '<span style="font-size:0.8125rem;font-weight:600;color:#111827;min-width:9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escQ(d.employeeName||'Unknown') + '</span>' +
+                        '<span style="font-size:0.75rem;color:#6b7280;min-width:7rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escQ(d.interactionId||'N/A') + '</span>' +
+                        '<span style="font-size:0.75rem;color:#374151;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _escQ(item.scorecardName||'') + '</span>' +
+                        '<span style="font-size:0.8125rem;font-weight:700;color:#111827;min-width:3rem;text-align:right;">' + (d.averageScore != null ? d.averageScore + '%' : 'N/A') + '</span>' +
+                        '<span style="padding:0.15rem 0.4rem;border-radius:0.25rem;font-size:0.6875rem;font-weight:600;' + statusStyle + '">' + _escQ(d.passingStatus||'N/A') + '</span>' +
+                        '<button type="button" data-remove-queue="' + item.queueId + '" style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:1.125rem;line-height:1;padding:0 0.2rem;margin-left:auto;" title="Remove" onmouseover="this.style.color=\'#ef4444\'" onmouseout="this.style.color=\'#d1d5db\'">&times;</button>' +
+                    '</div>';
+
+                if (isExpanded) {
+                    row += _buildDrillIn(item);
+                }
+                row += '</div>';
+                return row;
+            }).join('');
+
+            // Create overlay
+            var overlay = document.createElement('div');
+            overlay.id = 'queuePopupOverlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:1.5rem;animation:queueFadeIn 0.2s ease;';
+
+            overlay.innerHTML =
+                '<div style="background:white;border-radius:0.75rem;width:100%;max-width:60rem;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,0.25);animation:queueScaleIn 0.2s ease;">' +
+                    // Popup header
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:white;border-radius:0.75rem 0.75rem 0 0;flex-shrink:0;">' +
+                        '<div style="display:flex;align-items:center;gap:0.625rem;">' +
+                            '<span style="background:rgba(255,255,255,0.25);padding:0.2rem 0.6rem;border-radius:1rem;font-size:0.875rem;font-weight:700;font-family:Poppins,sans-serif;">' + queue.length + '</span>' +
+                            '<span style="font-size:1rem;font-weight:600;font-family:Poppins,sans-serif;">Audit' + (queue.length !== 1 ? 's' : '') + ' in Queue</span>' +
+                            '<span style="font-size:0.75rem;opacity:0.7;font-family:Poppins,sans-serif;">(not yet submitted)</span>' +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;gap:0.5rem;">' +
+                            '<button type="button" id="queuePopupClearAll" style="padding:0.35rem 0.875rem;background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:0.375rem;font-size:0.75rem;font-family:Poppins,sans-serif;font-weight:500;cursor:pointer;">Clear All</button>' +
+                            '<button type="button" id="queuePopupClose" style="background:none;border:none;color:white;cursor:pointer;font-size:1.5rem;line-height:1;padding:0 0.25rem;opacity:0.8;" onmouseover="this.style.opacity=\'1\'" onmouseout="this.style.opacity=\'0.8\'">&times;</button>' +
+                        '</div>' +
+                    '</div>' +
+                    // Accordion list (scrollable)
+                    '<div id="queuePopupList" style="overflow-y:auto;flex:1;">' +
+                        accordionHTML +
+                    '</div>' +
+                    // Footer with Submit All
+                    '<div style="display:flex;align-items:center;justify-content:space-between;padding:0.875rem 1.25rem;border-top:1px solid #e5e7eb;background:#f9fafb;border-radius:0 0 0.75rem 0.75rem;flex-shrink:0;">' +
+                        '<span style="font-size:0.75rem;color:#6b7280;font-family:Poppins,sans-serif;">' + queue.length + ' audit' + (queue.length !== 1 ? 's' : '') + ' ready to submit</span>' +
+                        '<div style="display:flex;gap:0.5rem;">' +
+                            '<button type="button" id="queuePopupCancel" style="padding:0.5rem 1.25rem;background:white;color:#374151;border:1px solid #d1d5db;border-radius:0.375rem;font-size:0.8125rem;font-family:Poppins,sans-serif;font-weight:600;cursor:pointer;">Close</button>' +
+                            '<button type="button" id="queuePopupSubmitAll" style="padding:0.5rem 1.5rem;background:linear-gradient(135deg,#1A733E 0%,#2d9a5a 100%);color:white;border:none;border-radius:0.375rem;font-size:0.8125rem;font-family:Poppins,sans-serif;font-weight:700;cursor:pointer;">Submit All (' + queue.length + ')</button>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+
+            document.body.appendChild(overlay);
+
+            // Wire close (X button, Cancel, click on backdrop)
+            function closePopup() {
+                var el = document.getElementById('queuePopupOverlay');
+                if (el) el.remove();
+            }
+            document.getElementById('queuePopupClose').addEventListener('click', closePopup);
+            document.getElementById('queuePopupCancel').addEventListener('click', closePopup);
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closePopup();
+            });
+
+            // Wire toggle (expand/collapse rows)
+            overlay.querySelectorAll('[data-queue-toggle]').forEach(function(row) {
+                row.addEventListener('click', function(e) {
+                    if (e.target.closest('[data-remove-queue]')) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var qid = row.getAttribute('data-queue-toggle');
+                    _queueExpandedId = (_queueExpandedId === qid) ? null : qid;
+                    refreshQueuePopupList();
+                });
+            });
+
+            // Wire remove buttons
+            overlay.querySelectorAll('[data-remove-queue]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    var qid = btn.getAttribute('data-remove-queue');
+                    if (_queueExpandedId === qid) _queueExpandedId = null;
+                    var q = getAuditQueue().filter(function(x) { return x.queueId !== qid; });
+                    saveAuditQueue(q);
+                    renderQueueIndicator();
+                    // If queue is now empty, close popup
+                    if (q.length === 0) { closePopup(); return; }
+                    // Refresh popup content
+                    openQueuePopup();
+                });
+            });
+
+            // Wire Clear All
+            document.getElementById('queuePopupClearAll').addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var confirmed = false;
+                if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                    confirmed = await window.confirmationDialog.show({
+                        title: 'Clear All Queued Audits',
+                        message: 'Remove all ' + queue.length + ' queued audit(s)? This cannot be undone.',
+                        confirmText: 'Clear All',
+                        cancelText: 'Cancel',
+                        type: 'warning'
+                    });
+                } else {
+                    confirmed = confirm('Remove all ' + queue.length + ' queued audit(s)?');
+                }
+                if (confirmed) {
+                    _queueExpandedId = null;
+                    localStorage.removeItem(QUEUE_STORAGE_KEY);
+                    renderQueueIndicator();
+                    closePopup();
+                }
+            });
+
+            // Wire Submit All — creates a batch and moves to Audit Queue page (NO DB submission)
+            document.getElementById('queuePopupSubmitAll').addEventListener('click', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var q = getAuditQueue();
+                if (q.length === 0) return;
+
+                // Calculate averages for the batch summary line
+                var totalScore = 0, scoreCount = 0, totalErrors = 0, totalCritical = 0, totalCriticalFail = 0;
+                var allPassing = true;
+                q.forEach(function(item) {
+                    var d = item.displayData || {};
+                    var p = item.payload || {};
+                    if (d.averageScore != null) { totalScore += parseFloat(d.averageScore); scoreCount++; }
+                    totalErrors += (d.totalErrorsCount || 0);
+                    totalCritical += (p.critical_errors || 0);
+                    totalCriticalFail += (p.critical_fail_error || 0);
+                    if (d.passingStatus !== 'Pass' && d.passingStatus !== 'Passing') allPassing = false;
+                });
+                var avgScore = scoreCount > 0 ? (totalScore / scoreCount).toFixed(2) : null;
+                var overallStatus = allPassing ? 'Passing' : 'Failing';
+
+                // Get auditor info from the first item
+                var firstPayload = q[0].payload || {};
+                var auditorName = firstPayload.auditor_name || '';
+                var auditorEmail = firstPayload.auditor_email || '';
+
+                // Create a batch object
+                var batch = {
+                    batchId: Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9),
+                    createdAt: new Date().toISOString(),
+                    auditorName: auditorName,
+                    auditorEmail: auditorEmail,
+                    auditCount: q.length,
+                    averageScore: avgScore,
+                    overallStatus: overallStatus,
+                    totalErrors: totalErrors,
+                    totalCritical: totalCritical,
+                    totalCriticalFail: totalCriticalFail,
+                    audits: q  // all individual audits nested inside
+                };
+
+                // Save batch to localStorage
+                var BATCHES_KEY = 'cqms_audit_batches';
+                var batches = [];
+                try { batches = JSON.parse(localStorage.getItem(BATCHES_KEY) || '[]'); } catch(e) {}
+                batches.push(batch);
+                localStorage.setItem(BATCHES_KEY, JSON.stringify(batches));
+
+                // Clear individual queue
+                localStorage.removeItem(QUEUE_STORAGE_KEY);
+                renderQueueIndicator();
+                closePopup();
+
+                // Navigate to Audit Queue page
+                window.location.href = '/audit-queue';
+            });
+        }
+
+        function refreshQueuePopupList() {
+            // Re-open popup to refresh (preserves expanded state via _queueExpandedId)
+            openQueuePopup();
+        }
+
+        // Render queue indicator on load
+        renderQueueIndicator();
+
+        // Add to Queue button handler - DOES NOT submit to database
+        var addToQueueBtn = document.getElementById('addToQueueBtn');
+        if (addToQueueBtn) {
+            addToQueueBtn.addEventListener('click', async function(e) {
+                // CRITICAL: Prevent any form submission
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+
+                console.log('[QUEUE] Add to Queue button clicked - NO DB submission');
+
+                if (isSubmitting) {
+                    console.log('[QUEUE] Submission in progress, ignoring');
+                    return;
+                }
+
+                try {
+                    // Validate scorecard
+                    if (!currentScorecard || !currentParameters || currentParameters.length === 0) {
+                        await window.confirmationDialog.show({
+                            title: 'Choose a scorecard',
+                            message: 'Select a scorecard first so we know which criteria to use for this audit.',
+                            confirmText: 'OK',
+                            type: 'warning'
+                        });
+                        return;
+                    }
+
+                    // Update week/quarter, error description, duration
+                    updateWeekAndQuarter();
+                    populateErrorDescription();
+                    if (window.updateAuditDuration) window.updateAuditDuration();
+
+                    // Sync chat transcript
+                    var chatMessagesContainer2 = document.getElementById('chatMessagesContainer');
+                    var transcriptTextarea2 = document.getElementById('transcript');
+                    if (chatMessagesContainer2 && transcriptTextarea2 && chatMessagesContainer2.children.length > 0) {
+                        syncChatMessagesToTextarea();
+                    }
+
+                    // Collect form data
+                    var formData2 = new FormData(auditForm);
+                    var auditData2 = {};
+                    for (var pair of formData2.entries()) {
+                        auditData2[pair[0]] = pair[1];
+                    }
+
+                    // Validate interaction ID
+                    var interactionIdField2 = document.getElementById('interactionId');
+                    if (!interactionIdField2 || !interactionIdField2.value || !interactionIdField2.value.trim()) {
+                        await window.confirmationDialog.show({
+                            title: 'Almost there',
+                            message: 'Add an Interaction ID so we can link this audit to the right conversation.',
+                            confirmText: 'OK',
+                            type: 'warning'
+                        });
+                        if (interactionIdField2) interactionIdField2.focus();
+                        return;
+                    }
+
+                    // Validate employee (skip in calibration mode)
+                    if (!isCalibrationMode) {
+                        var empSelect = document.getElementById('employeeName');
+                        var empEmail = document.getElementById('employeeEmail');
+                        var hasEmp = (empSelect && empSelect.selectedIndex > 0) || (empEmail && empEmail.value && empEmail.value.trim());
+                        if (!hasEmp) {
+                            await window.confirmationDialog.show({
+                                title: 'Almost there',
+                                message: 'Select an employee so we can record who this audit is for.',
+                                confirmText: 'OK',
+                                type: 'warning'
+                            });
+                            return;
+                        }
+                    }
+
+                    // Validate feedback
+                    var queueValidationErrors = [];
+                    currentParameters.forEach(function(param) {
+                        var errorCount = 0;
+                        if (param.field_type === 'radio') {
+                            var sel = document.querySelector('input[name="' + param.field_id + '"]:checked');
+                            if (sel) {
+                                var v = parseInt(sel.value) || 0;
+                                var pt = param.parameter_type || 'error';
+                                errorCount = (pt === 'achievement' || pt === 'bonus') ? (v === 0 ? 1 : 0) : v;
+                            }
+                        } else {
+                            var f = document.getElementById(param.field_id);
+                            errorCount = f ? (parseInt(f.value) || 0) : 0;
+                        }
+                        if (errorCount > 0) {
+                            var feedbackCount = Math.min(errorCount, 10);
+                            for (var i = 0; i < feedbackCount; i++) {
+                                var fid = 'feedback_' + param.field_id + '_' + i;
+                                var hasContent = false;
+                                if (quillInstances.has(fid)) {
+                                    var q = quillInstances.get(fid);
+                                    var html = q.root.innerHTML;
+                                    hasContent = html && html.trim() && html !== '<p><br></p>';
+                                } else {
+                                    var ff = document.getElementById(fid);
+                                    hasContent = ff && ff.value && ff.value.trim();
+                                }
+                                if (!hasContent) {
+                                    queueValidationErrors.push('"' + param.error_name + '" (Feedback ' + (i+1) + ' of ' + feedbackCount + ')');
+                                }
+                            }
+                        }
+                    });
+                    if (queueValidationErrors.length > 0) {
+                        await window.confirmationDialog.show({
+                            title: 'Almost there',
+                            message: 'Add feedback for each item below:\n\n\u2022 ' + queueValidationErrors.slice(0,5).join('\n\u2022 ') + (queueValidationErrors.length > 5 ? '\n\n... and ' + (queueValidationErrors.length-5) + ' more' : ''),
+                            confirmText: 'OK',
+                            type: 'warning'
+                        });
+                        return;
+                    }
+
+                    // Collect dynamic parameter fields + feedback
+                    currentParameters.forEach(function(param) {
+                        if (param.field_type === 'radio') {
+                            var sel = document.querySelector('input[name="' + param.field_id + '"]:checked');
+                            auditData2[param.field_id] = sel ? parseInt(sel.value) : 0;
+                        } else {
+                            var f = document.getElementById(param.field_id);
+                            auditData2[param.field_id] = f ? (parseInt(f.value) || 0) : 0;
+                        }
+                        // Collect feedback
+                        var feedbacks = [];
+                        var fc = document.getElementById('feedback_container_' + param.field_id);
+                        if (fc) {
+                            fc.querySelectorAll('.quill-editor-container').forEach(function(cont, idx) {
+                                var fid2 = 'feedback_' + param.field_id + '_' + idx;
+                                if (quillInstances.has(fid2)) {
+                                    var q = quillInstances.get(fid2);
+                                    var html = q.root.innerHTML;
+                                    if (html && html.trim() && html !== '<p><br></p>') {
+                                        feedbacks.push(DOMPurify.sanitize(html.trim(), { ALLOWED_TAGS: ['p','br','strong','b','em','i','u','ul','ol','li','a'], ALLOWED_ATTR: ['href','target','rel'] }));
+                                    }
+                                }
+                            });
+                        }
+                        auditData2['feedback_' + param.field_id] = feedbacks.length > 0 ? feedbacks : null;
+                    });
+
+                    // Get employee name (same logic as handleSubmit)
+                    var empSel = document.getElementById('employeeName');
+                    if (empSel && empSel.selectedIndex > 0) {
+                        auditData2.employeeName = empSel.options[empSel.selectedIndex].textContent.trim();
+                    }
+                    // Get channel name
+                    var chSel = document.getElementById('channel');
+                    if (chSel && chSel.selectedIndex > 0) {
+                        auditData2.channel = chSel.options[chSel.selectedIndex].textContent.trim();
+                    }
+                    // Recommendations
+                    var recField = document.getElementById('recommendations');
+                    if (recField && recField.value && recField.value.trim()) {
+                        auditData2.recommendations = recField.value.trim();
+                    }
+
+                    // Build audit payload (same structure as handleSubmit) - stored locally, NOT sent to DB
+                    var queuePayload = {
+                        id: 'audit_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+                        submitted_at: new Date().toISOString(),
+                        auditor_email: auditData2.auditorEmail || null,
+                        auditor_name: auditData2.auditorName || null,
+                        employee_name: auditData2.employeeName || null,
+                        employee_email: auditData2.employeeEmail || null,
+                        employee_type: auditData2.employeeType || null,
+                        employee_department: auditData2.employeeDepartment || null,
+                        interaction_id: auditData2.interactionId || null,
+                        interaction_date: auditData2.interactionDate || null,
+                        audit_type: auditData2.auditType || null,
+                        channel: auditData2.channel || null,
+                        quarter: auditData2.quarter || null,
+                        week: auditData2.week ? parseInt(auditData2.week) : null,
+                        country_of_employee: auditData2.countryOfEmployee || null,
+                        client_email: auditData2.clientEmail || null,
+                        passing_status: auditData2.passingStatus || null,
+                        validation_status: auditData2.validationStatus || null,
+                        average_score: auditData2.averageScore ? parseFloat(auditData2.averageScore) : null,
+                        critical_errors: auditData2.criticalErrors ? parseInt(auditData2.criticalErrors) : 0,
+                        critical_fail_error: auditData2.criticalFailError ? parseInt(auditData2.criticalFailError) : 0,
+                        significant_error: auditData2.significantError ? parseInt(auditData2.significantError) : 0,
+                        total_errors_count: auditData2.totalErrorsCount ? parseInt(auditData2.totalErrorsCount) : 0,
+                        transcript: auditData2.transcript || null,
+                        error_description: auditData2.errorDescription || null,
+                        recommendations: auditData2.recommendations || null,
+                        acknowledgement_status: 'Pending',
+                        _scorecard_id: currentScorecard ? currentScorecard.id : null,
+                        _scorecard_table: currentScorecard ? currentScorecard.table_name : null
+                    };
+                    // Add dynamic parameter fields
+                    currentParameters.forEach(function(param) {
+                        queuePayload[param.field_id] = auditData2[param.field_id] || 0;
+                        var fbKey = 'feedback_' + param.field_id;
+                        if (auditData2[fbKey]) queuePayload[fbKey] = auditData2[fbKey];
+                    });
+
+                    // Add to queue in localStorage (NO database insertion)
+                    var queue = getAuditQueue();
+                    var queuedItem = {
+                        queueId: Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 9),
+                        queuedAt: new Date().toISOString(),
+                        scorecardTableName: currentScorecard.table_name,
+                        scorecardName: currentScorecard.name || '',
+                        scorecardId: currentScorecard.id || '',
+                        payload: queuePayload,
+                        displayData: {
+                            employeeName: queuePayload.employee_name || '',
+                            employeeEmail: queuePayload.employee_email || '',
+                            interactionId: queuePayload.interaction_id || '',
+                            channel: queuePayload.channel || '',
+                            averageScore: queuePayload.average_score,
+                            passingStatus: queuePayload.passing_status || '',
+                            totalErrorsCount: queuePayload.total_errors_count || 0
+                        }
+                    };
+                    queue.push(queuedItem);
+                    saveAuditQueue(queue);
+                    renderQueueIndicator();
+
+                    console.log('[QUEUE] Audit added to queue (localStorage only). Queue size:', queue.length);
+
+                    // Show success toast and navigate back to Create Audit to pick next conversation
+                    await window.confirmationDialog.show({
+                        title: 'Added to Queue',
+                        message: 'Audit queued (' + queue.length + ' total). This audit has NOT been submitted yet.\n\nTaking you back to pick the next conversation.',
+                        confirmText: 'OK',
+                        type: 'success'
+                    });
+
+                    // Navigate back to Create Audit page so user can pick next conversation
+                    window.location.href = '/create-audit';
+
+                } catch (queueError) {
+                    console.error('[QUEUE] Error adding to queue:', queueError);
+                    if (window.confirmationDialog && typeof window.confirmationDialog.show === 'function') {
+                        await window.confirmationDialog.show({
+                            title: 'Queue Error',
+                            message: 'Failed to add audit to queue: ' + (queueError.message || 'Unknown error'),
+                            confirmText: 'OK',
+                            type: 'error'
+                        });
+                    } else {
+                        alert('Failed to add audit to queue: ' + (queueError.message || 'Unknown error'));
+                    }
+                }
+            });
+        } else {
+            console.error('[QUEUE] addToQueueBtn not found in DOM!');
+        }
+
         // Add event listener for interaction date to update header metadata
         const interactionDateField = document.getElementById('interactionDate');
         if (interactionDateField) {

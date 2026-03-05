@@ -1751,12 +1751,9 @@
             </select>
           </div>
           <div class="maar-filter-group maar-filter-group-dates">
-            <label class="maar-filter-lbl" for="filter-from-date">From</label>
-            <input type="date" class="maar-select maar-input-date" id="filter-from-date" />
-          </div>
-          <div class="maar-filter-group">
-            <label class="maar-filter-lbl" for="filter-to-date">To</label>
-            <input type="date" class="maar-select maar-input-date" id="filter-to-date" />
+            <input type="hidden" id="filter-from-date" />
+            <input type="hidden" id="filter-to-date" />
+            <div id="maarDatePickerContainer"></div>
           </div>
           <div class="maar-filter-actions">
             <button type="button" class="maar-filter-btn" id="filter-apply"><span class="maar-btn-spinner"></span><span class="maar-btn-text">Apply</span></button>
@@ -4114,6 +4111,29 @@
           }
         } catch (e) { console.warn('[MassiveAI] Scorecards fetch failed', e); }
 
+        // Initialize DateRangePicker for date filters
+        try {
+          const { DateRangePicker } = await import('/js/date-range-picker.js');
+          const maarPickerContainer = $('maarDatePickerContainer');
+          if (maarPickerContainer) {
+            window._maarDatePicker = new DateRangePicker(maarPickerContainer, {
+              mode: 'range',
+              label: 'Date Range',
+              onApply: function(range) {
+                var fmt = function(d) { return d.toISOString().split('T')[0]; };
+                var fromVal = fmt(range.from);
+                var toVal = range.to ? fmt(range.to) : fromVal;
+                if ($('filter-from-date')) $('filter-from-date').value = fromVal;
+                if ($('filter-to-date')) $('filter-to-date').value = toVal;
+              },
+              onClear: function() {
+                if ($('filter-from-date')) $('filter-from-date').value = '';
+                if ($('filter-to-date')) $('filter-to-date').value = '';
+              }
+            });
+          }
+        } catch (e) { console.error('[MassiveAI] Failed to load DateRangePicker:', e); }
+
         // 1. Fetch jobs list (with optional filters from URL or defaults)
         await loadBatchesWithFilters();
 
@@ -4169,6 +4189,7 @@
             if ($('filter-scorecard')) $('filter-scorecard').value = '';
             if ($('filter-from-date')) $('filter-from-date').value = '';
             if ($('filter-to-date')) $('filter-to-date').value = '';
+            if (window._maarDatePicker) window._maarDatePicker.setRange(null, null);
             setFilterLoading(true);
             try {
               await loadBatchesWithFilters();

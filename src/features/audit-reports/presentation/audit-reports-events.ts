@@ -235,270 +235,55 @@ export class AuditReportsEventHandlers {
   }
 
   /**
-   * Setup date filter listeners
+   * Setup date filter listeners — initializes the DateRangePicker component
    */
   private setupDateFilterListeners(): void {
-    const dateBtn = document.getElementById('dateBtn');
-    if (dateBtn) {
-      dateBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const dropdown = document.getElementById('dateDropdown');
-        if (dropdown) {
-          // Toggle using CSS class like auditor's dashboard
-          dropdown.classList.toggle('active');
-        }
-      });
-    }
+    this.initDateRangePicker();
+  }
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-      if (!(e.target as HTMLElement).closest('.date-picker-dropdown')) {
-        const dropdown = document.getElementById('dateDropdown');
-        if (dropdown) dropdown.classList.remove('active');
-      }
-    });
+  /**
+   * Initialize the DateRangePicker component via dynamic import.
+   * Replaces the old date-picker-dropdown and quick-date-buttons.
+   */
+  private async initDateRangePicker(): Promise<void> {
+    const container = document.getElementById('reportsDatePickerContainer');
+    if (!container) return;
 
-    // Prevent clicks inside dropdown from closing it
-    const dropdown = document.getElementById('dateDropdown');
-    if (dropdown) {
-      dropdown.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-    }
+    try {
+      const { DateRangePicker } = await import('/js/date-range-picker.js' as any);
 
-    // Apply date filter
-    const applyDateFilter = document.getElementById('applyDateFilter');
-    if (applyDateFilter) {
-      applyDateFilter.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const startDate = (document.getElementById('startDate') as HTMLInputElement)?.value;
-        const endDate = (document.getElementById('endDate') as HTMLInputElement)?.value;
-        
-        if (startDate && endDate) {
-          // Clear quick date button active states
-          const quickDateButtons = ['todayBtn', 'yesterdayBtn', 'thisWeekBtn', 'lastWeekBtn', 'thisMonthBtn', 'lastMonthBtn'];
-          quickDateButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.classList.remove('active');
-          });
-          
-          this.controller.setDateRange({ startDate, endDate });
-        }
-        
-        // Close the dropdown after applying (like auditor's dashboard)
-        const dateDropdown = document.getElementById('dateDropdown');
-        if (dateDropdown) dateDropdown.classList.remove('active');
-      });
-    }
+      const picker = new DateRangePicker(container, {
+        mode: 'range',
+        label: 'Date Range',
+        defaultPreset: 'last30',
+        onApply: ({ from, to }: { from: Date; to: Date | null }) => {
+          const startDateInput = document.getElementById('startDate') as HTMLInputElement;
+          const endDateInput = document.getElementById('endDate') as HTMLInputElement;
 
-    // Clear date filter
-    const clearDateFilter = document.getElementById('clearDateFilter');
-    if (clearDateFilter) {
-      clearDateFilter.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const startDateInput = document.getElementById('startDate') as HTMLInputElement;
-        const endDateInput = document.getElementById('endDate') as HTMLInputElement;
-        if (startDateInput) startDateInput.value = '';
-        if (endDateInput) endDateInput.value = '';
-        
-        // Clear quick date button active states
-        const quickDateButtons = ['todayBtn', 'yesterdayBtn', 'thisMonthBtn', 'lastMonthBtn'];
-        quickDateButtons.forEach(id => {
-          const btn = document.getElementById(id);
-          if (btn) btn.classList.remove('active');
-        });
-        
-        this.controller.setDateRange(null);
-        const dateBtnText = document.getElementById('dateBtnText');
-        if (dateBtnText) dateBtnText.textContent = 'Date Range';
-        
-        // Close the dropdown after clearing (like auditor's dashboard)
-        const dateDropdown = document.getElementById('dateDropdown');
-        if (dateDropdown) dateDropdown.classList.remove('active');
-      });
-    }
-    
-    // Prevent date inputs from closing dropdown
-    const startDateInput = document.getElementById('startDate');
-    const endDateInput = document.getElementById('endDate');
-    if (startDateInput) {
-      startDateInput.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-    }
-    if (endDateInput) {
-      endDateInput.addEventListener('click', (e) => {
-        e.stopPropagation();
-      });
-    }
+          if (from) {
+            const startStr = this.formatDateToYYYYMMDD(from);
+            const endStr = to ? this.formatDateToYYYYMMDD(to) : startStr;
 
-    // Quick date filters - use event delegation to ensure they work even after re-renders
-    const headerActions = document.getElementById('headerActions');
-    if (headerActions) {
-      // Use event delegation for quick date buttons
-      headerActions.addEventListener('click', (e) => {
-        const target = e.target as HTMLElement;
-        const btn = target.closest('.quick-date-btn') as HTMLButtonElement;
-        if (btn && btn.id) {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          const btnId = btn.id;
-          const quickDateButtons = ['todayBtn', 'yesterdayBtn', 'thisWeekBtn', 'lastWeekBtn', 'thisMonthBtn', 'lastMonthBtn'];
-          
-          if (quickDateButtons.includes(btnId)) {
-            // Remove active class from all
-            quickDateButtons.forEach(id => {
-              const b = document.getElementById(id);
-              if (b) b.classList.remove('active');
-            });
-            btn.classList.add('active');
+            if (startDateInput) startDateInput.value = startStr;
+            if (endDateInput) endDateInput.value = endStr;
 
-            const range = this.getQuickDateRange(btnId);
-            if (range) {
-              logInfo(`Setting date range from quick button: ${btnId}`);
-              // Disable week filter when using quick date buttons
-              (this.controller as any).useWeekFilter = false;
-              this.controller.setDateRange(range);
-              (this.controller as any).updateWeekDisplay();
-            }
+            this.controller.setDateRange({ startDate: startStr, endDate: endStr });
           }
+        },
+        onClear: () => {
+          const startDateInput = document.getElementById('startDate') as HTMLInputElement;
+          const endDateInput = document.getElementById('endDate') as HTMLInputElement;
+          if (startDateInput) startDateInput.value = '';
+          if (endDateInput) endDateInput.value = '';
+          this.controller.setDateRange(null);
         }
       });
-    }
-    
-    // Also attach direct listeners as fallback (in case delegation doesn't work)
-    const quickDateButtons = ['todayBtn', 'yesterdayBtn', 'thisWeekBtn', 'lastWeekBtn', 'thisMonthBtn', 'lastMonthBtn'];
-    quickDateButtons.forEach(btnId => {
-      const btn = document.getElementById(btnId);
-      if (btn) {
-        // Store handler reference to avoid duplicates
-        const handler = (e: Event) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          // Remove active class from all
-          quickDateButtons.forEach(id => {
-            const b = document.getElementById(id);
-            if (b) b.classList.remove('active');
-          });
-          btn.classList.add('active');
 
-          const range = this.getQuickDateRange(btnId);
-          if (range) {
-            logInfo(`Setting date range from direct listener: ${btnId}`);
-            this.controller.setDateRange(range);
-          }
-        };
-        
-        // Remove existing listener if any
-        btn.removeEventListener('click', handler);
-        btn.addEventListener('click', handler);
-      }
-    });
-  }
-
-  /**
-   * Get current week dates (Monday to Sunday)
-   */
-  private getCurrentWeekDates(): { start: Date; end: Date } {
-    // Use Dhaka timezone if available
-    const now = (window as any).getDhakaNow ? (window as any).getDhakaNow() : new Date();
-    return this.getWeekDatesForDate(now);
-  }
-  
-  /**
-   * Get week dates for a given date (Monday to Sunday)
-   */
-  private getWeekDatesForDate(date: Date): { start: Date; end: Date } {
-    // Use Dhaka timezone if available
-    if ((window as any).getDhakaWeekNumber && (window as any).getDhakaWeekDates) {
-      const weekNumber = (window as any).getDhakaWeekNumber(date);
-      const year = date.getFullYear();
-      return (window as any).getDhakaWeekDates(weekNumber, year);
+      // Store picker reference on window for external access if needed
+      (window as any).__reportsDateRangePicker = picker;
+    } catch (err) {
+      logError('[AuditReportsEvents] Failed to initialize DateRangePicker:', err);
     }
-    
-    // Standard week calculation (Monday to Sunday)
-    const workingDate = new Date(date);
-    const dayOfWeek = workingDate.getDay();
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Days to Monday
-    const monday = new Date(workingDate);
-    monday.setDate(workingDate.getDate() + diff);
-    monday.setHours(0, 0, 0, 0);
-    
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    
-    return { start: monday, end: sunday };
-  }
-  
-  /**
-   * Apply week date range
-   */
-  private applyWeekRange(weekDates: { start: Date; end: Date }): void {
-    const startDate = weekDates.start.toISOString().split('T')[0];
-    const endDate = weekDates.end.toISOString().split('T')[0];
-    
-    // Clear quick date button active states
-    const quickDateButtons = ['todayBtn', 'yesterdayBtn', 'thisMonthBtn', 'lastMonthBtn'];
-    quickDateButtons.forEach(id => {
-      const btn = document.getElementById(id);
-      if (btn) btn.classList.remove('active');
-    });
-    
-    // Set date range
-    this.controller.setDateRange({ startDate, endDate });
-    
-    // Update date inputs
-    const startDateInput = document.getElementById('startDate') as HTMLInputElement;
-    const endDateInput = document.getElementById('endDate') as HTMLInputElement;
-    if (startDateInput) startDateInput.value = startDate;
-    if (endDateInput) endDateInput.value = endDate;
-    
-    // Update date button text
-    const dateBtnText = document.getElementById('dateBtnText');
-    if (dateBtnText) {
-      dateBtnText.textContent = `${startDate} to ${endDate}`;
-    }
-    
-    // Update week display
-    this.updateWeekDisplay(weekDates);
-  }
-  
-  /**
-   * Update week display text
-   */
-  private updateWeekDisplay(weekDates: { start: Date; end: Date }): void {
-    const weekText = document.getElementById('weekText');
-    if (weekText) {
-      const startStr = weekDates.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      const endStr = weekDates.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-      weekText.textContent = `${startStr} - ${endStr}`;
-    }
-  }
-  
-  /**
-   * Format date as "15 Jan 2026"
-   */
-  private formatDate(date: Date | string): string {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-  
-  /**
-   * Format date range for display
-   */
-  private formatDateRange(startDate: string, endDate: string): string {
-    const start = this.formatDate(startDate);
-    const end = this.formatDate(endDate);
-    
-    // If same date, show only once
-    if (startDate === endDate) {
-      return start;
-    }
-    
-    return `${start} to ${end}`;
   }
 
   /**
@@ -509,130 +294,6 @@ export class AuditReportsEventHandlers {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  }
-
-  /**
-   * Get quick date range
-   */
-  private getQuickDateRange(buttonId: string): { startDate: string; endDate: string } | null {
-    // Use Dhaka timezone functions if available
-    const getDhakaStartOfDay = (window as any).getDhakaStartOfDay;
-    const getDhakaEndOfDay = (window as any).getDhakaEndOfDay;
-    const getDhakaFirstDayOfMonth = (window as any).getDhakaFirstDayOfMonth;
-    const getDhakaLastDayOfMonth = (window as any).getDhakaLastDayOfMonth;
-    const getDhakaNow = (window as any).getDhakaNow;
-    
-    let start: Date;
-    let end: Date;
-
-    switch (buttonId) {
-      case 'todayBtn':
-        // Today: same date for start and end
-        if (getDhakaStartOfDay && getDhakaEndOfDay) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          start = getDhakaStartOfDay(today);
-          end = getDhakaEndOfDay(today);
-        } else {
-          const now = new Date();
-          start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        }
-        break;
-      case 'yesterdayBtn':
-        // Yesterday: same date for start and end
-        if (getDhakaStartOfDay && getDhakaEndOfDay) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          start = getDhakaStartOfDay(yesterday);
-          end = getDhakaEndOfDay(yesterday);
-        } else {
-          const now = new Date();
-          const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-          start = new Date(yesterday);
-          end = new Date(yesterday);
-        }
-        break;
-      case 'thisMonthBtn':
-        if (getDhakaFirstDayOfMonth && getDhakaLastDayOfMonth) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          start = getDhakaFirstDayOfMonth(today);
-          end = getDhakaLastDayOfMonth(today);
-        } else {
-          start = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-          end = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
-        }
-        break;
-      case 'thisWeekBtn':
-        // This Week: Monday to Sunday of current week
-        const getDhakaWeekNumber = (window as any).getDhakaWeekNumber;
-        const getDhakaWeekDates = (window as any).getDhakaWeekDates;
-        if (getDhakaWeekNumber && getDhakaWeekDates) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          const weekNumber = getDhakaWeekNumber(today);
-          const year = today.getFullYear();
-          const weekDates = getDhakaWeekDates(weekNumber, year);
-          start = getDhakaStartOfDay ? getDhakaStartOfDay(weekDates.start) : weekDates.start;
-          end = getDhakaEndOfDay ? getDhakaEndOfDay(weekDates.end) : weekDates.end;
-        } else {
-          const now = new Date();
-          const dayOfWeek = now.getDay();
-          const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Days to Monday
-          start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
-          end = new Date(start);
-          end.setDate(start.getDate() + 6);
-        }
-        break;
-      case 'lastWeekBtn':
-        // Last Week: Monday to Sunday of previous week
-        const getDhakaWeekNumber2 = (window as any).getDhakaWeekNumber;
-        const getDhakaWeekDates2 = (window as any).getDhakaWeekDates;
-        if (getDhakaWeekNumber2 && getDhakaWeekDates2) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          const currentWeekNumber = getDhakaWeekNumber2(today);
-          const year = today.getFullYear();
-          let lastWeekNumber = currentWeekNumber - 1;
-          let lastWeekYear = year;
-          if (lastWeekNumber < 1) {
-            lastWeekNumber = 52;
-            lastWeekYear = year - 1;
-          }
-          const weekDates = getDhakaWeekDates2(lastWeekNumber, lastWeekYear);
-          start = getDhakaStartOfDay ? getDhakaStartOfDay(weekDates.start) : weekDates.start;
-          end = getDhakaEndOfDay ? getDhakaEndOfDay(weekDates.end) : weekDates.end;
-        } else {
-          const now = new Date();
-          const dayOfWeek = now.getDay();
-          const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Days to Monday
-          const thisWeekMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff);
-          start = new Date(thisWeekMonday);
-          start.setDate(thisWeekMonday.getDate() - 7); // Previous week Monday
-          end = new Date(start);
-          end.setDate(start.getDate() + 6); // Previous week Sunday
-        }
-        break;
-      case 'lastMonthBtn':
-        if (getDhakaFirstDayOfMonth && getDhakaLastDayOfMonth) {
-          const today = getDhakaNow ? getDhakaNow() : new Date();
-          const lastMonth = new Date(today);
-          lastMonth.setMonth(lastMonth.getMonth() - 1);
-          start = getDhakaFirstDayOfMonth(lastMonth);
-          end = getDhakaLastDayOfMonth(lastMonth);
-        } else {
-          const now = new Date();
-          start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          end = new Date(now.getFullYear(), now.getMonth(), 0);
-        }
-        break;
-      default:
-        return null;
-    }
-
-    // Format dates in local timezone (not UTC)
-    return {
-      startDate: this.formatDateToYYYYMMDD(start),
-      endDate: this.formatDateToYYYYMMDD(end)
-    };
   }
 
   /**

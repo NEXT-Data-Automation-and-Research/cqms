@@ -324,34 +324,10 @@
     flex-shrink: 0 !important;
   }
   
-  /* Quick date buttons - Hidden on mobile, visible on desktop */
-  .quick-date-buttons-container {
-    display: none !important;
-  }
-  
-  /* Hide on mobile and tablet */
-  @media screen and (max-width: 1024px) {
-    .quick-date-buttons-container {
-      display: none !important;
-    }
-    
-    .quick-date-btn {
-      display: none !important;
-    }
-  }
-  
-  /* Show on desktop */
-  @media screen and (min-width: 1025px) {
-    .quick-date-buttons-container {
-      display: flex !important;
-      align-items: center;
-      gap: 0.375rem;
-      flex-wrap: nowrap;
-    }
-    
-    .quick-date-btn {
-      display: inline-flex !important;
-    }
+  /* DateRangePicker container */
+  #reportsDatePickerContainer {
+    display: inline-block;
+    flex-shrink: 0;
   }
   
   /* Ensure main content doesn't block filters */
@@ -383,17 +359,12 @@
     display: block !important;
   }
   
-  /* Ensure date dropdown appears above filter panel */
-  .date-picker-dropdown {
-    position: relative !important;
+  /* Ensure DateRangePicker dropdown appears above filter panel */
+  #reportsDatePickerContainer .drp-root {
     z-index: 1001 !important;
   }
-  
-  .date-dropdown-menu {
-    z-index: 1002 !important;
-  }
-  
-  .date-dropdown-menu.active {
+
+  #reportsDatePickerContainer .drp-dropdown {
     z-index: 1002 !important;
   }
 </style>

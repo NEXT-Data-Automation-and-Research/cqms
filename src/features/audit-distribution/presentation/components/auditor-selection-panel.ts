@@ -146,15 +146,8 @@ export class AuditorSelectionPanel {
               </svg>
               <span>Schedule Date <span class="text-white/50 font-normal text-xs">(Optional)</span></span>
             </label>
-            <div class="relative">
-              <input
-                type="date"
-                id="scheduledDateInput"
-                class="filter-input text-sm px-3 py-2.5 border border-white/20 rounded-lg bg-white/10 backdrop-blur-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all w-full placeholder:text-white/50 focus:bg-white/15"
-                min="${new Date().toISOString().split('T')[0]}"
-              />
-              <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            </div>
+            <input type="hidden" id="scheduledDateInput" />
+            <div id="scheduledDatePickerContainer"></div>
             <div class="flex items-center gap-2 flex-wrap">
               <button
                 class="px-3 py-1.5 text-xs border border-white/20 rounded-lg bg-white/10 backdrop-blur-sm text-white hover:bg-white/20 hover:border-primary/50 transition-all font-medium flex items-center gap-1.5"
@@ -464,12 +457,25 @@ export class AuditorSelectionPanel {
     });
 
     const dateInput = this.container.querySelector('#scheduledDateInput') as HTMLInputElement;
-    dateInput?.addEventListener('change', () => {
-      const date = dateInput.value ? new Date(dateInput.value) : null;
-      if (this.config.onScheduledDateChange) {
-        this.config.onScheduledDateChange(date);
-      }
-    });
+
+    // Initialize DateRangePicker in SINGLE mode
+    const pickerContainer = this.container.querySelector('#scheduledDatePickerContainer') as HTMLElement;
+    if (pickerContainer) {
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(pickerContainer, {
+          mode: 'single',
+          initialDate: dateInput?.value || null,
+          onApply: (dateStr: string) => {
+            if (dateInput) dateInput.value = dateStr;
+            const date = dateStr ? new Date(dateStr) : null;
+            if (this.config.onScheduledDateChange) {
+              this.config.onScheduledDateChange(date);
+            }
+          }
+        });
+      })();
+    }
 
     const dateButtons = this.container.querySelectorAll('[onclick*="setDate"]');
     dateButtons.forEach(btn => {

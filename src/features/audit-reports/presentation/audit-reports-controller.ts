@@ -141,18 +141,6 @@ export class AuditReportsController {
     if (startDateInput) startDateInput.value = startDate;
     if (endDateInput) endDateInput.value = endDate;
     
-    // Update date button text if present
-    const dateBtnText = document.getElementById('dateBtnText');
-    if (dateBtnText) {
-      dateBtnText.textContent = this.formatDateRange(startDate, endDate);
-    }
-    
-    // Mark "This Month" button as active
-    const thisMonthBtn = document.getElementById('thisMonthBtn');
-    if (thisMonthBtn) {
-      thisMonthBtn.classList.add('active');
-    }
-    
     logInfo('[AuditReports] Set default date range to current month:', { startDate, endDate });
   }
 
@@ -513,56 +501,23 @@ export class AuditReportsController {
   }
 
   /**
-   * Format date as "15 Jan 2026"
-   */
-  private formatDate(date: Date | string): string {
-    const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  }
-  
-  /**
-   * Format date range for display
-   */
-  private formatDateRange(startDate: string, endDate: string): string {
-    const start = this.formatDate(startDate);
-    const end = this.formatDate(endDate);
-    
-    // If same date, show only once
-    if (startDate === endDate) {
-      return start;
-    }
-    
-    return `${start} to ${end}`;
-  }
-
-  /**
    * Set date range
    */
   setDateRange(dateRange: DateRange | null): void {
     this.dateRange = dateRange;
     
-    // Update date input fields if date range is set
+    // Update hidden date input fields for backward compatibility
     if (dateRange) {
       const startDateInput = document.getElementById('startDate') as HTMLInputElement;
       const endDateInput = document.getElementById('endDate') as HTMLInputElement;
       if (startDateInput) startDateInput.value = dateRange.startDate;
       if (endDateInput) endDateInput.value = dateRange.endDate;
-      
-      // Update date button text with formatted date
-      const dateBtnText = document.getElementById('dateBtnText');
-      if (dateBtnText) {
-        dateBtnText.textContent = this.formatDateRange(dateRange.startDate, dateRange.endDate);
-      }
     } else {
       // Clear date inputs if date range is cleared
       const startDateInput = document.getElementById('startDate') as HTMLInputElement;
       const endDateInput = document.getElementById('endDate') as HTMLInputElement;
       if (startDateInput) startDateInput.value = '';
       if (endDateInput) endDateInput.value = '';
-      
-      // Reset date button text
-      const dateBtnText = document.getElementById('dateBtnText');
-      if (dateBtnText) dateBtnText.textContent = 'Date Range';
     }
     
     this.applyFilters();

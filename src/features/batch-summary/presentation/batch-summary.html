@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/console-stub.js"></script>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Batch Submission Summary | CQMS</title>
+<meta name="description" content="Quality Management System - Batch Audit Submission Summary">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<link rel="stylesheet" href="/sidebar.css">
+<link rel="modulepreload" href="/js/load-sidebar.js">
+<script type="importmap">
+{
+  "imports": {
+    "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+    "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+  }
+}
+</script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: #f3f4f6;
+    color: #1f2937;
+  }
+  .main-content {
+    margin-left: var(--sidebar-collapsed, 3.5rem);
+    transition: margin-left 0.3s ease;
+    padding: 1.5rem;
+    min-height: 100vh;
+  }
+  .summary-card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    max-width: 70rem;
+    margin: 0 auto;
+  }
+  .summary-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .summary-header h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-success { background: #dcfce7; color: #166534; }
+  .badge-error { background: #fef2f2; color: #991b1b; }
+  .badge-total { background: #eff6ff; color: #1e40af; }
+  .stats-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  thead th {
+    background: #f9fafb;
+    border-bottom: 2px solid #e5e7eb;
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    font-size: 0.6875rem;
+    letter-spacing: 0.025em;
+  }
+  tbody td {
+    border-bottom: 1px solid #f3f4f6;
+    padding: 0.625rem 0.75rem;
+    color: #4b5563;
+  }
+  tbody tr:hover { background: #f9fafb; }
+  .status-pass {
+    background: #dcfce7; color: #166534;
+    padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-weight: 600; font-size: 0.6875rem;
+  }
+  .status-fail {
+    background: #fef2f2; color: #991b1b;
+    padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-weight: 600; font-size: 0.6875rem;
+  }
+  .result-success { color: #16a34a; font-weight: 600; }
+  .result-failed { color: #dc2626; font-weight: 600; }
+  .actions-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+  }
+  .btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: none;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #1A733E 0%, #2d9a5a 100%);
+    color: white;
+  }
+  .btn-secondary {
+    background: white;
+    color: #374151;
+    border: 1px solid #d1d5db;
+  }
+  .btn:hover { opacity: 0.9; }
+  .empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6b7280;
+  }
+  .empty-state h2 { font-size: 1.125rem; margin-bottom: 0.5rem; color: #374151; }
+</style>
+</head>
+<body>
+<div class="main-content">
+  <div class="summary-card">
+    <div id="batchSummaryContent">
+      <div class="empty-state">
+        <h2>No batch results found</h2>
+        <p>Submit a batch of audits from the Create Audit page to see results here.</p>
+        <div class="actions-row" style="justify-content: center; margin-top: 1rem;">
+          <a href="/create-audit" class="btn btn-primary">Go to Create Audit</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/auth-checker.js"></script>
+<script type="module" src="/js/load-sidebar.js"></script>
+
+<script type="module">
+  const RESULTS_KEY = 'cqms_batch_results';
+
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text || '';
+    return div.innerHTML;
+  }
+
+  function renderSummary() {
+    const container = document.getElementById('batchSummaryContent');
+    if (!container) return;
+
+    let result;
+    try {
+      const raw = sessionStorage.getItem(RESULTS_KEY);
+      result = raw ? JSON.parse(raw) : null;
+    } catch {
+      result = null;
+    }
+
+    if (!result || !result.results || result.results.length === 0) return;
+
+    const { results, successCount, failureCount, totalCount } = result;
+
+    const rowsHTML = results.map((item, i) => {
+      const d = item.displayData || {};
+      const statusClass = d.passingStatus === 'Pass' ? 'status-pass' : 'status-fail';
+      const resultClass = item.success ? 'result-success' : 'result-failed';
+      const resultText = item.success ? 'Saved' : 'Failed';
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${escapeHtml(d.employeeName)}</td>
+          <td style="font-size: 0.75rem; color: #6b7280;">${escapeHtml(d.employeeEmail)}</td>
+          <td>${escapeHtml(d.interactionId)}</td>
+          <td>${escapeHtml(item.scorecardName)}</td>
+          <td>${escapeHtml(d.channel)}</td>
+          <td>${d.averageScore != null ? d.averageScore + '%' : 'N/A'}</td>
+          <td><span class="${statusClass}">${escapeHtml(d.passingStatus || 'N/A')}</span></td>
+          <td class="${resultClass}">${resultText}${item.error ? ' - ' + escapeHtml(item.error) : ''}</td>
+        </tr>
+      `;
+    }).join('');
+
+    container.innerHTML = `
+      <div class="summary-header">
+        <h1>Batch Submission Summary</h1>
+        <div class="stats-row">
+          <span class="badge badge-total">Total: ${totalCount}</span>
+          <span class="badge badge-success">Saved: ${successCount}</span>
+          ${failureCount > 0 ? `<span class="badge badge-error">Failed: ${failureCount}</span>` : ''}
+        </div>
+      </div>
+
+      ${failureCount > 0 ? `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.375rem; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.8125rem; color: #991b1b;">
+          ${failureCount} audit(s) failed to save. They remain in the queue — go back to Create Audit to retry.
+        </div>
+      ` : ''}
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Employee</th>
+            <th>Email</th>
+            <th>Interaction ID</th>
+            <th>Scorecard</th>
+            <th>Channel</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHTML}
+        </tbody>
+      </table>
+
+      <div class="actions-row">
+        <a href="/create-audit" class="btn btn-secondary">Back to Create Audit</a>
+        <a href="/audit-reports" class="btn btn-primary">View Audit Reports</a>
+      </div>
+    `;
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderSummary);
+  } else {
+    renderSummary();
+  }
+</script>
+</body>
+</html>

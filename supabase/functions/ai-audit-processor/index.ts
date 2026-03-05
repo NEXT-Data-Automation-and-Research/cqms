@@ -4,42 +4,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// SECURITY: No fallback - require N8N_WEBHOOK_URL to be set in Supabase secrets
-const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL')
+const N8N_WEBHOOK_URL = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8nnextventures.xyz/webhook/22648ca5-9b72-4d20-83da-879fd163b66e'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || ''
-
-// CORS: use CORS_ALLOWED_ORIGINS (comma-separated) in Supabase secrets. If unset, use * so existing deployments don't break.
-const CORS_ALLOWED_ORIGINS_RAW = Deno.env.get('CORS_ALLOWED_ORIGINS') ?? ''
-const CORS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS_RAW ? CORS_ALLOWED_ORIGINS_RAW.split(',').map((s) => s.trim()).filter(Boolean) : []
-const CORS_USE_WILDCARD = CORS_ALLOWED_ORIGINS.length === 0
-
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get('Origin')
-  let allowOrigin = '*'
-  if (!CORS_USE_WILDCARD && CORS_ALLOWED_ORIGINS.length > 0) {
-    if (origin && CORS_ALLOWED_ORIGINS.includes(origin)) allowOrigin = origin
-    else if (!origin) allowOrigin = CORS_ALLOWED_ORIGINS[0]
-  }
-  return {
-    'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Max-Age': '86400',
-  }
-}
-
-/** Redact PII for logging: do not log emails, names, or conversation content. */
-function redactForLog<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
-  const out: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    if (k.toLowerCase().includes('email') || k.toLowerCase().includes('name') || k === 'created_by' || k === 'auditor_email' || k === 'employee_name' || k === 'employee_email') {
-      out[k] = v != null && String(v).length > 0 ? '[REDACTED]' : v
-    } else {
-      out[k] = v
-    }
-  }
-  return out
-}
 
 interface Conversation {
   id: string
@@ -60,7 +26,12 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: getCorsHeaders(req),
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        'Access-Control-Max-Age': '86400',
+      },
     })
   }
 
@@ -90,17 +61,18 @@ serve(async (req) => {
     let body: RequestBody
     try {
       body = await req.json()
-      // SECURITY: Log only non-PII metadata; do not log emails, names, or conversation content
-      console.log('📥 Received request:', redactForLog({
+      console.log('📥 Received request body:', {
         conversations_count: body.conversations?.length || 0,
+        employee_email: body.employee_email,
+        employee_name: body.employee_name,
         scorecard_id: body.scorecard_id,
-        audit_date: body.audit_date
-      }))
-    } catch (parseError: unknown) {
-      const msg = parseError instanceof Error ? parseError.message : 'Parse error'
-      console.error('❌ Error parsing request body:', msg)
+        audit_date: body.audit_date,
+        auditor_email: body.auditor_email
+      })
+    } catch (parseError) {
+      console.error('❌ Error parsing request body:', parseError)
       return new Response(
-        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        JSON.stringify({ error: 'Invalid JSON in request body', details: parseError.message }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       )
     }
@@ -116,7 +88,11 @@ serve(async (req) => {
     }
 
     if (!employee_email || !scorecard_id || !audit_date) {
-      console.error('❌ Validation error: Missing required fields (employee_email, scorecard_id, audit_date)')
+      console.error('❌ Validation error: Missing required fields', {
+        has_employee_email: !!employee_email,
+        has_scorecard_id: !!scorecard_id,
+        has_audit_date: !!audit_date
+      })
       return new Response(
         JSON.stringify({ error: 'Missing required fields: employee_email, scorecard_id, audit_date' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -131,15 +107,14 @@ serve(async (req) => {
 
     // Get current user info for created_by
     const userInfoHeader = req.headers.get('x-user-info') || '{}'
-    let userInfo: { email?: string } = {}
+    let userInfo = {}
     try {
-      userInfo = JSON.parse(userInfoHeader) as { email?: string }
+      userInfo = JSON.parse(userInfoHeader)
     } catch (e) {
-      console.warn('⚠️ Could not parse x-user-info header')
+      console.warn('⚠️ Could not parse x-user-info header:', userInfoHeader)
     }
     const createdBy = auditor_email || userInfo.email || 'system'
-    // SECURITY: Do not log email/PII
-    console.log('👤 Request has created_by (redacted)')
+    console.log(`👤 Created by: ${createdBy}`)
 
     // NO assignments created here - we'll create them later when user clicks "Start Audit"
     // Just prepare data to send to n8n
@@ -159,8 +134,7 @@ serve(async (req) => {
     }))
     
     console.log(`📋 Prepared ${conversationsPayload.length} conversation payloads`)
-    // SECURITY: Do not log payload content (may contain PII); log only structure
-    console.log('📋 Payload keys per item:', conversationsPayload[0] ? Object.keys(conversationsPayload[0]).join(', ') : 'none')
+    console.log(`📋 Sample conversation payload:`, conversationsPayload[0] || 'none')
     
     const n8nPayload = {
       conversations: conversationsPayload,
@@ -170,8 +144,7 @@ serve(async (req) => {
     
     console.log(`📦 Payload prepared (size: ${JSON.stringify(n8nPayload).length} bytes)`)
     console.log(`📤 Sending ${conversations.length} conversations to n8n webhook via POST`)
-    // SECURITY: Do not log webhook URL (sensitive)
-    console.log('🔗 Webhook configured')
+    console.log(`🔗 Webhook URL: ${N8N_WEBHOOK_URL}`)
     
     try {
       console.log(`🚀 Initiating POST to n8n webhook...`)
@@ -190,18 +163,29 @@ serve(async (req) => {
 
       if (!n8nResponse.ok) {
         const errorText = await n8nResponse.text()
-        // SECURITY: Log status only; do not log response body (may contain PII)
-        console.error('❌ n8n webhook error:', n8nResponse.status, n8nResponse.statusText)
+        console.error('❌ n8n webhook error response:', {
+          status: n8nResponse.status,
+          statusText: n8nResponse.statusText,
+          error: errorText,
+          url: N8N_WEBHOOK_URL
+        })
         throw new Error(`n8n webhook failed: ${n8nResponse.status} - ${errorText}`)
       }
 
-      await n8nResponse.text() // consume body
+      const responseText = await n8nResponse.text()
       console.log('✅ Successfully sent to n8n webhook')
-      // SECURITY: Do not log n8n response body (may contain PII/AI output)
+      console.log(`📥 n8n response:`, responseText || '(empty response)')
       
     } catch (fetchError) {
-      // SECURITY: Log error details but not URL or payload content
-      console.error('❌ Error calling n8n webhook:', fetchError.message, 'payload_size:', JSON.stringify(n8nPayload).length)
+      console.error('❌ Error calling n8n webhook:', {
+        error: fetchError.message,
+        error_name: fetchError.name,
+        error_type: fetchError.constructor.name,
+        stack: fetchError.stack,
+        url: N8N_WEBHOOK_URL,
+        payload_size: JSON.stringify(n8nPayload).length,
+        timestamp: new Date().toISOString()
+      })
       
       // Check if it's a network error
       if (fetchError.message.includes('fetch')) {
@@ -220,20 +204,31 @@ serve(async (req) => {
       }),
       {
         status: 200,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
       }
     )
 
   } catch (error) {
-    // SECURITY: Log error message only; avoid logging stack in production (may leak paths)
-    console.error('❌ Error in ai-audit-processor:', error?.message ?? String(error))
+    console.error('❌ Error in ai-audit-processor:', {
+      error: error.message,
+      stack: error.stack,
+      name: error.name,
+      cause: error.cause
+    })
     return new Response(
-      JSON.stringify({
-        error: error?.message || 'Internal server error'
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        details: error.stack || 'No stack trace available'
       }),
       {
         status: 500,
-        headers: { 'Content-Type': 'application/json', ...getCorsHeaders(req) },
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
       }
     )
   }

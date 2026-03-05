@@ -310,11 +310,25 @@ export class ConversationsPanel {
     const endDate = this.container.querySelector('#conversation-end-date') as HTMLInputElement;
     const searchInput = this.container.querySelector('#conversation-search') as HTMLInputElement;
 
-    [startDate, endDate].forEach(input => {
-      input?.addEventListener('change', () => this.pullConversations());
-    });
-
     searchInput?.addEventListener('input', () => this.applyFilters());
+
+    // Initialize DateRangePicker in RANGE mode for conversation date filters
+    const dateRangePickerContainer = this.container.querySelector('#conversationDateRangePickerContainer') as HTMLElement;
+    if (dateRangePickerContainer) {
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(dateRangePickerContainer, {
+          mode: 'range',
+          initialStartDate: startDate?.value || null,
+          initialEndDate: endDate?.value || null,
+          onApply: (start: string, end: string) => {
+            if (startDate) startDate.value = start;
+            if (endDate) endDate.value = end;
+            this.pullConversations();
+          }
+        });
+      })();
+    }
   }
 
   onConversationsSelected(callback: (conversationIds: string[]) => void): void {
@@ -1257,7 +1271,6 @@ export class ConversationsPanel {
         </button>
       ` : '';
       
-      const idForClipboard = String(conv.id).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
       return `
         <div class="conversation-card ${isSelected ? 'conversation-card-selected' : ''}" data-conversation-id="${this.escapeHtml(conv.id)}">
           <!-- Card Header -->
@@ -1267,7 +1280,7 @@ export class ConversationsPanel {
                      value="${this.escapeHtml(conv.id)}" ${isSelected ? 'checked' : ''} />
               <div class="conversation-id-tile flex items-center gap-1.5 group cursor-pointer flex-shrink-0" 
                    title="Click to copy conversation ID: ${this.escapeHtml(conv.id)}"
-                   onclick="navigator.clipboard.writeText('${idForClipboard}').then(() => { const el = event.currentTarget.querySelector('.copy-indicator'); if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '📋'; }, 2000); } })">
+                   onclick="navigator.clipboard.writeText('${this.escapeHtml(conv.id)}').then(() => { const el = event.currentTarget.querySelector('.copy-indicator'); if (el) { el.textContent = '✓'; setTimeout(() => { el.textContent = '📋'; }, 2000); } })">
                 <span class="text-white/80 text-xs font-mono font-semibold hover:text-white transition-colors">${this.escapeHtml(shortId)}</span>
                 <span class="copy-indicator text-white/40 group-hover:text-white/70 text-xs transition-colors" title="Click to copy">📋</span>
               </div>

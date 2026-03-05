@@ -236,12 +236,6 @@
     background-color: var(--primary-green-dark) !important;
   }
 
-  /* Week display button - green background */
-  .week-display {
-    background-color: var(--primary-green) !important;
-    color: white !important;
-  }
-
   /* Active quick date button */
   .quick-date-btn.active {
     background-color: var(--primary-green) !important;
@@ -1506,54 +1500,11 @@
 
     <!-- Action Buttons -->
     <div class="header-actions">
-      <!-- Week Navigation -->
-      <div class="week-nav-container">
-        <button class="action-btn week-btn" id="prevWeekBtn" title="Previous Week">
-          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-          </svg>
-        </button>
-        <div class="action-btn week-display" id="weekDisplay">
-          <span id="weekText">Week -</span>
-        </div>
-        <button class="action-btn week-btn" id="nextWeekBtn" title="Next Week">
-          <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-          </svg>
-        </button>
-      </div>
-      <div class="date-picker-dropdown">
-        <button class="action-btn" id="dateBtn">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-          </svg>
-          <span id="dateBtnText">Date Range</span>
-          <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-          </svg>
-        </button>
-        <div class="date-dropdown-menu" id="dateDropdown" style="display: none;">
-          <div class="filter-group">
-            <label class="filter-label">Start Date</label>
-            <input type="date" class="filter-input" id="startDate">
-          </div>
-          <div class="filter-group">
-            <label class="filter-label">End Date</label>
-            <input type="date" class="filter-input" id="endDate">
-          </div>
-          <div class="date-input-group">
-            <button class="action-btn" id="applyDateFilterBtn">Apply</button>
-            <button class="action-btn" id="clearDateFilterBtn">Clear</button>
-          </div>
-        </div>
-      </div>
-      <!-- Quick Date Filters -->
-      <div class="date-filter-container">
-          <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
-          <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
-          <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
-          <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
-      </div>
+      <!-- Week Navigation removed -->
+      <!-- Hidden inputs for backward compatibility with existing JS -->
+      <input type="hidden" id="startDate">
+      <input type="hidden" id="endDate">
+      <div id="homeDatePickerContainer"></div>
       <button class="action-btn" id="filterBtn">
         <svg id="filterBtnIcon" fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-4 h-4">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
@@ -1858,7 +1809,7 @@ let dateFilter = { start: null, end: null };
 let currentFilters = { channel: '', status: '', agent: '' };
 let currentWeek = null; // Current week number (1-52)
 let currentWeekYear = null; // Year for the current week
-let useWeekFilter = true; // Whether to use week filter (default) or date range filter
+let useWeekFilter = false; // Week filter disabled - week navigation removed
 
 // Helper function to get week number (1-52)
 function getWeekNumber(date = null) {
@@ -2847,6 +2798,41 @@ function setupEventListenersForCSP() {
       return;
     }
     
+    // Handle batch toggle (expand/collapse)
+    const batchToggle = e.target.closest('[data-action="toggle-batch"]');
+    if (batchToggle) {
+      e.stopPropagation();
+      const batchId = batchToggle.dataset.batchId;
+      const detailEl = document.getElementById(`batch-detail-${batchId}`);
+      const chevron = document.querySelector(`[data-chevron-batch="${batchId}"]`);
+      if (detailEl) {
+        detailEl.classList.toggle('hidden');
+        if (chevron) chevron.style.transform = detailEl.classList.contains('hidden') ? '' : 'rotate(180deg)';
+      }
+      return;
+    }
+
+    // Handle batch acknowledge
+    const ackBtn = e.target.closest('[data-action="acknowledge-batch"]');
+    if (ackBtn) {
+      e.stopPropagation();
+      acknowledgeBatch(ackBtn.dataset.batchDbId, ackBtn.dataset.batchId);
+      return;
+    }
+
+    // Handle request reversal from batch
+    const reversalBtn = e.target.closest('[data-action="request-reversal-batch"]');
+    if (reversalBtn) {
+      e.stopPropagation();
+      try {
+        const auditPayload = JSON.parse(reversalBtn.dataset.auditPayload);
+        requestReversalFromBatch(auditPayload);
+      } catch (err) {
+        console.error('Error parsing reversal payload:', err);
+      }
+      return;
+    }
+
     // Handle create audit actions
     const createAuditTarget = e.target.closest('[data-action="create-audit"]');
     if (createAuditTarget) {
@@ -2989,7 +2975,40 @@ let dashboardInitialized = false;
 document.addEventListener('DOMContentLoaded', async function() {
   // Setup CSP-compliant event listeners first
   setupEventListenersForCSP();
-  
+
+  // Initialize DateRangePicker (dynamic import for non-module script)
+  try {
+    const { DateRangePicker } = await import('/js/date-range-picker.js');
+    const pickerContainer = document.getElementById('homeDatePickerContainer');
+    if (pickerContainer) {
+      window._homeDatePicker = new DateRangePicker(pickerContainer, {
+        mode: 'range',
+        label: 'Date Range',
+        defaultPreset: 'last30',
+        onApply: function(range) {
+          dateFilter.start = range.from;
+          dateFilter.end = range.to;
+          useWeekFilter = false;
+          // Sync hidden inputs for backward compat
+          var sd = document.getElementById('startDate');
+          var ed = document.getElementById('endDate');
+          if (sd && typeof formatDhakaDateForInput === 'function') sd.value = formatDhakaDateForInput(range.from);
+          if (ed && typeof formatDhakaDateForInput === 'function') ed.value = formatDhakaDateForInput(range.to);
+          updateWeekDisplay();
+          clearCache('_' + currentUserEmail + '_');
+          showLoader('updatesFeed');
+          showLoader('assignedAuditsList');
+          showStatsLoader();
+          Promise.all([
+            typeof loadUnifiedAuditData === 'function' ? loadUnifiedAuditData() : loadRecentUpdates(),
+            updateYourStats(),
+            loadNotifications()
+          ]).catch(function(err) { console.error('Error applying date filter:', err); });
+        }
+      });
+    }
+  } catch(e) { console.error('Failed to load DateRangePicker:', e); }
+
   // Then initialize dashboard
   await initializeDashboard();
   
@@ -3541,29 +3560,7 @@ function setupAuditAssignmentReceivedListener() {
 }
 
 function setupEventListeners() {
-  // Week navigation buttons
-  const prevWeekBtn = document.getElementById('prevWeekBtn');
-  const nextWeekBtn = document.getElementById('nextWeekBtn');
-  const weekDisplay = document.getElementById('weekDisplay');
-  
-  if (prevWeekBtn) {
-    prevWeekBtn.addEventListener('click', () => navigateWeek(-1));
-  }
-  if (nextWeekBtn) {
-    nextWeekBtn.addEventListener('click', () => navigateWeek(1));
-  }
-  
-  // Make week display clickable to switch to week view when in month/date range view
-  if (weekDisplay) {
-    weekDisplay.addEventListener('click', function(e) {
-      e.stopPropagation();
-      if (!useWeekFilter) {
-        switchToWeekView();
-      }
-    });
-    // Ensure it's clickable
-    weekDisplay.style.pointerEvents = 'auto';
-  }
+  // Week navigation buttons removed - elements no longer exist
 
   // Date button - toggle dropdown
   const dateBtn = document.getElementById('dateBtn');
@@ -4737,53 +4734,87 @@ async function fetchAndCacheRecentUpdates(period) {
 // Unified renderer: single feed for everyone (same UI for agents and auditors)
 function renderUnifiedAuditView(unifiedData) {
   const { updates, pendingAudits, completedAudits } = unifiedData;
-  
+
   const allActivityItems = [];
-  
-  // For auditors: convert pending assignments to update format and add to feed (merged with completed + reversals)
-  if (!isAgent && pendingAudits && Array.isArray(pendingAudits)) {
-    const pendingUpdates = pendingAudits.map(assignment => convertPendingAssignmentToUpdate(assignment));
-    allActivityItems.push(...pendingUpdates);
+
+  // For agents: convert batches to batch update items
+  if (isAgent && completedAudits && Array.isArray(completedAudits)) {
+    const batchUpdates = completedAudits
+      .filter(item => item._isBatch)
+      .map(batch => ({
+        id: `batch-${batch.batch_id || batch.id}`,
+        type: 'batch',
+        batchId: batch.batch_id || batch.id,
+        dbId: batch.id,
+        auditCount: batch.audit_count || 0,
+        averageScore: batch.average_score || 0,
+        overallStatus: batch.overall_status || 'Unknown',
+        submittedAt: batch.submitted_at,
+        timestamp: batch.submitted_at,
+        acknowledgementStatus: batch.acknowledgement_status || 'Pending',
+        auditorName: batch.auditor_name || 'Unknown',
+        auditorEmail: batch.auditor_email || '',
+        totalErrors: batch.total_errors || 0,
+        totalCritical: batch.total_critical || 0,
+        totalCriticalFail: batch.total_critical_fail || 0,
+        auditData: batch.audit_data || [],
+        employeeEmails: batch.employee_emails || [],
+        _batch: batch
+      }));
+    allActivityItems.push(...batchUpdates);
   }
-  
-  // Convert completed audits to update format and create a map for deduplication
-  const completedAuditMap = new Map();
-  if (completedAudits && Array.isArray(completedAudits)) {
-    assignedAudits = completedAudits;
-    const auditUpdates = completedAudits
-      .filter(audit => audit._isAssignment !== true) // Only actual completed audits, not assignments
-      .filter(audit => {
-        // Filter out incomplete audits - must have submitted_at or at least interaction_id/employee_email
-        // An audit without submitted_at and without interaction_id is likely incomplete/corrupted
-        const hasSubmittedAt = audit.submitted_at != null;
-        const hasInteractionId = audit.interaction_id != null && audit.interaction_id !== 'N/A';
-        const hasEmployeeEmail = audit.employee_email != null && audit.employee_email.trim() !== '';
-        
-        // Include if it has submitted_at OR (has both interaction_id and employee_email)
-        return hasSubmittedAt || (hasInteractionId && hasEmployeeEmail);
-      })
-      .map(audit => convertCompletedAuditToUpdate(audit));
-    
-    auditUpdates.forEach(auditUpdate => {
-      if (auditUpdate.auditId) {
-        completedAuditMap.set(auditUpdate.auditId, auditUpdate);
-      }
-    });
-    allActivityItems.push(...auditUpdates);
+
+  // For non-agents: original logic
+  if (!isAgent) {
+    // Convert pending assignments to update format
+    if (pendingAudits && Array.isArray(pendingAudits)) {
+      const pendingUpdates = pendingAudits.map(assignment => convertPendingAssignmentToUpdate(assignment));
+      allActivityItems.push(...pendingUpdates);
+    }
+
+    // Convert completed audits to update format
+    const completedAuditMap = new Map();
+    if (completedAudits && Array.isArray(completedAudits)) {
+      assignedAudits = completedAudits;
+      const auditUpdates = completedAudits
+        .filter(audit => audit._isAssignment !== true)
+        .filter(audit => {
+          const hasSubmittedAt = audit.submitted_at != null;
+          const hasInteractionId = audit.interaction_id != null && audit.interaction_id !== 'N/A';
+          const hasEmployeeEmail = audit.employee_email != null && audit.employee_email.trim() !== '';
+          return hasSubmittedAt || (hasInteractionId && hasEmployeeEmail);
+        })
+        .map(audit => convertCompletedAuditToUpdate(audit));
+
+      auditUpdates.forEach(auditUpdate => {
+        if (auditUpdate.auditId) {
+          completedAuditMap.set(auditUpdate.auditId, auditUpdate);
+        }
+      });
+      allActivityItems.push(...auditUpdates);
+    }
+
+    // Add regular updates (reversals, etc.)
+    if (updates && Array.isArray(updates)) {
+      const filteredUpdates = updates.filter(update => {
+        if (update.type === 'audit_completed' && update.auditId) {
+          return !completedAuditMap.has(update.auditId);
+        }
+        return true;
+      });
+      allActivityItems.push(...filteredUpdates);
+    }
+  } else {
+    // For agents: add reversal updates alongside batches
+    if (updates && Array.isArray(updates)) {
+      const reversalUpdates = updates.filter(u =>
+        u.type === 'reversal_status_update' || u.type === 'reversal_requested' || u.type === 'reversal_responded'
+      );
+      allActivityItems.push(...reversalUpdates);
+    }
   }
-  
-  // Add regular updates (reversals, etc.), filter out audit_completed that we already have as completed_audit
-  if (updates && Array.isArray(updates)) {
-    const filteredUpdates = updates.filter(update => {
-      if (update.type === 'audit_completed' && update.auditId) {
-        return !completedAuditMap.has(update.auditId);
-      }
-      return true;
-    });
-    allActivityItems.push(...filteredUpdates);
-  }
-  
-  // Sort by timestamp (most recent first). For assignments without created_at, use scheduled_date end-of-day so they don't all sort to end
+
+  // Sort by timestamp (most recent first)
   allActivityItems.sort((a, b) => {
     const getSortTime = (item) => {
       if (item.timestamp) return new Date(item.timestamp).getTime();
@@ -4793,7 +4824,7 @@ function renderUnifiedAuditView(unifiedData) {
     };
     return getSortTime(b) - getSortTime(a);
   });
-  
+
   renderRecentUpdatesFromData(allActivityItems);
 }
 
@@ -5142,6 +5173,10 @@ function renderRecentUpdatesFromData(allUpdates) {
   }
 
   updatesFeed.innerHTML = allUpdates.map(update => {
+      // Handle batch type (agent view)
+      if (update.type === 'batch') {
+        return renderBatchItem(update);
+      }
       // Handle completed_audit type with rich display
       if (update.type === 'completed_audit') {
         return renderCompletedAuditItem(update);
@@ -5378,6 +5413,230 @@ function renderCompletedAuditItem(update) {
   `;
 }
 
+// ─── Batch Rendering (Agent View) ──────────────────────────────────────────
+function renderBatchItem(update) {
+  const timestamp = formatTimestamp(update.submittedAt);
+  const auditCount = update.auditCount || 0;
+  const avgScore = Math.round(update.averageScore || 0);
+  const status = update.overallStatus || 'Unknown';
+  const isPassed = status === 'Passed' || status === 'Passing' || status === 'Pass';
+  const statusColor = isPassed ? 'bg-primary/10 text-primary' : 'bg-red-100 text-red-800';
+  const statusIcon = isPassed ? '✓' : '✗';
+  const statusLabel = isPassed ? 'Passed' : 'Not Passed';
+  const batchId = update.batchId || update.dbId;
+  const ackStatus = update.acknowledgementStatus || 'Pending';
+  const isAcked = ackStatus.toLowerCase().includes('acknowledged');
+  const ackChip = isAcked
+    ? '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold bg-primary/10 text-primary">✓ Acknowledged</span>'
+    : '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-semibold bg-yellow-100 text-yellow-800">⏱ Acknowledgement Pending</span>';
+  const auditorLabel = update.auditorName ? `by ${escapeHtml(update.auditorName)}` : '';
+
+  // Build individual audit rows (hidden by default)
+  const auditRows = (update.auditData || []).map((audit, idx) => renderBatchAuditRow(audit, idx, update)).join('');
+
+  return `
+    <div class="border-b border-gray-100 last:border-0">
+      <div class="px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer" data-action="toggle-batch" data-batch-id="${batchId}">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <div class="w-8 h-8 rounded-full ${isPassed ? 'bg-primary/10' : 'bg-red-50'} flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 ${isPassed ? 'text-primary' : 'text-red-500'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                ${isPassed
+                  ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+                  : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                <h4 class="text-xs font-semibold text-gray-900">
+                  Batch · ${auditCount} audit${auditCount !== 1 ? 's' : ''} ${auditorLabel}
+                </h4>
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${statusColor}">
+                  ${avgScore}%
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">
+                  ${statusIcon} ${statusLabel}
+                </span>
+              </div>
+              <p class="text-[10px] text-gray-600 flex items-center gap-1 flex-wrap">
+                <span>${update.totalErrors || 0} errors</span>
+                <span class="text-gray-300">·</span>
+                <span>${timestamp}</span>
+              </p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0">
+            ${ackChip}
+            ${!isAcked ? `<button data-action="acknowledge-batch" data-batch-db-id="${update.dbId}" data-batch-id="${batchId}" class="px-2.5 py-1 bg-primary text-white text-[10px] font-semibold rounded hover:bg-primary-dark transition-colors">Acknowledge</button>` : ''}
+            <svg class="w-4 h-4 text-gray-400 transition-transform batch-chevron" data-chevron-batch="${batchId}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div id="batch-detail-${batchId}" class="hidden bg-gray-50 border-t border-gray-100">
+        ${auditRows || '<div class="px-4 py-3 text-xs text-gray-500">No audit details available</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderBatchAuditRow(audit, index, batchUpdate) {
+  const dd = audit.displayData || {};
+  const payload = audit.payload || {};
+  const interactionId = dd.interactionId || payload.interaction_id || 'N/A';
+  const channel = dd.channel || payload.channel || 'No Channel';
+  const score = Math.round(dd.averageScore || payload.average_score || 0);
+  const passingStatus = dd.passingStatus || payload.passing_status || 'Unknown';
+  const isPassed = passingStatus === 'Passed' || passingStatus === 'Passing' || passingStatus === 'Pass';
+  const statusColor = isPassed ? 'bg-primary/10 text-primary' : 'bg-red-100 text-red-800';
+  const statusIcon = isPassed ? '✓' : '✗';
+  const scorecardTable = audit.scorecardTableName || '';
+  const auditId = payload.id || '';
+  const employeeName = dd.employeeName || payload.employee_name || '';
+
+  // Reversal: show button if within 48h of batch submission
+  const submittedAt = batchUpdate.submittedAt;
+  const within48h = submittedAt && (Date.now() - new Date(submittedAt).getTime() < 48 * 60 * 60 * 1000);
+  const hasReversal = payload.reversal_requested_at;
+  let reversalHtml = '';
+  if (hasReversal) {
+    const approved = payload.reversal_approved;
+    if (approved === true || approved === 'true') {
+      reversalHtml = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold bg-green-100 text-green-800">Reversal Approved</span>';
+    } else if (approved === false || approved === 'false') {
+      reversalHtml = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-800">Reversal Rejected</span>';
+    } else {
+      reversalHtml = '<span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold bg-yellow-100 text-yellow-800">Reversal Pending</span>';
+    }
+  } else if (within48h) {
+    reversalHtml = `<button data-action="request-reversal-batch" data-audit-payload='${escapeHtml(JSON.stringify({ id: auditId, scorecardTable, interactionId, submittedAt }))}' class="px-2 py-0.5 text-[9px] font-semibold text-yellow-800 bg-yellow-50 border border-yellow-200 rounded hover:bg-yellow-100 transition-colors">Request Reversal</button>`;
+  }
+
+  return `
+    <div class="px-6 py-2 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-0">
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <span class="text-[10px] font-bold text-gray-400 w-4 text-right">${index + 1}</span>
+          <span class="text-xs font-semibold text-gray-900">#${escapeHtml(interactionId)}</span>
+          <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold ${statusColor}">${score}%</span>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-semibold ${statusColor}">${statusIcon} ${isPassed ? 'Passed' : 'Not Passed'}</span>
+          <span class="text-[10px] text-gray-500">${escapeHtml(channel)}</span>
+          ${employeeName ? `<span class="text-[10px] text-gray-500">· ${escapeHtml(employeeName)}</span>` : ''}
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          ${reversalHtml}
+          ${auditId ? `<button data-action="view-details" data-audit-id="${auditId}" data-scorecard-table="${scorecardTable}" class="px-2.5 py-1 bg-primary text-white text-[10px] font-semibold rounded hover:bg-primary-dark transition-colors">View Details</button>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function acknowledgeBatch(dbId, batchId) {
+  if (!confirm('Acknowledge this batch? This confirms you have reviewed all audits.')) return;
+  try {
+    const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+    const supabase = await getAuthenticatedSupabase();
+    const userEmail = currentUserEmail;
+
+    // Update submitted_batches record
+    const { error } = await supabase
+      .from('submitted_batches')
+      .update({
+        acknowledgement_status: 'Acknowledged',
+        acknowledged_at: new Date().toISOString(),
+        acknowledged_by_email: userEmail
+      })
+      .eq('id', dbId);
+
+    if (error) throw error;
+
+    // Also update individual audits in scorecard tables
+    const batch = assignedAudits.find(b => (b.batch_id || b.id) === batchId || b.id === dbId);
+    if (batch && batch.audit_data) {
+      const updatePromises = batch.audit_data.map(async (audit) => {
+        const tableName = audit.scorecardTableName;
+        const auditId = audit.payload?.id;
+        if (!tableName || !auditId) return;
+        await supabase.from(tableName).update({ acknowledgement_status: 'Acknowledged' }).eq('id', auditId);
+      });
+      await Promise.allSettled(updatePromises);
+    }
+
+    // Reload data
+    if (typeof loadUnifiedAuditData === 'function') await loadUnifiedAuditData();
+  } catch (err) {
+    console.error('Error acknowledging batch:', err);
+    alert('Failed to acknowledge batch. Please try again.');
+  }
+}
+
+async function requestReversalFromBatch(auditInfo) {
+  // Show reversal request dialog
+  const dialog = document.createElement('div');
+  dialog.className = 'fixed inset-0 z-[9999] flex items-center justify-center';
+  dialog.innerHTML = `
+    <div class="fixed inset-0 bg-black/50" data-close-reversal></div>
+    <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 z-10">
+      <h3 class="text-sm font-bold text-gray-900 mb-3">Request Reversal</h3>
+      <p class="text-xs text-gray-600 mb-3">Interaction: <strong>#${escapeHtml(auditInfo.interactionId || '')}</strong></p>
+      <div class="mb-3">
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Type</label>
+        <select id="reversalType" class="w-full border border-gray-300 rounded px-3 py-2 text-xs">
+          <option value="Clarification">Clarification</option>
+          <option value="Revision">Revision</option>
+        </select>
+      </div>
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Justification</label>
+        <textarea id="reversalJustification" rows="3" class="w-full border border-gray-300 rounded px-3 py-2 text-xs" placeholder="Explain why you are requesting a reversal..."></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button data-close-reversal class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">Cancel</button>
+        <button id="submitReversalBtn" class="px-3 py-1.5 text-xs font-semibold text-white bg-primary rounded hover:bg-primary-dark">Submit</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(dialog);
+
+  // Close handlers
+  dialog.querySelectorAll('[data-close-reversal]').forEach(el => {
+    el.addEventListener('click', () => dialog.remove());
+  });
+
+  // Submit handler
+  dialog.querySelector('#submitReversalBtn').addEventListener('click', async () => {
+    const type = dialog.querySelector('#reversalType').value;
+    const justification = dialog.querySelector('#reversalJustification').value.trim();
+    if (!justification) {
+      alert('Please provide a justification.');
+      return;
+    }
+
+    try {
+      const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
+      const supabase = await getAuthenticatedSupabase();
+
+      // Update the audit record with reversal info
+      if (auditInfo.id && auditInfo.scorecardTable) {
+        await supabase.from(auditInfo.scorecardTable).update({
+          reversal_requested_at: new Date().toISOString(),
+          reversal_type: type,
+          reversal_justification_from_agent: justification
+        }).eq('id', auditInfo.id);
+      }
+
+      dialog.remove();
+      alert('Reversal request submitted successfully.');
+      if (typeof loadUnifiedAuditData === 'function') await loadUnifiedAuditData();
+    } catch (err) {
+      console.error('Error submitting reversal:', err);
+      alert('Failed to submit reversal. Please try again.');
+    }
+  });
+}
+
 async function loadAssignedAudits() {
   // Redirect to unified loader since everything is now in one view
   return loadUnifiedAuditData();
@@ -5421,98 +5680,38 @@ async function fetchAndCacheAssignedAudits(period) {
 }
 
 async function loadCompletedAuditsForEmployee() {
-  // Load all scorecards to query audit tables (using cache)
+  // Load batches from submitted_batches table (grouped view)
   const { getAuthenticatedSupabase } = await import('/js/utils/authenticated-supabase.js');
   const supabase = await getAuthenticatedSupabase();
-  const scorecards = await getCachedScorecards(supabase, 'id, name, table_name, scoring_type');
-  
-  if (!scorecards) throw new Error('Failed to load scorecards');
-  
-  let combinedAudits = [];
-  const auditFilterField = 'employee_email';
-  
-  // Load audits from all scorecard tables in parallel (performance optimization)
+  const normalizedEmail = currentUserEmail.toLowerCase().trim();
   const period = getCurrentPeriodDates();
-  const auditPromises = (scorecards || []).map(async (scorecard) => {
-    try {
-      // For agents: Filter by employee_email server-side
-      // Use field whitelist - select only needed fields
-      // Use .ilike() for case-insensitive email matching to handle any case variations in the database
-      // Note: Removed 'status' from select as it doesn't exist in all scorecard tables
-      const normalizedEmail = currentUserEmail.toLowerCase().trim();
-      const { data, error } = await supabase
-        .from(scorecard.table_name)
-        .select('id, employee_email, employee_name, auditor_email, auditor_name, interaction_id, created_at, submitted_at, passing_status, average_score, total_errors_count, audit_duration, reversal_requested_at, reversal_approved, acknowledgement_status')
-        .ilike('employee_email', normalizedEmail)
-        .order('submitted_at', { ascending: false })
-        .limit(100); // Reduced from 500 to 100 for better performance
-      
-      if (error) {
-        console.warn(`Error loading from ${scorecard.table_name}:`, error);
-        return [];
-      }
-      
-      if (!data || data.length === 0) {
-        return [];
-      }
-      
-      // Additional client-side normalization filter as safety measure (case-insensitive)
-      const normalizedCurrentEmail = currentUserEmail.toLowerCase().trim();
-      const filteredByEmail = (data || []).filter(audit => {
-        const auditEmail = (audit.employee_email || '').toLowerCase().trim();
-        return auditEmail === normalizedCurrentEmail;
-      });
-      
-      // Apply date filter (week or date range)
-      // Use submitted_at as primary date, fallback to created_at if submitted_at is missing
-      let filteredAudits = filteredByEmail.filter(audit => {
-        // Use submitted_at if available, otherwise fallback to created_at
-        const auditDate = audit.submitted_at || audit.created_at;
-        if (!auditDate) {
-          console.warn(`Audit ${audit.id} has no submitted_at or created_at date, skipping`);
-          return false;
-        }
-        return isDateInRange(auditDate, period.start, period.end);
-      });
-      
-      // Apply channel filter
-      if (currentFilters.channel) {
-        filteredAudits = filteredAudits.filter(audit => audit.channel === currentFilters.channel);
-      }
-      
-      // Add scorecard info to each audit
-      return filteredAudits.map(audit => ({
-        ...audit,
-        _scorecard_id: scorecard.id,
-        _scorecard_name: scorecard.name,
-        _scorecard_table: scorecard.table_name,
-        _scoring_type: scorecard.scoring_type,
-        _isAssignment: false
-      }));
-    } catch (err) {
-      console.warn(`Exception loading from ${scorecard.table_name}:`, err);
-      return [];
-    }
+
+  const { data: batches, error } = await supabase
+    .from('submitted_batches')
+    .select('*')
+    .contains('employee_emails', JSON.stringify([normalizedEmail]))
+    .order('submitted_at', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error('Error loading submitted batches:', error);
+    throw error;
+  }
+
+  // Filter by date range
+  let filtered = (batches || []).filter(batch => {
+    if (!batch.submitted_at) return false;
+    return isDateInRange(batch.submitted_at, period.start, period.end);
   });
-  
-  // Wait for all queries to complete in parallel
-  const auditResults = await Promise.all(auditPromises);
-  combinedAudits = auditResults.flat();
-    
-    // Sort by submitted_at descending (fallback to created_at if submitted_at is missing)
-    combinedAudits.sort((a, b) => {
-      const dateA = new Date(a.submitted_at || a.created_at || 0);
-      const dateB = new Date(b.submitted_at || b.created_at || 0);
-      return dateB - dateA;
-    });
-    
-    // No need for verification - already filtered server-side
-    
-    // Limit total results
-    combinedAudits = combinedAudits.slice(0, 50);
-    
-    assignedAudits = combinedAudits;
-    allAssignments = combinedAudits;
+
+  // Mark as batch type for rendering
+  filtered = filtered.map(batch => ({
+    ...batch,
+    _isBatch: true
+  }));
+
+  assignedAudits = filtered;
+  allAssignments = filtered;
 }
 
 async function loadPendingAssignmentsForAuditor() {
@@ -6040,24 +6239,65 @@ async function fetchAndCacheStats(period) {
     let passingCount = 0;
     let notPassingCount = 0;
     let requiresAcknowledgment = 0;
-    
-    // OPTIMIZATION: Run ALL scorecard queries in parallel instead of sequential loops
+
+    // For agents: compute stats from batch data (submitted_batches)
+    if (isAgent) {
+      const normalizedEmail = currentUserEmail.toLowerCase().trim();
+      const { data: batchesForStats, error: batchStatsErr } = await supabase
+        .from('submitted_batches')
+        .select('audit_count, average_score, overall_status, acknowledgement_status, audit_data, submitted_at')
+        .contains('employee_emails', JSON.stringify([normalizedEmail]));
+
+      if (!batchStatsErr && batchesForStats) {
+        // Filter by date range
+        const filteredBatches = batchesForStats.filter(b => {
+          if (!b.submitted_at) return false;
+          return isDateInRange(b.submitted_at, currentPeriod.start, currentPeriod.end);
+        });
+
+        filteredBatches.forEach(batch => {
+          const audits = batch.audit_data || [];
+          totalAuditsConducted += audits.length;
+          completed += audits.length;
+
+          audits.forEach(audit => {
+            const dd = audit.displayData || {};
+            const payload = audit.payload || {};
+            const score = parseFloat(dd.averageScore || payload.average_score || 0);
+            if (!isNaN(score) && score > 0) {
+              totalScoreSum += score;
+              totalAuditsWithScore++;
+            }
+            const ps = dd.passingStatus || payload.passing_status || '';
+            const ns = normalizePassingStatus(ps);
+            if (ns === 'Passed') passingCount++;
+            else notPassingCount++;
+          });
+
+          const ackStatus = batch.acknowledgement_status || 'Pending';
+          if (ackStatus.toLowerCase() === 'pending') {
+            requiresAcknowledgment++;
+          }
+        });
+
+        if (totalAuditsWithScore > 0) {
+          avgQualityScore = totalScoreSum / totalAuditsWithScore;
+          avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
+        }
+      }
+    } else {
+    // For non-agents: original scorecard query approach
     if (scorecards.length > 0) {
-      // Create unified queries for each scorecard that fetch all needed data at once
       const unifiedQueryPromises = scorecards.map(async (scorecard) => {
         try {
-          // Single query per scorecard with all fields needed for stats
-          const selectFields = isAgent 
-            ? 'id, submitted_at, audit_duration, average_score, passing_status, acknowledgement_status'
-            : 'id, submitted_at, audit_duration, average_score, passing_status, auditor_email';
-          
+          const selectFields = 'id, submitted_at, audit_duration, average_score, passing_status, auditor_email';
+
           let query = supabase
             .from(scorecard.table_name)
             .select(selectFields)
             .eq(auditFilterField, currentUserEmail)
             .not('submitted_at', 'is', null);
-          
-          // Apply date filters server-side
+
           if (currentPeriod.start && window.dhakaDateToUTCISO) {
             query = query.gte('submitted_at', window.dhakaDateToUTCISO(currentPeriod.start));
           } else if (currentPeriod.start) {
@@ -6068,54 +6308,46 @@ async function fetchAndCacheStats(period) {
           } else if (currentPeriod.end) {
             query = query.lte('submitted_at', currentPeriod.end.toISOString());
           }
-          
+
           const { data, error } = await query.limit(500);
-          
+
           if (error) {
-            // Fallback: try without date filter and apply client-side
             const retryResult = await supabase
               .from(scorecard.table_name)
               .select(selectFields)
               .eq(auditFilterField, currentUserEmail)
               .not('submitted_at', 'is', null)
               .limit(500);
-            
+
             if (retryResult.error) {
               console.warn(`Error querying ${scorecard.table_name}:`, retryResult.error);
               return { scorecard, audits: [] };
             }
-            
-            // Filter client-side by date
+
             const filteredAudits = (retryResult.data || []).filter(audit => {
               if (!audit.submitted_at) return false;
               const auditDate = toDhakaTime(audit.submitted_at);
-              return (!currentPeriod.start || auditDate >= currentPeriod.start) && 
+              return (!currentPeriod.start || auditDate >= currentPeriod.start) &&
                      (!currentPeriod.end || auditDate <= currentPeriod.end);
             });
             return { scorecard, audits: filteredAudits };
           }
-          
+
           return { scorecard, audits: data || [] };
         } catch (err) {
           console.warn(`Error in unified query for ${scorecard.table_name}:`, err);
           return { scorecard, audits: [] };
         }
       });
-      
-      // Execute all queries in parallel
+
       const queryResults = await Promise.all(unifiedQueryPromises);
-      
-      // Process results from unified queries
       let allDurations = [];
-      
+
       queryResults.forEach(({ scorecard, audits }) => {
-        // Count completed audits
         completed += audits.length;
         totalAuditsConducted += audits.length;
-        
-        // Process each audit for stats
+
         audits.forEach(audit => {
-          // Duration calculation
           if (audit.audit_duration != null) {
             let durationInMinutes = 0;
             if (typeof audit.audit_duration === 'number') {
@@ -6137,15 +6369,13 @@ async function fetchAndCacheStats(period) {
               allDurations.push(durationInMinutes);
             }
           }
-          
-          // Score calculation
+
           const score = parseFloat(audit.average_score || 0);
           if (!isNaN(score) && score > 0) {
             totalScoreSum += score;
             totalAuditsWithScore++;
           }
-          
-          // Passing status
+
           const passingStatus = audit.passing_status || '';
           const normalizedStatus = normalizePassingStatus(passingStatus);
           if (normalizedStatus === 'Passed') {
@@ -6153,18 +6383,9 @@ async function fetchAndCacheStats(period) {
           } else {
             notPassingCount++;
           }
-          
-          // Acknowledgment count (for agents only)
-          if (isAgent) {
-            const ackStatus = audit.acknowledgement_status || '';
-            if (ackStatus.toLowerCase() === 'pending') {
-              requiresAcknowledgment++;
-            }
-          }
         });
       });
-      
-      // Calculate average duration
+
       if (allDurations.length > 0) {
         const totalDuration = allDurations.reduce((sum, d) => sum + d, 0);
         avgDuration = totalDuration / allDurations.length;
@@ -6176,34 +6397,61 @@ async function fetchAndCacheStats(period) {
           avgDurationText = `${Math.round(avgDuration)}m`;
         }
       }
-      
-      // Calculate average quality score
+
       if (totalAuditsWithScore > 0) {
         avgQualityScore = totalScoreSum / totalAuditsWithScore;
         avgQualityScoreText = `${Math.round(avgQualityScore)}%`;
       }
     } else {
-      // Fallback to assignment-based count if no scorecards
       completed = allAssignments.filter(a => a.status === 'completed').length;
     }
-    
+    } // end non-agent block
+
     const remaining = pending + inProgress;
     const percentage = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
-    
-    // Calculate working days remaining
+
     const today = new Date();
     const endOfWeek = new Date(today);
     endOfWeek.setDate(today.getDate() + (5 - today.getDay()));
     const daysRemaining = Math.max(0, Math.ceil((endOfWeek - today) / (1000 * 60 * 60 * 24)));
-    
-    // Calculate reversal counts (active and resolved)
+
     let activeReversals = 0;
     let resolvedReversals = 0;
     let totalReversals = 0;
-    
-    // For agents who need acknowledgment count beyond what we already calculated
-    if (isAgent && scorecards.length > 0) {
-      // Acknowledgment already calculated above in the unified query
+
+    // For agents: count reversals from submitted_batches audit_data
+    if (isAgent) {
+      try {
+        const normalizedEmailRev = currentUserEmail.toLowerCase().trim();
+        const { data: batchesForReversals, error: batchRevErr } = await supabase
+          .from('submitted_batches')
+          .select('audit_data, submitted_at')
+          .contains('employee_emails', JSON.stringify([normalizedEmailRev]));
+
+        if (!batchRevErr && batchesForReversals) {
+          const filteredRevBatches = batchesForReversals.filter(b => {
+            if (!b.submitted_at) return false;
+            return isDateInRange(b.submitted_at, currentPeriod.start, currentPeriod.end);
+          });
+
+          filteredRevBatches.forEach(batch => {
+            (batch.audit_data || []).forEach(audit => {
+              const payload = audit.payload || {};
+              if (payload.reversal_requested_at) {
+                totalReversals++;
+                if (payload.reversal_approved === true || payload.reversal_approved === false ||
+                    payload.reversal_approved === 'true' || payload.reversal_approved === 'false') {
+                  resolvedReversals++;
+                } else {
+                  activeReversals++;
+                }
+              }
+            });
+          });
+        }
+      } catch (revErr) {
+        console.error('Error counting agent reversals from batches:', revErr);
+      }
     }
     
     // Skip the old sequential acknowledgment query since it's now handled above
@@ -6266,27 +6514,17 @@ async function fetchAndCacheStats(period) {
       }
     }
     
-    // Calculate reversal counts (for reversal card stats)
-    // OPTIMIZATION: Reuse scorecards fetched at the beginning instead of fetching again
+    // Calculate reversal counts from scorecard tables (non-agents only; agents use batch data above)
     try {
-      if (scorecards.length > 0) {
-        const reversalFilterField = isAgent ? 'employee_email' : 'auditor_email';
-        
+      if (!isAgent && scorecards.length > 0) {
         // Parallelize all reversal count queries
         const reversalPromises = scorecards.map(async (scorecard) => {
           try {
-            // For agents: Filter by employee_email server-side; for auditors: filter by auditor_email
             let query = window.supabaseClient
               .from(scorecard.table_name)
-              .select('reversal_requested_at, reversal_responded_at, ' + reversalFilterField)
-              .not('reversal_requested_at', 'is', null);
-            
-            // Add email filter server-side
-            if (isAgent) {
-              query = query.eq('employee_email', currentUserEmail);
-            } else {
-              query = query.eq('auditor_email', currentUserEmail);
-            }
+              .select('reversal_requested_at, reversal_responded_at, auditor_email')
+              .not('reversal_requested_at', 'is', null)
+              .eq('auditor_email', currentUserEmail);
             
             let { data: allReversals, error: allError } = await query.limit(30); // Reduced from 500 to 30 for better performance
             

@@ -71,55 +71,11 @@
           <!-- Action Buttons -->
           <div class="header-actions">
             <div class="flex gap-2 items-center flex-wrap">
-              <!-- Week Navigation -->
-              <div class="flex items-center gap-2">
-                <button class="action-btn" id="prevWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Previous Week">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                  </svg>
-                </button>
-                <div class="action-btn" id="weekDisplay" style="padding: 0.4688rem 0.75rem; cursor: default; background-color: var(--button-primary); color: var(--white); border-color: var(--button-primary);">
-                  <span id="weekText">Week -</span>
-                </div>
-                <button class="action-btn" id="nextWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Next Week">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </button>
-              </div>
+              <!-- Week Navigation removed -->
               <!-- Date Range Picker -->
-              <div class="date-picker-dropdown">
-                <button class="action-btn" id="dateBtn">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                  </svg>
-                  <span id="dateBtnText">Date Range</span>
-                  <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                  </svg>
-                </button>
-                <div class="date-dropdown-menu hidden" id="dateDropdown">
-                  <div class="filter-group">
-                    <label class="filter-label">Start Date</label>
-                    <input type="date" class="filter-input" id="startDate">
-                  </div>
-                  <div class="filter-group">
-                    <label class="filter-label">End Date</label>
-                    <input type="date" class="filter-input" id="endDate">
-                  </div>
-                  <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-                    <button class="action-btn" style="flex: 1;" id="applyDateBtn">Apply</button>
-                    <button class="action-btn" style="flex: 1;" id="clearDateBtn">Clear</button>
-                  </div>
-                </div>
-              </div>
-              <!-- Quick Date Filters -->
-              <div class="flex items-center gap-2">
-                <button class="action-btn quick-date-btn" id="todayBtn">Today</button>
-                <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
-                <button class="action-btn quick-date-btn active" id="thisMonthBtn">This Month</button>
-                <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
-              </div>
+              <input type="hidden" id="startDate">
+              <input type="hidden" id="endDate">
+              <div id="headerDatePickerContainer"></div>
               <button id="filterToggleBtn" class="action-btn" style="background-color: var(--button-primary); color: var(--white); border-color: var(--button-primary);">
                 <svg style="width: 0.75rem; height: 0.75rem;" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor">
                   <path d="M440-160q-17 0-28.5-11.5T400-200v-240L168-736q-15-20-4.5-42t36.5-22h560q26 0 36.5 22t-4.5 42L560-440v240q0 17-11.5 28.5T520-160h-80Z"/>
@@ -166,14 +122,10 @@
               </div>
               
               <!-- Date Range -->
-              <div>
-                <label for="dateFromFilter" class="filter-label">From Date</label>
-                <input type="date" id="dateFromFilter" class="filter-input">
-              </div>
-
-              <div>
-                <label for="dateToFilter" class="filter-label">To Date</label>
-                <input type="date" id="dateToFilter" class="filter-input">
+              <div style="grid-column: span 2;">
+                <input type="hidden" id="dateFromFilter">
+                <input type="hidden" id="dateToFilter">
+                <div id="filterDatePickerContainer"></div>
               </div>
             </div>
           </div>

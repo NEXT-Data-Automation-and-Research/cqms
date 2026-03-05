@@ -265,30 +265,7 @@
             border-color: var(--primary-color);
         }
 
-        /* Date Range Picker */
-        .date-picker-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .date-dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 0.375rem;
-            background: var(--background-white);
-            border: 0.0469rem solid var(--border-light);
-            border-radius: 0.375rem;
-            box-shadow: var(--shadow-lg);
-            padding: 0.75rem;
-            z-index: 1000;
-            min-width: 9.8438rem;
-        }
-
-        .date-dropdown-menu.active {
-            display: block;
-        }
+        /* Date Range Picker (handled by DateRangePicker component) */
 
         /* KPI Cards */
         .kpi-grid {
@@ -1136,54 +1113,10 @@
 
     <!-- Action Buttons -->
     <div class="header-actions" id="headerActions" style="margin-top: 3rem; margin-bottom: 1.125rem; display: none;">
-        <!-- Week Navigation -->
-        <div style="display: flex; align-items: center; gap: 0.5625rem;">
-            <button class="action-btn" id="prevWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Previous Week">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </button>
-            <div class="action-btn" id="weekDisplay" style="padding: 0.4688rem 0.75rem; cursor: default; background-color: var(--primary-color); color: var(--white); border-color: var(--primary-color);">
-                <span id="weekText">Week -</span>
-            </div>
-            <button class="action-btn" id="nextWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Next Week">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="date-picker-dropdown">
-            <button class="action-btn" id="dateBtn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span id="dateBtnText">Date Range</span>
-                <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
-            <div class="date-dropdown-menu" id="dateDropdown">
-                <div class="filter-group">
-                    <label class="filter-label">Start Date</label>
-                    <input type="date" class="filter-input" id="startDate">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">End Date</label>
-                    <input type="date" class="filter-input" id="endDate">
-                </div>
-                <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-                    <button class="action-btn" style="flex: 1;" onclick="applyDateFilter()">Apply</button>
-                    <button class="action-btn" style="flex: 1;" onclick="clearDateFilter()">Clear</button>
-                </div>
-            </div>
-        </div>
-        <!-- Quick Date Filters -->
-        <div style="display: flex; align-items: center; gap: 0.375rem;">
-            <button class="action-btn quick-date-btn" id="todayBtn" onclick="applyQuickDateFilter('today')">Today</button>
-            <button class="action-btn quick-date-btn" id="yesterdayBtn" onclick="applyQuickDateFilter('yesterday')">Yesterday</button>
-            <button class="action-btn quick-date-btn active" id="thisMonthBtn" onclick="applyQuickDateFilter('thisMonth')">This Month</button>
-            <button class="action-btn quick-date-btn" id="lastMonthBtn" onclick="applyQuickDateFilter('lastMonth')">Last Month</button>
-        </div>
+        <!-- Week Navigation removed -->
+        <input type="hidden" id="startDate">
+        <input type="hidden" id="endDate">
+        <div id="perfDatePickerContainer"></div>
         <button class="action-btn" id="exportBtn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -1755,11 +1688,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     initializeMonthFilter();
     await loadAllData();
     setupEventListeners();
-    
+
+    // Initialize DateRangePicker (dynamic import)
+    try {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const pickerContainer = document.getElementById('perfDatePickerContainer');
+        if (pickerContainer) {
+            window._perfDatePicker = new DateRangePicker(pickerContainer, {
+                mode: 'range',
+                label: 'Date Range',
+                defaultPreset: 'thisMonth',
+                onApply: function(range) {
+                    dateFilter.start = formatDhakaDateForInput(range.from);
+                    dateFilter.end = formatDhakaDateForInput(range.to);
+                    useWeekFilter = false;
+                    // Sync hidden inputs for backward compat
+                    var sd = document.getElementById('startDate');
+                    var ed = document.getElementById('endDate');
+                    if (sd) sd.value = dateFilter.start;
+                    if (ed) ed.value = dateFilter.end;
+                    updateWeekDisplay();
+                    applyAllFilters();
+                }
+            });
+        }
+    } catch(e) { console.error('Failed to load DateRangePicker:', e); }
+
     // Populate channel filter options after data is loaded
     populateChannelFilterOptions();
     populateAgentFilterOptions();
-    
+
     // Initialize view toggle slider position
     initializeViewToggleSlider();
 });
@@ -1804,37 +1762,7 @@ async function waitForSupabase() {
 // Event Listeners
 // ============================================================================
 function setupEventListeners() {
-    // Week navigation buttons
-    document.getElementById('prevWeekBtn').addEventListener('click', () => {
-        navigateWeek(-1);
-    });
-    document.getElementById('nextWeekBtn').addEventListener('click', () => {
-        navigateWeek(1);
-    });
-    
-    // Make week display clickable to switch to week view when in month view
-    const weekDisplay = document.getElementById('weekDisplay');
-    if (weekDisplay) {
-        weekDisplay.addEventListener('click', function() {
-            if (!useWeekFilter) {
-                switchToWeekView();
-            }
-        });
-    }
-
-    // Date button
-    document.getElementById('dateBtn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        const dropdown = document.getElementById('dateDropdown');
-        dropdown.classList.toggle('active');
-    });
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.date-picker-dropdown')) {
-            document.getElementById('dateDropdown').classList.remove('active');
-        }
-    });
+    // Week navigation buttons removed - elements no longer exist
 
     // Filter button
     document.getElementById('filterBtn').addEventListener('click', () => {
@@ -2404,37 +2332,24 @@ function applyFilters() {
 function applyDateFilter() {
     const startDate = document.getElementById('startDate').value;
     const endDate = document.getElementById('endDate').value;
-    
+
     if (startDate) dateFilter.start = startDate;
     if (endDate) dateFilter.end = endDate;
 
-    const dateBtnTextEl = document.getElementById('dateBtnText');
     if (startDate || endDate) {
-        const start = startDate ? formatDhakaDate(parseDhakaDate(startDate), { month: 'short', day: 'numeric' }) : 'Start';
-        const end = endDate ? formatDhakaDate(parseDhakaDate(endDate), { month: 'short', day: 'numeric' }) : 'End';
-        if (dateBtnTextEl) dateBtnTextEl.textContent = `${start} - ${end}`;
         useWeekFilter = false;
-        
-        // Clear active state of quick filter buttons when using custom date range
-        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-        quickDateButtons.forEach(btn => btn.classList.remove('active'));
-        
-        updateWeekDisplay(); // Update week display to show "-"
+        updateWeekDisplay();
     } else {
         // If both dates are cleared, reset to current month view
         initializeMonthFilter();
     }
 
-    const dateDropdown = document.getElementById('dateDropdown');
-    if (dateDropdown) dateDropdown.classList.remove('active');
     applyAllFilters();
 }
 
 function clearDateFilter() {
     // Reset to current month view instead of week view
     initializeMonthFilter();
-    const dateDropdown = document.getElementById('dateDropdown');
-    if (dateDropdown) dateDropdown.classList.remove('active');
     applyAllFilters();
 }
 
@@ -2497,33 +2412,18 @@ window.applyQuickDateFilter = function(period) {
         dateFilter.end = formatDhakaDateForInput(endDate);
         useWeekFilter = false;
         
-        // Update date input fields
+        // Sync hidden inputs for backward compat
         const startDateEl = document.getElementById('startDate');
         const endDateEl = document.getElementById('endDate');
-        const dateBtnTextEl = document.getElementById('dateBtnText');
-        
-        if (startDateEl) {
-            startDateEl.value = dateFilter.start;
+
+        if (startDateEl) startDateEl.value = dateFilter.start;
+        if (endDateEl) endDateEl.value = dateFilter.end;
+
+        // Sync DateRangePicker display if available
+        if (window._perfDatePicker) {
+            window._perfDatePicker.setRange(startDate, endDate);
         }
-        if (endDateEl) {
-            endDateEl.value = dateFilter.end;
-        }
-        
-        if (dateBtnTextEl) {
-            const start = formatDhakaDate(startDate, { month: 'short', day: 'numeric' });
-            const end = formatDhakaDate(endDate, { month: 'short', day: 'numeric' });
-            dateBtnTextEl.textContent = `${start} - ${end}`;
-        }
-        
-        // Update active state of quick filter buttons
-        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-        quickDateButtons.forEach(btn => btn.classList.remove('active'));
-        
-        const activeButton = document.getElementById(period + 'Btn');
-        if (activeButton) {
-            activeButton.classList.add('active');
-        }
-        
+
         // Update week display and refresh filters
         if (typeof updateWeekDisplay === 'function') {
             updateWeekDisplay();
@@ -3681,7 +3581,7 @@ function refreshData() {
 // ============================================================================
 let currentWeek = null; // Current week number (1-52)
 let currentWeekYear = null; // Year for the current week
-let useWeekFilter = false; // Default to month view instead of week view
+let useWeekFilter = false; // Week filter disabled - week navigation removed
 
 function getWeekNumber(date = null) {
     if (!date) date = getDhakaNow();
@@ -3711,29 +3611,18 @@ function initializeMonthFilter() {
     dateFilter.end = lastDayStr;
     useWeekFilter = false;
     
-    // Update date input fields
+    // Sync hidden inputs for backward compat
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
+
     if (startDateEl) startDateEl.value = firstDayStr;
     if (endDateEl) endDateEl.value = lastDayStr;
-    
-    // Update date button text to show current month
-    if (dateBtnTextEl) {
-        const start = formatDhakaDate(firstDay, { month: 'short', day: 'numeric' });
-        const end = formatDhakaDate(lastDay, { month: 'short', day: 'numeric' });
-        dateBtnTextEl.textContent = `${start} - ${end}`;
+
+    // Sync DateRangePicker display if available
+    if (window._perfDatePicker) {
+        window._perfDatePicker.setRange(firstDay, lastDay);
     }
-    
-    // Activate "This Month" button
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    const thisMonthBtn = document.getElementById('thisMonthBtn');
-    if (thisMonthBtn) {
-        thisMonthBtn.classList.add('active');
-    }
-    
+
     // Update week display to show it's disabled
     updateWeekDisplay();
 }
@@ -3813,15 +3702,14 @@ function navigateWeek(direction) {
     dateFilter.end = null;
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
     if (startDateEl) startDateEl.value = '';
     if (endDateEl) endDateEl.value = '';
-    if (dateBtnTextEl) dateBtnTextEl.textContent = 'Date Range';
-    
-    // Clear active state of quick filter buttons when switching to week view
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    
+
+    // Reset DateRangePicker to show default label
+    if (window._perfDatePicker) {
+        window._perfDatePicker.setRange(null, null);
+    }
+
     updateWeekDisplay();
     applyAllFilters();
 }
@@ -3834,21 +3722,20 @@ function switchToWeekView() {
         currentWeek = getWeekNumber(today);
         currentWeekYear = today.getFullYear();
     }
-    
+
     useWeekFilter = true;
     dateFilter.start = null;
     dateFilter.end = null;
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
     if (startDateEl) startDateEl.value = '';
     if (endDateEl) endDateEl.value = '';
-    if (dateBtnTextEl) dateBtnTextEl.textContent = 'Date Range';
-    
-    // Clear active state of quick filter buttons when switching to week view
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    
+
+    // Reset DateRangePicker to show default label
+    if (window._perfDatePicker) {
+        window._perfDatePicker.setRange(null, null);
+    }
+
     updateWeekDisplay();
     applyAllFilters();
 }

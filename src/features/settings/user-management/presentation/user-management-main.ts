@@ -357,7 +357,7 @@ async function initializeUserManagement(): Promise<void> {
               </svg>
             </div>
             <h3 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin-bottom: 0.75rem;">Failed to Initialize</h3>
-            <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">${escapeHtml(error instanceof Error ? error.message : 'An error occurred while loading the page.')}</p>
+            <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem;">${error instanceof Error ? error.message : 'An error occurred while loading the page.'}</p>
             <button onclick="window.location.reload()" 
                     style="padding: 0.75rem 1.5rem; background-color: #1A733E; color: white; border: none; border-radius: 0.375rem; font-weight: 500; cursor: pointer;">
               Reload Page

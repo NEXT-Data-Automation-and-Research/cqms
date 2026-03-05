@@ -172,7 +172,8 @@ export class AssignedAuditsTable {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Scheduled Date (optional)</label>
-              <input type="date" id="reassignDateInput" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+              <input type="hidden" id="reassignDateInput" />
+              <div id="reassignDatePickerContainer"></div>
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-6">
@@ -387,6 +388,22 @@ export class AssignedAuditsTable {
         this.config.onColumnFilterChange('status', value ? [value] : []);
       }
     });
+
+    // Initialize DateRangePicker for reassign modal date field
+    const reassignPickerContainer = this.container.querySelector('#reassignDatePickerContainer') as HTMLElement;
+    if (reassignPickerContainer) {
+      const reassignDateInput = this.container.querySelector('#reassignDateInput') as HTMLInputElement;
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(reassignPickerContainer, {
+          mode: 'single',
+          initialDate: reassignDateInput?.value || null,
+          onApply: (dateStr: string) => {
+            if (reassignDateInput) reassignDateInput.value = dateStr;
+          }
+        });
+      })();
+    }
   }
 
   private escapeHtml(text: string): string {

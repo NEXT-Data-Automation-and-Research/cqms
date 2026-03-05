@@ -105,30 +105,7 @@
   margin-bottom: 0;
 }
 
-.qms-dashboard .header-actions .date-picker-dropdown {
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 0.375rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-card-hover);
-  padding: 0.75rem;
-  z-index: 1002;
-  min-width: 10rem;
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu.active {
-  display: block;
-}
+/* Date Range Picker (handled by DateRangePicker component) */
 
 .qms-dashboard .header-actions .action-btn {
   display: inline-flex;
@@ -190,74 +167,7 @@
   transition: opacity 0.2s ease;
 }
 
-.qms-dashboard .header-actions .quick-date-buttons-container {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-wrap: wrap;
-}
-
-.qms-dashboard .header-actions .quick-date-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.4688rem 0.75rem;
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 0.6562rem;
-  font-weight: 500;
-  font-family: var(--font-family);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-.qms-dashboard .header-actions .quick-date-btn:hover:not(.active) {
-  background-color: var(--bg-elevated);
-  border-color: var(--accent-green);
-}
-
-.qms-dashboard .header-actions .action-btn.quick-date-btn.active,
-.qms-dashboard .header-actions .action-btn.active.quick-date-btn {
-  background-color: var(--accent-green);
-  color: #fff;
-  border-color: var(--accent-green);
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu .filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu .filter-label {
-  font-size: 0.5625rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu .filter-input {
-  padding: 0.375rem 0.5625rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-size: 0.6562rem;
-  font-family: var(--font-family);
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.qms-dashboard .header-actions .date-dropdown-menu .filter-input:focus {
-  outline: none;
-  border-color: var(--accent-green);
-}
-
-@media (max-width: 768px) {
-  .qms-dashboard .header-actions .quick-date-buttons-container {
-    display: none;
-  }
-}
+/* Quick date buttons and date dropdown removed - handled by DateRangePicker component */
 
 /* Legacy control bar / quick tab (unused, keep for reference) */
 .qms-quick-tab {

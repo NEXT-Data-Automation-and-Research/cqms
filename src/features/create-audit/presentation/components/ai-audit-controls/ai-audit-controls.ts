@@ -28,7 +28,8 @@ export class AIAuditControls {
           </div>
           <div>
             <label class="block text-sm font-medium text-white/80 mb-2">Date</label>
-            <input type="date" id="aiAuditDate" class="form-input w-full" />
+            <input type="hidden" id="aiAuditDate" />
+            <div id="aiAuditDatePickerContainer"></div>
           </div>
           <div class="flex items-center justify-between text-sm text-white/60">
             <span>Selected: <span id="selectedCount" class="font-semibold text-white">0</span></span>
@@ -60,17 +61,33 @@ export class AIAuditControls {
     const selectAllBtn = this.container.querySelector('#selectAllBtn') as HTMLButtonElement;
     const clearBtn = this.container.querySelector('#clearSelectionBtn') as HTMLButtonElement;
     const processBtn = this.container.querySelector('#processAIAuditBtn') as HTMLButtonElement;
-    
+
     if (selectAllBtn) {
       selectAllBtn.addEventListener('click', () => this.selectAll());
     }
-    
+
     if (clearBtn) {
       clearBtn.addEventListener('click', () => this.clearSelection());
     }
-    
+
     if (processBtn) {
       processBtn.addEventListener('click', () => this.processAIAudit());
+    }
+
+    // Initialize DateRangePicker in SINGLE mode for AI audit date
+    const pickerContainer = this.container.querySelector('#aiAuditDatePickerContainer') as HTMLElement;
+    if (pickerContainer) {
+      const dateInput = this.container.querySelector('#aiAuditDate') as HTMLInputElement;
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(pickerContainer, {
+          mode: 'single',
+          initialDate: dateInput?.value || null,
+          onApply: (dateStr: string) => {
+            if (dateInput) dateInput.value = dateStr;
+          }
+        });
+      })();
     }
   }
 

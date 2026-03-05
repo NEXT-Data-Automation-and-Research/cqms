@@ -427,29 +427,7 @@
     font-family: 'Poppins', sans-serif;
   }
 
-  /* Date Picker Styles */
-  .date-picker-dropdown {
-    position: relative;
-  }
-
-  .date-dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 0.25rem;
-    background: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    padding: 1rem;
-    z-index: 1000;
-    min-width: 250px;
-    display: none;
-  }
-
-  .date-dropdown-menu.active {
-    display: block;
-  }
+  /* Date Picker — now handled by DateRangePicker component */
 
   .action-btn {
     display: inline-flex;
@@ -498,34 +476,12 @@
 
         <!-- Filters -->
         <div id="filtersContainer" class="filters-container" style="display: none;">
-            <!-- Date Range Picker -->
+            <!-- Date Range Picker (powered by DateRangePicker component) -->
             <div class="filter-group">
                 <label class="filter-label">Date Range</label>
-                <div class="date-picker-dropdown">
-                    <button class="action-btn" id="dateBtn" type="button">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        <span id="dateBtnText">Last 7 Days</span>
-                        <svg style="width: 0.75rem; height: 0.75rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                        </svg>
-                    </button>
-                    <div class="date-dropdown-menu" id="dateDropdown">
-                        <div class="filter-group" style="margin-bottom: 0.75rem;">
-                            <label class="filter-label">Start Date</label>
-                            <input type="date" class="filter-input" id="startDate">
-                        </div>
-                        <div class="filter-group" style="margin-bottom: 0.75rem;">
-                            <label class="filter-label">End Date</label>
-                            <input type="date" class="filter-input" id="endDate">
-                        </div>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button class="action-btn" style="flex: 1;" id="applyDateBtn" type="button">Apply</button>
-                            <button class="action-btn" style="flex: 1;" id="clearDateBtn" type="button">Clear</button>
-                        </div>
-                    </div>
-                </div>
+                <input type="hidden" id="startDate">
+                <input type="hidden" id="endDate">
+                <div id="bauDatePickerContainer"></div>
             </div>
             
             <!-- Channel Filter -->
@@ -1282,13 +1238,13 @@ function renderMetricsTable(days, metrics) {
             const dayHeader = document.createElement('th');
             dayHeader.className = 'day-header';
             dayHeader.style.background = '#374151';
-            dayHeader.innerHTML = `<div style="font-weight: 600;">Day ${escapeHtml(String(day.dayIndex))}</div>`;
+            dayHeader.innerHTML = `<div style="font-weight: 600;">Day ${day.dayIndex}</div>`;
             dayHeadersRow.appendChild(dayHeader);
             
             const dateHeader = document.createElement('th');
             dateHeader.className = 'day-header';
             dateHeader.style.background = '#374151';
-            dateHeader.innerHTML = `<div style="font-weight: 600;">${escapeHtml(day.dayName || '')}</div><div style="font-size: 0.75rem; font-weight: 400; margin-top: 0.25rem;">${escapeHtml(String(day.month))}/${escapeHtml(String(day.dayNum))}/${escapeHtml(String(day.year))}</div>`;
+            dateHeader.innerHTML = `<div style="font-weight: 600;">${day.dayName}</div><div style="font-size: 0.75rem; font-weight: 400; margin-top: 0.25rem;">${day.month}/${day.dayNum}/${day.year}</div>`;
             dateHeadersRow.appendChild(dateHeader);
         });
     
@@ -1713,76 +1669,52 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Date range functions
-window.toggleDateDropdown = function() {
-    const dropdown = document.getElementById('dateDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('active');
-    }
-};
-
-window.applyDateFilter = function() {
-    const startDateEl = document.getElementById('startDate');
-    const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
-    const startDate = startDateEl?.value || '';
-    const endDate = endDateEl?.value || '';
-    
-    if (startDate && endDate) {
-        const start = formatDhakaDate(parseDhakaDate(startDate), { month: 'short', day: 'numeric' });
-        const end = formatDhakaDate(parseDhakaDate(endDate), { month: 'short', day: 'numeric' });
-        if (dateBtnTextEl) {
-            dateBtnTextEl.textContent = `${start} - ${end}`;
-        }
-        
-        // Close dropdown
-        const dropdown = document.getElementById('dateDropdown');
-        if (dropdown) dropdown.classList.remove('active');
-        
-        // Reload metrics with new date range
-        loadMetricsData();
-    } else {
-        alert('Please select both start and end dates');
-    }
-};
-
+// Date range functions — now handled by DateRangePicker component
+// Legacy stubs kept so any stray callers don't throw.
+window.toggleDateDropdown = function() {};
+window.applyDateFilter = function() { loadMetricsData(); };
 window.clearDateFilter = function() {
-    const startDateEl = document.getElementById('startDate');
-    const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
-    if (startDateEl) startDateEl.value = '';
-    if (endDateEl) endDateEl.value = '';
-    if (dateBtnTextEl) dateBtnTextEl.textContent = 'Last 7 Days';
-    
-    // Close dropdown
-    const dropdown = document.getElementById('dateDropdown');
-    if (dropdown) dropdown.classList.remove('active');
-    
-    // Reload metrics with default range
+    const sd = document.getElementById('startDate');
+    const ed = document.getElementById('endDate');
+    if (sd) sd.value = '';
+    if (ed) ed.value = '';
+    if (window._bauDatePicker) window._bauDatePicker.setRange(null, null);
     loadMetricsData();
 };
 
-// Initialize date range to last 7 days
-function initializeDateRange() {
-    const today = getDhakaStartOfDay();
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() - 1); // Yesterday
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - 6); // 7 days ago
-    
-    const startDateEl = document.getElementById('startDate');
-    const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
-    if (startDateEl) startDateEl.value = formatDhakaDateForInput(startDate);
-    if (endDateEl) endDateEl.value = formatDhakaDateForInput(endDate);
-    
-    if (dateBtnTextEl) {
-        const start = formatDhakaDate(startDate, { month: 'short', day: 'numeric' });
-        const end = formatDhakaDate(endDate, { month: 'short', day: 'numeric' });
-        dateBtnTextEl.textContent = `${start} - ${end}`;
+// Initialize DateRangePicker component (called from DOMContentLoaded)
+async function initializeDateRange() {
+    try {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        const container = document.getElementById('bauDatePickerContainer');
+        if (!container) return;
+
+        window._bauDatePicker = new DateRangePicker(container, {
+            mode: 'range',
+            label: 'Date Range',
+            defaultPreset: 'last30',
+            onApply: function(range) {
+                // Sync hidden inputs for backward compatibility
+                var sd = document.getElementById('startDate');
+                var ed = document.getElementById('endDate');
+                if (sd && typeof formatDhakaDateForInput === 'function') sd.value = formatDhakaDateForInput(range.from);
+                if (ed && typeof formatDhakaDateForInput === 'function') ed.value = formatDhakaDateForInput(range.to);
+                // Reload metrics with new date range
+                loadMetricsData();
+            }
+        });
+
+        // The component auto-applies the defaultPreset which sets the trigger label,
+        // but we also need to sync the hidden inputs with the initial range.
+        var initRange = window._bauDatePicker.getRange();
+        if (initRange) {
+            var sd = document.getElementById('startDate');
+            var ed = document.getElementById('endDate');
+            if (sd && typeof formatDhakaDateForInput === 'function') sd.value = formatDhakaDateForInput(initRange.from);
+            if (ed && typeof formatDhakaDateForInput === 'function') ed.value = formatDhakaDateForInput(initRange.to);
+        }
+    } catch(e) {
+        console.error('Failed to load DateRangePicker:', e);
     }
 }
 
@@ -1797,29 +1729,12 @@ document.addEventListener('click', function(e) {
         });
     }
     
-    // Close date dropdown when clicking outside
-    if (!e.target.closest('.date-picker-dropdown')) {
-        const dropdown = document.getElementById('dateDropdown');
-        if (dropdown) dropdown.classList.remove('active');
-    }
+    // Date dropdown close-on-outside-click now handled by DateRangePicker component
 });
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', async () => {
-    // CSP: inline event handlers (onclick/oninput/...) are blocked by policy.
-    // Bind listeners programmatically instead.
-    const dateBtn = document.getElementById('dateBtn');
-    if (dateBtn) {
-        dateBtn.addEventListener('click', () => window.toggleDateDropdown());
-    }
-    const applyDateBtn = document.getElementById('applyDateBtn');
-    if (applyDateBtn) {
-        applyDateBtn.addEventListener('click', () => window.applyDateFilter());
-    }
-    const clearDateBtn = document.getElementById('clearDateBtn');
-    if (clearDateBtn) {
-        clearDateBtn.addEventListener('click', () => window.clearDateFilter());
-    }
+    // Date picker is now handled by DateRangePicker component (initialized in initializeDateRange)
 
     const channelTrigger = document.getElementById('channelFilterTrigger');
     if (channelTrigger) {
@@ -1865,8 +1780,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const checkSupabase = setInterval(async () => {
         if (window.supabaseClient) {
             clearInterval(checkSupabase);
-            // Initialize date range to last 7 days
-            initializeDateRange();
+            // Initialize DateRangePicker component (async dynamic import)
+            await initializeDateRange();
             // Load channels first
             await loadChannels();
             // Show filters

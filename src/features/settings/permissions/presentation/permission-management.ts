@@ -72,7 +72,7 @@ const FEATURE_CATEGORIES: Record<string, { title: string; resources: string[] }>
   },
   auditing: {
     title: 'Auditing & Quality',
-    resources: ['dashboard', 'create-audit', 'audit-form', 'audit-distribution', 'reversal', 'coaching-remediation'],
+    resources: ['dashboard', 'create-audit', 'audit-form', 'audit-queue', 'audit-distribution', 'reversal', 'coaching-remediation'],
   },
   reports: {
     title: 'Reports & Analytics',
@@ -340,7 +340,7 @@ class PermissionManagement {
     } else {
       dropdown.innerHTML = results.map(user => `
         <div class="search-result-item" data-email="${this.escapeHtml(user.email)}">
-          <div class="search-result-avatar">${this.escapeHtml(this.getInitials(user.name))}</div>
+          <div class="search-result-avatar">${this.getInitials(user.name)}</div>
           <div class="search-result-info">
             <div class="search-result-name">${this.escapeHtml(user.name)}</div>
             <div class="search-result-email">${this.escapeHtml(user.email)}</div>
@@ -529,7 +529,7 @@ class PermissionManagement {
         <tr>
           <td>
             <div class="table-user">
-              <div class="table-avatar">${this.escapeHtml(this.getInitials(userName))}</div>
+              <div class="table-avatar">${this.getInitials(userName)}</div>
               <div class="table-user-info">
                 <div class="table-user-name">${this.escapeHtml(userName)}</div>
                 <div class="table-user-email">${this.escapeHtml(rule.user_email)}</div>
@@ -538,7 +538,7 @@ class PermissionManagement {
           </td>
           <td>${this.escapeHtml(resourceLabel)}</td>
           <td>
-            <span class="badge-access ${rule.access_type}">${this.escapeHtml(rule.access_type.toUpperCase())}</span>
+            <span class="badge-access ${rule.access_type}">${rule.access_type.toUpperCase()}</span>
           </td>
           <td>
             <span class="badge-status ${rule.is_active ? 'active' : 'inactive'}">

@@ -36,7 +36,8 @@ export class InteractionDetailsSection {
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm font-medium text-white/80 mb-2">Date</label>
-                <input type="date" id="interactionDate" name="interactionDate" required class="form-input w-full" />
+                <input type="hidden" id="interactionDate" name="interactionDate" required />
+                <div id="interactionDatePickerContainer"></div>
               </div>
               <div>
                 <label class="block text-sm font-medium text-white/80 mb-2">Channel</label>
@@ -62,6 +63,22 @@ export class InteractionDetailsSection {
     const header = this.container.querySelector('.accordion-header');
     if (header) {
       header.addEventListener('click', () => this.toggle());
+    }
+
+    // Initialize DateRangePicker in SINGLE mode for interaction date
+    const pickerContainer = this.container.querySelector('#interactionDatePickerContainer') as HTMLElement;
+    if (pickerContainer) {
+      const dateInput = this.container.querySelector('#interactionDate') as HTMLInputElement;
+      (async () => {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+        new DateRangePicker(pickerContainer, {
+          mode: 'single',
+          initialDate: dateInput?.value || null,
+          onApply: (dateStr: string) => {
+            if (dateInput) dateInput.value = dateStr;
+          }
+        });
+      })();
     }
   }
 

@@ -260,6 +260,7 @@ router.post('/rules', verifyAuth, requirePermission('settings/permissions', 'pag
     const { data, error } = await supabase
       .from('access_control_rules')
       .insert({
+        id: randomUUID(),
         rule_type: ruleType,
         resource_name: resourceName,
         allowed_roles: allowedRoles || null,

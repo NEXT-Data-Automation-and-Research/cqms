@@ -213,30 +213,7 @@
             height: 0.75rem;
         }
 
-        /* Date Range Picker */
-        .date-picker-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .date-dropdown-menu {
-            display: none;
-            position: absolute;
-            top: 100%;
-            right: 0;
-            margin-top: 0.375rem;
-            background: var(--background-white);
-            border: 0.0469rem solid var(--border-light);
-            border-radius: 0.375rem;
-            box-shadow: var(--shadow-lg);
-            padding: 0.75rem;
-            z-index: 1000;
-            min-width: 9.8438rem;
-        }
-
-        .date-dropdown-menu.active {
-            display: block;
-        }
+        /* Date Range Picker — now handled by DateRangePicker component */
 
         /* Filter Dropdown */
         .filter-dropdown {
@@ -400,55 +377,11 @@
 
     <!-- Action Buttons -->
     <div class="header-actions" style="margin-top: 1.125rem; margin-bottom: 1.125rem; justify-content: flex-start; align-items: center;">
-        <!-- Week Navigation -->
-        <div style="display: flex; align-items: center; gap: 0.5625rem;">
-            <button class="action-btn" id="prevWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Previous Week">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                </svg>
-            </button>
-            <div class="action-btn" id="weekDisplay" style="padding: 0.4688rem 0.75rem; cursor: default; background-color: var(--button-primary); color: var(--white); border-color: var(--button-primary);">
-                <span id="weekText">Week -</span>
-            </div>
-            <button class="action-btn" id="nextWeekBtn" style="padding: 0.4688rem 0.5625rem;" title="Next Week">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </button>
-        </div>
-        <!-- Date Range Picker -->
-        <div class="date-picker-dropdown">
-            <button class="action-btn" id="dateBtn">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-                <span id="dateBtnText">Date Range</span>
-                <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-            </button>
-            <div class="date-dropdown-menu" id="dateDropdown">
-                <div class="filter-group">
-                    <label class="filter-label">Start Date</label>
-                    <input type="date" class="filter-input" id="startDate">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">End Date</label>
-                    <input type="date" class="filter-input" id="endDate">
-                </div>
-                <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-                    <button class="action-btn" id="applyDateFilterBtn" style="flex: 1;">Apply</button>
-                    <button class="action-btn" id="clearDateFilterBtn" style="flex: 1;">Clear</button>
-                </div>
-            </div>
-        </div>
-        <!-- Quick Date Filters -->
-        <div style="display: flex; align-items: center; gap: 0.375rem;">
-            <button class="action-btn quick-date-btn active" id="todayBtn">Today</button>
-            <button class="action-btn quick-date-btn" id="yesterdayBtn">Yesterday</button>
-            <button class="action-btn quick-date-btn" id="thisMonthBtn">This Month</button>
-            <button class="action-btn quick-date-btn" id="lastMonthBtn">Last Month</button>
-        </div>
+        <!-- Week Navigation removed -->
+        <!-- QMS Date Range Picker (powered by DateRangePicker component) -->
+        <input type="hidden" id="startDate">
+        <input type="hidden" id="endDate">
+        <div id="qmsDatePickerContainer"></div>
         <div class="filter-dropdown">
             <button class="action-btn" id="filterBtn">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -651,36 +584,10 @@
             <!-- Chat Review Tab Section (visible when Chat Review tab is active) -->
             <div id="chatReviewSection" style="display: none; width: 100%; margin-top: 1rem;">
                 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1.125rem;">
-                    <div class="date-picker-dropdown">
-                        <button class="action-btn" id="chatReviewDateBtn" type="button">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 0.875rem; height: 0.875rem;">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            <span id="chatReviewDateBtnText">Date Range</span>
-                            <svg style="width: 0.5625rem; height: 0.5625rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-                        <div class="date-dropdown-menu" id="chatReviewDateDropdown">
-                            <div class="filter-group">
-                                <label class="filter-label">Start Date</label>
-                                <input type="date" class="filter-input" id="chatReviewStartDate">
-                            </div>
-                            <div class="filter-group">
-                                <label class="filter-label">End Date</label>
-                                <input type="date" class="filter-input" id="chatReviewEndDate">
-                            </div>
-                            <div style="display: flex; gap: 0.375rem; margin-top: 0.375rem;">
-                                <button class="action-btn" id="chatReviewApplyDateBtn" type="button">Apply</button>
-                                <button class="action-btn" id="chatReviewClearDateBtn" type="button">Clear</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.375rem;">
-                        <button class="action-btn quick-date-btn" id="chatReviewTodayBtn" type="button">Today</button>
-                        <button class="action-btn quick-date-btn" id="chatReviewThisMonthBtn" type="button">This Month</button>
-                        <button class="action-btn quick-date-btn" id="chatReviewLastMonthBtn" type="button">Last Month</button>
-                    </div>
+                    <!-- Chat Review Date Range Picker (powered by DateRangePicker component) -->
+                    <input type="hidden" id="chatReviewStartDate">
+                    <input type="hidden" id="chatReviewEndDate">
+                    <div id="chatReviewDatePickerContainer"></div>
                 </div>
                 <!-- Chat Review Summary Cards -->
                 <div id="chatReviewStatsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 1.125rem; margin-bottom: 1.5rem; width: 100%;">
@@ -785,7 +692,7 @@ let cachedScorecardTables = []; // Cache scorecard table names to avoid repeated
 let currentWeek = null;
 let currentWeekYear = null;
 let dateFilter = { start: null, end: null };
-let useWeekFilter = false; // Default to month view instead of week view
+let useWeekFilter = false; // Week filter disabled - week navigation removed
 let presenceChannel = null;
 let onlineAuditors = new Set(); // Track online auditor emails
 let heartbeatInterval = null;
@@ -811,21 +718,17 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         });
     }
-    // Default Chat Review tab to this month
+    // Default Chat Review tab to this month (chatReviewDateFilter state set here;
+    // the DateRangePicker component will be initialized in initializeDatePickers)
     const d = window.getDhakaNow ? getDhakaNow() : new Date();
     const crStart = window.getDhakaFirstDayOfMonth ? getDhakaFirstDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth(), 1);
     const crEnd = window.getDhakaLastDayOfMonth ? getDhakaLastDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
     chatReviewDateFilter = { start: crStart, end: crEnd };
-    const chatReviewStartEl = document.getElementById('chatReviewStartDate');
-    const chatReviewEndEl = document.getElementById('chatReviewEndDate');
-    const chatReviewDateBtnText = document.getElementById('chatReviewDateBtnText');
+    var chatReviewStartEl = document.getElementById('chatReviewStartDate');
+    var chatReviewEndEl = document.getElementById('chatReviewEndDate');
     if (chatReviewStartEl && window.formatDhakaDateForInput) chatReviewStartEl.value = formatDhakaDateForInput(crStart);
     if (chatReviewEndEl && window.formatDhakaDateForInput) chatReviewEndEl.value = formatDhakaDateForInput(crEnd);
-    if (chatReviewDateBtnText) {
-        const fmt = (d) => { const day = String(d.getDate()).padStart(2, '0'); const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const year = String(d.getFullYear()).slice(-2); return `${day}-${months[d.getMonth()]}-${year}`; };
-        chatReviewDateBtnText.textContent = fmt(crStart) + ' – ' + fmt(crEnd);
-    }
-    
+
     await initializeDashboard();
     initializeSlider();
 });
@@ -878,6 +781,9 @@ async function initializeDashboard() {
         // Initialize today filter (default view)
         initializeTodayFilter();
         setupEventListeners();
+
+        // Initialize DateRangePicker components (async dynamic import)
+        await initializeDatePickers();
 
         // Load all data in parallel for faster initialization
         await Promise.all([
@@ -5406,35 +5312,24 @@ function initializeTodayFilter() {
     const endOfDay = getDhakaEndOfDay(today);
     const startOfDayStr = formatDhakaDateForInput(startOfDay);
     const endOfDayStr = formatDhakaDateForInput(endOfDay);
-    
+
     // Set date filter to today
     dateFilter.start = startOfDayStr;
     dateFilter.end = endOfDayStr;
     useWeekFilter = false;
-    
-    // Update date input fields
+
+    // Update hidden date input fields
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
-    
+
     if (startDateEl) startDateEl.value = startOfDayStr;
     if (endDateEl) endDateEl.value = endOfDayStr;
-    
-    // Update date button text to show today
-    if (dateBtnTextEl) {
-        const start = formatDhakaDate(startOfDay, { month: 'short', day: 'numeric' });
-        const end = formatDhakaDate(endOfDay, { month: 'short', day: 'numeric' });
-        dateBtnTextEl.textContent = `${start} - ${end}`;
+
+    // Sync the DateRangePicker component if already initialized
+    if (window._qmsDatePicker) {
+        window._qmsDatePicker.applyPreset('today');
     }
-    
-    // Activate "Today" button
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    const todayBtn = document.getElementById('todayBtn');
-    if (todayBtn) {
-        todayBtn.classList.add('active');
-    }
-    
+
     // Update week display to show it's disabled
     updateWeekDisplay();
 }
@@ -5515,16 +5410,12 @@ function navigateWeek(direction) {
         dateFilter.end = null;
         const startDateEl = document.getElementById('startDate');
         const endDateEl = document.getElementById('endDate');
-        const dateBtnTextEl = document.getElementById('dateBtnText');
         if (startDateEl) startDateEl.value = '';
         if (endDateEl) endDateEl.value = '';
-        if (dateBtnTextEl) dateBtnTextEl.textContent = 'Date Range';
-        
-        // Clear active state of quick filter buttons when switching to week view
-        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-        quickDateButtons.forEach(btn => btn.classList.remove('active'));
+        // Reset the DateRangePicker component label
+        if (window._qmsDatePicker) window._qmsDatePicker.setRange(null, null);
     }
-    
+
     currentWeek += direction;
     
     if (currentWeek > 52) {
@@ -5565,125 +5456,108 @@ function switchToWeekView() {
     dateFilter.end = null;
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
-    const dateBtnTextEl = document.getElementById('dateBtnText');
     if (startDateEl) startDateEl.value = '';
     if (endDateEl) endDateEl.value = '';
-    if (dateBtnTextEl) dateBtnTextEl.textContent = 'Date Range';
-    
-    // Clear active state of quick filter buttons when switching to week view
-    const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-    quickDateButtons.forEach(btn => btn.classList.remove('active'));
-    
+    // Reset the DateRangePicker component label
+    if (window._qmsDatePicker) window._qmsDatePicker.setRange(null, null);
+
     updateWeekDisplay();
-    
+
     // Reload assignments with new week filter
     loadAssignments();
 }
 
+// ============================================================================
+// Initialize DateRangePicker Components
+// ============================================================================
+async function initializeDatePickers() {
+    try {
+        const { DateRangePicker } = await import('/js/date-range-picker.js');
+
+        // --- QMS Date Range Picker (main) ---
+        var qmsContainer = document.getElementById('qmsDatePickerContainer');
+        if (qmsContainer) {
+            window._qmsDatePicker = new DateRangePicker(qmsContainer, {
+                mode: 'range',
+                label: 'Date Range',
+                defaultPreset: 'today',
+                onApply: function(range) {
+                    // Cancel any ongoing fetches
+                    currentFetchId++;
+                    isLoading = false;
+                    renderInProgress = false;
+                    showLoadingState();
+
+                    // Update date filter state
+                    dateFilter.start = (typeof formatDhakaDateForInput === 'function') ? formatDhakaDateForInput(range.from) : range.from.toISOString().split('T')[0];
+                    dateFilter.end = (typeof formatDhakaDateForInput === 'function') ? formatDhakaDateForInput(range.to) : range.to.toISOString().split('T')[0];
+                    useWeekFilter = false;
+
+                    // Sync hidden inputs for backward compatibility
+                    var sd = document.getElementById('startDate');
+                    var ed = document.getElementById('endDate');
+                    if (sd) sd.value = dateFilter.start;
+                    if (ed) ed.value = dateFilter.end;
+
+                    updateWeekDisplay();
+                    updateDashboard();
+                }
+            });
+
+            // Sync hidden inputs with the initial default range
+            var qmsRange = window._qmsDatePicker.getRange();
+            if (qmsRange) {
+                var sd = document.getElementById('startDate');
+                var ed = document.getElementById('endDate');
+                if (sd && typeof formatDhakaDateForInput === 'function') sd.value = formatDhakaDateForInput(qmsRange.from);
+                if (ed && typeof formatDhakaDateForInput === 'function') ed.value = formatDhakaDateForInput(qmsRange.to);
+            }
+        }
+
+        // --- Chat Review Date Range Picker ---
+        var crContainer = document.getElementById('chatReviewDatePickerContainer');
+        if (crContainer) {
+            // Determine default range for chat review (this month)
+            var crNow = window.getDhakaNow ? getDhakaNow() : new Date();
+            var crDefaultFrom = window.getDhakaFirstDayOfMonth ? getDhakaFirstDayOfMonth(crNow) : new Date(crNow.getFullYear(), crNow.getMonth(), 1);
+            var crDefaultTo = window.getDhakaLastDayOfMonth ? getDhakaLastDayOfMonth(crNow) : new Date(crNow.getFullYear(), crNow.getMonth() + 1, 0, 23, 59, 59, 999);
+
+            window._chatReviewDatePicker = new DateRangePicker(crContainer, {
+                mode: 'range',
+                label: 'Date Range',
+                defaultRange: { from: crDefaultFrom, to: crDefaultTo },
+                onApply: function(range) {
+                    chatReviewDateFilter = { start: range.from, end: range.to };
+
+                    // Sync hidden inputs for backward compatibility
+                    var crsd = document.getElementById('chatReviewStartDate');
+                    var cred = document.getElementById('chatReviewEndDate');
+                    if (crsd && typeof formatDhakaDateForInput === 'function') crsd.value = formatDhakaDateForInput(range.from);
+                    if (cred && typeof formatDhakaDateForInput === 'function') cred.value = formatDhakaDateForInput(range.to);
+
+                    if (currentTab === 2) updateChatReviewTab();
+                }
+            });
+
+            // Sync hidden inputs with initial range
+            var crRange = window._chatReviewDatePicker.getRange();
+            if (crRange) {
+                var crsd = document.getElementById('chatReviewStartDate');
+                var cred = document.getElementById('chatReviewEndDate');
+                if (crsd && typeof formatDhakaDateForInput === 'function') crsd.value = formatDhakaDateForInput(crRange.from);
+                if (cred && typeof formatDhakaDateForInput === 'function') cred.value = formatDhakaDateForInput(crRange.to);
+            }
+        }
+    } catch(e) {
+        console.error('Failed to load DateRangePicker:', e);
+    }
+}
+
 function setupEventListeners() {
-    // Week navigation buttons
-    const prevWeekBtn = document.getElementById('prevWeekBtn');
-    const nextWeekBtn = document.getElementById('nextWeekBtn');
-    const weekDisplay = document.getElementById('weekDisplay');
-    
-    if (prevWeekBtn) {
-        prevWeekBtn.addEventListener('click', () => {
-            // If in month view, switch to week view first
-            if (!useWeekFilter) {
-                switchToWeekView();
-            }
-            // Navigate (will work whether we just switched or were already in week view)
-            navigateWeek(-1);
-        });
-    }
-    if (nextWeekBtn) {
-        nextWeekBtn.addEventListener('click', () => {
-            // If in month view, switch to week view first
-            if (!useWeekFilter) {
-                switchToWeekView();
-            }
-            // Navigate (will work whether we just switched or were already in week view)
-            navigateWeek(1);
-        });
-    }
-    
-    // Make week display clickable to switch to week view when in month view
-    if (weekDisplay) {
-        weekDisplay.addEventListener('click', function() {
-            if (!useWeekFilter) {
-                switchToWeekView();
-            }
-        });
-    }
+    // Week navigation buttons removed - elements no longer exist
 
-    // Date button
-    const dateBtn = document.getElementById('dateBtn');
-    if (dateBtn) {
-        dateBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const dropdown = document.getElementById('dateDropdown');
-            if (dropdown) {
-                dropdown.classList.toggle('active');
-            }
-        });
-    }
-
-    // Date filter Apply button (CSP-safe: no inline onclick)
-    const applyDateFilterBtn = document.getElementById('applyDateFilterBtn');
-    if (applyDateFilterBtn) {
-        applyDateFilterBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            applyDateFilter();
-        });
-    }
-
-    // Date filter Clear button (CSP-safe: no inline onclick)
-    const clearDateFilterBtn = document.getElementById('clearDateFilterBtn');
-    if (clearDateFilterBtn) {
-        clearDateFilterBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            clearDateFilter();
-        });
-    }
-
-    // Quick date filter buttons (CSP-safe: no inline onclick)
-    const todayBtn = document.getElementById('todayBtn');
-    if (todayBtn) {
-        todayBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            applyQuickDateFilter('today');
-        });
-    }
-    
-    const yesterdayBtn = document.getElementById('yesterdayBtn');
-    if (yesterdayBtn) {
-        yesterdayBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            applyQuickDateFilter('yesterday');
-        });
-    }
-    
-    const thisMonthBtn = document.getElementById('thisMonthBtn');
-    if (thisMonthBtn) {
-        thisMonthBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            applyQuickDateFilter('thisMonth');
-        });
-    }
-    
-    const lastMonthBtn = document.getElementById('lastMonthBtn');
-    if (lastMonthBtn) {
-        lastMonthBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            applyQuickDateFilter('lastMonth');
-        });
-    }
+    // Date buttons, apply/clear, and quick-date-buttons are now handled by DateRangePicker components
+    // (initialized via initializeDatePickers)
 
     // Tab buttons (CSP-safe: no inline onclick)
     const teamStatsTabBtn = document.getElementById('teamStatsTabBtn');
@@ -5713,98 +5587,7 @@ function setupEventListeners() {
         });
     }
 
-    // Chat Review date filter
-    const chatReviewDateBtn = document.getElementById('chatReviewDateBtn');
-    const chatReviewDateDropdown = document.getElementById('chatReviewDateDropdown');
-    if (chatReviewDateBtn && chatReviewDateDropdown) {
-        chatReviewDateBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            chatReviewDateDropdown.classList.toggle('active');
-        });
-    }
-    const chatReviewApplyDateBtn = document.getElementById('chatReviewApplyDateBtn');
-    const chatReviewClearDateBtn = document.getElementById('chatReviewClearDateBtn');
-    const chatReviewStartDate = document.getElementById('chatReviewStartDate');
-    const chatReviewEndDate = document.getElementById('chatReviewEndDate');
-    function formatChatReviewDateLabel(d) {
-        const day = String(d.getDate()).padStart(2, '0');
-        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        const year = String(d.getFullYear()).slice(-2);
-        return `${day}-${months[d.getMonth()]}-${year}`;
-    }
-    if (chatReviewApplyDateBtn && chatReviewStartDate && chatReviewEndDate) {
-        chatReviewApplyDateBtn.addEventListener('click', () => {
-            const start = chatReviewStartDate.value ? new Date(chatReviewStartDate.value) : null;
-            const end = chatReviewEndDate.value ? new Date(chatReviewEndDate.value) : null;
-            chatReviewDateFilter = { start, end };
-            const btnText = document.getElementById('chatReviewDateBtnText');
-            if (btnText) {
-                if (start && end) btnText.textContent = `${formatChatReviewDateLabel(start)} – ${formatChatReviewDateLabel(end)}`;
-                else if (start) btnText.textContent = formatChatReviewDateLabel(start);
-                else btnText.textContent = 'Date Range';
-            }
-            if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
-            if (currentTab === 2) updateChatReviewTab();
-        });
-    }
-    if (chatReviewClearDateBtn) {
-        chatReviewClearDateBtn.addEventListener('click', () => {
-            chatReviewDateFilter = { start: null, end: null };
-            if (chatReviewStartDate) chatReviewStartDate.value = '';
-            if (chatReviewEndDate) chatReviewEndDate.value = '';
-            const btnText = document.getElementById('chatReviewDateBtnText');
-            if (btnText) btnText.textContent = 'Date Range';
-            if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
-            if (currentTab === 2) updateChatReviewTab();
-        });
-    }
-    const chatReviewTodayBtn = document.getElementById('chatReviewTodayBtn');
-    const chatReviewThisMonthBtn = document.getElementById('chatReviewThisMonthBtn');
-    const chatReviewLastMonthBtn = document.getElementById('chatReviewLastMonthBtn');
-    function setChatReviewQuickRange(start, end) {
-        chatReviewDateFilter = { start, end };
-        if (chatReviewStartDate && window.formatDhakaDateForInput) {
-            chatReviewStartDate.value = formatDhakaDateForInput(start);
-        }
-        if (chatReviewEndDate && window.formatDhakaDateForInput) {
-            chatReviewEndDate.value = formatDhakaDateForInput(end);
-        }
-        const btnText = document.getElementById('chatReviewDateBtnText');
-        if (btnText) btnText.textContent = `${formatChatReviewDateLabel(start)} – ${formatChatReviewDateLabel(end)}`;
-        if (chatReviewDateDropdown) chatReviewDateDropdown.classList.remove('active');
-        if (currentTab === 2) updateChatReviewTab();
-    }
-    if (chatReviewTodayBtn) {
-        chatReviewTodayBtn.addEventListener('click', () => {
-            const d = window.getDhakaNow ? getDhakaNow() : new Date();
-            const start = window.getDhakaStartOfDay ? getDhakaStartOfDay(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            const end = window.getDhakaEndOfDay ? getDhakaEndOfDay(d) : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-            setChatReviewQuickRange(start, end);
-        });
-    }
-    if (chatReviewThisMonthBtn) {
-        chatReviewThisMonthBtn.addEventListener('click', () => {
-            const d = window.getDhakaNow ? getDhakaNow() : new Date();
-            const start = window.getDhakaFirstDayOfMonth ? getDhakaFirstDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth(), 1);
-            const end = window.getDhakaLastDayOfMonth ? getDhakaLastDayOfMonth(d) : new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-            setChatReviewQuickRange(start, end);
-        });
-    }
-    if (chatReviewLastMonthBtn) {
-        chatReviewLastMonthBtn.addEventListener('click', () => {
-            const d = window.getDhakaNow ? getDhakaNow() : new Date();
-            const y = d.getFullYear(); const m = d.getMonth();
-            const start = new Date(y, m - 1, 1);
-            const end = new Date(y, m, 0, 23, 59, 59, 999);
-            setChatReviewQuickRange(start, end);
-        });
-    }
-    document.addEventListener('click', (e) => {
-        const chatReviewDropdown = document.getElementById('chatReviewDateDropdown');
-        if (chatReviewDropdown && !e.target.closest('#chatReviewDateBtn') && !chatReviewDropdown.contains(e.target)) {
-            chatReviewDropdown.classList.remove('active');
-        }
-    });
+    // Chat Review date filter — now handled by DateRangePicker component (initialized via initializeDatePickers)
 
     // Clear filters button (CSP-safe: no inline onclick)
     const clearFiltersBtn = document.getElementById('clearFiltersBtn');
@@ -5834,13 +5617,8 @@ function setupEventListeners() {
     }
 
     // Close dropdowns when clicking outside
+    // (Date dropdown close-on-outside-click now handled by DateRangePicker component)
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('.date-picker-dropdown')) {
-            const dateDropdown = document.getElementById('dateDropdown');
-            if (dateDropdown) {
-                dateDropdown.classList.remove('active');
-            }
-        }
         if (!e.target.closest('.filter-dropdown')) {
             const filterDropdown = document.getElementById('filterDropdown');
             const filterBtn = document.getElementById('filterBtn');
@@ -5854,36 +5632,28 @@ function setupEventListeners() {
     });
 }
 
+// Legacy applyDateFilter kept for backward compat (the DateRangePicker onApply callback
+// handles the primary flow now, but week navigation and other code may still call this).
 window.applyDateFilter = async function() {
     // Cancel any ongoing fetches by incrementing the fetch ID
     currentFetchId++;
-    
+
     // Reset loading and render states to allow new fetch to start
     isLoading = false;
     renderInProgress = false;
-    
+
     // Show loading state when date filter changes
     showLoadingState();
-    
+
     const startDateEl = document.getElementById('startDate');
     const endDateEl = document.getElementById('endDate');
     const startDate = startDateEl?.value || '';
     const endDate = endDateEl?.value || '';
-    
-    // Store as date strings to match employee-performance.html
-    if (startDate) {
-        dateFilter.start = startDate;
-    } else {
-        dateFilter.start = null;
-    }
-    
-    if (endDate) {
-        dateFilter.end = endDate;
-    } else {
-        dateFilter.end = null;
-    }
 
-    const dateBtnTextEl = document.getElementById('dateBtnText');
+    // Store as date strings to match employee-performance.html
+    dateFilter.start = startDate || null;
+    dateFilter.end = endDate || null;
+
     if (startDate || endDate) {
         // If only one date is provided, set both start and end to that date (single day view)
         if (startDate && !endDate) {
@@ -5891,27 +5661,14 @@ window.applyDateFilter = async function() {
         } else if (endDate && !startDate) {
             dateFilter.start = endDate;
         }
-        
-        const start = startDate ? formatDhakaDate(parseDhakaDate(startDate), { month: 'short', day: 'numeric' }) : 'Start';
-        const end = endDate ? formatDhakaDate(parseDhakaDate(endDate), { month: 'short', day: 'numeric' }) : 'End';
-        if (dateBtnTextEl) dateBtnTextEl.textContent = `${start} - ${end}`;
         useWeekFilter = false;
-        
-        // Clear active state of quick filter buttons when using custom date range
-        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-        quickDateButtons.forEach(btn => btn.classList.remove('active'));
-        
-        updateWeekDisplay(); // Update week display to show "-"
+        updateWeekDisplay();
     } else {
         // If both dates are cleared, reset to today view
         initializeTodayFilter();
     }
 
-    // Close the date dropdown modal
-    const dateDropdown = document.getElementById('dateDropdown');
-    if (dateDropdown) dateDropdown.classList.remove('active');
-    
-    // Update dashboard with new date filter (this will call updateTeamStats or updateStandupView based on current tab)
+    // Update dashboard with new date filter
     await updateDashboard();
 };
 
@@ -5928,12 +5685,9 @@ window.clearDateFilter = async function() {
     
     // Reset to today view
     initializeTodayFilter();
-    
-    // Close the date dropdown modal
-    const dateDropdown = document.getElementById('dateDropdown');
-    if (dateDropdown) dateDropdown.classList.remove('active');
+
     updateWeekDisplay(); // Update week display
-    
+
     // Update dashboard with cleared filter (this will call updateTeamStats or updateStandupView based on current tab)
     await updateDashboard();
 };
@@ -6002,31 +5756,16 @@ window.applyQuickDateFilter = async function(period) {
         
         console.log('📅 [Quick Date Filter] Date range set:', { start: dateFilter.start, end: dateFilter.end });
         
-        // Update date input fields
+        // Update hidden date input fields
         const startDateEl = document.getElementById('startDate');
         const endDateEl = document.getElementById('endDate');
-        const dateBtnTextEl = document.getElementById('dateBtnText');
-        
+
         if (startDateEl) startDateEl.value = dateFilter.start;
         if (endDateEl) endDateEl.value = dateFilter.end;
-        
-        // Update date button text
-        if (dateBtnTextEl) {
-            const start = window.formatDhakaDate ? window.formatDhakaDate(startDate, { month: 'short', day: 'numeric' }) : startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const end = window.formatDhakaDate ? window.formatDhakaDate(endDate, { month: 'short', day: 'numeric' }) : endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            dateBtnTextEl.textContent = `${start} - ${end}`;
-        }
-        
-        // Update active state of quick filter buttons
-        const quickDateButtons = document.querySelectorAll('.quick-date-btn');
-        quickDateButtons.forEach(btn => btn.classList.remove('active'));
-        const activeBtnId = period + 'Btn';
-        const activeBtn = document.getElementById(activeBtnId);
-        if (activeBtn) {
-            activeBtn.classList.add('active');
-            console.log('✅ [Quick Date Filter] Activated button:', activeBtnId);
-        } else {
-            console.warn('⚠️ [Quick Date Filter] Button not found:', activeBtnId);
+
+        // Sync the DateRangePicker component trigger label
+        if (window._qmsDatePicker) {
+            window._qmsDatePicker.setRange(startDate, endDate);
         }
         
         // Update week display
