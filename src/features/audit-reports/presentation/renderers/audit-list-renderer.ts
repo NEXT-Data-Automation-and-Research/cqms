@@ -636,11 +636,15 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
     'Unknown Scorecard'
   );
   
-  const auditorName = escapeHtml(
-    audit.auditorName || 
-    (audit as any).auditor_name || 
+  // Hide auditor name from Employee/agent view
+  const userRole = controller.getUserRole();
+  const restrictedRoles = ['Employee', 'General User', ''];
+  const isRestricted = !userRole || restrictedRoles.includes(userRole);
+  const auditorName = isRestricted ? '' : (escapeHtml(
+    audit.auditorName ||
+    (audit as any).auditor_name ||
     ''
-  ) || 'N/A';
+  ) || 'N/A');
   
   const acknowledgementStatus = (audit.acknowledgementStatus || (audit as any).acknowledgement_status || '').toLowerCase();
   const isAcknowledged = acknowledgementStatus === 'acknowledged' || acknowledgementStatus === 'acknowledge';
@@ -739,7 +743,7 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
             
             <!-- Second Row: Metadata Line (below name) -->
             <div style="font-size: 0.625rem; color: var(--text-secondary, #6b7280); font-family: 'Poppins', sans-serif;">
-              ${auditId} • ${interactionId} • ${channelDisplay} • ${auditorName} • ${timeAgo}
+              ${[auditId, interactionId, channelDisplay, auditorName, timeAgo].filter(Boolean).join(' • ')}
             </div>
           </div>
         </div>

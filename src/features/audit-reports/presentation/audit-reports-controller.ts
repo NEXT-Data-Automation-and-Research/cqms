@@ -42,6 +42,9 @@ export class AuditReportsController {
   private scorecards: ScorecardInfo[] = [];
   private currentUserEmail: string = '';
   private currentUserRole: string = '';
+
+  /** Expose role for renderers that need role-based display logic */
+  getUserRole(): string { return this.currentUserRole; }
   private showAllAudits: boolean = false; // Default to false (safer - will be set correctly by applyRoleBasedSettings)
   private viewMode: AuditReportsViewMode = 'audits';
   private agentAckStats: import('../domain/entities.js').AgentAcknowledgementStats | null = null;
@@ -215,16 +218,11 @@ export class AuditReportsController {
       currentUserEmail: this.currentUserEmail
     });
     
-    // Show "View All" button for restricted users (they can toggle to see all)
-    this.renderer.toggleViewAllButton(isRestrictedUser);
+    // Hide "View All" button for restricted users — they must only see their own audits
+    this.renderer.toggleViewAllButton(false);
     
-    // Update button state and show mode indicator for restricted users
-    if (isRestrictedUser) {
-      this.renderer.updateViewAllButtonState(this.showAllAudits);
-      this.renderer.showEmployeeModeIndicator(this.showAllAudits, this.currentUserEmail);
-    } else {
-      this.renderer.hideEmployeeModeIndicator();
-    }
+    // No toggle or mode indicator for restricted users — they always see only their own audits
+    this.renderer.hideEmployeeModeIndicator();
   }
 
   /**
@@ -749,17 +747,17 @@ export class AuditReportsController {
    * Toggle view all audits (for restricted users like Employees and General Users)
    */
   toggleViewAll(): void {
-    // Only allow toggle for restricted roles
+    // Restricted roles (Employee, General User) must NOT toggle — they only see their own audits
     const restrictedRoles = ['Employee', 'General User', ''];
-    if (!restrictedRoles.includes(this.currentUserRole)) return;
-    
+    if (restrictedRoles.includes(this.currentUserRole)) return;
+
     this.showAllAudits = !this.showAllAudits;
     this.pagination.currentPage = 1;
-    
+
     // Update button state and mode indicator
     this.renderer.updateViewAllButtonState(this.showAllAudits);
     this.renderer.showEmployeeModeIndicator(this.showAllAudits, this.currentUserEmail);
-    
+
     this.loadAudits();
   }
 
