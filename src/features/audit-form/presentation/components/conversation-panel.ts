@@ -159,7 +159,7 @@ export class ConversationPanel {
             }
 
             // Fetch conversation data from Intercom API via Supabase Edge Function
-            const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?conversation_id=${encodeURIComponent(conversationId)}&display_as=plaintext`;
+            const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?conversation_id=${encodeURIComponent(conversationId)}&display_as=html`;
 
             // Get user's JWT token
             let userToken = null;
@@ -338,14 +338,22 @@ export class ConversationPanel {
 
         const bgColor = isAdmin ? '#1A733E' : isBot ? '#1d1d1d' : '#ffffff';
         const textColor = (isAdmin || isBot) ? '#ffffff' : '#374151';
-        const borderRadius = isAdmin || isBot 
+        const borderRadius = isAdmin || isBot
             ? '0.4852rem 0.4852rem 0.1617rem 0.4852rem'
             : '0.4852rem 0.4852rem 0.4852rem 0.1617rem';
+
+        // Process images from body HTML and attachments
+        const imageAttachments = this.getImageAttachments(part);
+        let text = this.sanitizeMessageBody(body);
+        if (imageAttachments.length > 0) {
+            text = this.inlineImages(text, imageAttachments);
+        }
+        const renderedBody = this.renderWithImages(text);
 
         messageDiv.innerHTML = `
             <div style="display: inline-block; max-width: 70%; padding: 0.4852rem 0.6469rem; background: ${bgColor}; color: ${textColor}; border-radius: ${borderRadius};">
                 <div style="font-size: 0.485rem; font-weight: 600; margin-bottom: 0.1617rem; opacity: 0.9;">${this.escapeHtml(authorName)}</div>
-                <div style="font-size: 0.5659rem; line-height: 1.5;">${this.sanitizeMessageBody(body)}</div>
+                <div style="font-size: 0.5659rem; line-height: 1.5;">${renderedBody}</div>
                 <div style="font-size: 0.4043rem; color: ${isAdmin || isBot ? 'rgba(255,255,255,0.7)' : '#6b7280'}; margin-top: 0.1617rem;">
                     ${createdAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
                 </div>
@@ -356,11 +364,65 @@ export class ConversationPanel {
     }
 
     /**
-     * Sanitize message body
+     * Strip HTML while preserving image URLs as {{IMG:url}} tokens
+     */
+    private stripHtmlPreserveImages(html: string): string {
+        if (!html) return '';
+        let preserved = html.replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (_, src) => `{{IMG:${src}}}`);
+        preserved = preserved.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n');
+        preserved = preserved.replace(/<[^>]*>/g, '');
+        preserved = preserved.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+        return preserved.replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    /**
+     * Get image attachments from a conversation part
+     */
+    private getImageAttachments(part: any): Array<{ url: string }> {
+        const attachments = part.attachments || [];
+        return attachments.filter((a: any) =>
+            a.url && (/^image\//i.test(a.content_type || '') || /\.(png|jpg|jpeg|gif|webp|bmp|svg)/i.test(a.url || ''))
+        );
+    }
+
+    /**
+     * Inline attachment images into message body
+     */
+    private inlineImages(body: string, attachments: Array<{ url: string }>): string {
+        let result = body;
+        const usedUrls = new Set<string>();
+        result = result.replace(/\[Image\s+"[^"]*"\]/g, (match) => {
+            for (const att of attachments) {
+                if (!usedUrls.has(att.url)) { usedUrls.add(att.url); return `{{IMG:${att.url}}}`; }
+            }
+            return match;
+        });
+        for (const att of attachments) {
+            if (!usedUrls.has(att.url)) { result += `\n{{IMG:${att.url}}}`; }
+        }
+        return result;
+    }
+
+    /**
+     * Render text with {{IMG:url}} tokens as <img> tags
+     */
+    private renderWithImages(text: string): string {
+        let html = this.escapeHtml(text);
+        return html
+            .replace(/\{\{IMG:(.*?)\}\}/g, (_, url) => {
+                const decodedUrl = url.replace(/&amp;/g, '&');
+                return `<img style="max-width:100%;border-radius:0.375rem;margin:0.375rem 0;display:block;max-height:18rem;object-fit:contain;border:1px solid rgba(0,0,0,0.1);cursor:pointer;" src="${decodedUrl}" alt="Image" loading="lazy" onclick="window.open(this.src,'_blank')">`;
+            })
+            .replace(/\[Image\s+&quot;[^]*?&quot;\]/g, '');
+    }
+
+    /**
+     * Sanitize message body (with image support)
      */
     private sanitizeMessageBody(body: string): string {
         if (!body) return '';
-        return this.escapeHtml(body);
+        return this.stripHtmlPreserveImages(body);
     }
 
     /**

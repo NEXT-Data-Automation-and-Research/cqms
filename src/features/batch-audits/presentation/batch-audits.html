@@ -257,8 +257,31 @@
   }
 
   // ─── Conversation Loading (same as audit-queue) ───
-  function stripHtml(html) { if(!html) return ''; var t=document.createElement('div'); t.innerHTML=html; return t.textContent||t.innerText||''; }
+  function stripHtml(html) {
+    if(!html) return '';
+    var preserved = html.replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, function(_, src) { return '{{IMG:' + src + '}}'; });
+    var t=document.createElement('div'); t.innerHTML=preserved; return (t.textContent||t.innerText||'').trim();
+  }
   function getInitials(name) { if(!name) return '?'; var p=name.trim().split(/\s+/); if(p.length>=2) return (p[0][0]+p[p.length-1][0]).toUpperCase(); return name.substring(0,2).toUpperCase(); }
+  function getImageAttachments(part) {
+    var attachments = part.attachments || [];
+    return attachments.filter(function(a) { return a.url && (/^image\//i.test(a.content_type||'') || /\.(png|jpg|jpeg|gif|webp|bmp|svg)/i.test(a.url||'')); });
+  }
+  function inlineImages(body, attachments) {
+    var result = body; var usedUrls = {};
+    result = result.replace(/\[Image\s+"[^"]*"\]/g, function(match) {
+      for (var i=0; i<attachments.length; i++) { if (!usedUrls[attachments[i].url]) { usedUrls[attachments[i].url]=true; return '{{IMG:'+attachments[i].url+'}}'; } } return match;
+    });
+    for (var i=0; i<attachments.length; i++) { if (!usedUrls[attachments[i].url]) { result+='\n{{IMG:'+attachments[i].url+'}}'; } }
+    return result;
+  }
+  function renderMessageWithImages(text) {
+    var escaped = esc(text);
+    return escaped.replace(/\{\{IMG:(.*?)\}\}/g, function(_, url) {
+      var decodedUrl = url.replace(/&amp;/g, '&');
+      return '<img style="max-width:100%;border-radius:0.375rem;margin:0.375rem 0;display:block;max-height:18rem;object-fit:contain;border:1px solid rgba(0,0,0,0.1);cursor:pointer;" src="'+decodedUrl+'" alt="Image" loading="lazy" onclick="window.open(this.src,\'_blank\')">';
+    }).replace(/\[Image\s+&quot;[^]*?&quot;\]/g, '');
+  }
 
   function buildConversationSection(interactionId, auditId) {
     if (!interactionId) return '';
@@ -297,14 +320,18 @@
       var isSummary=partType==='conversation_summary';
       var isSystem=systemTypes.indexOf(partType)!==-1;
       var isRating=partType==='conversation_rating_changed'||partType==='conversation_rating_remark_added';
+      var imageAttachments=getImageAttachments(part);
       var text=stripHtml(body).trim();
+      if(imageAttachments.length>0){text=inlineImages(text,imageAttachments);}
       if(isSystem||isRating){if(!text&&!isRating)return;var label=partType.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});html+='<div style="display:flex;justify-content:center;padding:0.25rem 0.75rem;"><div class="cq-bubble cq-bubble-system"><div style="font-weight:600;font-size:0.6875rem;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.125rem;">'+esc(label)+'</div>'+(text?'<div>'+esc(text)+'</div>':'')+'<div class="cq-time">'+timeStr+' &middot; '+dateStr+'</div></div></div>';return;}
-      if(!text&&!isSummary)return;
+      var hasImages=text.indexOf('{{IMG:')!==-1;
+      if(!text&&!isSummary&&!hasImages)return;
       var bubbleClass=isSummary?'cq-bubble-summary':(isUser?'cq-bubble-user':(isAI?'cq-bubble-ai':'cq-bubble-agent'));
       var avatarBg=isUser?'linear-gradient(135deg,#3b82f6,#60a5fa)':(isAI?'linear-gradient(135deg,#1d1d1d,#374151)':'linear-gradient(135deg,#1A733E,#2d9a5a)');
       var initials=getInitials(authorName); var displayName=isSummary?'AI Summary':authorName;
-      if(isUser){html+='<div class="cq-msg cq-msg-user"><div class="cq-avatar" style="background:'+avatarBg+';color:white;">'+esc(initials)+'</div><div style="display:flex;flex-direction:column;align-items:flex-start;max-width:75%;"><div class="cq-name cq-name-user">'+esc(displayName)+'</div><div class="cq-bubble cq-bubble-user"><div class="cq-msg-body">'+esc(text)+'</div></div><div class="cq-time">'+timeStr+' &middot; '+dateStr+'</div></div></div>';}
-      else{html+='<div class="cq-msg cq-msg-agent"><div style="display:flex;flex-direction:column;align-items:flex-end;max-width:75%;"><div class="cq-name cq-name-agent" style="color:'+(isSummary?'#92400e':'#1A733E')+';">'+esc(displayName)+'</div><div class="cq-bubble '+bubbleClass+'"><div class="cq-msg-body">'+esc(text)+'</div></div><div class="cq-time" style="text-align:right;">'+timeStr+' &middot; '+dateStr+'</div></div><div class="cq-avatar" style="background:'+avatarBg+';color:white;">'+esc(initials)+'</div></div>';}
+      var renderedBody=renderMessageWithImages(text);
+      if(isUser){html+='<div class="cq-msg cq-msg-user"><div class="cq-avatar" style="background:'+avatarBg+';color:white;">'+esc(initials)+'</div><div style="display:flex;flex-direction:column;align-items:flex-start;max-width:75%;"><div class="cq-name cq-name-user">'+esc(displayName)+'</div><div class="cq-bubble cq-bubble-user"><div class="cq-msg-body">'+renderedBody+'</div></div><div class="cq-time">'+timeStr+' &middot; '+dateStr+'</div></div></div>';}
+      else{html+='<div class="cq-msg cq-msg-agent"><div style="display:flex;flex-direction:column;align-items:flex-end;max-width:75%;"><div class="cq-name cq-name-agent" style="color:'+(isSummary?'#92400e':'#1A733E')+';">'+esc(displayName)+'</div><div class="cq-bubble '+bubbleClass+'"><div class="cq-msg-body">'+renderedBody+'</div></div><div class="cq-time" style="text-align:right;">'+timeStr+' &middot; '+dateStr+'</div></div><div class="cq-avatar" style="background:'+avatarBg+';color:white;">'+esc(initials)+'</div></div>';}
     });
     container.innerHTML=html; container.style.display='flex'; container.scrollTop=0;
   }
@@ -322,7 +349,7 @@
       var userToken=null;
       if(supabaseClient){var sess=await supabaseClient.auth.getSession();userToken=sess.data.session?.access_token||null;}
       if(!userToken) throw new Error('Authentication required.');
-      var url=supabaseUrl+'/functions/v1/intercom-proxy?conversation_id='+encodeURIComponent(interactionId)+'&display_as=plaintext';
+      var url=supabaseUrl+'/functions/v1/intercom-proxy?conversation_id='+encodeURIComponent(interactionId)+'&display_as=html';
       var res=await fetch(url,{method:'GET',headers:{'Authorization':'Bearer '+userToken,'apikey':supabaseAnonKey,'Accept':'application/json','Content-Type':'application/json'}});
       if(!res.ok){var errText=await res.text().catch(function(){return '';});var errData;try{errData=JSON.parse(errText);}catch(e){errData={error:errText||('HTTP '+res.status)};}throw new Error(errData.error||('HTTP '+res.status));}
       var conversation=await res.json(); conversationCache[interactionId]=conversation;
