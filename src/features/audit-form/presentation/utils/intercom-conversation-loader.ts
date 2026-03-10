@@ -130,16 +130,24 @@ export class IntercomConversationLoader {
       const authorType = author.type || 'unknown';
       const body = part.body || '';
       const createdAt = part.created_at ? new Date(part.created_at * 1000).toLocaleString() : '';
-      
+
       const isAdmin = authorType === 'admin' || authorType === 'team';
       const bgColor = isAdmin ? '#f3f4f6' : '#dbeafe';
       const textAlign = isAdmin ? 'right' : 'left';
-      
+
+      // Process images: extract from HTML body + attachments
+      const imageAttachments = this.getImageAttachments(part);
+      let text = this.sanitizeMessageBody(body);
+      if (imageAttachments.length > 0) {
+        text = this.inlineImages(text, imageAttachments);
+      }
+      const renderedBody = this.renderMessageWithImages(text);
+
       return `
         <div style="margin-bottom: 0.6469rem; text-align: ${textAlign};">
           <div style="display: inline-block; max-width: 70%; padding: 0.485rem 0.6469rem; background: ${bgColor}; border-radius: 0.3234rem;">
             <div style="font-size: 0.485rem; font-weight: 600; color: #374151; margin-bottom: 0.1617rem;">${escapeHtml(authorName)}</div>
-            <div style="font-size: 0.5659rem; color: #111827; line-height: 1.5;">${this.sanitizeMessageBody(body)}</div>
+            <div style="font-size: 0.5659rem; color: #111827; line-height: 1.5;">${renderedBody}</div>
             ${createdAt ? `<div style="font-size: 0.4043rem; color: #6b7280; margin-top: 0.1617rem;">${escapeHtml(createdAt)}</div>` : ''}
           </div>
         </div>
@@ -150,14 +158,82 @@ export class IntercomConversationLoader {
   }
 
   /**
-   * Sanitize message body (handles HTML content)
+   * Extract image URLs from HTML <img> tags, preserving them as {{IMG:url}} tokens
+   */
+  private stripHtmlPreserveImages(html: string): string {
+    if (!html) return '';
+    // Convert <img src="URL"> to {{IMG:URL}} before stripping
+    let preserved = html.replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, (_, src) => `{{IMG:${src}}}`);
+    // Convert line break tags
+    preserved = preserved.replace(/<br\s*\/?>/gi, '\n').replace(/<\/p>/gi, '\n').replace(/<\/div>/gi, '\n');
+    // Strip remaining HTML
+    preserved = preserved.replace(/<[^>]*>/g, '');
+    // Decode common entities
+    preserved = preserved.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+    return preserved.replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /**
+   * Get image attachments from a conversation part
+   */
+  private getImageAttachments(part: any): Array<{ url: string; content_type?: string; name?: string }> {
+    const attachments = part.attachments || [];
+    return attachments.filter((a: any) =>
+      a.url && (
+        /^image\//i.test(a.content_type || '') ||
+        /\.(png|jpg|jpeg|gif|webp|bmp|svg)/i.test(a.url || '')
+      )
+    );
+  }
+
+  /**
+   * Inline attachment images into the message body text
+   */
+  private inlineImages(body: string, attachments: Array<{ url: string }>): string {
+    let result = body;
+    const usedUrls = new Set<string>();
+
+    // Replace [Image "..."] placeholders with matching attachment URLs
+    result = result.replace(/\[Image\s+"[^"]*"\]/g, (match) => {
+      for (const att of attachments) {
+        if (!usedUrls.has(att.url)) {
+          usedUrls.add(att.url);
+          return `{{IMG:${att.url}}}`;
+        }
+      }
+      return match;
+    });
+
+    // Append remaining unused attachment images
+    for (const att of attachments) {
+      if (!usedUrls.has(att.url)) {
+        result += `\n{{IMG:${att.url}}}`;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Render message text, converting {{IMG:url}} tokens to <img> tags
+   */
+  private renderMessageWithImages(text: string): string {
+    let html = escapeHtml(text);
+    html = html
+      .replace(/\{\{IMG:(.*?)\}\}/g, (_, url) => {
+        const decodedUrl = url.replace(/&amp;/g, '&');
+        return `<img style="max-width:100%;border-radius:0.375rem;margin:0.375rem 0;display:block;max-height:18rem;object-fit:contain;border:1px solid rgba(0,0,0,0.1);cursor:pointer;" src="${decodedUrl}" alt="Image" loading="lazy" onclick="window.open(this.src,'_blank')">`;
+      })
+      .replace(/\[Image\s+&quot;[^]*?&quot;\]/g, '');
+    return html;
+  }
+
+  /**
+   * Sanitize message body (handles HTML content with image support)
    */
   private sanitizeMessageBody(body: string): string {
     if (!body) return '';
-    
-    // If body contains HTML, sanitize it
-    // For now, we'll use escapeHtml - in production, use DOMPurify for better HTML handling
-    return escapeHtml(body);
+    return this.stripHtmlPreserveImages(body);
   }
 }
 

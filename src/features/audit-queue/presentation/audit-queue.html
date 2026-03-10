@@ -192,6 +192,13 @@
   .cq-name-agent { color:rgba(255,255,255,0.85); }
   .cq-time { font-size:0.5625rem; margin-top:0.125rem; opacity:0.7; }
   .cq-msg-body { white-space:pre-wrap; word-wrap:break-word; }
+  .cq-chat-img {
+    max-width:100%; border-radius:0.375rem; margin:0.375rem 0; cursor:pointer;
+    display:block; max-height:18rem; object-fit:contain;
+    border:1px solid rgba(0,0,0,0.1);
+    transition: opacity 0.2s;
+  }
+  .cq-chat-img:hover { opacity:0.85; }
   .cq-loading { text-align:center; padding:2rem; color:#6b7280; }
   .cq-loading-spinner {
     display:inline-block; width:1.5rem; height:1.5rem; border:3px solid #e5e7eb;
@@ -331,9 +338,57 @@
 
   function stripHtml(html) {
     if (!html) return '';
+    // Preserve <img> tags by converting to {{IMG:url}} tokens before stripping
+    var preserved = html
+      .replace(/<img[^>]+src=["']([^"']+)["'][^>]*>/gi, function(_, src) { return '{{IMG:' + src + '}}'; });
     var tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    tmp.innerHTML = preserved;
+    return (tmp.textContent || tmp.innerText || '').trim();
+  }
+
+  function getImageAttachments(part) {
+    var attachments = part.attachments || [];
+    return attachments.filter(function(a) {
+      return a.url && (
+        /^image\//i.test(a.content_type || '') ||
+        /\.(png|jpg|jpeg|gif|webp|bmp|svg)/i.test(a.url || '')
+      );
+    });
+  }
+
+  function inlineImages(body, attachments) {
+    var result = body;
+    var usedUrls = {};
+
+    // Replace [Image "..."] placeholders with matching attachment URLs
+    result = result.replace(/\[Image\s+"[^"]*"\]/g, function(match) {
+      for (var i = 0; i < attachments.length; i++) {
+        if (!usedUrls[attachments[i].url]) {
+          usedUrls[attachments[i].url] = true;
+          return '{{IMG:' + attachments[i].url + '}}';
+        }
+      }
+      return match;
+    });
+
+    // Append any remaining unused attachment images at the end
+    for (var i = 0; i < attachments.length; i++) {
+      if (!usedUrls[attachments[i].url]) {
+        result += '\n{{IMG:' + attachments[i].url + '}}';
+      }
+    }
+    return result;
+  }
+
+  function renderMessageWithImages(text) {
+    // Escape HTML first, then convert {{IMG:url}} tokens to <img> tags
+    var escaped = esc(text);
+    return escaped
+      .replace(/\{\{IMG:(.*?)\}\}/g, function(_, url) {
+        var decodedUrl = url.replace(/&amp;/g, '&');
+        return '<img class="cq-chat-img" src="' + decodedUrl + '" alt="Image" loading="lazy" onclick="window.open(this.src,\'_blank\')">';
+      })
+      .replace(/\[Image\s+&quot;[^]*?&quot;\]/g, '');
   }
 
   function getInitials(name) {
@@ -394,8 +449,14 @@
       var isSystem = systemTypes.indexOf(partType) !== -1;
       var isRating = partType === 'conversation_rating_changed' || partType === 'conversation_rating_remark_added';
 
-      // Strip HTML from body
+      // Extract images from body and attachments
+      var imageAttachments = getImageAttachments(part);
       var text = stripHtml(body).trim();
+
+      // Inline attachment images into the text
+      if (imageAttachments.length > 0) {
+        text = inlineImages(text, imageAttachments);
+      }
 
       // System messages (centered)
       if (isSystem || isRating) {
@@ -411,8 +472,9 @@
         return;
       }
 
-      // Skip empty messages
-      if (!text && !isSummary) return;
+      // Skip empty messages (but keep if there are images)
+      var hasImages = text.indexOf('{{IMG:') !== -1;
+      if (!text && !isSummary && !hasImages) return;
 
       // Determine bubble style
       var bubbleClass = isSummary ? 'cq-bubble-summary' : (isUser ? 'cq-bubble-user' : (isAI ? 'cq-bubble-ai' : 'cq-bubble-agent'));
@@ -424,13 +486,16 @@
       var initials = getInitials(authorName);
       var displayName = isSummary ? 'AI Summary' : authorName;
 
+      // Render text with images
+      var renderedBody = renderMessageWithImages(text);
+
       if (isUser) {
         // User: avatar left, bubble right
         html += '<div class="cq-msg cq-msg-user">' +
           '<div class="cq-avatar" style="background:' + avatarBg + ';color:white;">' + esc(initials) + '</div>' +
           '<div style="display:flex;flex-direction:column;align-items:flex-start;max-width:75%;">' +
             '<div class="cq-name cq-name-user">' + esc(displayName) + '</div>' +
-            '<div class="cq-bubble cq-bubble-user"><div class="cq-msg-body">' + esc(text) + '</div></div>' +
+            '<div class="cq-bubble cq-bubble-user"><div class="cq-msg-body">' + renderedBody + '</div></div>' +
             '<div class="cq-time">' + timeStr + ' &middot; ' + dateStr + '</div>' +
           '</div>' +
         '</div>';
@@ -439,7 +504,7 @@
         html += '<div class="cq-msg cq-msg-agent">' +
           '<div style="display:flex;flex-direction:column;align-items:flex-end;max-width:75%;">' +
             '<div class="cq-name cq-name-agent" style="color:' + (isSummary ? '#92400e' : '#1A733E') + ';">' + esc(displayName) + '</div>' +
-            '<div class="cq-bubble ' + bubbleClass + '"><div class="cq-msg-body">' + esc(text) + '</div></div>' +
+            '<div class="cq-bubble ' + bubbleClass + '"><div class="cq-msg-body">' + renderedBody + '</div></div>' +
             '<div class="cq-time" style="text-align:right;">' + timeStr + ' &middot; ' + dateStr + '</div>' +
           '</div>' +
           '<div class="cq-avatar" style="background:' + avatarBg + ';color:white;">' + esc(initials) + '</div>' +
@@ -485,7 +550,7 @@
       }
       if (!userToken) throw new Error('Authentication required. Please log in again.');
 
-      var url = supabaseUrl + '/functions/v1/intercom-proxy?conversation_id=' + encodeURIComponent(interactionId) + '&display_as=plaintext';
+      var url = supabaseUrl + '/functions/v1/intercom-proxy?conversation_id=' + encodeURIComponent(interactionId) + '&display_as=html';
       var res = await fetch(url, {
         method: 'GET',
         headers: {
