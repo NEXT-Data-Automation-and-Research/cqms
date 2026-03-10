@@ -42,6 +42,7 @@ export class AuditReportsController {
   private scorecards: ScorecardInfo[] = [];
   private currentUserEmail: string = '';
   private currentUserRole: string = '';
+  private currentUserName: string = '';
 
   /** Expose role for renderers that need role-based display logic */
   getUserRole(): string { return this.currentUserRole; }
@@ -160,6 +161,7 @@ export class AuditReportsController {
       
       this.currentUserEmail = (userInfo.email || '').toLowerCase().trim();
       this.currentUserRole = userInfo.role || '';
+      this.currentUserName = userInfo.name || '';
       
       console.log('[AuditReports] 👤 User info extracted:', {
         email: this.currentUserEmail,
@@ -277,19 +279,63 @@ export class AuditReportsController {
   }
 
   /**
+   * Fetch team member emails for Supervisor role.
+   * Queries the `people` table for employees whose team_supervisor matches the current user.
+   */
+  private async fetchTeamMemberEmails(): Promise<string[]> {
+    try {
+      const { getSecureSupabase } = await import('../../../utils/secure-supabase.js');
+      const supabase = await getSecureSupabase(false);
+
+      // Match by supervisor name or email (team_supervisor field stores the name)
+      const supervisorName = this.currentUserName;
+      const supervisorEmail = this.currentUserEmail;
+
+      let query = supabase.from('people').select('email');
+      if (supervisorName && supervisorEmail) {
+        query = query.or(`team_supervisor.ilike.%${supervisorName}%,team_supervisor.ilike.%${supervisorEmail}%`);
+      } else if (supervisorName) {
+        query = query.ilike('team_supervisor', `%${supervisorName}%`);
+      } else if (supervisorEmail) {
+        query = query.ilike('team_supervisor', `%${supervisorEmail}%`);
+      } else {
+        return [];
+      }
+
+      const { data, error } = await query;
+      if (error) {
+        logError('[AuditReports] Error fetching team members:', error);
+        return [];
+      }
+
+      const emails = (data || [])
+        .map((row: any) => (row.email || '').toLowerCase().trim())
+        .filter((e: string) => e !== '');
+      logInfo('[AuditReports] Supervisor team members:', emails.length);
+      return emails;
+    } catch (error) {
+      logError('[AuditReports] Error in fetchTeamMemberEmails:', error);
+      return [];
+    }
+  }
+
+  /**
    * Load audits
    */
   async loadAudits(): Promise<void> {
     try {
       this.isLoading = true;
       this.renderer.showLoading();
-      
+
+      const isSupervisor = this.currentUserRole === 'Supervisor';
+
       // Determine if we should filter by employee email
       // Restricted roles (Employee, General User, or empty) should only see their own audits
       // unless they've toggled "View All"
+      // Supervisor is NOT in restrictedRoles — they load all audits then filter by team
       const restrictedRoles = ['Employee', 'General User', ''];
       const isRestrictedUser = !this.currentUserRole || restrictedRoles.includes(this.currentUserRole);
-      
+
       // For restricted users, filter by their email unless they've toggled "View All"
       // CRITICAL: If restricted user has no email, don't show any audits (safer than showing all)
       let employeeEmail: string | undefined = undefined;
@@ -313,6 +359,7 @@ export class AuditReportsController {
       // Debug logging - use console.log to ensure it shows in browser
       console.log('[AuditReports] 🔍 Loading audits with params:', {
         role: this.currentUserRole || '(missing)',
+        isSupervisor,
         isRestrictedUser,
         currentUserEmail: this.currentUserEmail || '(missing)',
         employeeEmail: employeeEmail || '(not filtering)',
@@ -320,6 +367,7 @@ export class AuditReportsController {
       });
       logInfo('[AuditReports] Loading audits:', {
         role: this.currentUserRole || '(missing)',
+        isSupervisor,
         isRestrictedUser,
         currentUserEmail: this.currentUserEmail || '(missing)',
         employeeEmail: employeeEmail || '(not filtering)',
@@ -329,8 +377,33 @@ export class AuditReportsController {
       this.audits = await this.service.loadAudits(
         this.currentScorecardId,
         employeeEmail,
-        this.showAllAudits
+        isSupervisor ? true : this.showAllAudits // Supervisors load all, then filter by team
       );
+
+      // Supervisor: filter audits to only their team members and strip auditor names
+      if (isSupervisor) {
+        const teamEmails = await this.fetchTeamMemberEmails();
+        if (teamEmails.length > 0) {
+          const teamEmailSet = new Set(teamEmails);
+          this.audits = this.audits.filter(audit => {
+            const empEmail = (audit.employeeEmail || (audit as any).employee_email || '').toLowerCase().trim();
+            return teamEmailSet.has(empEmail);
+          });
+          logInfo(`[AuditReports] Supervisor filtered: ${this.audits.length} audits for ${teamEmails.length} team members`);
+        } else {
+          logInfo('[AuditReports] Supervisor has no team members - showing no audits');
+          this.audits = [];
+        }
+
+        // Strip auditor names/emails so Supervisors never see who audited
+        this.audits = this.audits.map(audit => ({
+          ...audit,
+          auditorName: '',
+          auditorEmail: '',
+          auditor_name: '',
+          auditor_email: ''
+        } as AuditReport));
+      }
 
       // Apply filters first
       this.applyFilters();

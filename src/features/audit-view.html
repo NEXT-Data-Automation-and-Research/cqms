@@ -1206,16 +1206,17 @@ function isCurrentUserAuditedEmployee() {
     return auditEmployeeEmail.toLowerCase() === currentUserEmail.toLowerCase();
 }
 
-// Check if current user is a Quality Analyst or above (not an Agent/Employee)
+// Check if current user is a Quality Analyst or above (not an Agent/Employee/Supervisor)
 function isCurrentUserQualityAnalyst() {
     const userInfo = getCurrentUserInfo();
     if (!userInfo) {
         return false;
     }
-    
+
     const role = userInfo.role || '';
-    // Allow Quality Analyst and any role above (not Employee)
-    return role !== 'Employee' && role !== '';
+    // Allow Quality Analyst and any role above (not Employee, Supervisor, or General User)
+    // Supervisors should NOT see auditor names
+    return role !== 'Employee' && role !== 'Supervisor' && role !== 'General User' && role !== '';
 }
 
 // Check if current user is the auditor of the current audit
