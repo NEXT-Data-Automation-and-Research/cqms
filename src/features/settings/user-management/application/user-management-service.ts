@@ -42,6 +42,7 @@ export class UserManagementService extends BaseService {
         const superAdmins = users.filter(u => u.role === 'Super Admin').length;
         const admins = users.filter(u => u.role === 'Admin').length;
         const qualityAnalysts = users.filter(u => u.role === 'Quality Analyst').length;
+        const supervisors = users.filter(u => u.role === 'Supervisor').length;
         const employees = users.filter(u => u.role === 'Employee').length;
         
         // Recent logins (last 7 days)
@@ -68,6 +69,7 @@ export class UserManagementService extends BaseService {
           superAdmins,
           admins,
           qualityAnalysts,
+          supervisors,
           employees,
           recentLogins,
           qptUsers,

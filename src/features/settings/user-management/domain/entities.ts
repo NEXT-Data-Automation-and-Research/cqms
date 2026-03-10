@@ -46,6 +46,7 @@ export interface UserStatistics {
   superAdmins: number;
   admins: number;
   qualityAnalysts: number;
+  supervisors: number;
   employees: number;
   recentLogins: number;
   qptUsers: number;

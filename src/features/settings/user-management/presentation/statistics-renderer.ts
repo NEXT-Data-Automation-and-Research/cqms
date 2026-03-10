@@ -17,6 +17,7 @@ export class StatisticsRenderer {
     this.renderStat('superAdmins', statistics.superAdmins.toString());
     this.renderStat('admins', statistics.admins.toString());
     this.renderStat('qualityAnalysts', statistics.qualityAnalysts.toString());
+    this.renderStat('supervisors', statistics.supervisors.toString());
     this.renderStat('agents', statistics.employees.toString());
     this.renderStat('recentLogins', statistics.recentLogins.toString());
     this.renderStat('qptUsers', statistics.qptUsers.toString());
