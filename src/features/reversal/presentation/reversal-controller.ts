@@ -6,6 +6,7 @@
 import { ReversalService } from '../application/reversal-service.js';
 import { ReversalRepository } from '../infrastructure/reversal-repository.js';
 import type { ReversalWithAuditData, ReversalWorkflowStateType } from '../domain/types.js';
+import { isSupervisorRole } from '../../../utils/role-helpers.js';
 
 interface FilterState {
   search: string;
@@ -541,8 +542,8 @@ export class ReversalController {
               <span class="reversal-meta-separator">•</span>
               <span class="reversal-meta-item">${score}%</span>
               <span class="reversal-meta-separator">•</span>
-              <span class="reversal-meta-item">${this.escapeHtml(auditorName)}</span>
-              <span class="reversal-meta-separator">•</span>
+              ${isSupervisorRole() ? '' : `<span class="reversal-meta-item">${this.escapeHtml(auditorName)}</span>
+              <span class="reversal-meta-separator">•</span>`}
               <span class="reversal-meta-item">${formattedDate}</span>
             </div>
           </div>

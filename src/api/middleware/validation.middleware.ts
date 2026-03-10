@@ -31,7 +31,7 @@ const VALIDATION_RULES = {
   role: {
     required: false,
     type: 'string',
-    allowedValues: ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'],
+    allowedValues: ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'],
     error: 'Invalid role'
   },
   department: {

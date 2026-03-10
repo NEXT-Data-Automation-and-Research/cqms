@@ -23,6 +23,7 @@ const logger = createLogger('PermissionService');
 const ROLE_HIERARCHY: Record<string, number> = {
   'General User': 0,
   'Employee': 1,
+  'Supervisor': 2,  // Supervisors of other teams - can view team performance but not auditor info
   'Quality Analyst': 2,  // Elevated to level 2 to match auditor access
   'Auditor': 2,
   'Quality Supervisor': 2,

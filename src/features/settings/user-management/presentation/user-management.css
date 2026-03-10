@@ -170,13 +170,13 @@
 .stat-icon {
     width: 0.9375rem;
     height: 0.9375rem;
-    color: var(--primary-color);
+    color: #1A733E;
 }
 
 .stat-value {
     font-size: 1.125rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: #1A733E;
     margin-bottom: 0.1875rem;
 }
 

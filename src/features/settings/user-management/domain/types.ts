@@ -5,7 +5,7 @@
 
 import type { User, UserStatistics, UserFilters, BulkEditData } from './entities.js';
 
-export type UserRole = 'Super Admin' | 'Admin' | 'Quality Analyst' | 'Employee' | 'General User';
+export type UserRole = 'Super Admin' | 'Admin' | 'Quality Analyst' | 'Supervisor' | 'Employee' | 'General User';
 
 export type UserStatus = 'active' | 'inactive';
 

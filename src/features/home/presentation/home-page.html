@@ -3322,6 +3322,26 @@ async function initializeDashboard() {
       if (auditsConductedCard) auditsConductedCard.style.display = 'block';
       const remainingCard = document.getElementById('remainingCard');
       if (remainingCard) remainingCard.style.display = 'block';
+    } else if (currentUserRole === 'Supervisor') {
+      // Supervisors of other teams: similar to Employee view (no audit-creation UI)
+      const createAuditBtn = document.getElementById('createAuditBtn');
+      if (createAuditBtn) createAuditBtn.style.display = 'none';
+      const quickActionCreateAudit = document.getElementById('quickActionCreateAudit');
+      if (quickActionCreateAudit) quickActionCreateAudit.style.display = 'none';
+      const inProgressCard = document.getElementById('inProgressCard');
+      if (inProgressCard) inProgressCard.style.display = 'none';
+      const avgDurationCard = document.getElementById('avgDurationCard');
+      if (avgDurationCard) avgDurationCard.style.display = 'none';
+      const auditsConductedCard = document.getElementById('auditsConductedCard');
+      if (auditsConductedCard) auditsConductedCard.style.display = 'none';
+      const remainingCard = document.getElementById('remainingCard');
+      if (remainingCard) remainingCard.style.display = 'none';
+      const passRateCard = document.getElementById('passRateCard');
+      if (passRateCard) passRateCard.style.display = 'block';
+      const requiresAcknowledgmentCard = document.getElementById('requiresAcknowledgmentCard');
+      if (requiresAcknowledgmentCard) requiresAcknowledgmentCard.style.display = 'none';
+      const avgQualityScoreCard = document.getElementById('avgQualityScoreCard');
+      if (avgQualityScoreCard) avgQualityScoreCard.style.display = 'block';
     } else {
       // Auditors
       // Hide pass rate card for auditors
@@ -5208,7 +5228,9 @@ function renderRecentUpdatesFromData(allUpdates) {
       } else if (update.type === 'assignment') {
         const agentName = escapeHtml(update.displayName || 'Unknown');
         const toLabel = (update.auditorDisplayName === 'you') ? 'you' : escapeHtml(update.auditorDisplayName || 'Unknown');
-        statusText = `${agentName}'s audit assigned to ${toLabel}`;
+        statusText = currentUserRole === 'Supervisor'
+          ? `${agentName}'s audit assigned`
+          : `${agentName}'s audit assigned to ${toLabel}`;
       } else {
         statusText = getStatusText(update.status, isAgent);
       }
@@ -5328,8 +5350,9 @@ function renderCompletedAuditItem(update) {
   const averageScore = update.averageScore || '0';
   const totalErrors = update.totalErrors || '0';
   // "audited by" = person who performed the audit (auditor), not the agent who was audited
-  const auditedByLabel = isAgent ? null : (escapeHtml(update.auditorDisplayName || displayName) || 'Unknown');
-  const titleText = isAgent ? `#${escapeHtml(interactionId)} audited` : `#${escapeHtml(interactionId)} audited by ${auditedByLabel}`;
+  const _isSupervisor = currentUserRole === 'Supervisor';
+  const auditedByLabel = (isAgent || _isSupervisor) ? null : (escapeHtml(update.auditorDisplayName || displayName) || 'Unknown');
+  const titleText = (isAgent || _isSupervisor) ? `#${escapeHtml(interactionId)} audited` : `#${escapeHtml(interactionId)} audited by ${auditedByLabel}`;
 
   // Use the full audit object for status chips (they expect the audit format)
   const fullAudit = update._audit || audit;

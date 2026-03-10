@@ -638,7 +638,7 @@ function renderAuditCard(audit: AuditReport, controller: AuditReportsController)
   
   // Hide auditor name from Employee/agent view
   const userRole = controller.getUserRole();
-  const restrictedRoles = ['Employee', 'General User', ''];
+  const restrictedRoles = ['Employee', 'Supervisor', 'General User', ''];
   const isRestricted = !userRole || restrictedRoles.includes(userRole);
   const auditorName = isRestricted ? '' : (escapeHtml(
     audit.auditorName ||

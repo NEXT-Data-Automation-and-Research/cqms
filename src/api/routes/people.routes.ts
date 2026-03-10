@@ -112,7 +112,7 @@ router.post('/',
     }
 
     // Validate role
-    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     if (!userData.role || !validRoles.includes(userData.role)) {
       res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
       return;
@@ -205,7 +205,7 @@ router.put('/:email', verifyAuth, requireAdmin, async (req: SupabaseRequest, res
     }
 
     // Validate role if provided
-    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     if (updates.role && !validRoles.includes(updates.role)) {
       res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
       return;
@@ -305,7 +305,7 @@ router.post('/bulk-update', verifyAuth, requireAdmin, async (req: SupabaseReques
     }
 
     // Validate role if provided
-    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     if (updates.role && !validRoles.includes(updates.role)) {
       res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` });
       return;

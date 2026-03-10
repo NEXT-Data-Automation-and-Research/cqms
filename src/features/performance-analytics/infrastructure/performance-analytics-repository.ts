@@ -124,6 +124,76 @@ export class PerformanceAnalyticsRepository {
   }
 
   /**
+   * Fetch team members for a Supervisor: people whose team_supervisor matches the supervisor's name or email
+   */
+  async fetchTeamMembers(supervisorEmail: string): Promise<PersonRow[]> {
+    const supabase = await getAuthenticatedSupabase();
+    const select =
+      'email, name, role, department, designation, team, team_supervisor, quality_mentor, channel, country, is_active, avatar_url';
+
+    // First get the supervisor's own name from people table
+    const { data: supervisorData } = await supabase
+      .from('people')
+      .select('name, email')
+      .ilike('email', supervisorEmail)
+      .maybeSingle();
+
+    const supervisorName = supervisorData?.name || '';
+
+    // Fetch team members whose team_supervisor matches supervisor's name or email
+    const orFilter = [
+      `team_supervisor.ilike.${supervisorEmail}`,
+      ...(supervisorName ? [`team_supervisor.ilike.${supervisorName}`] : [])
+    ].join(',');
+
+    const { data } = await supabase
+      .from('people')
+      .select(select)
+      .eq('is_active', true)
+      .or(orFilter)
+      .limit(500);
+
+    return (data ?? []) as PersonRow[];
+  }
+
+  /**
+   * Fetch audits for a list of employee emails (for Supervisor team view)
+   */
+  async fetchAllAuditsForEmails(
+    filters: PerformanceFilters,
+    emails: string[]
+  ): Promise<AuditRow[]> {
+    if (emails.length === 0) return [];
+    const tables = await this.getAuditTableNames();
+    const results = await Promise.all(
+      tables.map(async (tableName) => {
+        const supabase = await getAuthenticatedSupabase();
+        let query = supabase
+          .from(tableName)
+          .select(AUDIT_SELECT)
+          .in('employee_email', emails)
+          .order('submitted_at', { ascending: false })
+          .limit(5000);
+
+        if (filters.startDate) {
+          query = query.gte('submitted_at', filters.startDate);
+        }
+        if (filters.endDate) {
+          query = query.lte('submitted_at', filters.endDate);
+        }
+        if (filters.channel) {
+          query = query.eq('channel', filters.channel);
+        }
+
+        const { data, error } = await query;
+        if (error) return [];
+        return ((data ?? []) as AuditRow[]).map((r) => ({ ...r, table_name: tableName }));
+      })
+    );
+    return results.flat();
+  }
+
+  /**
    * Fetch avatar_url for all distinct emails that appear in audits (case-insensitive).
    * Returns a map of lowercase email -> avatar_url so the UI can show avatars for every agent.
    */
@@ -297,12 +367,26 @@ export class PerformanceAnalyticsRepository {
     const { role, isSuperAdmin } = userEmail
       ? await this.getUserRole(userEmail)
       : { role: null, isSuperAdmin: false };
-    const employeeFilter = isSuperAdmin ? undefined : userEmail ?? undefined;
+    const isSupervisor = role === 'Supervisor';
 
-    const [rawAudits, people] = await Promise.all([
-      this.fetchAllAudits(filters, employeeFilter),
-      this.fetchPeople(isSuperAdmin, userEmail)
-    ]);
+    let rawAudits: AuditRow[];
+    let people: PersonRow[];
+
+    if (isSupervisor && userEmail) {
+      // Supervisors see their team: fetch team members, then audits for those members
+      const teamMembers = await this.fetchTeamMembers(userEmail);
+      people = teamMembers;
+      const teamEmails = teamMembers.map((p) => p.email).filter((e): e is string => Boolean(e));
+      rawAudits = teamEmails.length > 0
+        ? await this.fetchAllAuditsForEmails(filters, teamEmails)
+        : [];
+    } else {
+      const employeeFilter = isSuperAdmin ? undefined : userEmail ?? undefined;
+      [rawAudits, people] = await Promise.all([
+        this.fetchAllAudits(filters, employeeFilter),
+        this.fetchPeople(isSuperAdmin, userEmail)
+      ]);
+    }
 
     const byIndividual = this.aggregateBy(rawAudits, (r) => r.employee_email ?? 'Unknown', (r) => r.employee_name ?? r.employee_email ?? 'Unknown');
     const byTeam = this.aggregateByKey(rawAudits, people, 'team', 'team');

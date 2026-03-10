@@ -19,6 +19,7 @@ export type UserRole =
   | 'Employee' 
   | 'Quality Analyst'
   | 'Quality Supervisor'
+  | 'Supervisor'
   | 'Auditor' // Legacy role - kept for backwards compatibility
   | 'Manager'
   | 'Admin' 

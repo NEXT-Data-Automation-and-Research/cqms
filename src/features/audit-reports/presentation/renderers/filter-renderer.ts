@@ -144,10 +144,10 @@ export function renderFilterPanel(
         <input type="text" id="auditIdSearch" placeholder="e.g., audit_1765963145843" style="padding: 0.1875rem 0.2812rem; border: 0.0469rem solid #d1d5db; border-radius: 0.1875rem; font-size: 0.5156rem; font-family: 'Poppins', sans-serif; width: 100%;">
       </div>
       
-      <!-- Auditor Name -->
-      <div id="auditorNameFilterContainer">
+      <!-- Auditor Name (hidden for Supervisor/Employee roles) -->
+      ${['Employee', 'Supervisor', 'General User'].includes(controller.getUserRole()) ? '' : `<div id="auditorNameFilterContainer">
         ${auditorFilter}
-      </div>
+      </div>`}
       
       <!-- Employee Name -->
       <div>

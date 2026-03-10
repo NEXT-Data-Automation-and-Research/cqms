@@ -83,7 +83,7 @@ export class UserManagementService extends BaseService {
    */
   async createUser(data: CreateUserData): Promise<User> {
     // Validate and sanitize input
-    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     
     this.validateInput(data, (d) => {
       if (!d.name || d.name.trim().length === 0) {
@@ -165,7 +165,7 @@ export class UserManagementService extends BaseService {
    * Update user
    */
   async updateUser(email: string, data: UpdateUserData): Promise<User> {
-    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     
     this.validateInput(email, (e) => {
       if (!e || e.trim().length === 0) {
@@ -227,7 +227,7 @@ export class UserManagementService extends BaseService {
    * Bulk update users
    */
   async bulkUpdateUsers(emails: string[], data: BulkEditData): Promise<void> {
-    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+    const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
     
     this.validateInput(emails, (e) => {
       if (!Array.isArray(e) || e.length === 0) {
@@ -284,7 +284,7 @@ export class UserManagementService extends BaseService {
       async () => {
         const errors: string[] = [];
         const usersToCreate: Partial<User>[] = [];
-        const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Employee', 'General User'];
+        const validRoles: UserRole[] = ['Super Admin', 'Admin', 'Quality Analyst', 'Supervisor', 'Employee', 'General User'];
 
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
