@@ -391,12 +391,16 @@
                     <label>Assign to (who can view their audits)</label>
                     <div class="sa-dropdown-container" id="saSupervisorDropdown">
                         <button type="button" class="sa-dropdown-trigger" aria-haspopup="listbox">
-                            <span class="sa-trigger-text placeholder">Select person...</span>
+                            <span class="sa-trigger-text placeholder">Select persons...</span>
                             <svg class="sa-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                         </button>
                         <div class="sa-dropdown-panel">
                             <input type="text" class="sa-dropdown-search" placeholder="Search by name or email...">
                             <div class="sa-dropdown-options"></div>
+                            <div class="sa-dropdown-actions">
+                                <button type="button" class="sa-dropdown-action-btn" data-action="select-all">Select All</button>
+                                <button type="button" class="sa-dropdown-action-btn" data-action="clear">Clear</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -669,7 +673,7 @@ class MultiSelectDropdown {
 
 // --- Init dropdowns ---
 const empDropdown = new MultiSelectDropdown('saEmployeeDropdown');
-const supDropdown = new SearchableDropdown('saSupervisorDropdown');
+const supDropdown = new MultiSelectDropdown('saSupervisorDropdown');
 
 // --- Auth: get token from Supabase client ---
 async function getAuthToken() {
@@ -808,8 +812,8 @@ function renderTable(filter) {
 // --- Assign ---
 document.getElementById('saAssignBtn').addEventListener('click', async () => {
   const empEmails = empDropdown.getValues();
-  const supEmail = supDropdown.getValue();
-  if (empEmails.length === 0 || !supEmail) return;
+  const supEmails = supDropdown.getValues();
+  if (empEmails.length === 0 || supEmails.length === 0) return;
 
   const btn = document.getElementById('saAssignBtn');
   btn.disabled = true;
@@ -819,25 +823,24 @@ document.getElementById('saAssignBtn').addEventListener('click', async () => {
     let successCount = 0;
     let skipCount = 0;
 
-    // Use individual POST for each employee → supervisor mapping
     for (const empEmail of empEmails) {
-      if (empEmail === supEmail) { skipCount++; continue; }
-      try {
-        await apiFetch('/api/employee-supervisors', {
-          method: 'POST',
-          body: JSON.stringify({ employee_email: empEmail, supervisor_email: supEmail })
-        });
-        successCount++;
-      } catch (e) {
-        // 409 = already exists, count as skip
-        if (e.message.includes('already exists')) { skipCount++; }
-        else throw e;
+      for (const supEmail of supEmails) {
+        if (empEmail === supEmail) { skipCount++; continue; }
+        try {
+          await apiFetch('/api/employee-supervisors', {
+            method: 'POST',
+            body: JSON.stringify({ employee_email: empEmail, supervisor_email: supEmail })
+          });
+          successCount++;
+        } catch (e) {
+          if (e.message.includes('already exists')) { skipCount++; }
+          else throw e;
+        }
       }
     }
 
-    const supName = nameForEmail(supEmail);
     if (successCount > 0) {
-      showMsg(`${supName} can now view audits of ${successCount} person${successCount > 1 ? 's' : ''}${skipCount > 0 ? ` (${skipCount} skipped/duplicate)` : ''}`, 'success');
+      showMsg(`${successCount} assignment${successCount > 1 ? 's' : ''} created${skipCount > 0 ? ` (${skipCount} skipped/duplicate)` : ''}`, 'success');
     } else {
       showMsg(`All selected assignments already exist or were skipped.`, 'error');
     }
@@ -855,8 +858,8 @@ document.getElementById('saAssignBtn').addEventListener('click', async () => {
 
 function updateAssignBtn() {
   const empEmails = empDropdown.getValues();
-  const sup = supDropdown.getValue();
-  document.getElementById('saAssignBtn').disabled = empEmails.length === 0 || !sup;
+  const supEmails = supDropdown.getValues();
+  document.getElementById('saAssignBtn').disabled = empEmails.length === 0 || supEmails.length === 0;
 }
 
 document.getElementById('saEmployeeDropdown').addEventListener('change', updateAssignBtn);
