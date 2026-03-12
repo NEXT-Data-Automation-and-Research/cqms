@@ -426,6 +426,11 @@ app.get('/help', (req: express.Request, res: express.Response): void => {
   }
 });
 
+// Settings parent route redirects to first tab
+app.get('/settings', (req: express.Request, res: express.Response): void => {
+  res.redirect('/settings/scorecards');
+});
+
 // Clean URL Routes
 const routeMappings = getRouteMappings();
 routeMappings.forEach((mapping) => {
@@ -524,6 +529,7 @@ import cacheManagementRouter from '../src/api/routes/cache-management.routes.js'
 import activeUsersRouter from '../src/api/routes/active-users.routes.js';
 import auditWebhookRouter from '../src/api/routes/audit-webhook.routes.js';
 import massiveAiAuditRouter from '../src/api/routes/massive-ai-audit.routes.js';
+import employeeSupervisorsRouter from '../src/api/routes/employee-supervisors.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -539,6 +545,7 @@ app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
 app.use('/api/massive-ai-audit', massiveAiAuditRouter);
+app.use('/api/employee-supervisors', employeeSupervisorsRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
