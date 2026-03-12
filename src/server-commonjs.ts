@@ -544,6 +544,11 @@ app.get('/performance-analytics', (req: express.Request, res: express.Response):
   }
 });
 
+// Settings parent route redirects to first tab
+app.get('/settings', (req: express.Request, res: express.Response): void => {
+  res.redirect('/settings/scorecards');
+});
+
 // ✅ Clean URL Routes - Serve pages via clean URLs (e.g., /home, /settings/scorecards)
 // These routes are checked BEFORE the regex fallback for better performance
 // Backward compatibility: Old URLs still work via the regex route below
@@ -659,6 +664,7 @@ import cacheManagementRouter from './api/routes/cache-management.routes.js';
 import activeUsersRouter from './api/routes/active-users.routes.js';
 import auditWebhookRouter from './api/routes/audit-webhook.routes.js';
 import massiveAiAuditRouter from './api/routes/massive-ai-audit.routes.js';
+import employeeSupervisorsRouter from './api/routes/employee-supervisors.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -674,6 +680,7 @@ app.use('/api/cache', cacheManagementRouter);
 app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
 app.use('/api/massive-ai-audit', massiveAiAuditRouter);
+app.use('/api/employee-supervisors', employeeSupervisorsRouter);
 logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks, /api/massive-ai-audit');
 if (process.env.N8N_WEBHOOK_URL) {
   logWithTimestamp('info', 'n8n audit-submission webhook: configured');

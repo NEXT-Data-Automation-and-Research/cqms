@@ -26,7 +26,7 @@
 <body class="scorecards-page">
 <!-- Sidebar will be loaded dynamically by load-sidebar.js -->
 <main class="main-content" role="main">
-    <h1 class="page-heading">Scorecards Management</h1>
+    <h1 class="page-heading page-heading-global">Settings</h1>
     <div class="scorecards-container">
         <!-- Statistics Overview -->
         <div class="stats-grid">
@@ -2724,6 +2724,9 @@ async function confirmBulkImport() {
     closeBulkImportModal();
 }
 </script>
-
+<script type="module">
+import { initSettingsTabs } from '/js/features/settings/settings-tabs.js';
+initSettingsTabs();
+</script>
 </body>
 </html>

@@ -320,6 +320,38 @@ export class AuditReportsController {
   }
 
   /**
+   * Fetch employee emails assigned to the current user via Supervisor Assignments.
+   * Queries the `employee_supervisors` junction table.
+   */
+  private async fetchAssignedEmployeeEmails(): Promise<string[]> {
+    try {
+      if (!this.currentUserEmail) return [];
+
+      const { getSecureSupabase } = await import('../../../utils/secure-supabase.js');
+      const supabase = await getSecureSupabase(false);
+
+      const { data, error } = await supabase
+        .from('employee_supervisors')
+        .select('employee_email')
+        .eq('supervisor_email', this.currentUserEmail.toLowerCase().trim());
+
+      if (error) {
+        logError('[AuditReports] Error fetching assigned employees:', error);
+        return [];
+      }
+
+      const emails = (data || [])
+        .map((row: any) => (row.employee_email || '').toLowerCase().trim())
+        .filter((e: string) => e !== '');
+      logInfo('[AuditReports] Assigned employees (via Supervisor Assignments):', emails.length);
+      return emails;
+    } catch (error) {
+      logError('[AuditReports] Error in fetchAssignedEmployeeEmails:', error);
+      return [];
+    }
+  }
+
+  /**
    * Load audits
    */
   async loadAudits(): Promise<void> {
@@ -335,6 +367,10 @@ export class AuditReportsController {
       // Supervisor is NOT in restrictedRoles — they load all audits then filter by team
       const restrictedRoles = ['Employee', 'General User', ''];
       const isRestrictedUser = !this.currentUserRole || restrictedRoles.includes(this.currentUserRole);
+
+      // Check for assigned employees via Supervisor Assignments (employee_supervisors table)
+      const assignedEmails = await this.fetchAssignedEmployeeEmails();
+      const hasAssignedEmployees = assignedEmails.length > 0;
 
       // For restricted users, filter by their email unless they've toggled "View All"
       // CRITICAL: If restricted user has no email, don't show any audits (safer than showing all)
@@ -363,7 +399,8 @@ export class AuditReportsController {
         isRestrictedUser,
         currentUserEmail: this.currentUserEmail || '(missing)',
         employeeEmail: employeeEmail || '(not filtering)',
-        showAllAudits: this.showAllAudits
+        showAllAudits: this.showAllAudits,
+        assignedEmployees: assignedEmails.length
       });
       logInfo('[AuditReports] Loading audits:', {
         role: this.currentUserRole || '(missing)',
@@ -371,27 +408,47 @@ export class AuditReportsController {
         isRestrictedUser,
         currentUserEmail: this.currentUserEmail || '(missing)',
         employeeEmail: employeeEmail || '(not filtering)',
-        showAllAudits: this.showAllAudits
+        showAllAudits: this.showAllAudits,
+        assignedEmployees: assignedEmails.length
       });
+
+      // If restricted user has assigned employees, load all audits so we can filter to own + assigned
+      const needsBroadLoad = isRestrictedUser && hasAssignedEmployees && !this.showAllAudits;
 
       this.audits = await this.service.loadAudits(
         this.currentScorecardId,
-        employeeEmail,
-        isSupervisor ? true : this.showAllAudits // Supervisors load all, then filter by team
+        needsBroadLoad ? undefined : employeeEmail, // Load all if we need assigned employees' audits too
+        isSupervisor ? true : (needsBroadLoad ? true : this.showAllAudits)
       );
 
-      // Supervisor: filter audits to only their team members and strip auditor names
+      // Restricted user with assigned employees: filter to own audits + assigned employees' audits
+      if (needsBroadLoad && this.currentUserEmail) {
+        const allowedEmails = new Set([
+          this.currentUserEmail.toLowerCase().trim(),
+          ...assignedEmails
+        ]);
+        this.audits = this.audits.filter(audit => {
+          const empEmail = (audit.employeeEmail || (audit as any).employee_email || '').toLowerCase().trim();
+          return allowedEmails.has(empEmail);
+        });
+        logInfo(`[AuditReports] Restricted user with assignments: showing ${this.audits.length} audits (own + ${assignedEmails.length} assigned employees)`);
+      }
+
+      // Supervisor: filter audits to only their team members (+ assigned employees) and strip auditor names
       if (isSupervisor) {
         const teamEmails = await this.fetchTeamMemberEmails();
-        if (teamEmails.length > 0) {
-          const teamEmailSet = new Set(teamEmails);
+        // Merge team emails with assigned employees from Supervisor Assignments
+        const allSupervisedEmails = [...new Set([...teamEmails, ...assignedEmails])];
+
+        if (allSupervisedEmails.length > 0) {
+          const teamEmailSet = new Set(allSupervisedEmails);
           this.audits = this.audits.filter(audit => {
             const empEmail = (audit.employeeEmail || (audit as any).employee_email || '').toLowerCase().trim();
             return teamEmailSet.has(empEmail);
           });
-          logInfo(`[AuditReports] Supervisor filtered: ${this.audits.length} audits for ${teamEmails.length} team members`);
+          logInfo(`[AuditReports] Supervisor filtered: ${this.audits.length} audits for ${allSupervisedEmails.length} team/assigned members`);
         } else {
-          logInfo('[AuditReports] Supervisor has no team members - showing no audits');
+          logInfo('[AuditReports] Supervisor has no team members or assigned employees - showing no audits');
           this.audits = [];
         }
 

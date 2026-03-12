@@ -109,6 +109,28 @@ export class SidebarHTMLGenerator {
   ): string {
     const hasSubmenu = route.submenu && route.submenu.length > 0;
 
+    // If sidebarLink is set, render as a direct link instead of a submenu dropdown
+    if (hasSubmenu && route.meta.sidebarLink) {
+      // Check if at least one submenu item is accessible
+      const anyAccessible = route.submenu!.some(item =>
+        this.checkRouteAccess(item.permissionResource?.name, item.roles, userRole, userEmail, pagePermissions)
+      );
+      if (!anyAccessible) return '';
+
+      const isActive = route.submenu!.some(item => router.isRouteActive(item.path));
+      return `
+        <li role="none">
+          <a href="${route.meta.sidebarLink}" class="menu-item ${isActive ? 'active' : ''}"
+             role="menuitem" tabindex="0" aria-label="${route.meta.label}" data-tooltip="${route.meta.label}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+              ${route.meta.icon}
+            </svg>
+            <span>${route.meta.label}</span>
+          </a>
+        </li>
+      `;
+    }
+
     if (hasSubmenu) {
       return this.generateSubmenuItem(route, currentPath, userRole, userEmail, pagePermissions);
     }
@@ -146,8 +168,8 @@ export class SidebarHTMLGenerator {
 
     return `
       <li role="none">
-        <a href="${href}" class="menu-item ${isActive ? 'active' : ''}" 
-           role="menuitem" tabindex="0" aria-label="${route.meta.label}">
+        <a href="${href}" class="menu-item ${isActive ? 'active' : ''}"
+           role="menuitem" tabindex="0" aria-label="${route.meta.label}" data-tooltip="${route.meta.label}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             ${route.meta.icon}
           </svg>
@@ -220,8 +242,8 @@ export class SidebarHTMLGenerator {
 
     return `
       <li role="none" class="menu-item-with-submenu ${isExpanded ? 'expanded' : ''}">
-        <button class="menu-item has-submenu" role="menuitem" tabindex="0" 
-                aria-label="${route.meta.label}" 
+        <button class="menu-item has-submenu" role="menuitem" tabindex="0"
+                aria-label="${route.meta.label}" data-tooltip="${route.meta.label}"
                 aria-expanded="${isExpanded ? 'true' : 'false'}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             ${route.meta.icon}
@@ -244,7 +266,7 @@ export class SidebarHTMLGenerator {
   private generateSearchMenuItem(): string {
     return `
       <li role="none">
-        <button class="menu-item" role="menuitem" tabindex="0" aria-label="Search" id="search-menu-btn">
+        <button class="menu-item" role="menuitem" tabindex="0" aria-label="Search" data-tooltip="Search" id="search-menu-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
           </svg>
@@ -282,8 +304,13 @@ export class SidebarHTMLGenerator {
             </svg>
             <span class="brand-text">NEXT QMS</span>
         </button>
+        <button class="sidebar-collapse-btn" role="button" tabindex="0" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
     </div>
-    
+
     <!-- Main Navigation Menu -->
     <ul class="menu-items" role="menubar">
         ${searchItem}

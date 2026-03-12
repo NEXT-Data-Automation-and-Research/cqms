@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="/js/console-stub.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supervisor Assignments | CQMS</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGhlaWdodD0iMjRweCIgdmlld0JveD0iMCAtOTYwIDk2MCA5NjAiIHdpZHRoPSIyNHB4IiBmaWxsPSIjMWY5ZTRiIj48cGF0aCBkPSJNMjAwLTEyMHEtMzMgMC01Ni41LTIzLjVUMTIwLTIwMHYtNTYwcTAtMzMgMjMuNS01Ni41VDIwMC04NDBoNTYwcTMzIDAgNTYuNSAyMy41VDg0MC03NjB2NTYwcTAgMzMtMjMuNSA1Ni41VDc2MC0xMjBIMjAwWm00OTEtODBoNjl2LTY5bC02OSA2OVptLTQ1NyAwaDczbDEyMC0xMjBoODVMNDUyLTIwMGg2NGwxMjAtMTIwaDg1TDU0MS0yMDBoNjVsMTIwLTEyMGgzNHYtNDQwSDIwMHY1MDlsNjktNjloODVMNDM0LTIwMFptNzItMjAwLTU2LTU2IDE3Ny0xNzcgODAgODAgMTQ3LTE0NyA1NiA1Ni0yMDMgMjA0LTgwLTgwLTEyMSAxMjBaIi8+PC9zdmc+">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/theme.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+    <script type="importmap">
+    {
+      "imports": {
+        "loglevel": "https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm",
+        "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+        "dompurify": "https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"
+      }
+    }
+    </script>
+    <script src="/confirmation-dialog.js"></script>
+    <script type="module" src="/js/auth-checker.js"></script>
+    <script type="module" src="/js/load-sidebar.js" defer></script>
+    <style>
+      .sa-container {
+        max-width: 64rem;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      .sa-card {
+        background: var(--background-white, #fff);
+        border: 1px solid var(--border-light, #e5e7eb);
+        border-radius: 0.75rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      }
+      .sa-card h2 {
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text-color, #111827);
+      }
+      .sa-form-row {
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .sa-form-group {
+        flex: 1;
+        min-width: 12rem;
+      }
+      .sa-form-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--text-muted, #6b7280);
+        margin-bottom: 0.25rem;
+      }
+      .sa-form-group select,
+      .sa-form-group input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-light, #d1d5db);
+        border-radius: 0.5rem;
+        font-size: 0.8125rem;
+        font-family: var(--font-family);
+        background: var(--background-white, #fff);
+        color: var(--text-color, #111827);
+      }
+      .sa-form-group select:focus,
+      .sa-form-group input:focus {
+        outline: none;
+        border-color: #1a733e;
+        box-shadow: 0 0 0 2px rgba(26, 115, 62, 0.15);
+      }
+
+      /* Searchable Dropdown */
+      .sa-dropdown-container {
+        position: relative;
+        width: 100%;
+      }
+      .sa-dropdown-trigger {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border-light, #d1d5db);
+        border-radius: 0.5rem;
+        font-size: 0.8125rem;
+        font-family: var(--font-family);
+        background: var(--background-white, #fff);
+        color: var(--text-color, #111827);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        min-height: 2.125rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        text-align: left;
+      }
+      .sa-dropdown-trigger:hover {
+        border-color: #9ca3af;
+      }
+      .sa-dropdown-trigger.active {
+        border-color: #1a733e;
+        box-shadow: 0 0 0 2px rgba(26, 115, 62, 0.15);
+      }
+      .sa-dropdown-trigger .sa-trigger-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sa-dropdown-trigger .sa-trigger-text.placeholder {
+        color: var(--text-muted, #9ca3af);
+      }
+      .sa-dropdown-trigger .sa-chevron {
+        width: 0.75rem;
+        height: 0.75rem;
+        flex-shrink: 0;
+        transition: transform 0.2s;
+      }
+      .sa-dropdown-trigger.active .sa-chevron {
+        transform: rotate(180deg);
+      }
+      .sa-dropdown-panel {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        margin-top: 0.25rem;
+        background: #fff;
+        border: 1px solid var(--border-light, #d1d5db);
+        border-radius: 0.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        z-index: 1100;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: 16rem;
+      }
+      .sa-dropdown-panel.open {
+        display: flex;
+      }
+      .sa-dropdown-search {
+        padding: 0.5rem 0.75rem;
+        border: none;
+        border-bottom: 1px solid var(--border-light, #e5e7eb);
+        font-size: 0.8125rem;
+        font-family: var(--font-family);
+        background: #f9fafb;
+        color: var(--text-color, #111827);
+        outline: none;
+      }
+      .sa-dropdown-search::placeholder {
+        color: var(--text-muted, #9ca3af);
+      }
+      .sa-dropdown-options {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0.25rem 0;
+        max-height: 12rem;
+      }
+      .sa-dropdown-option {
+        padding: 0.4375rem 0.75rem;
+        font-size: 0.8125rem;
+        color: var(--text-color, #374151);
+        cursor: pointer;
+        transition: background 0.15s;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .sa-dropdown-option:hover {
+        background: #f3f4f6;
+      }
+      .sa-dropdown-option.selected {
+        background: #ecfdf5;
+        color: #065f46;
+        font-weight: 500;
+      }
+      .sa-dropdown-option .sa-opt-name {
+        font-weight: 500;
+      }
+      .sa-dropdown-option .sa-opt-email {
+        font-size: 0.6875rem;
+        color: var(--text-muted, #6b7280);
+        margin-left: 0.375rem;
+      }
+      .sa-dropdown-option.selected .sa-opt-email {
+        color: #065f46;
+      }
+      .sa-dropdown-empty {
+        padding: 1rem 0.75rem;
+        text-align: center;
+        font-size: 0.75rem;
+        color: var(--text-muted, #9ca3af);
+      }
+
+      /* Multi-select checkbox option */
+      .sa-dropdown-option.multi {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+      .sa-dropdown-option.multi input[type="checkbox"] {
+        width: 0.875rem;
+        height: 0.875rem;
+        cursor: pointer;
+        accent-color: #1a733e;
+        flex-shrink: 0;
+        margin-top: 0.125rem;
+      }
+      .sa-dropdown-option.multi label {
+        cursor: pointer;
+        flex: 1;
+        user-select: none;
+        line-height: 1.4;
+      }
+      /* Multi-select actions bar */
+      .sa-dropdown-actions {
+        display: flex;
+        gap: 0.375rem;
+        padding: 0.375rem 0.75rem;
+        border-top: 1px solid var(--border-light, #e5e7eb);
+        background: #f9fafb;
+      }
+      .sa-dropdown-action-btn {
+        flex: 1;
+        padding: 0.3125rem 0.5rem;
+        border: 1px solid var(--border-light, #d1d5db);
+        border-radius: 0.375rem;
+        background: #fff;
+        color: var(--text-color, #374151);
+        font-size: 0.75rem;
+        font-family: var(--font-family);
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: center;
+      }
+      .sa-dropdown-action-btn:hover {
+        background: #e5e7eb;
+        border-color: #9ca3af;
+      }
+      /* Count badge on trigger */
+      .sa-trigger-count {
+        background: #1a733e;
+        color: #fff;
+        padding: 0.0625rem 0.4375rem;
+        border-radius: 0.75rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+      .sa-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 0.5rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        font-family: var(--font-family);
+        transition: all 0.15s ease;
+        white-space: nowrap;
+      }
+      .sa-btn-primary {
+        background: #1a733e;
+        color: #fff;
+      }
+      .sa-btn-primary:hover { background: #15633a; }
+      .sa-btn-primary:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+      }
+      .sa-btn-danger {
+        background: none;
+        color: #dc2626;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border: 1px solid #fca5a5;
+        border-radius: 0.375rem;
+      }
+      .sa-btn-danger:hover {
+        background: #fef2f2;
+      }
+      .sa-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8125rem;
+      }
+      .sa-table th {
+        text-align: left;
+        padding: 0.625rem 0.75rem;
+        font-weight: 600;
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #6b7280);
+        border-bottom: 1px solid var(--border-light, #e5e7eb);
+        background: var(--background-color, #f9fafb);
+      }
+      .sa-table td {
+        padding: 0.625rem 0.75rem;
+        border-bottom: 1px solid var(--border-light, #f3f4f6);
+        color: var(--text-color, #374151);
+      }
+      .sa-table tr:hover td {
+        background: var(--background-color, #f9fafb);
+      }
+      .sa-empty {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted, #9ca3af);
+        font-size: 0.8125rem;
+      }
+      .sa-badge {
+        display: inline-block;
+        padding: 0.125rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.6875rem;
+        font-weight: 500;
+        background: #ecfdf5;
+        color: #065f46;
+      }
+      .sa-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        color: var(--text-muted, #9ca3af);
+        font-size: 0.8125rem;
+      }
+      .sa-filter-row {
+        display: flex;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .sa-count {
+        font-size: 0.75rem;
+        color: var(--text-muted, #6b7280);
+        margin-left: auto;
+      }
+      .sa-msg {
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.8125rem;
+        margin-bottom: 1rem;
+        display: none;
+      }
+      .sa-msg-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+      .sa-msg-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    </style>
+</head>
+<body>
+<main class="main-content" role="main">
+    <h1 class="page-heading-global">Supervisor Assignments</h1>
+
+    <div class="sa-container">
+        <!-- Message Area -->
+        <div id="saMessage" class="sa-msg"></div>
+
+        <!-- Add Assignment Card -->
+        <div class="sa-card">
+            <h2>Audit Visibility Assignment</h2>
+            <div class="sa-form-row">
+                <div class="sa-form-group">
+                    <label>Person (whose audits will be shared)</label>
+                    <div class="sa-dropdown-container" id="saEmployeeDropdown">
+                        <button type="button" class="sa-dropdown-trigger" aria-haspopup="listbox">
+                            <span class="sa-trigger-text placeholder">Select persons...</span>
+                            <svg class="sa-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div class="sa-dropdown-panel">
+                            <input type="text" class="sa-dropdown-search" placeholder="Search by name or email...">
+                            <div class="sa-dropdown-options"></div>
+                            <div class="sa-dropdown-actions">
+                                <button type="button" class="sa-dropdown-action-btn" data-action="select-all">Select All</button>
+                                <button type="button" class="sa-dropdown-action-btn" data-action="clear">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sa-form-group">
+                    <label>Assign to (who can view their audits)</label>
+                    <div class="sa-dropdown-container" id="saSupervisorDropdown">
+                        <button type="button" class="sa-dropdown-trigger" aria-haspopup="listbox">
+                            <span class="sa-trigger-text placeholder">Select person...</span>
+                            <svg class="sa-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </button>
+                        <div class="sa-dropdown-panel">
+                            <input type="text" class="sa-dropdown-search" placeholder="Search by name or email...">
+                            <div class="sa-dropdown-options"></div>
+                        </div>
+                    </div>
+                </div>
+                <button class="sa-btn sa-btn-primary" id="saAssignBtn" disabled>Assign</button>
+            </div>
+        </div>
+
+        <!-- Current Assignments Card -->
+        <div class="sa-card">
+            <h2>Current Assignments</h2>
+            <div class="sa-filter-row">
+                <div class="sa-form-group" style="flex:0 0 14rem">
+                    <input type="text" id="saSearch" placeholder="Search by email or name...">
+                </div>
+                <span class="sa-count" id="saCount"></span>
+            </div>
+            <div id="saTableArea">
+                <div class="sa-loading">Loading assignments...</div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script type="module">
+import { getSupabaseAsync } from '/js/utils/supabase-init.js';
+
+let allPeople = [];
+let allMappings = [];
+
+// --- Searchable Single-Select Dropdown ---
+class SearchableDropdown {
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    this.trigger = this.container.querySelector('.sa-dropdown-trigger');
+    this.triggerText = this.container.querySelector('.sa-trigger-text');
+    this.panel = this.container.querySelector('.sa-dropdown-panel');
+    this.searchInput = this.container.querySelector('.sa-dropdown-search');
+    this.optionsContainer = this.container.querySelector('.sa-dropdown-options');
+    this.selectedValue = '';
+    this.people = [];
+    this.isOpen = false;
+
+    this.trigger.addEventListener('click', () => this.toggle());
+    this.searchInput.addEventListener('input', () => this.filterOptions());
+    document.addEventListener('click', (e) => {
+      if (!this.container.contains(e.target)) this.close();
+    });
+    this.searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close();
+    });
+  }
+
+  setPeople(people) {
+    this.people = people;
+    this.renderOptions(people);
+  }
+
+  toggle() { this.isOpen ? this.close() : this.open(); }
+
+  open() {
+    this.isOpen = true;
+    this.panel.classList.add('open');
+    this.trigger.classList.add('active');
+    this.searchInput.value = '';
+    this.renderOptions(this.people);
+    setTimeout(() => this.searchInput.focus(), 10);
+  }
+
+  close() {
+    this.isOpen = false;
+    this.panel.classList.remove('open');
+    this.trigger.classList.remove('active');
+  }
+
+  filterOptions() {
+    const q = this.searchInput.value.toLowerCase().trim();
+    const filtered = q ? this.people.filter(p =>
+      (p.name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q)
+    ) : this.people;
+    this.renderOptions(filtered);
+  }
+
+  renderOptions(people) {
+    if (people.length === 0) {
+      this.optionsContainer.innerHTML = '<div class="sa-dropdown-empty">No results found</div>';
+      return;
+    }
+    this.optionsContainer.innerHTML = people.map(p => {
+      const isSelected = p.email === this.selectedValue;
+      const nameHtml = p.name
+        ? `<span class="sa-opt-name">${this.esc(p.name)}</span><span class="sa-opt-email">${this.esc(p.email)}</span>`
+        : `<span class="sa-opt-name">${this.esc(p.email)}</span>`;
+      return `<div class="sa-dropdown-option${isSelected ? ' selected' : ''}" data-value="${this.esc(p.email)}">${nameHtml}</div>`;
+    }).join('');
+
+    this.optionsContainer.querySelectorAll('.sa-dropdown-option').forEach(opt => {
+      opt.addEventListener('click', () => this.select(opt.dataset.value));
+    });
+  }
+
+  select(email) {
+    this.selectedValue = email;
+    const p = this.people.find(p => p.email === email);
+    this.triggerText.textContent = p?.name ? `${p.name} (${p.email})` : email;
+    this.triggerText.classList.remove('placeholder');
+    this.close();
+    this.container.dispatchEvent(new Event('change'));
+  }
+
+  clear() {
+    this.selectedValue = '';
+    this.triggerText.textContent = 'Select person...';
+    this.triggerText.classList.add('placeholder');
+  }
+
+  getValue() { return this.selectedValue; }
+
+  esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+}
+
+// --- Multi-Select Dropdown with Checkboxes ---
+class MultiSelectDropdown {
+  constructor(containerId) {
+    this.container = document.getElementById(containerId);
+    this.trigger = this.container.querySelector('.sa-dropdown-trigger');
+    this.triggerText = this.container.querySelector('.sa-trigger-text');
+    this.panel = this.container.querySelector('.sa-dropdown-panel');
+    this.searchInput = this.container.querySelector('.sa-dropdown-search');
+    this.optionsContainer = this.container.querySelector('.sa-dropdown-options');
+    this.selectedValues = new Set();
+    this.people = [];
+    this.isOpen = false;
+    this.countBadge = null;
+
+    this.trigger.addEventListener('click', () => this.toggle());
+    this.searchInput.addEventListener('input', () => this.filterOptions());
+    document.addEventListener('click', (e) => {
+      if (!this.container.contains(e.target)) this.close();
+    });
+    this.searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close();
+    });
+
+    // Select All / Clear buttons
+    const selectAllBtn = this.container.querySelector('[data-action="select-all"]');
+    const clearBtn = this.container.querySelector('[data-action="clear"]');
+    if (selectAllBtn) selectAllBtn.addEventListener('click', () => this.selectAll());
+    if (clearBtn) clearBtn.addEventListener('click', () => this.clearSelection());
+  }
+
+  setPeople(people) {
+    this.people = people;
+    this.renderOptions(people);
+  }
+
+  toggle() { this.isOpen ? this.close() : this.open(); }
+
+  open() {
+    this.isOpen = true;
+    this.panel.classList.add('open');
+    this.trigger.classList.add('active');
+    this.searchInput.value = '';
+    this.renderOptions(this.people);
+    setTimeout(() => this.searchInput.focus(), 10);
+  }
+
+  close() {
+    this.isOpen = false;
+    this.panel.classList.remove('open');
+    this.trigger.classList.remove('active');
+  }
+
+  filterOptions() {
+    const q = this.searchInput.value.toLowerCase().trim();
+    const filtered = q ? this.people.filter(p =>
+      (p.name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q)
+    ) : this.people;
+    this.renderOptions(filtered);
+  }
+
+  renderOptions(people) {
+    if (people.length === 0) {
+      this.optionsContainer.innerHTML = '<div class="sa-dropdown-empty">No results found</div>';
+      return;
+    }
+    this.optionsContainer.innerHTML = people.map(p => {
+      const checked = this.selectedValues.has(p.email) ? 'checked' : '';
+      const nameLabel = p.name ? `${this.esc(p.name)} <span class="sa-opt-email">${this.esc(p.email)}</span>` : this.esc(p.email);
+      return `<div class="sa-dropdown-option multi${checked ? ' selected' : ''}" data-value="${this.esc(p.email)}">
+        <input type="checkbox" ${checked} tabindex="-1">
+        <label>${nameLabel}</label>
+      </div>`;
+    }).join('');
+
+    this.optionsContainer.querySelectorAll('.sa-dropdown-option').forEach(opt => {
+      opt.addEventListener('click', (e) => {
+        e.preventDefault();
+        const email = opt.dataset.value;
+        if (this.selectedValues.has(email)) {
+          this.selectedValues.delete(email);
+          opt.classList.remove('selected');
+          opt.querySelector('input').checked = false;
+        } else {
+          this.selectedValues.add(email);
+          opt.classList.add('selected');
+          opt.querySelector('input').checked = true;
+        }
+        this.updateTrigger();
+        this.container.dispatchEvent(new Event('change'));
+      });
+    });
+  }
+
+  selectAll() {
+    // Select all currently visible (filtered) options
+    this.optionsContainer.querySelectorAll('.sa-dropdown-option').forEach(opt => {
+      const email = opt.dataset.value;
+      this.selectedValues.add(email);
+      opt.classList.add('selected');
+      opt.querySelector('input').checked = true;
+    });
+    this.updateTrigger();
+    this.container.dispatchEvent(new Event('change'));
+  }
+
+  clearSelection() {
+    this.selectedValues.clear();
+    this.optionsContainer.querySelectorAll('.sa-dropdown-option').forEach(opt => {
+      opt.classList.remove('selected');
+      opt.querySelector('input').checked = false;
+    });
+    this.updateTrigger();
+    this.container.dispatchEvent(new Event('change'));
+  }
+
+  updateTrigger() {
+    const count = this.selectedValues.size;
+    // Remove existing count badge
+    const existingBadge = this.trigger.querySelector('.sa-trigger-count');
+    if (existingBadge) existingBadge.remove();
+
+    if (count === 0) {
+      this.triggerText.textContent = 'Select persons...';
+      this.triggerText.classList.add('placeholder');
+    } else if (count === 1) {
+      const email = [...this.selectedValues][0];
+      const p = this.people.find(p => p.email === email);
+      this.triggerText.textContent = p?.name || email;
+      this.triggerText.classList.remove('placeholder');
+    } else {
+      this.triggerText.textContent = `${count} persons selected`;
+      this.triggerText.classList.remove('placeholder');
+      // Add count badge
+      const badge = document.createElement('span');
+      badge.className = 'sa-trigger-count';
+      badge.textContent = count;
+      this.trigger.insertBefore(badge, this.trigger.querySelector('.sa-chevron'));
+    }
+  }
+
+  clear() {
+    this.selectedValues.clear();
+    this.updateTrigger();
+  }
+
+  getValues() { return [...this.selectedValues]; }
+
+  esc(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+}
+
+// --- Init dropdowns ---
+const empDropdown = new MultiSelectDropdown('saEmployeeDropdown');
+const supDropdown = new SearchableDropdown('saSupervisorDropdown');
+
+// --- Auth: get token from Supabase client ---
+async function getAuthToken() {
+  const supabase = await getSupabaseAsync(5000);
+  if (!supabase) return null;
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token || null;
+}
+
+async function getCSRFToken(authToken) {
+  try {
+    const res = await fetch('/api/csrf', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    return res.headers.get('X-CSRF-Token') || res.headers.get('x-csrf-token') || null;
+  } catch { return null; }
+}
+
+async function apiFetch(path, opts = {}) {
+  const token = await getAuthToken();
+  if (!token) throw new Error('Not authenticated. Please log in.');
+
+  const method = (opts.method || 'GET').toUpperCase();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + token,
+    ...(opts.headers || {})
+  };
+
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const csrf = await getCSRFToken(token);
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+  }
+
+  const res = await fetch(path, { ...opts, headers });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || json.message || 'Request failed');
+  return json;
+}
+
+function showMsg(text, type) {
+  const el = document.getElementById('saMessage');
+  el.textContent = text;
+  el.className = 'sa-msg ' + (type === 'error' ? 'sa-msg-error' : 'sa-msg-success');
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function nameForEmail(email) {
+  const p = allPeople.find(p => p.email === email);
+  return p ? p.name || email : email;
+}
+
+// --- Load people ---
+async function loadPeople() {
+  try {
+    const json = await apiFetch('/api/people');
+    allPeople = (json.data || []).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    empDropdown.setPeople(allPeople);
+    supDropdown.setPeople(allPeople);
+  } catch (e) {
+    console.error('Failed to load people:', e);
+    showMsg('Failed to load people: ' + e.message, 'error');
+  }
+}
+
+// --- Load mappings ---
+async function loadMappings() {
+  try {
+    const json = await apiFetch('/api/employee-supervisors');
+    allMappings = json.data || [];
+    renderTable();
+  } catch (e) {
+    console.error('Failed to load mappings:', e);
+    document.getElementById('saTableArea').innerHTML = '<div class="sa-empty">Failed to load assignments.</div>';
+  }
+}
+
+function renderTable(filter) {
+  const area = document.getElementById('saTableArea');
+  let data = allMappings;
+
+  if (filter) {
+    const q = filter.toLowerCase();
+    data = data.filter(m =>
+      m.employee_email.toLowerCase().includes(q) ||
+      m.supervisor_email.toLowerCase().includes(q) ||
+      nameForEmail(m.employee_email).toLowerCase().includes(q) ||
+      nameForEmail(m.supervisor_email).toLowerCase().includes(q)
+    );
+  }
+
+  document.getElementById('saCount').textContent = data.length + ' assignment' + (data.length !== 1 ? 's' : '');
+
+  if (data.length === 0) {
+    area.innerHTML = '<div class="sa-empty">No assignments found.</div>';
+    return;
+  }
+
+  const rows = data.map(m => `
+    <tr>
+      <td><strong>${nameForEmail(m.employee_email)}</strong><br><span style="font-size:0.6875rem;color:#6b7280">${m.employee_email}</span></td>
+      <td><strong>${nameForEmail(m.supervisor_email)}</strong><br><span style="font-size:0.6875rem;color:#6b7280">${m.supervisor_email}</span></td>
+      <td style="font-size:0.6875rem;color:#6b7280">${m.created_at ? new Date(m.created_at).toLocaleDateString() : '-'}</td>
+      <td><button class="sa-btn sa-btn-danger" data-id="${m.id}">Remove</button></td>
+    </tr>
+  `).join('');
+
+  area.innerHTML = `
+    <table class="sa-table">
+      <thead><tr><th>Person</th><th>Can View Audits</th><th>Assigned</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  area.querySelectorAll('.sa-btn-danger').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Remove this assignment?')) return;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await apiFetch('/api/employee-supervisors/' + id, { method: 'DELETE' });
+        showMsg('Assignment removed.', 'success');
+        await loadMappings();
+      } catch (e) {
+        showMsg(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Remove';
+      }
+    });
+  });
+}
+
+// --- Assign ---
+document.getElementById('saAssignBtn').addEventListener('click', async () => {
+  const empEmails = empDropdown.getValues();
+  const supEmail = supDropdown.getValue();
+  if (empEmails.length === 0 || !supEmail) return;
+
+  const btn = document.getElementById('saAssignBtn');
+  btn.disabled = true;
+  btn.textContent = 'Assigning...';
+
+  try {
+    let successCount = 0;
+    let skipCount = 0;
+
+    // Use individual POST for each employee → supervisor mapping
+    for (const empEmail of empEmails) {
+      if (empEmail === supEmail) { skipCount++; continue; }
+      try {
+        await apiFetch('/api/employee-supervisors', {
+          method: 'POST',
+          body: JSON.stringify({ employee_email: empEmail, supervisor_email: supEmail })
+        });
+        successCount++;
+      } catch (e) {
+        // 409 = already exists, count as skip
+        if (e.message.includes('already exists')) { skipCount++; }
+        else throw e;
+      }
+    }
+
+    const supName = nameForEmail(supEmail);
+    if (successCount > 0) {
+      showMsg(`${supName} can now view audits of ${successCount} person${successCount > 1 ? 's' : ''}${skipCount > 0 ? ` (${skipCount} skipped/duplicate)` : ''}`, 'success');
+    } else {
+      showMsg(`All selected assignments already exist or were skipped.`, 'error');
+    }
+
+    empDropdown.clear();
+    supDropdown.clear();
+    btn.disabled = true;
+    await loadMappings();
+  } catch (e) {
+    showMsg(e.message, 'error');
+  }
+  btn.textContent = 'Assign';
+  updateAssignBtn();
+});
+
+function updateAssignBtn() {
+  const empEmails = empDropdown.getValues();
+  const sup = supDropdown.getValue();
+  document.getElementById('saAssignBtn').disabled = empEmails.length === 0 || !sup;
+}
+
+document.getElementById('saEmployeeDropdown').addEventListener('change', updateAssignBtn);
+document.getElementById('saSupervisorDropdown').addEventListener('change', updateAssignBtn);
+
+// --- Search ---
+document.getElementById('saSearch').addEventListener('input', (e) => {
+  renderTable(e.target.value);
+});
+
+// --- Init ---
+async function init() {
+  const supabase = await getSupabaseAsync(10000);
+  if (!supabase) {
+    showMsg('Supabase not ready. Please refresh.', 'error');
+    return;
+  }
+  await loadPeople();
+  await loadMappings();
+}
+
+init();
+</script>
+<script type="module">
+import { initSettingsTabs } from '/js/features/settings/settings-tabs.js';
+initSettingsTabs();
+</script>
+</body>
+</html>

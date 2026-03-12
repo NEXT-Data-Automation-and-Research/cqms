@@ -58,6 +58,8 @@ export interface RouteMeta {
   permissionResource?: PermissionResource
   /** Specific emails that can access this route (overrides roles check) */
   allowedEmails?: string[]
+  /** When set, render as a direct link in sidebar instead of a submenu dropdown */
+  sidebarLink?: string
 }
 
 /**

@@ -91,6 +91,7 @@ export class SidebarLoader {
     // Set up UI features immediately (toggle, menu handlers)
     this.setupSidebarToggle()
     this.menu.setupMenuHandlers()
+    SidebarLoader.setupTooltipDelegation()
     console.log('[Sidebar] Initialization complete')
     // COMMENTED OUT: User permission checks - temporarily disabled for development
     // this.hideEmployeeMenuItems()
@@ -541,70 +542,86 @@ export class SidebarLoader {
     // Setup mobile menu toggle
     this.setupMobileMenuToggle()
 
-    // Find or create desktop toggle button
-    let toggleButton = document.querySelector('.sidebar-toggle')
-    if (!toggleButton) {
-      // Create toggle button if it doesn't exist
-      toggleButton = document.createElement('button')
-      toggleButton.className = 'sidebar-toggle'
-      toggleButton.setAttribute('aria-label', 'Toggle sidebar')
-      safeSetHTML(toggleButton as HTMLElement, `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-        </svg>
-      `)
-      document.body.appendChild(toggleButton)
-    }
+    // Handle collapse button click (delegated to survive sidebar re-renders)
+    this.setupCollapseToggleDelegation()
+  }
 
-    // Handle desktop toggle button click
-    // Toggle between permanently expanded and collapsed (with hover expansion)
-    toggleButton.addEventListener('click', () => {
+  private static collapseToggleDelegationAttached = false
+
+  private setupCollapseToggleDelegation(): void {
+    if (SidebarLoader.collapseToggleDelegationAttached) return
+    SidebarLoader.collapseToggleDelegationAttached = true
+
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement | null
+      const collapseBtn = target?.closest('.sidebar-collapse-btn') as HTMLElement | null
+      if (!collapseBtn) return
+
       const sidebar = document.querySelector('.sidebar')
       if (!sidebar) return
+
       const isCollapsed = sidebar.classList.contains('collapsed')
-      
       if (isCollapsed) {
-        // Expand permanently (user wants it to stay expanded)
         sidebar.classList.remove('collapsed')
         sidebarState.sidebarIsExpanded = true
         sidebarState.saveSidebarState('expanded')
       } else {
-        // Collapse (will auto-expand on hover via CSS)
         sidebar.classList.add('collapsed')
         sidebarState.sidebarIsExpanded = false
         sidebarState.saveSidebarState('collapsed')
       }
+      SidebarLoader.updateTooltips()
     })
-
-    // Handle brand button click (also toggles sidebar).
-    // NOTE: The sidebar <nav> can be replaced at runtime (userInfoUpdated),
-    // so bind with delegation so it keeps working.
-    this.setupBrandToggleDelegation()
   }
 
-  private static brandToggleDelegationAttached = false
+  /** Manage custom tooltip element positioned outside sidebar (avoids overflow clipping) */
+  private static tooltipDelegationAttached = false
 
-  private setupBrandToggleDelegation(): void {
-    if (SidebarLoader.brandToggleDelegationAttached) return
-    SidebarLoader.brandToggleDelegationAttached = true
+  static updateTooltips(): void {
+    // No-op for title attributes — tooltips handled via delegation
+  }
 
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement | null
-      const brandButton = target?.closest('.sidebar-brand-btn') as HTMLElement | null
-      if (!brandButton) return
+  static setupTooltipDelegation(): void {
+    if (SidebarLoader.tooltipDelegationAttached) return
+    SidebarLoader.tooltipDelegationAttached = true
 
+    // Create tooltip element outside sidebar
+    const tooltip = document.createElement('div')
+    tooltip.className = 'sidebar-tooltip'
+    document.body.appendChild(tooltip)
+
+    let currentTarget: HTMLElement | null = null
+
+    document.addEventListener('mouseover', (e) => {
       const sidebar = document.querySelector('.sidebar')
-      if (!sidebar) return
+      if (!sidebar || !sidebar.classList.contains('collapsed')) {
+        tooltip.style.opacity = '0'
+        return
+      }
+      const menuItem = (e.target as HTMLElement)?.closest?.('.menu-item[data-tooltip]') as HTMLElement | null
+      if (!menuItem || !sidebar.contains(menuItem)) {
+        tooltip.style.opacity = '0'
+        currentTarget = null
+        return
+      }
+      if (menuItem === currentTarget) return
+      currentTarget = menuItem
 
-      const isCollapsed = sidebar.classList.contains('collapsed')
-      if (isCollapsed) {
-        sidebar.classList.remove('collapsed')
-        sidebarState.sidebarIsExpanded = true
-        sidebarState.saveSidebarState('expanded')
-      } else {
-        sidebar.classList.add('collapsed')
-        sidebarState.sidebarIsExpanded = false
-        sidebarState.saveSidebarState('collapsed')
+      const label = menuItem.getAttribute('data-tooltip') || ''
+      if (!label) return
+
+      tooltip.textContent = label
+      const rect = menuItem.getBoundingClientRect()
+      tooltip.style.top = rect.top + rect.height / 2 + 'px'
+      tooltip.style.left = rect.right + 8 + 'px'
+      tooltip.style.opacity = '1'
+    })
+
+    document.addEventListener('mouseout', (e) => {
+      const menuItem = (e.target as HTMLElement)?.closest?.('.menu-item[data-tooltip]')
+      if (menuItem === currentTarget) {
+        tooltip.style.opacity = '0'
+        currentTarget = null
       }
     })
   }
