@@ -16,7 +16,6 @@
     <script type="importmap">
     {"imports":{"loglevel":"https://cdn.jsdelivr.net/npm/loglevel@1.9.1/+esm","@supabase/supabase-js":"https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm","dompurify":"https://cdn.jsdelivr.net/npm/dompurify@3.3.1/+esm"}}
     </script>
-    <!-- Scorecards page creates its own anon client from /api/env (no auth required; RLS allows anon SELECT) -->
     <script type="module" src="/js/auth-checker.js"></script>
     <script src="/confirmation-dialog.js"></script>
     <script type="module" src="/js/load-sidebar.js"></script>
@@ -388,26 +387,92 @@ async function loadAvailableChannels() {
     }
 }
 
-// Initialize page: use anon-only client so data loads without requiring login (RLS allows anon SELECT)
+// Wait for the authenticated Supabase client (set up by auth-checker.js module)
+// Falls back to creating an authenticated client directly if auth-checker hasn't loaded yet
+function waitForSupabase(timeoutMs) {
+    return new Promise(function(resolve, reject) {
+        // If already available via auth-checker / supabase-init globals
+        if (window.supabaseReady && window.getSupabase) {
+            return resolve(window.getSupabase());
+        }
+        if (window.initSupabase) {
+            return resolve(window.initSupabase());
+        }
+
+        var resolved = false;
+        var timer = setTimeout(function() {
+            if (resolved) return;
+            resolved = true;
+            window.removeEventListener('supabaseReady', onReady);
+            // Last resort: create client directly with session restoration
+            createAuthenticatedClient().then(resolve).catch(function() {
+                reject(new Error('Timed out waiting for Supabase initialization'));
+            });
+        }, timeoutMs || 15000);
+
+        function onReady() {
+            if (resolved) return;
+            resolved = true;
+            clearTimeout(timer);
+            resolve(window.getSupabase ? window.getSupabase() : null);
+        }
+        window.addEventListener('supabaseReady', onReady);
+
+        // Also poll briefly in case supabaseReady fired before listener was attached
+        var pollCount = 0;
+        var poll = setInterval(function() {
+            pollCount++;
+            if (resolved) { clearInterval(poll); return; }
+            if (window.supabaseReady && window.getSupabase) {
+                clearInterval(poll);
+                onReady();
+            } else if (window.initSupabase) {
+                clearInterval(poll);
+                if (resolved) return;
+                resolved = true;
+                clearTimeout(timer);
+                window.removeEventListener('supabaseReady', onReady);
+                window.initSupabase().then(resolve).catch(reject);
+            }
+            if (pollCount > 30) clearInterval(poll); // stop after 3s
+        }, 100);
+    });
+}
+
+// Fallback: create an authenticated Supabase client directly
+async function createAuthenticatedClient() {
+    var envRes = await fetch('/api/env');
+    if (!envRes.ok) throw new Error('Could not load config');
+    var env = await envRes.json();
+    var url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
+    var key = env.SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new Error('Missing Supabase config');
+    var supabaseLib = (typeof supabase !== 'undefined' ? supabase : null) || window.supabase;
+    if (!supabaseLib || !supabaseLib.createClient) throw new Error('Supabase script not loaded');
+    // Create client with session persistence so it picks up the logged-in user's token
+    var client = supabaseLib.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    // Verify session exists
+    var sessionResult = await client.auth.getSession();
+    if (sessionResult.data.session) {
+        console.log('[Scorecards] Authenticated client created via fallback, user:', sessionResult.data.session.user.email);
+    } else {
+        console.warn('[Scorecards] Fallback client has no session - writes will fail RLS');
+    }
+    return client;
+}
+
+// Initialize page: use authenticated client so RLS write operations work
 document.addEventListener('DOMContentLoaded', async function() {
     var main = document.querySelector('.main-content') || document.body;
     window.supabaseClient = null;
     try {
-        var envRes = await fetch('/api/env');
-        if (!envRes.ok) {
-            throw new Error('Could not load config: ' + envRes.status);
+        var client = await waitForSupabase(15000);
+        if (!client) {
+            throw new Error('Could not initialize Supabase client');
         }
-        var env = await envRes.json();
-        var url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-        var key = env.SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-        if (!url || !key) {
-            throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be set in .env');
-        }
-        var supabaseLib = (typeof supabase !== 'undefined' ? supabase : null) || window.supabase;
-        if (!supabaseLib || !supabaseLib.createClient) {
-            throw new Error('Supabase script not loaded');
-        }
-        window.supabaseClient = supabaseLib.createClient(url, key);
+        window.supabaseClient = client;
     } catch (e) {
         console.error('[Scorecards] Init failed:', e);
         if (main) {

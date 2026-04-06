@@ -743,9 +743,28 @@
     </style>
     <script>
       window.navigateToAuditForm = function(url) {
-        document.body.classList.add('page-exit');
-        setTimeout(function() { window.location.href = url; }, 250);
+        window.open(url, '_blank');
       };
+
+      // Listen for audit completion from child windows
+      window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'audit_submitted') {
+          var convId = event.data.conversationId;
+          console.log('Audit completed for conversation:', convId);
+          if (convId) {
+            // Find the conversation row and mark it as audited
+            var rows = document.querySelectorAll('tr[data-conversation-id="' + convId + '"], .conversation-card[data-conversation-id="' + convId + '"]');
+            rows.forEach(function(row) {
+              // Replace play button with checkmark
+              var playBtn = row.querySelector('.quick-start-audit-btn, .conversation-play-button, .start-audit-from-conversation-btn');
+              if (playBtn) {
+                playBtn.outerHTML = '<span style="display:inline-flex;align-items:center;justify-content:center;width:1.5rem;height:1.5rem;background:#10b981;border-radius:50%;flex-shrink:0" title="Audited"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+              }
+              row.style.opacity = '0.6';
+            });
+          }
+        }
+      });
     </script>
     <!-- Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>

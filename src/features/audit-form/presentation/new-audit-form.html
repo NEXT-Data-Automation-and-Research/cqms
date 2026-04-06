@@ -14387,7 +14387,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const message = wasEditingExistingAudit ? 'Audit updated successfully!' : 'Audit submitted successfully!';
-                
+
+                // Notify opener window (conversations panel) that audit was completed
+                if (window.opener) {
+                    try {
+                        window.opener.postMessage({
+                            type: 'audit_submitted',
+                            conversationId: pendingConversationId || null,
+                            assignmentId: currentAssignmentId || null,
+                            auditId: data[0]?.id || null
+                        }, '*');
+                        console.log('📡 Notified opener window of audit completion');
+                    } catch (e) {
+                        console.warn('Could not notify opener window:', e);
+                    }
+                }
+
                 console.log('✅ Audit saved successfully! Showing success state...');
                 console.log('🎯 About to show success dialog and reset form');
                 

@@ -73,8 +73,39 @@ export class ConversationsPanel {
     }
 
     this.attachEventListeners();
+    this.listenForAuditCompletion();
   }
   
+  /**
+   * Listen for audit completion messages from child windows opened via the play button.
+   * When an audit is submitted in the child window, it posts a message back here
+   * so we can mark the conversation row as audited without a full page reload.
+   */
+  private listenForAuditCompletion(): void {
+    window.addEventListener('message', (event: MessageEvent) => {
+      if (event.data && event.data.type === 'audit_submitted') {
+        const { conversationId } = event.data;
+        logInfo('Audit completed for conversation', { conversationId });
+
+        // Mark the conversation card as audited
+        if (conversationId) {
+          const card = this.container.querySelector(`.conversation-card[data-conversation-id="${conversationId}"]`) as HTMLElement;
+          if (card) {
+            // Replace play button with a green checkmark
+            const playBtn = card.querySelector('.conversation-play-button') as HTMLElement;
+            if (playBtn) {
+              playBtn.outerHTML = `<span style="display: flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 0.375rem; flex-shrink: 0;" title="Audited">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>`;
+            }
+            // Dim the card slightly to indicate it's done
+            card.style.opacity = '0.65';
+          }
+        }
+      }
+    });
+  }
+
   /**
    * Get table body element, lazy-loading if needed
    * Works even when element is inside hidden panel
@@ -1419,14 +1450,14 @@ export class ConversationsPanel {
           // Include employee_name from selectedAudit to ensure it carries over to the audit form
           const employeeName = this.selectedAudit?.employee_name || '';
           let auditFormUrl = `/src/features/audit-form/presentation/new-audit-form.html?assignment=${encodeURIComponent(assignmentId)}&conversation_id=${encodeURIComponent(conversationId)}`;
-          
+
           // Add employee_name parameter if available (helps with form pre-population)
           if (employeeName) {
             auditFormUrl += `&employee_name=${encodeURIComponent(employeeName)}`;
           }
-          
-          logInfo('🎬 Opening audit form', { assignmentId, conversationId, employeeName, url: auditFormUrl });
-          window.location.href = auditFormUrl;
+
+          logInfo('🎬 Opening audit form in new window', { assignmentId, conversationId, employeeName, url: auditFormUrl });
+          window.open(auditFormUrl, '_blank');
         } else {
           logWarn('Cannot open audit form: missing assignment or conversation ID', { conversationId, assignmentId });
         }
