@@ -530,6 +530,7 @@ import activeUsersRouter from '../src/api/routes/active-users.routes.js';
 import auditWebhookRouter from '../src/api/routes/audit-webhook.routes.js';
 import massiveAiAuditRouter from '../src/api/routes/massive-ai-audit.routes.js';
 import employeeSupervisorsRouter from '../src/api/routes/employee-supervisors.routes.js';
+import servicePerformanceRouter from '../src/api/routes/service-performance.routes.js';
 import { errorHandler } from '../src/api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -546,6 +547,7 @@ app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
 app.use('/api/massive-ai-audit', massiveAiAuditRouter);
 app.use('/api/employee-supervisors', employeeSupervisorsRouter);
+app.use('/api/service-performance', servicePerformanceRouter);
 
 // Error handler (must be last)
 app.use(errorHandler);
