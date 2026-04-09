@@ -665,6 +665,7 @@ import activeUsersRouter from './api/routes/active-users.routes.js';
 import auditWebhookRouter from './api/routes/audit-webhook.routes.js';
 import massiveAiAuditRouter from './api/routes/massive-ai-audit.routes.js';
 import employeeSupervisorsRouter from './api/routes/employee-supervisors.routes.js';
+import servicePerformanceRouter from './api/routes/service-performance.routes.js';
 import { errorHandler } from './api/middleware/error-handler.middleware.js';
 
 app.use('/api/auth', authRouter);
@@ -681,7 +682,8 @@ app.use('/api/active-users', activeUsersRouter);
 app.use('/api/webhooks', auditWebhookRouter);
 app.use('/api/massive-ai-audit', massiveAiAuditRouter);
 app.use('/api/employee-supervisors', employeeSupervisorsRouter);
-logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks, /api/massive-ai-audit');
+app.use('/api/service-performance', servicePerformanceRouter);
+logWithTimestamp('debug', 'API routes loaded: /api/users, /api/notifications, /api/people, /api/notification-subscriptions, /api/permissions, /api/analytics, /api/admin, /api/platform-notifications, /api/webhooks, /api/massive-ai-audit, /api/service-performance');
 if (process.env.N8N_WEBHOOK_URL) {
   logWithTimestamp('info', 'n8n audit-submission webhook: configured');
 } else {

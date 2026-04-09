@@ -1038,7 +1038,7 @@
         <div id="pullConversationsLoading" style="display: none; text-align: center; padding: 1.9406rem; color: #6b7280;">
             <div style="max-width: 28rem; margin: 0 auto;">
                 <div class="shimmer-text" style="margin-bottom: 0.6469rem;">
-                    <p id="pullConversationsStatus" style="font-size: 0.5659rem; margin: 0; color: #374151; font-weight: 500;">Pulling from Intercom...</p>
+                    <p id="pullConversationsStatus" style="font-size: 0.5659rem; margin: 0; color: #374151; font-weight: 500;">Loading conversations...</p>
                 </div>
                 <div style="width: 100%; background: #e5e7eb; border-radius: 0.125rem; height: 0.4043rem; margin-bottom: 0.3234rem; overflow: hidden; position: relative;">
                     <div id="pullConversationsProgressBar" style="background: #1A733E; height: 0.4043rem; border-radius: 0.125rem; transition: width 0.3s ease-out; width: 0%; position: relative;">
@@ -1292,36 +1292,32 @@
                             </th>
                             <th style="padding: 0.25rem 0.375rem; text-align: center; font-weight: 600; color: #374151; font-size: 0.6069rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.025em; overflow: visible;">
                                 <div class="column-tooltip-container" style="display: flex; align-items: center; justify-content: center; gap: 0.125rem; position: relative;">
-                                    <span>Errors Detected</span>
+                                    <span>FRT</span>
                                     <div class="info-icon" style="display: flex; align-items: center; justify-content: center; cursor: help; transition: opacity 0.2s;">
                                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 0.5rem; height: 0.5rem; color: #4b5563;" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
                                         </svg>
                                     </div>
                                     <div class="column-tooltip" style="position: fixed; width: 20rem; background: #1f2937; color: white; font-size: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; pointer-events: none; text-align: left; font-weight: normal; text-transform: none; letter-spacing: normal; white-space: normal; word-wrap: break-word; max-width: 20rem;">
-                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Errors Detected</div>
+                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">First Response Time</div>
                                         <div style="color: #d1d5db; line-height: 1.5;">
-                                            <p style="margin: 0 0 0.5rem 0;">Total number of errors detected by AI audit for this conversation. Only shown when AI audit is completed.</p>
+                                            <p style="margin: 0 0 0.5rem 0;">Time in seconds until the first agent response. Threshold: 30s.</p>
                                         </div>
                                     </div>
                                 </div>
                             </th>
-                            <th style="padding: 0.25rem 0.375rem; text-align: left; font-weight: 600; color: #374151; font-size: 0.6069rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.025em; overflow: visible;">
-                                <div class="column-tooltip-container" style="display: flex; align-items: center; gap: 0.125rem; position: relative;">
-                                    <span>Tags</span>
+                            <th style="padding: 0.25rem 0.375rem; text-align: center; font-weight: 600; color: #374151; font-size: 0.6069rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.025em; overflow: visible;">
+                                <div class="column-tooltip-container" style="display: flex; align-items: center; justify-content: center; gap: 0.125rem; position: relative;">
+                                    <span>AHT</span>
                                     <div class="info-icon" style="display: flex; align-items: center; justify-content: center; cursor: help; transition: opacity 0.2s;">
                                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 0.5rem; height: 0.5rem; color: #4b5563;" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
                                         </svg>
                                     </div>
                                     <div class="column-tooltip" style="position: fixed; width: 20rem; background: #1f2937; color: white; font-size: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; pointer-events: none; text-align: left; font-weight: normal; text-transform: none; letter-spacing: normal; white-space: normal; word-wrap: break-word; max-width: 20rem;">
-                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Tags</div>
+                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Average Handling Time</div>
                                         <div style="color: #d1d5db; line-height: 1.5;">
-                                            <p style="margin: 0 0 0.5rem 0;">Labels or categories applied to the conversation for organization and filtering. Shows first 2 tags, with count of additional tags.</p>
-                                            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #374151;">
-                                                <div style="font-weight: 500; margin-bottom: 0.25rem;">Example:</div>
-                                                <p style="margin: 0; color: #9ca3af;">"GS CFD FIN Chats", "Lingpad" <span style="color: #6b7280;">+2</span> (shows 2 more tags on hover)</p>
-                                            </div>
+                                            <p style="margin: 0 0 0.5rem 0;">Total time the agent spent handling this conversation, in seconds.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1348,20 +1344,16 @@
                             </th>
                             <th style="padding: 0.25rem 0.375rem; text-align: center; font-weight: 600; color: #374151; font-size: 0.6069rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.025em; overflow: visible;">
                                 <div class="column-tooltip-container" style="display: flex; align-items: center; justify-content: center; gap: 0.125rem; position: relative;">
-                                    <span>AI Status</span>
+                                    <span>Channel</span>
                                     <div class="info-icon" style="display: flex; align-items: center; justify-content: center; cursor: help; transition: opacity 0.2s;">
                                         <svg xmlns="http://www.w3.org/2000/svg" style="width: 0.5rem; height: 0.5rem; color: #4b5563;" viewBox="0 -960 960 960" fill="currentColor">
                                             <path d="M440-280h80v-240h-80v240Zm40-320q17 0 28.5-11.5T520-640q0-17-11.5-28.5T480-680q-17 0-28.5 11.5T440-640q0 17 11.5 28.5T480-600Zm0 520q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/>
                                         </svg>
                                     </div>
                                     <div class="column-tooltip" style="position: fixed; width: 20rem; background: #1f2937; color: white; font-size: 0.75rem; padding: 0.75rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; pointer-events: none; text-align: left; font-weight: normal; text-transform: none; letter-spacing: normal; white-space: normal; word-wrap: break-word; max-width: 20rem;">
-                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">AI Audit Status</div>
+                                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Channel</div>
                                         <div style="color: #d1d5db; line-height: 1.5;">
-                                            <p style="margin: 0 0 0.5rem 0;">Status of AI audit processing for this conversation. Click to view results or start manual audit.</p>
-                                            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #374151;">
-                                                <div style="font-weight: 500; margin-bottom: 0.25rem;">Statuses:</div>
-                                                <p style="margin: 0; color: #9ca3af;"><span style="color: #3B82F6;">🔄 Processing</span> (In progress), <span style="color: #1A733E;">✅ Completed</span> (Results available), <span style="color: #EF4444;">❌ Failed</span> (Error occurred)</p>
-                                            </div>
+                                            <p style="margin: 0 0 0.5rem 0;">Communication channel: Chat, Email, Phone, etc.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -6364,6 +6356,7 @@ let pullConversationsAdminEmail = null;
 let pullConversationsAdminAlias = null;
 let pullConversationsEmployeeEmail = null; // Store the employee email whose conversations were pulled
 let pullConversationsEmployeeName = null; // Store the employee name whose conversations were pulled
+let useServicePerformanceData = true; // Use local service-performance-overview data instead of Intercom edge function
 let pullConversationsDateRange = 'yesterday'; // Default: 'yesterday', 'last3days', 'thisweek'
 let pullConversationsList = []; // Original unfiltered list from cache/API
 let pullConversationsFilteredList = []; // Filtered list for display
@@ -6917,26 +6910,34 @@ window.pullConversationsForEmployee = async function(employeeEmail, employeeName
         // Update header with employee name and alias
         updatePullConversationsHeader();
         
-        // Find admin ID for the employee email (optimized lookup: users table → cache → API → search modal)
-        console.log('🔍 Looking up admin ID for email:', employeeEmail);
-        const adminFound = await findAdminIdForEmployee(employeeEmail);
-        
-        // If admin ID found, load conversations
-        if (adminFound && pullConversationsAdminId) {
-            let selectedDate;
-            if (dateInput && dateInput.value) {
-                selectedDate = dateInput.value;
-            } else {
-                // Fallback to yesterday if date input is not available
-                selectedDate = yesterdayStr;
-            }
-            console.log('✅ Admin ID found:', pullConversationsAdminId);
-            console.log('📅 Fetching conversations for date:', selectedDate);
-            await fetchConversationsForCurrentUser(selectedDate);
+        // Check if using local service performance data
+        if (useServicePerformanceData) {
+            console.log('📊 Using local service performance data for:', employeeName || employeeEmail);
+            pullConversationsAdminId = 'local'; // Set a placeholder so downstream checks pass
+            const dateRange = getDateRangeForSelection(pullConversationsDateRange);
+            await fetchConversationsForDateRange(dateRange.startDate, dateRange.endDate);
         } else {
-            console.error('❌ Admin ID not found for email:', employeeEmail);
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            // Error message will be shown by findAdminIdForEmployee or modal
+            // Find admin ID for the employee email (optimized lookup: users table → cache → API → search modal)
+            console.log('🔍 Looking up admin ID for email:', employeeEmail);
+            const adminFound = await findAdminIdForEmployee(employeeEmail);
+
+            // If admin ID found, load conversations
+            if (adminFound && pullConversationsAdminId) {
+                let selectedDate;
+                if (dateInput && dateInput.value) {
+                    selectedDate = dateInput.value;
+                } else {
+                    // Fallback to yesterday if date input is not available
+                    selectedDate = yesterdayStr;
+                }
+                console.log('✅ Admin ID found:', pullConversationsAdminId);
+                console.log('📅 Fetching conversations for date:', selectedDate);
+                await fetchConversationsForCurrentUser(selectedDate);
+            } else {
+                console.error('❌ Admin ID not found for email:', employeeEmail);
+                if (loadingDiv) loadingDiv.style.display = 'none';
+                // Error message will be shown by findAdminIdForEmployee or modal
+            }
         }
         
     } catch (error) {
@@ -8232,24 +8233,95 @@ async function fetchConversationsForDateRange(startDate, endDate) {
         showPullConversationsError('Admin ID not found. Please try again.');
         return;
     }
-    
+
     // Hide elements during loading
     hideElementsDuringLoading();
-    
+
     // Show loading state
     const loadingDiv = document.getElementById('pullConversationsLoading');
     const errorDiv = document.getElementById('pullConversationsError');
     const listDiv = document.getElementById('pullConversationsList');
-    
+
     if (loadingDiv) loadingDiv.style.display = 'block';
     if (errorDiv) errorDiv.style.display = 'none';
     if (listDiv) listDiv.style.display = 'none';
-    
+
+    // ── LOCAL SERVICE PERFORMANCE DATA PATH ──
+    if (useServicePerformanceData) {
+        updateProgressIndicator(20, 'Loading service performance data...');
+        try {
+            // Build query params - filter by employee name
+            const params = new URLSearchParams();
+            if (pullConversationsEmployeeName) {
+                params.append('assignee_name', pullConversationsEmployeeName);
+            }
+            if (startDate && endDate) {
+                const startTs = Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000);
+                const endTs = Math.floor(new Date(endDate + 'T23:59:59Z').getTime() / 1000);
+                params.append('updated_since', String(startTs));
+                params.append('updated_before', String(endTs));
+            }
+
+            const apiUrl = `/api/service-performance/conversations?${params.toString()}`;
+            console.log('📊 Fetching from local service performance API:', apiUrl);
+            console.log('📊 Employee name for filter:', pullConversationsEmployeeName);
+            console.log('📊 Date range:', startDate, 'to', endDate);
+
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                throw new Error(errBody.error || `HTTP ${response.status}`);
+            }
+
+            updateProgressIndicator(70, 'Processing service performance data...');
+            const data = await response.json();
+
+            let conversations = [];
+            if (data && Array.isArray(data.conversations)) {
+                conversations = data.conversations;
+            }
+            const participationCount = data.participation_count || 0;
+
+            console.log(`✅ Loaded ${conversations.length} conversations from service performance data (chat: ${data.chat_count || '?'}, email: ${data.email_count || '?'})`);
+            updateProgressIndicator(100, 'Complete');
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Store conversations
+            pullConversationsList = conversations;
+            pullConversationsFilteredList = [...conversations];
+
+            const hasActiveFilters = Object.values(pullConversationsFilters).some(value => value !== null && value !== '');
+            if (hasActiveFilters) {
+                await filterPullConversations();
+            } else {
+                await displayPullConversationsList(conversations);
+                updatePullConversationsCountAndAdmin(conversations.length);
+            }
+
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (listDiv) listDiv.style.display = 'block';
+            showElementsAfterLoading();
+
+            if (conversations && conversations.length > 0 && pullConversationsEmployeeEmail) {
+                window.showAIAuditSection(pullConversationsEmployeeEmail, pullConversationsEmployeeName || pullConversationsEmployeeEmail);
+            }
+            updatePullConversationsActiveFilters();
+            return; // Done — skip legacy Intercom path
+        } catch (error) {
+            console.error('❌ Error fetching service performance data:', error);
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            showPullConversationsError(`Service performance error: ${error.message}`);
+            showElementsAfterLoading();
+            return;
+        }
+    }
+
+    // ── LEGACY INTERCOM EDGE FUNCTION PATH ──
     // Get Supabase configuration with fallbacks
     const config = await ensureSupabaseConfig();
     const supabaseUrl = config.url;
     const supabaseAnonKey = config.anonKey;
-    
+
     // Test connectivity first
     updateProgressIndicator(5, 'Testing connection...');
     const isConnected = await testEdgeFunctionConnectivity(supabaseUrl, supabaseAnonKey);
@@ -8261,15 +8333,15 @@ async function fetchConversationsForDateRange(startDate, endDate) {
         if (loadingDiv) loadingDiv.style.display = 'none';
         return;
     }
-    
+
     // Normalize adminId and dates
     const normalizedAdminId = String(pullConversationsAdminId || '').trim();
     const normalizedStartDate = startDate ? String(startDate).trim().split('T')[0] : '';
     const normalizedEndDate = endDate ? String(endDate).trim().split('T')[0] : '';
-    
+
     if (!normalizedAdminId || !normalizedStartDate || !normalizedEndDate) {
-        console.warn('⚠️ Cannot fetch: missing adminId or dates', { 
-            adminId: normalizedAdminId, 
+        console.warn('⚠️ Cannot fetch: missing adminId or dates', {
+            adminId: normalizedAdminId,
             startDate: normalizedStartDate,
             endDate: normalizedEndDate
         });
@@ -8284,40 +8356,40 @@ async function fetchConversationsForDateRange(startDate, endDate) {
             return;
         }
     }
-    
+
     // Format dates for API (add time component)
     const updatedSince = `${normalizedStartDate} 00:00:00`;
     const updatedBefore = `${normalizedEndDate} 23:59:59`;
-    
+
     // No cache for date ranges - always fetch from API
     console.log('🌐 Fetching from API for date range:', normalizedStartDate, 'to', normalizedEndDate);
-    
+
     // Update progress: Initial
     updateProgressIndicator(10, 'Pulling from Intercom...');
-    
+
     try {
         // Validate configuration first
         if (!supabaseUrl || !supabaseAnonKey) {
             throw new Error('Supabase configuration is missing. Please refresh the page.');
         }
-        
+
         // Build edge function URL with date range
         const edgeFunctionUrl = `${supabaseUrl}/functions/v1/intercom-proxy?endpoint=conversations&admin_id=${encodeURIComponent(pullConversationsAdminId)}&updated_since=${encodeURIComponent(updatedSince)}&updated_before=${encodeURIComponent(updatedBefore)}`;
-        
+
         console.log('📡 Calling edge function:', edgeFunctionUrl);
         console.log('📡 Supabase URL:', supabaseUrl);
         console.log('📡 Admin ID:', pullConversationsAdminId);
         console.log('📡 Date range:', updatedSince, 'to', updatedBefore);
         console.log('📡 Anon key present:', !!supabaseAnonKey);
         console.log('📡 Anon key length:', supabaseAnonKey ? supabaseAnonKey.length : 0);
-        
+
         // Update progress: Searching
         updateProgressIndicator(20, 'Searching conversations in Intercom...');
-        
+
         // Create AbortController for timeout handling
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
-        
+
         let response;
         try {
             response = await fetch(edgeFunctionUrl, {
@@ -8332,7 +8404,7 @@ async function fetchConversationsForDateRange(startDate, endDate) {
                 mode: 'cors', // Explicitly enable CORS
                 credentials: 'omit' // Don't send cookies
             });
-            
+
             console.log('📡 Response received:', {
                 status: response.status,
                 statusText: response.statusText,
@@ -8341,7 +8413,7 @@ async function fetchConversationsForDateRange(startDate, endDate) {
             });
         } catch (fetchError) {
             clearTimeout(timeoutId);
-            
+
             console.error('❌ Fetch error details:', {
                 name: fetchError.name,
                 message: fetchError.message,
@@ -8350,7 +8422,7 @@ async function fetchConversationsForDateRange(startDate, endDate) {
                 supabaseUrl: supabaseUrl,
                 hasAnonKey: !!supabaseAnonKey
             });
-            
+
             // Handle timeout and network errors
             if (fetchError.name === 'AbortError') {
                 throw new Error('Request timed out. The Intercom API is taking too long to respond. Please try again or check your internet connection.');
@@ -8373,7 +8445,7 @@ Error: ${fetchError.message}`;
                 throw new Error(`Network error: ${fetchError.message}`);
             }
         }
-        
+
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -8384,9 +8456,9 @@ Error: ${fetchError.message}`;
 
         // Update progress: Processing
         updateProgressIndicator(70, 'Processing participation data...');
-        
+
         const data = await response.json();
-        
+
         // Extract conversations from response
         let conversations = [];
         if (data && Array.isArray(data.conversations)) {
@@ -8394,7 +8466,7 @@ Error: ${fetchError.message}`;
         } else if (data && data.type === 'conversation.list' && Array.isArray(data.conversations)) {
             conversations = data.conversations;
         }
-        
+
         const participationCount = data.participation_count || 0;
         
         console.log(`✅ Fetched ${conversations.length} conversations from API`);
@@ -9123,9 +9195,11 @@ async function displayPullConversationsList(conversations) {
         const cxScoreAValue = (cxScoreA !== null && cxScoreA !== undefined) ? parseInt(cxScoreA) : 999;
         const cxScoreBValue = (cxScoreB !== null && cxScoreB !== undefined) ? parseInt(cxScoreB) : 999;
         
-        // Extract conversation length - only count agent's messages
-        const lengthA = getAgentMessageCount(a);
-        const lengthB = getAgentMessageCount(b);
+        // Extract conversation length - use agent message count or participation_part_count for SPO data
+        let lengthA = getAgentMessageCount(a);
+        if (lengthA === 0) lengthA = a.participation_part_count || a.statistics?.count_conversation_parts || 0;
+        let lengthB = getAgentMessageCount(b);
+        if (lengthB === 0) lengthB = b.participation_part_count || b.statistics?.count_conversation_parts || 0;
         
         // Secondary sort: Lowest Rating (ascending)
         if (ratingAValue !== ratingBValue) {
@@ -9312,9 +9386,12 @@ async function displayPullConversationsList(conversations) {
         }
         
         // Calculate conversation length - only count agent's messages
-        // Use the same helper function as sorting for consistency
-        const conversationLength = getAgentMessageCount(conversation);
-        const lengthDisplay = conversationLength > 0 
+        // For SPO data, use participation_part_count/response_count; for Intercom, count parts
+        let conversationLength = getAgentMessageCount(conversation);
+        if (conversationLength === 0 && (conversation.participation_part_count || conversation.statistics?.count_conversation_parts)) {
+            conversationLength = conversation.participation_part_count || conversation.statistics?.count_conversation_parts || 0;
+        }
+        const lengthDisplay = conversationLength > 0
             ? `<span style="font-size: 0.6069rem; color: #374151; font-weight: 500;">${conversationLength}</span>`
             : '<span style="color: #9ca3af; font-size: 0.5252rem;">-</span>';
         
@@ -9440,6 +9517,33 @@ async function displayPullConversationsList(conversations) {
             const errorColor = aiErrorCount === 0 ? '#1A733E' : aiErrorCount <= 2 ? '#f59e0b' : '#ef4444';
             aiErrorCountHtml = `<span style="color: ${errorColor}; font-weight: 600; font-size: 0.6069rem;">${aiErrorCount}</span>`;
         }
+
+        // Format FRT (First Response Time) from service performance data
+        const frtSeconds = conversation.frt_seconds;
+        let frtHtml = '<span style="color: #9ca3af; font-size: 0.5252rem;">-</span>';
+        if (frtSeconds !== null && frtSeconds !== undefined) {
+            const frtColor = frtSeconds <= 30 ? '#10b981' : frtSeconds <= 60 ? '#f59e0b' : '#ef4444';
+            frtHtml = `<span style="color: ${frtColor}; font-weight: 600; font-size: 0.6069rem;" title="${frtSeconds}s">${frtSeconds}s</span>`;
+        }
+
+        // Format AHT (Average Handling Time) from service performance data
+        const ahtSeconds = conversation.aht_seconds;
+        let ahtHtml = '<span style="color: #9ca3af; font-size: 0.5252rem;">-</span>';
+        if (ahtSeconds !== null && ahtSeconds !== undefined) {
+            const ahtMinutes = Math.round(ahtSeconds / 60);
+            const ahtDisplay = ahtSeconds >= 60 ? `${ahtMinutes}m` : `${ahtSeconds}s`;
+            ahtHtml = `<span style="color: #374151; font-weight: 500; font-size: 0.6069rem;" title="${ahtSeconds}s">${ahtDisplay}</span>`;
+        }
+
+        // Format Channel from service performance data
+        const channelValue = conversation.channel || '';
+        let channelHtml = '<span style="color: #9ca3af; font-size: 0.5252rem;">-</span>';
+        if (channelValue) {
+            const channelColors = { 'Chat': '#3b82f6', 'Email': '#8b5cf6', 'Phone': '#f59e0b' };
+            const chColor = channelColors[channelValue] || '#6b7280';
+            const chBg = channelValue === 'Chat' ? '#dbeafe' : channelValue === 'Email' ? '#ede9fe' : channelValue === 'Phone' ? '#fef3c7' : '#f3f4f6';
+            channelHtml = `<span style="background: ${chBg}; color: ${chColor}; padding: 0.08rem 0.25rem; border-radius: 0.16rem; font-size: 0.4852rem; font-weight: 500;">${escapeHtml(channelValue)}</span>`;
+        }
         
         row.innerHTML = `
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">
@@ -9465,10 +9569,10 @@ async function displayPullConversationsList(conversations) {
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${ratingHtml}</td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${cxScoreHtml}</td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${lengthDisplay}</td>
-            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${aiErrorCountHtml}</td>
-            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; max-width: 8rem;">${tagsHtml}</td>
+            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${frtHtml}</td>
+            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${ahtHtml}</td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; font-size: 0.5252rem; color: #6b7280; white-space: nowrap; text-align: center;" title="${createdDate}">${createdDateShort}</td>
-            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${aiStatusColumn}</td>
+            <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">${channelHtml}</td>
             <td style="padding: 0.25rem 0.375rem; vertical-align: middle; text-align: center;">
                 <div style="display: flex; gap: 0.25rem; justify-content: center; align-items: center; flex-wrap: wrap;">
                     ${(function() {
