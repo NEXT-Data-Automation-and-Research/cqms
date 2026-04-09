@@ -136,8 +136,8 @@ async function queryTable(
   let query = client.from(table).select(SELECT_COLUMNS);
 
   if (opts.assigneeName) {
-    // Search both assignee_name and agent_name for flexibility
-    query = query.or(`assignee_name.ilike.%${opts.assigneeName}%,agent_name.ilike.%${opts.assigneeName}%`);
+    // agent_name contains the actual employee name in both tables
+    query = query.ilike('agent_name', `%${opts.assigneeName}%`);
   }
   if (opts.updatedSince) {
     query = query.gte('created_at', opts.updatedSince);
