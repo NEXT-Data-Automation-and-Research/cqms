@@ -8250,11 +8250,8 @@ async function fetchConversationsForDateRange(startDate, endDate) {
     if (useServicePerformanceData) {
         updateProgressIndicator(20, 'Loading service performance data...');
         try {
-            // Build query params - filter by employee name
+            // Build query params — skip employee name filter for now (SPO names may differ from CQMS)
             const params = new URLSearchParams();
-            if (pullConversationsEmployeeName) {
-                params.append('assignee_name', pullConversationsEmployeeName);
-            }
             if (startDate && endDate) {
                 const startTs = Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000);
                 const endTs = Math.floor(new Date(endDate + 'T23:59:59Z').getTime() / 1000);
