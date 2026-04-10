@@ -73,6 +73,8 @@ public/js/**/*.js.map
 !public/js/console-stub.js
 # Exception: date-range-picker.js is source (not compiled), needed for production
 !public/js/date-range-picker.js
+# Exception: nav-helper.js is source (Ctrl+Click new tab support)
+!public/js/nav-helper.js
 
 # TypeScript source maps (server builds)
 *.map
@@ -176,3 +178,5 @@ docs/n8n-massive-ai-audit-workflow.json
 docs/SECURITY-CHECK-REPORT.md
 /Scorecard*.csv
 
+
+.vercel

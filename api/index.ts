@@ -247,9 +247,13 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
   const originalSend = res.send;
   res.send = function(body: any) {
     if (typeof body === 'string' && body.trim().startsWith('<!')) {
+      const hasNavHelper = body.includes('nav-helper.js') || body.includes('/js/nav-helper.js');
       const hasAuthChecker = body.includes('auth-checker.js') || body.includes('/js/auth-checker.js');
       const hasAnalytics = body.includes('analytics-client.js') || body.includes('/js/utils/analytics-client.js');
       let scriptsToInject = '';
+      if (!hasNavHelper) {
+        scriptsToInject += '  <!-- Navigation Helper - Ctrl+Click opens in new tab -->\n  <script src="/js/nav-helper.js"></script>\n';
+      }
       if (!hasAuthChecker) {
         scriptsToInject += '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
       }

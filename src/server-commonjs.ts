@@ -329,6 +329,9 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
       }
 
       let scriptsToInject = '';
+      if (!body.includes('nav-helper.js') && !body.includes('/js/nav-helper.js')) {
+        scriptsToInject += '  <!-- Navigation Helper - Ctrl+Click opens in new tab -->\n  <script src="/js/nav-helper.js"></script>\n';
+      }
       if (!body.includes('auth-checker.js') && !body.includes('/js/auth-checker.js')) {
         scriptsToInject += '  <!-- Authentication Guard - Auto-injected for security -->\n  <script type="module" src="/js/auth-checker.js"></script>\n';
       }
