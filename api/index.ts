@@ -232,15 +232,17 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 });
 
 // Middleware to automatically inject auth-checker into HTML responses
+// Applies to all routes — the res.send override checks if body is HTML before injecting
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics';
 
-  if (!isHtmlPage) {
+  // Skip auth page and index (they have their own scripts)
+  if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
     return next();
   }
 
-  if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
+  // Skip static assets (no need to intercept res.send for JS/CSS/images)
+  if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map|json)$/)) {
     return next();
   }
   

@@ -296,13 +296,14 @@ app.use((req: express.Request, res: express.Response, next: express.NextFunction
 // Runs after routes but before static file serving
 app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
   const url = req.path;
-  const isHtmlPage = url.endsWith('.html') || url === '/' || url === '/my-activity' || url === '/analytics' || !!getFilePathFromCleanPath(url);
 
-  if (!isHtmlPage) {
+  // Skip auth page and index (they have their own scripts)
+  if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
     return next();
   }
 
-  if (url.includes('auth-page.html') || url === '/' || url === '/index.html') {
+  // Skip static assets
+  if (url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|webp|map|json)$/)) {
     return next();
   }
   
