@@ -710,7 +710,7 @@
       var client=await initSupabase();
       if(client){supabaseClient=client;window.supabaseClient=client;}
       var auth=await isAuthenticated();
-      if(!auth){sessionStorage.setItem('redirectAfterLogin',window.location.pathname);window.location.href='/src/auth/presentation/auth-page.html';return;}
+      if(!auth){sessionStorage.setItem('redirectAfterLogin',window.location.pathname);cqmsNav('/src/auth/presentation/auth-page.html';return);}
       try {
         var {data:{user}}=await supabaseClient.auth.getUser();
         currentUserEmail=(user?.email||'').toLowerCase().trim();

@@ -460,7 +460,7 @@
             // Check authentication
             const authenticated = await isAuthenticated();
             if (!authenticated) {
-                window.location.href = '/login.html';
+                cqmsNav('/login.html');
                 return;
             }
             

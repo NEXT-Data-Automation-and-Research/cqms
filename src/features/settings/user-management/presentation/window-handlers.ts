@@ -61,16 +61,14 @@ export function setupWindowHandlers(main: UserManagementMain): void {
   };
 
   (window as any).saveUserChanges = () => {
-    getMainInstance().saveUserChanges();
+    return getMainInstance().saveUserChanges();
   };
 
   (window as any).createNewUser = () => {
-    try {
-      getMainInstance().createNewUser();
-    } catch (error) {
+    return getMainInstance().createNewUser().catch((error: unknown) => {
       const errorMessage = getUserFriendlyErrorMessage(error, 'create user');
       alert(errorMessage);
-    }
+    });
   };
 
   (window as any).closeEditModal = () => {

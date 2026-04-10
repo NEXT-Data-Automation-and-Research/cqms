@@ -3430,7 +3430,7 @@ window.viewCompletedAudit = function(auditId, scorecardId, tableName) {
         return;
     }
     // Use same format as audit-reports.html for consistency
-    window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+    cqmsNav(`/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`);
 };
 
 // ============================================================================
@@ -16297,7 +16297,7 @@ async function loadAuditForEditing() {
         console.log('Loaded audit data:', data);
         
         // Navigate to edit-audit.html for editing existing audits
-        window.location.href = `edit-audit.html?edit=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+        cqmsNav(`edit-audit.html?edit=${auditId}&scorecard=${scorecardId}&table=${tableName}`);
         return;
         
         // Load and select the scorecard
@@ -17459,7 +17459,7 @@ async function saveATAResult(auditPayload, auditData) {
         closeAuditForm();
 
         // Redirect back to ATA page
-        window.location.href = 'ata.html';
+        cqmsNav('ata.html');
 
     } catch (error) {
         console.error('Error saving ATA review:', error);
@@ -18778,7 +18778,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirect to audit reports if user clicked "View Reports"
                 if (confirmed) {
-                    window.location.href = 'audit-reports.html';
+                    cqmsNav('audit-reports.html');
                 } else {
                     // Scroll to top to show pending audits
                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -18952,7 +18952,7 @@ async function loadAssignmentFromURL(assignmentId) {
         if (assignment.status === 'completed' || assignment.audit_status === 'completed') {
             // Redirect to view the completed audit
             if (scorecardId && assignmentTable) {
-                window.location.href = `/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
+                cqmsNav(`/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`);
                 return;
             }
             alert('This assignment has already been completed.');

@@ -2837,7 +2837,7 @@ function setupEventListenersForCSP() {
     const createAuditTarget = e.target.closest('[data-action="create-audit"]');
     if (createAuditTarget) {
       e.stopPropagation();
-      window.location.href = '/create-audit';
+      cqmsNav('/create-audit');
       return;
     }
   });
@@ -2846,7 +2846,7 @@ function setupEventListenersForCSP() {
   const createAuditBtn = document.getElementById('createAuditBtn');
   if (createAuditBtn) {
     createAuditBtn.addEventListener('click', () => {
-      window.location.href = '/create-audit';
+      cqmsNav('/create-audit');
     });
   }
   
@@ -2854,7 +2854,7 @@ function setupEventListenersForCSP() {
   const searchBtn = document.getElementById('searchBtn');
   if (searchBtn) {
     searchBtn.addEventListener('click', () => {
-      window.location.href = 'search.html';
+      cqmsNav('search.html');
     });
   }
   
@@ -2882,7 +2882,7 @@ function setupEventListenersForCSP() {
   const manageEventsBtn = document.getElementById('manageEventsBtn');
   if (manageEventsBtn) {
     manageEventsBtn.addEventListener('click', () => {
-      window.location.href = 'event-management.html';
+      cqmsNav('event-management.html');
     });
   }
   
@@ -2900,28 +2900,28 @@ function setupEventListenersForCSP() {
   const quickActionCreateAudit = document.getElementById('quickActionCreateAudit');
   if (quickActionCreateAudit) {
     quickActionCreateAudit.addEventListener('click', () => {
-      window.location.href = '/create-audit';
+      cqmsNav('/create-audit');
     });
   }
   
   const quickActionReports = document.getElementById('quickActionReports');
   if (quickActionReports) {
     quickActionReports.addEventListener('click', () => {
-      window.location.href = 'audit-reports.html';
+      cqmsNav('audit-reports.html');
     });
   }
   
   const quickActionEvents = document.getElementById('quickActionEvents');
   if (quickActionEvents) {
     quickActionEvents.addEventListener('click', () => {
-      window.location.href = 'event-management.html';
+      cqmsNav('event-management.html');
     });
   }
   
   const quickActionSettings = document.getElementById('quickActionSettings');
   if (quickActionSettings) {
     quickActionSettings.addEventListener('click', () => {
-      window.location.href = 'settings.html';
+      cqmsNav('settings.html');
     });
   }
   
@@ -2929,7 +2929,7 @@ function setupEventListenersForCSP() {
   const userAvatar = document.getElementById('userAvatar');
   if (userAvatar) {
     userAvatar.addEventListener('click', () => {
-      window.location.href = 'profile.html';
+      cqmsNav('profile.html');
     });
   }
   
@@ -3680,7 +3680,7 @@ function setupEventListeners() {
   const viewAllBtn = document.getElementById('viewAllBtn');
   if (viewAllBtn) {
     viewAllBtn.addEventListener('click', () => {
-      window.location.href = 'audit-reports.html';
+      cqmsNav('audit-reports.html');
     });
   }
 }
@@ -3875,7 +3875,7 @@ async function logout() {
     localStorage.removeItem('supabase.auth.token');
     
     // Redirect to auth page
-    window.location.href = '/src/auth/presentation/auth-page.html';
+    cqmsNav('/src/auth/presentation/auth-page.html');
   } catch (error) {
     console.error('Error during logout:', error);
     // Force cleanup and redirect on error
@@ -3883,7 +3883,7 @@ async function logout() {
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('lastLoginUpdate');
     localStorage.removeItem('supabase.auth.token');
-    window.location.href = '/src/auth/presentation/auth-page.html';
+    cqmsNav('/src/auth/presentation/auth-page.html');
   }
 }
 
@@ -6793,11 +6793,11 @@ function renderStatsFromData(stats) {
 
 function viewAudit(assignmentId) {
   const q = assignmentId ? `?assignment=${encodeURIComponent(assignmentId)}` : '';
-  window.location.href = `/create-audit${q}`;
+  cqmsNav(`/create-audit${q}`);
 }
 
 function viewAuditDetails(auditId, scorecardId, tableName) {
-  window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId || ''}&table=${tableName || ''}`;
+  cqmsNav(`/audit-view.html?id=${auditId}&scorecard=${scorecardId || ''}&table=${tableName || ''}`);
 }
 
 function formatTimestamp(timestamp) {
@@ -8070,7 +8070,7 @@ function handleNotificationClick(notificationId) {
     viewAudit(notification.assignmentId);
   } else if ((notification.type === 'reversal' || notification.type === 'reversal_status_update') && notification.auditId && notification.tableName) {
     // Navigate to audit view for reversal
-    window.location.href = `/audit-view.html?id=${notification.auditId}&table=${notification.tableName}`;
+    cqmsNav(`/audit-view.html?id=${notification.auditId}&table=${notification.tableName}`);
   }
 }
 

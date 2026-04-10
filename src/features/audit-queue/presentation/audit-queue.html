@@ -883,7 +883,7 @@
       results, successCount, failureCount, totalCount:results.length
     }));
 
-    setTimeout(function(){ window.location.href='/batch-summary'; }, 400);
+    setTimeout(function(){ cqmsNav('/batch-summary'; }, 400));
   }
 
   async function init() {
@@ -891,7 +891,7 @@
       const client = await initSupabase();
       if (client) { supabaseClient=client; window.supabaseClient=client; }
       const auth = await isAuthenticated();
-      if (!auth) { sessionStorage.setItem('redirectAfterLogin',window.location.pathname); window.location.href='/src/auth/presentation/auth-page.html'; return; }
+      if (!auth) { sessionStorage.setItem('redirectAfterLogin',window.location.pathname); cqmsNav('/src/auth/presentation/auth-page.html'; return); }
       // Check if current user is Super Admin
       try { const ui = JSON.parse(localStorage.getItem('userInfo')||'{}'); isSuperAdmin = (ui.role === 'Super Admin'); } catch(e) {}
     } catch(e) { console.error('Init error:',e); }

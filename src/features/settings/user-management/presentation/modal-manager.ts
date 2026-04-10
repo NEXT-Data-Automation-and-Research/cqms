@@ -20,6 +20,17 @@ export class ModalManager {
   /**
    * Populate form fields with user data (shared for create and edit)
    */
+  /**
+   * Helper to set a select value and sync its searchable dropdown display.
+   * Programmatic .value changes don't fire 'change' events, so the searchable
+   * dropdown wrapper never updates its visible text. Dispatching 'change'
+   * triggers the updateSearchInput listener registered by makeSearchable.
+   */
+  private setSelectValue(select: HTMLSelectElement, value: string): void {
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
   private populateFormFields(user: User | null, prefix: 'create' | 'edit'): void {
     // Populate dropdowns FIRST for both create and edit modals
     // This ensures all dropdowns are available before setting values
@@ -37,7 +48,7 @@ export class ModalManager {
       }
       const statusSelect = document.getElementById(`${prefix}UserStatus`) as HTMLSelectElement;
       if (statusSelect) {
-        statusSelect.value = 'true';
+        this.setSelectValue(statusSelect, 'true');
       }
       return;
     }
@@ -55,21 +66,21 @@ export class ModalManager {
     }
 
     const roleSelect = document.getElementById(`${prefix}UserRole`) as HTMLSelectElement;
-    if (roleSelect) roleSelect.value = user.role || '';
+    if (roleSelect) this.setSelectValue(roleSelect, user.role || '');
 
     const departmentSelect = document.getElementById(`${prefix}UserDepartment`) as HTMLSelectElement;
-    if (departmentSelect) departmentSelect.value = user.department || '';
+    if (departmentSelect) this.setSelectValue(departmentSelect, user.department || '');
 
     // Set channel value - handle both ID and name for backward compatibility
     const channelSelect = document.getElementById(`${prefix}UserChannel`) as HTMLSelectElement;
-    if (channelSelect && user.channel) {
-      const state = userManagementState.getState();
-      const channel = state.channels.find(c => c.id === user.channel) || 
-                     state.channels.find(c => c.name === user.channel);
-      if (channel) {
-        channelSelect.value = channel.id;
+    if (channelSelect) {
+      if (user.channel) {
+        const state = userManagementState.getState();
+        const channel = state.channels.find(c => c.id === user.channel) ||
+                       state.channels.find(c => c.name === user.channel);
+        this.setSelectValue(channelSelect, channel ? channel.id : user.channel);
       } else {
-        channelSelect.value = user.channel;
+        this.setSelectValue(channelSelect, '');
       }
     }
 
@@ -77,27 +88,27 @@ export class ModalManager {
     if (teamInput) teamInput.value = user.team || '';
 
     const teamSupervisorSelect = document.getElementById(`${prefix}UserTeamSupervisor`) as HTMLSelectElement;
-    if (teamSupervisorSelect) teamSupervisorSelect.value = user.team_supervisor || '';
+    if (teamSupervisorSelect) this.setSelectValue(teamSupervisorSelect, user.team_supervisor || '');
 
     const qualitySupervisorSelect = document.getElementById(`${prefix}UserQualitySupervisor`) as HTMLSelectElement;
-    if (qualitySupervisorSelect) qualitySupervisorSelect.value = user.quality_mentor || '';
+    if (qualitySupervisorSelect) this.setSelectValue(qualitySupervisorSelect, user.quality_mentor || '');
 
     // Populate designation (now a dropdown)
     const designationSelect = document.getElementById(`${prefix}UserDesignation`) as HTMLSelectElement;
-    if (designationSelect) designationSelect.value = user.designation || '';
+    if (designationSelect) this.setSelectValue(designationSelect, user.designation || '');
 
     const employeeIdInput = document.getElementById(`${prefix}UserEmployeeId`) as HTMLInputElement;
     if (employeeIdInput) employeeIdInput.value = user.employee_id || '';
 
     // Populate country (now a dropdown)
     const countrySelect = document.getElementById(`${prefix}UserCountry`) as HTMLSelectElement;
-    if (countrySelect) countrySelect.value = user.country || '';
+    if (countrySelect) this.setSelectValue(countrySelect, user.country || '');
 
     const statusSelect = document.getElementById(`${prefix}UserStatus`) as HTMLSelectElement;
-    if (statusSelect) statusSelect.value = user.is_active ? 'true' : 'false';
+    if (statusSelect) this.setSelectValue(statusSelect, user.is_active ? 'true' : 'false');
 
     const intercomAdminSelect = document.getElementById(`${prefix}UserIntercomAdmin`) as HTMLSelectElement;
-    if (intercomAdminSelect) intercomAdminSelect.value = user.intercom_admin_id || '';
+    if (intercomAdminSelect) this.setSelectValue(intercomAdminSelect, user.intercom_admin_id || '');
 
     // For edit modal, set hidden user ID
     if (prefix === 'edit') {

@@ -95,7 +95,7 @@
           // If not authenticated, redirect to login
           if (authError?.code === 'AUTH_REQUIRED') {
             console.log('User not authenticated, redirecting to login...');
-            window.location.href = '/src/auth/presentation/auth-page.html';
+            cqmsNav('/src/auth/presentation/auth-page.html');
             return;
           }
           console.warn('Auth verification failed, but base client is available:', authError);

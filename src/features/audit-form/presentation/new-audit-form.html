@@ -832,7 +832,7 @@
             if (currentPath && currentPath !== '/src/auth/presentation/auth-page.html') {
               sessionStorage.setItem('redirectAfterLogin', currentPath + window.location.search);
             }
-            window.location.href = '/src/auth/presentation/auth-page.html';
+            cqmsNav('/src/auth/presentation/auth-page.html');
             return;
           }
           
@@ -872,7 +872,7 @@
                 }
                 // Use setTimeout to prevent immediate redirect loops
                 setTimeout(() => {
-                  window.location.href = '/src/auth/presentation/auth-page.html';
+                  cqmsNav('/src/auth/presentation/auth-page.html');
                 }, 100);
               } else if (event === 'TOKEN_REFRESHED') {
                 if (session) {
@@ -2251,7 +2251,7 @@ window.viewCompletedAudit = function(auditId, scorecardId, tableName) {
         return;
     }
     // Use same format as audit-reports.html for consistency (absolute path)
-    window.location.href = `/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`;
+    cqmsNav(`/audit-view.html?id=${auditId}&scorecard=${scorecardId}&table=${tableName}`);
 };
 
 // Load pending audits for current user from audit_assignments table
@@ -11104,7 +11104,7 @@ window.closeAuditForm = async function() {
     const tableName = urlParams.get('table');
     if (editId && tableName) {
         const returnUrl = `/audit-view.html?id=${encodeURIComponent(editId)}&scorecard=${encodeURIComponent(scorecardId || '')}&table=${encodeURIComponent(tableName)}&mode=view`;
-        window.location.href = returnUrl;
+        cqmsNav(returnUrl);
         return;
     }
     
@@ -11115,7 +11115,7 @@ window.closeAuditForm = async function() {
     }
     
     // Default: Create Audit page
-    window.location.href = '/create-audit';
+    cqmsNav('/create-audit');
 };
 
 // ============================================================================
@@ -14529,14 +14529,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         ? `/audit-view.html?id=${savedAuditId}&scorecard=${scorecardId}&table=${tableName}`
                         : 'audit-reports.html';
                     window.showViewAuditLoadingOverlay();
-                    window.location.href = viewAuditUrl;
+                    cqmsNav(viewAuditUrl);
                     return;
                 }
                 
                 // User chose "Go Back" – reload pending audits and stats, then navigate
                 await loadPendingAudits();
                 await updateYourStats();
-                window.location.href = '/create-audit';
+                cqmsNav('/create-audit');
                 
             } catch (err) {
                 console.error('Exception saving to Supabase:', err);
@@ -15112,7 +15112,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 closePopup();
 
                 // Navigate to Audit Queue page
-                window.location.href = '/audit-queue';
+                cqmsNav('/audit-queue');
             });
         }
 
@@ -15360,7 +15360,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
 
                     // Navigate back to Create Audit page so user can pick next conversation
-                    window.location.href = '/create-audit';
+                    cqmsNav('/create-audit');
 
                 } catch (queueError) {
                     console.error('[QUEUE] Error adding to queue:', queueError);
@@ -15758,7 +15758,7 @@ async function loadAssignmentFromURL(assignmentId, employeeNameFromUrl = null) {
         if (assignment.status === 'completed' || assignment.audit_status === 'completed') {
             // Redirect to view the completed audit
             if (scorecardId && assignmentTable) {
-                window.location.href = `/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`;
+                cqmsNav(`/audit-view.html?id=${assignment.id}&scorecard=${scorecardId}&table=${assignmentTable}`);
                 return;
             }
             alert('This assignment has already been completed.');

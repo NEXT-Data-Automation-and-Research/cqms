@@ -480,7 +480,7 @@
                 if (bypassBtn && emailInput) {
                     bypassBtn.addEventListener('click', () => {
                         enableDevBypassAuthentication(emailInput.value.trim() || 'dev@test.com');
-                        window.location.href = '/src/features/home/presentation/home-page.html';
+                        cqmsNav('/src/features/home/presentation/home-page.html');
                     });
                 }
             }
@@ -535,7 +535,7 @@
                         if (signOutBtn) {
                             signOutBtn.classList.remove('hidden');
                             signOutBtn.addEventListener('click', async () => {
-                                try { await signOut(); } catch (_) { window.location.href = '/src/auth/presentation/auth-page.html'; }
+                                try { await signOut(); } catch (_) { cqmsNav('/src/auth/presentation/auth-page.html'); }
                             });
                         }
                     }

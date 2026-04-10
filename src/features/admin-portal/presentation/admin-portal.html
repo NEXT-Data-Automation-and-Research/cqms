@@ -1500,7 +1500,7 @@
       const isAdmin = await this.verifyAdminAccess();
       if (!isAdmin) {
         showToast('Access denied', 'error');
-        setTimeout(() => window.location.href = '/home', 1000);
+        setTimeout(() => cqmsNav('/home', 1000));
         return;
       }
       

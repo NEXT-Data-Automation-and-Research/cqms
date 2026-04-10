@@ -538,7 +538,7 @@
       try {
         const { data: { user } } = await window.supabaseClient.auth.getUser();
         if (!user) {
-          window.location.href = '/src/auth/presentation/auth-page.html';
+          cqmsNav('/src/auth/presentation/auth-page.html');
           return;
         }
         this.userId = user.id;

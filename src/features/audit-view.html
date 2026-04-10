@@ -2013,7 +2013,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 event.preventDefault(); // Prevent default escape behavior
                 const canNavigate = await handleCloseAuditView();
                 if (canNavigate) {
-                    window.location.href = 'audit-reports.html';
+                    cqmsNav('audit-reports.html');
                 }
             }
         });
@@ -2597,7 +2597,7 @@ async function deleteCurrentAudit() {
 
         alert('Audit deleted successfully.');
         // Navigate back - close the view or go to reports
-        window.location.href = '/audit-reports';
+        cqmsNav('/audit-reports');
     } catch (err) {
         console.error('Error deleting audit:', err);
         alert('Failed to delete audit: ' + (err.message || 'Unknown error'));
@@ -2625,7 +2625,7 @@ function editCurrentAudit() {
     }
     
     // Redirect to audit form in edit mode
-    window.location.href = `/src/features/audit-form/presentation/new-audit-form.html?edit=${currentAudit.id}&scorecard=${currentScorecardId}&table=${currentTableName}`;
+    cqmsNav(`/src/features/audit-form/presentation/new-audit-form.html?edit=${currentAudit.id}&scorecard=${currentScorecardId}&table=${currentTableName}`);
 }
 
 // Helper function to convert URLs in text to clickable links
@@ -2985,7 +2985,7 @@ function generateErrorDetails(audit, errorFields) {
                 
                 // Check if feedback is HTML (contains tags) or plain text
                 let renderedFeedback = '';
-                if (feedbackText.trim().startsWith('<') && feedbackText.includes('>')) {
+                if (/<[a-z][\s\S]*?>/i.test(feedbackText)) {
                     // It's HTML - sanitize and render, preserving color styles
                     if (typeof DOMPurify !== 'undefined') {
                         // Sanitize with style attribute allowed - DOMPurify should preserve color CSS properties
@@ -3005,7 +3005,7 @@ function generateErrorDetails(audit, errorFields) {
                 }
                 
                 return `<div style="background: ${containerBg}; border: 0.0304rem solid ${containerBorder}; border-radius: 0.3234rem; padding: 0.4852rem 0.6469rem; margin-bottom: ${index < feedbackArray.length - 1 ? '0.6469rem' : '0'};">
-                    ${label}<div style="font-size: 0.5659rem; color: #000000; font-family: 'Poppins', sans-serif; line-height: 1.6; ${feedbackText.trim().startsWith('<') ? '' : 'white-space: pre-wrap;'}">${renderedFeedback}</div>
+                    ${label}<div style="font-size: 0.5659rem; color: #000000; font-family: 'Poppins', sans-serif; line-height: 1.6; ${/<[a-z][\s\S]*?>/i.test(feedbackText) ? '' : 'white-space: pre-wrap;'}">${renderedFeedback}</div>
                 </div>`;
             }).join('');
         }
@@ -9408,7 +9408,7 @@ function populateParametersWithComments() {
 async function handleCloseButtonClick() {
     const canNavigate = await handleCloseAuditView();
     if (canNavigate) {
-        window.location.href = 'audit-reports.html';
+        cqmsNav('audit-reports.html');
     }
 }
 

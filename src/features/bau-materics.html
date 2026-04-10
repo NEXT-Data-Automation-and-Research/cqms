@@ -1471,7 +1471,7 @@ function viewAuditDetails(record) {
         params.append('scorecard', record.scorecard_id);
     }
     
-    window.location.href = `audit-view.html?${params.toString()}`;
+    cqmsNav(`audit-view.html?${params.toString()}`);
 }
 
 
