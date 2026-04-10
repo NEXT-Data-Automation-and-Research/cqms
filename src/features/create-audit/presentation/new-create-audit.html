@@ -8250,10 +8250,13 @@ async function fetchConversationsForDateRange(startDate, endDate) {
     if (useServicePerformanceData) {
         updateProgressIndicator(20, 'Loading service performance data...');
         try {
-            // Build query params — filter by employee name (matches agent_name in SPO tables)
+            // Build query params — filter by employee name and/or email
             const params = new URLSearchParams();
             if (pullConversationsEmployeeName) {
                 params.append('assignee_name', pullConversationsEmployeeName);
+            }
+            if (pullConversationsEmployeeEmail) {
+                params.append('employee_email', pullConversationsEmployeeEmail);
             }
             if (startDate && endDate) {
                 const startTs = Math.floor(new Date(startDate + 'T00:00:00Z').getTime() / 1000);

@@ -126,26 +126,70 @@ function mapRowToConversation(row: SPRow) {
 }
 
 /**
+ * Build name search terms from the given name and optional email.
+ * Returns an array of search strings to try (most specific first).
+ */
+function buildNameSearchTerms(name?: string, email?: string): string[] {
+  const terms: string[] = [];
+  if (name) {
+    terms.push(name); // exact name
+    // Individual words (for partial matches like "Rafi" matching "Rafi Bin Zahid")
+    const words = name.split(/\s+/).filter(w => w.length >= 3);
+    for (const w of words) terms.push(w);
+  }
+  if (email) {
+    // Extract name from email prefix: rafi.zahid@company.com → "rafi zahid"
+    const prefix = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+    if (prefix.length >= 3) terms.push(prefix);
+    // Individual words from email prefix
+    const emailWords = prefix.split(/\s+/).filter(w => w.length >= 3);
+    for (const w of emailWords) {
+      if (!terms.includes(w)) terms.push(w);
+    }
+  }
+  return terms;
+}
+
+/**
  * Query a single table with filters, returning up to 1000 rows.
+ * Tries multiple name search terms until results are found.
  */
 async function queryTable(
   client: SupabaseClient,
   table: string,
-  opts: { assigneeName?: string; updatedSince?: string; updatedBefore?: string },
+  opts: { nameTerms?: string[]; updatedSince?: string; updatedBefore?: string },
 ): Promise<SPRow[]> {
+  // Try each name term until we get results
+  const terms = opts.nameTerms || [];
+
+  for (const term of terms) {
+    let query = client.from(table).select(SELECT_COLUMNS);
+    query = query.ilike('agent_name', `%${term}%`);
+    if (opts.updatedSince) query = query.gte('created_at', opts.updatedSince);
+    if (opts.updatedBefore) query = query.lte('created_at', opts.updatedBefore);
+    query = query.order('created_at', { ascending: false }).limit(1000);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error(`Error querying ${table} with term "${term}":`, error.message);
+      continue;
+    }
+    if (data && data.length > 0) {
+      console.log(`[ServicePerf] ${table}: matched "${term}" → ${data.length} rows`);
+      return data as unknown as SPRow[];
+    }
+  }
+
+  // No name filter — return empty if terms were provided but none matched
+  if (terms.length > 0) {
+    console.log(`[ServicePerf] ${table}: no matches for any term: ${terms.join(', ')}`);
+    return [];
+  }
+
+  // No name filter at all — return all
   let query = client.from(table).select(SELECT_COLUMNS);
-
-  if (opts.assigneeName) {
-    // agent_name contains the actual employee name in both tables
-    query = query.ilike('agent_name', `%${opts.assigneeName}%`);
-  }
-  if (opts.updatedSince) {
-    query = query.gte('created_at', opts.updatedSince);
-  }
-  if (opts.updatedBefore) {
-    query = query.lte('created_at', opts.updatedBefore);
-  }
-
+  if (opts.updatedSince) query = query.gte('created_at', opts.updatedSince);
+  if (opts.updatedBefore) query = query.lte('created_at', opts.updatedBefore);
   query = query.order('created_at', { ascending: false }).limit(1000);
 
   const { data, error } = await query;
@@ -169,8 +213,13 @@ router.get('/conversations', async (req: Request, res: Response): Promise<void> 
     const client = getCexClient();
 
     const assigneeName = req.query.assignee_name as string | undefined;
+    const employeeEmail = req.query.employee_email as string | undefined;
     const updatedSinceTs = req.query.updated_since ? Number(req.query.updated_since) : null;
     const updatedBeforeTs = req.query.updated_before ? Number(req.query.updated_before) : null;
+
+    // Build search terms from name + email for flexible matching
+    const nameTerms = buildNameSearchTerms(assigneeName, employeeEmail);
+    console.log(`[ServicePerf] Search terms: ${nameTerms.join(', ') || '(none)'}`);
 
     // Convert Unix timestamps to GMT+6 ISO strings.
     // Frontend sends "April 1 midnight UTC" but user means "April 1 midnight GMT+6".
@@ -183,7 +232,7 @@ router.get('/conversations', async (req: Request, res: Response): Promise<void> 
     const updatedSince = updatedSinceTs ? toGMT6(updatedSinceTs) : undefined;
     const updatedBefore = updatedBeforeTs ? toGMT6(updatedBeforeTs) : undefined;
 
-    const opts = { assigneeName, updatedSince, updatedBefore };
+    const opts = { nameTerms: nameTerms.length > 0 ? nameTerms : undefined, updatedSince, updatedBefore };
 
     // Query both tables in parallel
     const [chatRows, emailRows] = await Promise.all([
