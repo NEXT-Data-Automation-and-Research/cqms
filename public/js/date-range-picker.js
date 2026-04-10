@@ -45,7 +45,7 @@ function injectStyles() {
 .drp-dropdown {
   position: absolute; top: 100%; left: 0; margin-top: 0.375rem;
   background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.12); z-index: 1000;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12); z-index: 9999;
   display: none; overflow: hidden;
 }
 .drp-dropdown.drp-open { display: flex; }
